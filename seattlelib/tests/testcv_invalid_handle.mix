@@ -1,0 +1,29 @@
+"""
+  Author: Vjekoslav Brajkovic
+ 
+  Start Date: May 16th, 2009
+  
+  Purpose: Test cases for the condition variable primitive implementation.
+"""
+
+include cv.repy
+  
+
+
+def cv_test_invalid_handle():
+  try:
+    cv_destroy("invalid-6111226")
+  except ValueError:
+    return
+  
+  print("fail: did not receive the exception when destroying an inexistent condition variable")
+
+
+
+
+
+if callfunc == 'initialize':
+  
+  cv_test_invalid_handle()
+  
+  exitall()

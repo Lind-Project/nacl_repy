@@ -1,0 +1,15 @@
+"""
+Author: Justin Cappos
+Description:
+This test verifies the GetVessels method does not generate an exception.
+
+"""
+
+include nmclient.repy
+
+if callfunc == 'initialize':
+  nmhandle = nmclient_createhandle(getmyip(), 1224)
+
+  nmclient_rawsay(nmhandle, "GetVessels")
+
+  nmclient_getvesseldict(nmhandle)

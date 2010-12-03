@@ -1,0 +1,30 @@
+"""
+This is a no-op security layer used
+for micro-benchmarking.
+"""
+
+# Get the number of layers
+num_layers = int(callargs.pop(0))
+
+# Add this layer this number of times
+# This will cause us to stack this module
+# this many times
+for x in xrange(num_layers-1):
+  callargs.insert(0, "immutarg-seclayer.repy")
+
+
+def secure_noop(arg1):
+  return arg1
+
+
+# Define this function
+CHILD_CONTEXT_DEF["noop"] = {"type":"func",
+                             "args":((int,long),),
+                             "return":(int,long),
+                             "exceptions":None,
+                             "target":secure_noop
+                            }
+
+# Dispatch the next module
+secure_dispatch_module()
+

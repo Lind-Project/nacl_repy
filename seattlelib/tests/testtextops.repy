@@ -1,0 +1,27 @@
+include textops.repy
+
+# Tests for seattlelib/textops.repy.
+
+if callfunc == "initialize":
+
+  # textops_rawtexttolines() tests:
+  assert len(textops_rawtexttolines("abc")) == 1
+  assert len(textops_rawtexttolines("abc\n")) == 1
+  assert len(textops_rawtexttolines("abc\ndef\n")) == 2
+  assert len(textops_rawtexttolines("abc\r\ndef\r\n", linedelimiter="\r\n")) == 2
+
+  assert textops_rawtexttolines("abc\ndef\n") == ["abc", "def"]
+
+
+  
+  # textops_grep() tests:
+  assert len(textops_grep("abc", textops_rawtexttolines("abc\ndef\n"))) == 1
+  assert len(textops_grep("abc", textops_rawtexttolines("abc\nabc\n"))) == 2
+
+
+
+  # textops_linecount() tests:
+  assert len(textops_grep("abc", textops_rawtexttolines("abc\ndef\n"))) == \
+      textops_linecount(textops_grep("abc", textops_rawtexttolines("abc\ndef\n")))
+  assert len(textops_grep("abc", textops_rawtexttolines("abc\nabc\n"))) == \
+      textops_linecount(textops_grep("abc", textops_rawtexttolines("abc\nabc\n")))

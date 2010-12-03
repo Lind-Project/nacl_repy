@@ -1,0 +1,334 @@
+"""
+Author: Armon Dadgar
+Description:
+  Basic library to help serve HTTP pages
+"""
+
+# Client has this long before the connection
+# is timed out
+CLIENT_TIMEOUT = 10
+PROCESSING_TIMEOUT = 60
+
+# Maximum header length is 32K
+MAX_HEADER_LEN = 32*1024
+
+# List of the supported HTTP verbs
+SUPPORTED_VERBS = set(["GET","POST"])
+
+# This dictionary is used to register
+# handlers for various requests
+# It is first indexed by the verb, and then by the page.
+REQUEST_HANDLERS = {"GET":{}, "POST":{}, "ERR":{}}
+
+
+#### Public Functions
+
+def setup_listener(port, min_threads=2, max_threads=4, check_intv=0.025):
+  """
+  Setup the listeners
+  """
+  tpool = ThreadPool(min_threads,max_threads)
+  tpool.start()
+  stop_func = waitforconn(port, incoming_handler, check_intv=check_intv)
+  return stop_func
+
+
+def register_request_handler(verb, page, func):
+  """Registers a request handler"""
+  if verb not in SUPPORTED_VERBS and verb != "ERR":
+    raise Exception, ("Unsupported verb!", verb)
+
+  if page in REQUEST_HANDLERS[verb]:
+    raise Exception, ("Overriding existing handler!", REQUEST_HANDLERS[verb][page])
+
+  REQUEST_HANDLERS[verb][page] = func
+
+
+def buffer_post_body(request_dict):
+  """Buffers the entire post body"""
+  # Get the content length
+  expected_length = int(request_dict["headers"]["Content-Length"])
+
+  # Get the whole submitted body
+  remaining_body = expected_length - len(request_dict["body"])
+  if remaining_body > 0:
+    request_dict["body"] += request_dict["sock"].recvall(remaining_body)
+
+
+def parse_form_data(request_dict):
+  """Parses form data from a POST upload"""
+  # Buffer the post body first
+  buffer_post_body(request_dict)
+
+  # Get the content type
+  content_type = request_dict["headers"]["Content-Type"]
+
+  # Check for form data
+  if "multipart/form-data" not in content_type:
+    raise Exception("POST does not contain form data!")
+  if "boundary" not in content_type:
+    raise Exception("Form boundary not specified!")
+
+  # Get the boundary
+  boundary_index = content_type.find("boundary=")
+  boundary = "--" + content_type[boundary_index+9:]
+
+  # Split on the boundary
+  form_parts = request_dict["body"].split(boundary)
+  if form_parts[0] == "": form_parts.pop(0)
+  form_parts.pop() # Remove the last part, junk
+
+  # Store the form data
+  form_data = {}
+
+  # Handle each part
+  for part in form_parts:
+    # Get the name of the post field
+    name_index = part.find("name=")
+    end_name_index = part.find("\"", name_index+7)
+    name = part[name_index+6:end_name_index]
+
+    # Get the value
+    split_indicator = 2*request_dict["newline"]
+    value_index = part.find(split_indicator)
+    value = part[value_index+len(split_indicator):len(part)-len(request_dict["newline"])]
+
+    # Store the form data
+    form_data[name] = value
+ 
+  # Return the form data
+  return form_data
+
+
+#### Private functions
+
+def sock_close(sock):
+  """Silently closes the socket"""
+  try:
+    sock.close()
+  except:
+    pass
+
+
+def send_response(request_dict, response_dict):
+  """
+  Sends basic header information to the client,
+  and then sends the body
+  """
+  sock = request_dict["sock"]
+
+  if "body" in response_dict:
+    body = response_dict["body"]
+  else:
+    body = ""
+
+  if "code" in response_dict:
+    status_num = response_dict["code"]
+  else:
+    status_num = 200
+
+  if "status" in response_dict:
+    status_str = response_dict["status"]
+  else:
+    status_str = "OK"
+
+  if "type" in response_dict:
+    content_type = response_dict["type"]
+  else:
+    content_type = "text/html"
+
+  header = "HTTP/1.1 "+str(status_num)+" "+status_str+"\n"
+  header += "Context-Length: "+str(len(body))+"\n" 
+  header += "Connection: close\n"
+  header += "Content-Type: "+content_type+";\n"
+
+  if "headers" in response_dict:
+    for name, value in response_dict["headers"].items():
+      header += name+": "+value+"\n"
+
+  # Finish the headers
+  header += "\n"
+
+  # Compose the message of the header and body
+  mesg = header + body
+
+  # Send the entire message
+  sock.sendall(mesg)
+
+
+def parse_request(request_dict):
+  """Parses the HTTP request."""
+  # Get the socket
+  sock = request_dict["sock"]
+
+  # Read the request line
+  data = ""
+  while "\n" not in data:
+    data += sock.recv(1024)
+    if len(data) >= MAX_HEADER_LEN:
+      raise Exception("Maximum header length exceeded!")
+
+  # Get the pure request line
+  newline_index = data.find("\n")
+  request_line = data[:newline_index].strip(" \t\r")
+  request_components = request_line.split(" ")
+  if len(request_components) != 3:
+    raise Exception, ("Badly formatted request line!", request_line)
+
+  verb = request_components[0]
+  if verb not in SUPPORTED_VERBS:
+    raise Excpception, ("Unsupported HTTP Verb!", verb)
+  
+  request_dict["verb"] = verb
+  path = request_components[1]
+  request_dict["path"] = path
+  request_dict["version"] = request_components[2]
+
+
+  # Parse the GET arguments
+  request_dict["GET_ARGS"] = {}
+  get_args_index = path.find("?")
+  if get_args_index == -1:
+    request_dict["page"] = path
+  else:
+    request_dict["page"] = path[:get_args_index]
+    get_args = path[get_args_index+1:].strip(" \t")
+   
+    # Split on "&"
+    get_args = get_args.split("&")
+    for arg in get_args:
+      if "=" in arg:
+        arg_name, arg_value = arg.split("=",1)
+      else:
+        arg_name = arg
+        arg_value = None
+
+      request_dict["GET_ARGS"][arg_name] = arg_value
+
+
+  # Get the rest of the request header
+  data = data[newline_index:]
+  request_dict["headers"] = {}
+
+  # Check if there are no headers
+  while "\n\n" not in data and "\r\n\r\n" not in data:
+    data += sock.recv(1024)
+    if len(data) >= MAX_HEADER_LEN:
+      raise Exception("Maximum header length exceeded!")
+
+  # Split the data between header data and body
+  split_index_1 = data.find("\n\n")
+  split_index_2 = data.find("\r\n\r\n")
+  if split_index_1 == -1:
+    split_index = split_index_2
+    has_carriage = True
+  elif split_index_2 == -1:
+    split_index = split_index_1
+    has_carriage = False
+  elif split_index_1 < split_index_2:
+    split_index = split_index_1
+    has_carriage = False
+  else:
+    split_index = split_index_2
+    has_carriage = True
+
+  if has_carriage:
+    header_data = data[:split_index+2]
+    body_data = data[split_index+4:]
+    request_dict["newline"] = "\r\n"
+  else:
+    header_data = data[:split_index+1]
+    body_data = data[split_index+2:]
+    request_dict["newline"] = "\n"
+
+  # Populate the headers
+  if has_carriage:
+    headers = header_data.split("\r\n")
+  else:
+    headers = header_data.split("\n")
+
+  for header in headers:
+    if len(header) == 0:
+      continue
+    
+    header_name, header_value = header.split(":", 1)
+    header_name = header_name.strip(" \t")
+    header_value = header_value.strip(" \t")
+    if len(header_name) > 0 and len(header_value) > 0:
+      request_dict["headers"][header_name] = header_value
+
+  # Store what we have of the body so far
+  request_dict["body"] = body_data
+
+
+def get_request_handler(request_dict):
+  """Returns a request handler function"""
+  verb = request_dict["verb"]
+  page = request_dict["page"]
+
+  # Get the handlers for this verb
+  verb_handlers = REQUEST_HANDLERS[verb]
+
+  # Check for an exact match
+  if page in verb_handlers:
+    return verb_handlers[page]
+  else:
+    # Return the handler for page not found
+    return REQUEST_HANDLERS["ERR"]["404"]
+
+
+def incoming_handler(sock):
+  """Main entry point for incoming TCP connections."""
+  try:
+    # Set a timeout for the socket
+    sock.settimeout(CLIENT_TIMEOUT)
+
+    # Make a request dict
+    request_dict = {"sock":sock}
+    parse_request(request_dict)
+
+    # DEBUG
+    log("Requst: ",request_dict["verb"],request_dict["path"],"\n")
+
+    # Check for a request handler
+    handler = get_request_handler(request_dict)
+
+    # Setup a timer to close the socket in a bit
+    timer = Timer(PROCESSING_TIMEOUT, sock_close, (sock,))
+    timer.start()
+
+    # Invoke the handler function
+    response_dict = handler(request_dict)
+
+    # Stop the timer
+    timer.cancel()
+
+    # Send the response
+    send_response(request_dict, response_dict)
+
+    # Close the socket
+    sock_close(sock)
+
+  except:
+    log("Exception handling request:\n",getlasterror(),"\n")
+    sock_close(sock)
+
+
+#### Default Page handlers
+
+def default_404_handler(request_dict):
+  """Default 404 handler"""
+  body = "<html><head><title>Page not found! 404 Error</title></head><body><h1>Page not found!</h1>"
+  body += "<h5>Requested Page:"+request_dict["path"]+"</h5></body></html>"
+  response_dict = {"body":body, "code":404, "status":"Not Found"}
+  return response_dict
+
+
+#### Initialize the module
+
+if callfunc == "import":
+  # Set the default handlers
+  register_request_handler("ERR", "404", default_404_handler)
+
+
+

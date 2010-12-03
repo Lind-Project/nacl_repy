@@ -1,0 +1,242 @@
+"""
+<Started>
+  April 23, 2005
+
+<Purpose>
+  Test the new replacement for random.repy
+  Functions tested:
+    randomfloat
+    random_nbit_int
+    random_int_below
+    random_range
+    random_long_to_bytes    which is used to get bytes from randomfloat
+
+<Authors>
+  Modified by Anthony Honstain
+  Modified from the Python 2.6.1 random.py module. Which was:
+    Translated by Guido van Rossum from C source provided by
+    Adrian Baddeley.  Adapted by Raymond Hettinger for use with
+    the Mersenne Twister  and os.urandom() core generators.
+
+
+"""
+include random.repy
+include math.repy
+
+# Randomfloat is provided repy.
+def test_53_bits_per_float():
+  # This should pass whenever a C double has 53 bit precision.
+  span = 2 ** 53
+  cum = 0
+  for i in xrange(100):
+    cum |= int(randomfloat() * span)
+  assert(cum == span-1)
+
+def test_randomfloat():
+  """ Compare randomfloat to pythons implementation."""
+  # This will directly compare the code for randomfloat
+  # with that provided in python's SystemRandom from the
+  # random module
+  
+  # each tuple in the tests strings contains the raw byte string as
+  # its first element, and the result of preforming 
+  # long(binascii.hexlify( bytestring ), 16) on the raw byte string.
+  
+  teststrings = [ (chr(0)*6 + chr(0), 0)]
+  teststrings.append((chr(0)*6 + chr(1), 1))
+  teststrings.append((chr(0)*6 + chr(2), 2))
+  teststrings.append((chr(0)*6 + chr(255), 255))
+  
+  teststrings.append((chr(0)*5 + chr(1) + chr(0), 256))
+  teststrings.append((chr(0)*5 + chr(1) + chr(1), 257))
+  teststrings.append((chr(0)*5 + chr(1) + chr(255), 511))
+  teststrings.append((chr(0)*5 + chr(2) + chr(0), 512))
+  teststrings.append((chr(0)*5 + chr(2) + chr(1), 513))
+  teststrings.append((chr(255)*7, 72057594037927935))
+  
+
+  for bytestring in teststrings:
+    pythonexample = (bytestring[1] >> 3) * 2**(-53)
+    
+    randomint = 0L
+    for i in range(0, 7):
+      randomint = (randomint << 8) 
+      randomint = randomint + ord((bytestring[0])[i]) 
+
+    # Trim off the excess bits to get 53bits
+    randomint = randomint >> 3
+    # randomint is a number between 0 and 2**(53) - 1
+  
+    repyfloat = randomint * (2**(-53))
+    assert(pythonexample == repyfloat)
+  
+def test_bigrand():
+  # The randrange routine should build-up the required number of bits
+  # in stages so that all bit positions are active.
+  span = 2 ** 500
+  cum = 0
+  for i in xrange(100):
+    r = random_randrange(span)
+    assert(0 <= r < span)
+    cum |= r
+  assert(cum == span-1)
+
+def test_bigrand_ranges():
+  for i in [40,80, 160, 200, 211, 250, 375, 512, 550]:
+    start = random_randrange(2 ** i)
+    stop = random_randrange(2 ** (i-2))
+    if stop <= start:
+      return
+    assert(start <= random_randrange(start, stop) < stop)
+
+def test_rangelimits():
+  for start, stop in [(-2,0), (-(2**60)-2,-(2**60)), (2**60,2**60+2)]:
+    assert(set(range(start,stop)) ==
+      set([random_randrange(start,stop) for i in xrange(100)]))
+
+
+def test_random_nbit_int():
+  # Verify ranges
+  for k in xrange(1, 1000):
+    assert(0 <= random_nbit_int(k) < 2**k)
+    assert(0 <= random_nbit_int(k) <= (2**(k) - 1))
+
+  # Verify all bits active
+  getbits = random_nbit_int
+  for span in [1, 2, 3, 4, 31, 32, 32, 52, 53, 54, 119, 127, 128, 129]:
+    cum = 0
+    for i in xrange(100):
+      cum |= getbits(span)
+    assert(cum == 2**span-1)
+
+  # Verify argument checking
+  #self.assertRaises(TypeError, random_nbit_int)
+  #self.assertRaises(TypeError, random_nbit_int, 1, 2)
+  #self.assertRaises(ValueError, random_nbit_int, 0)
+  #self.assertRaises(ValueError, random_nbit_int, -1)
+  #self.assertRaises(TypeError, random_nbit_int, 10.1)
+  
+def test_random_nbit_int_additional():
+  '''Tests to insure that random_nbit_int returns appropriate range'''
+  for k in xrange(100):
+    assert(0 <= random_nbit_int(3) <= 7)
+    assert(0 <= random_nbit_int(10) <= 1023)
+  for j in xrange(51, 24):
+    assert(0 <= random_nbit_int(j) <= 2**j - 1)
+
+def test_random_int_below(_log=math_log, int=int):
+  # check bitcount transition points:  2**i and 2**(i+1)-1
+  # show that: k = int(1.001 + _log(n, 2))
+  # is equal to or one greater than the number of bits in n
+  for i in xrange(1, 1000):
+    n = 1L << i # check an exact power of two
+    numbits = i+1
+    k = int(1.00001 + _log(n, 2))
+    assert(k == numbits)
+    assert(n == 2**(k-1))
+
+    n += n - 1      # check 1 below the next power of two
+    k = int(1.00001 + _log(n, 2))
+    assert(k in [numbits, numbits+1])
+    assert(2**k > n > 2**(k-2))
+
+    n -= n >> 15     # check a little farther below the next power of two
+    k = int(1.00001 + _log(n, 2))
+    assert(k == numbits)        # note the stronger assertion
+    assert(2**k > n > 2**(k-1))   # note the stronger assertion
+
+def test_random_int_below_sanitycheck():
+  '''Tests to insure that random_int_below returns appropriate range'''
+  for k in xrange(100):
+    assert(0 <= random_int_below(9) < 9)
+    assert(0 <= random_int_below(33) < 33)
+ 
+def test_randint_simple():
+  '''Basic randint tests'''
+  for i in xrange(7, 1000):
+    for repeat in xrange(10):
+      assert(5 <= random_randint(5,i) <= i)
+ 
+#def test_randrange_exception(self):
+#  '''Test randint exception handling'''
+#  self.assertRaises(ValueError, random.random_randrange, 'a', 'b')
+#  self.assertRaises(ValueError, random.random_randrange, 'a', 5)
+#  self.assertRaises(ValueError, random.random_randrange, 5, 'b')
+  
+    
+def test_random_randombytes():
+  """ Test 7byte strings to ensure no loss of information """
+  teststring1 = chr(0)*7  # 7 byte string 
+  teststring2 = chr(0)*6 + chr(1)
+  teststring3 = chr(0)*6 + chr(255)
+  teststring4 = chr(1)*7
+  teststring5 = chr(255) * 7
+  
+  _float_to_bytes(teststring1)
+  _float_to_bytes(teststring2)
+  _float_to_bytes(teststring3)
+  _float_to_bytes(teststring4)
+  _float_to_bytes(teststring5)
+    
+def _float_to_bytes(string):
+  
+  # First use the code to create a float
+  randomint = 0L
+  for i in range(0, 7):
+    randomint = (randomint << 8) 
+    randomint = randomint + ord(string[i]) 
+
+  # Trim off the excess bits to get 53bits
+  randomint = randomint >> 3
+  # randomint is a number between 0 and 2**(53) - 1
+  newfloat = randomint * (2**(-53))
+  
+  # Then use random_randombytes to ensure the same string
+  # can be retrieved from the float that was just created.
+  randombytes = random_randombytes(6, newfloat)
+  assert(string[:-1] == randombytes)
+
+def test_random_randombytes_len():
+  """ Test length of string returned by random_randombytes """
+  for i in range(1,40):  
+    assert(len(random_randombytes(i)) == i)
+    
+def test_random_long_to_bytes():
+  """ Tests long_to_bytes for small boundry cases. """
+  assert(_random_long_to_bytes(0) == (chr(0)))
+  assert(_random_long_to_bytes(1) == (chr(1)))
+  assert(_random_long_to_bytes(2) == (chr(2)))
+  
+  # 2**8
+  assert(_random_long_to_bytes(255) == (chr(255)))  
+  assert(_random_long_to_bytes(256) == (chr(1) + chr(0)))
+  assert(_random_long_to_bytes(257) == (chr(1) + chr(1)))
+  
+  # 2**9
+  assert(_random_long_to_bytes(511) == (chr(1) + chr(255)))
+  assert(_random_long_to_bytes(512) == (chr(2) + chr(0)))
+  assert(_random_long_to_bytes(513) == (chr(2) + chr(1)))
+  
+  assert(_random_long_to_bytes(2**56 - 1) == chr(255)*7)    
+  
+  # will be 2**56 - 1  = 0xfffffff
+  assert(_random_long_to_bytes(2**56 - 1) == chr(255)*7)
+          
+  assert(_random_long_to_bytes(2**64 - 1) == chr(255)*8)        
+  assert(_random_long_to_bytes(2**64 - 2) != chr(255)*8)        
+                    
+            
+if callfunc == "initialize":
+  test_53_bits_per_float()
+  test_randomfloat()
+  test_bigrand()
+  test_bigrand_ranges()
+  test_rangelimits()
+  test_random_nbit_int()
+  test_random_nbit_int_additional()
+  test_random_int_below()
+  test_random_int_below_sanitycheck()
+  test_randint_simple()
+  test_random_randombytes()
+  test_random_randombytes_len()
+  test_random_long_to_bytes()

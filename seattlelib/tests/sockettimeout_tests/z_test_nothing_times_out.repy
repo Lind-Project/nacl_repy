@@ -1,0 +1,39 @@
+"""
+<Description>
+  This test uses a timeout value to timeout_openconn that is more
+  than sufficient. No exception should result.
+  
+<Date>
+  Sun Mar  1 10:27:35 PST 2009
+"""
+# hello world
+include sockettimeout.repy
+
+MESSAGE = "hello world!"
+HUGE = 100
+
+
+def mycallback(ip, port, sockobj, commhandle, listenhandle):
+  hw_message = sockobj.recv(HUGE)
+  assert hw_message == MESSAGE
+  sockobj.close()
+  
+  
+def server():
+  commhandle = timeout_waitforconn(getmyip(), 12345, mycallback)
+
+
+def client():
+  sockobj = timeout_openconn(getmyip(), 12345, timeout=10)
+  assert sockobj.send(MESSAGE) == len(MESSAGE)
+
+
+def main():
+  server()
+  client()
+  sleep(.1)
+  exitall()
+
+
+if callfunc == 'initialize':
+  main()

@@ -1,0 +1,174 @@
+"""
+<Name>
+  testpyDes.repy
+  
+<Started>
+  2009-06-03  
+  
+<Author>
+  Modified by Anthony Honstain
+  Written by Todd Whiteman
+  
+<Purpose>
+  Test the pyDes.repy module. Only the test '_fulltest' from the original
+  test suite was used. The other tests were examples or provided unneeded
+  profiling data.
+
+"""
+
+include pyDes.repy
+include binascii.repy
+
+def _fulltest_():
+  # This should not produce any unexpected errors or exceptions
+  #from time import time
+  #from binascii import unhexlify as unhex
+  #from binascii import hexlify as dohex
+
+  t = getruntime()
+
+  data = "DES encryption algorithm"
+  k = pyDes_des("\0\0\0\0\0\0\0\0", pyDes_CBC, "\0\0\0\0\0\0\0\0")
+  d = k.encrypt(data)
+  if k.decrypt(d) != data:
+    print ("Test 1:  Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 1:  Successful")
+
+  data = "Default string of text"
+  k = pyDes_des("\0\0\0\0\0\0\0\0", pyDes_CBC, "\0\0\0\0\0\0\0\0")
+  d = k.encrypt(data, "*")
+  if k.decrypt(d, "*") != data:
+    print ("Test 2:  Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 2:  Successful")
+
+  data = "String to Pad"
+  k = pyDes_des("\r\n\tABC\r\n")
+  d = k.encrypt(data, "*")
+  if k.decrypt(d, "*") != data:
+    print ("Test 3:  Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 3:  Successful")
+
+  k = pyDes_des("\r\n\tABC\r\n")
+  d = k.encrypt(binascii_a2b_hex("000102030405060708FF8FDCB04080"), binascii_a2b_hex("44"))
+  if k.decrypt(d, binascii_a2b_hex("44")) != binascii_a2b_hex("000102030405060708FF8FDCB04080"):
+    print ("Test 4a: Error: Unencypted data block does not match start data")
+  elif k.decrypt(d) != binascii_a2b_hex("000102030405060708FF8FDCB0408044"):
+    print ("Test 4b: Error: Unencypted data block does not match start data")
+  else:
+    print ("Test 4:  Successful")
+
+  data = "String to Pad"
+  k = pyDes_des("\r\n\tkey\r\n")
+  d = k.encrypt(data, padmode=pyDes_PAD_PKCS5)
+  if k.decrypt(d, padmode=pyDes_PAD_PKCS5) != data:
+    print ("Test 5a: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  # Try same with padmode set on the class instance.
+  k = pyDes_des("\r\n\tkey\r\n", padmode=pyDes_PAD_PKCS5)
+  d = k.encrypt(data)
+  if k.decrypt(d) != data:
+    print ("Test 5b: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 5:  Successful")
+
+  k = pyDes_triple_des("MyDesKey\r\n\tABC\r\n0987*543")
+  d = k.encrypt(binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080"))
+  if k.decrypt(d) != binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080"):
+    print ("Test 6:  Error: Unencypted data block does not match start data")
+  else:
+    print ("Test 6:  Successful")
+
+  k = pyDes_triple_des("\r\n\tABC\r\n0987*543")
+  d = k.encrypt(binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080"))
+  if k.decrypt(d) != binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080"):
+    print ("Test 7:  Error: Unencypted data block does not match start data")
+  else:
+    print ("Test 7:  Successful")
+
+  k = pyDes_triple_des("MyDesKey\r\n\tABC\r\n0987*54B", pyDes_CBC, "12341234")
+  d = k.encrypt(binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080"))
+  if k.decrypt(d) != binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080"):
+    print ("Test 8:  Error: Triple DES CBC failed.")
+  else:
+    print ("Test 8:  Successful")
+
+  k = pyDes_triple_des("MyDesKey\r\n\tABC\r\n0987*54B", pyDes_CBC, "12341234")
+  d = k.encrypt(binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDC"), '.')
+  if k.decrypt(d, '.') != binascii_a2b_hex("000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDCB04080000102030405060708FF8FDC"):
+    print ("Test 9:  Error: Triple DES CBC with padding failed.")
+  else:
+    print ("Test 9:  Successful")
+
+  k = pyDes_triple_des("\r\n\tkey\rIsGoodKey")
+  data = "String to Pad"
+  d = k.encrypt(data, padmode=pyDes_PAD_PKCS5)
+  if k.decrypt(d, padmode=pyDes_PAD_PKCS5) != data:
+    print ("Test 10: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 10: Successful")
+
+  k = pyDes_triple_des("\r\n\tkey\rIsGoodKey")
+  data = "String not need Padding."
+  d = k.encrypt(data, padmode=pyDes_PAD_PKCS5)
+  if k.decrypt(d, padmode=pyDes_PAD_PKCS5) != data:
+    print ("Test 11: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 11: Successful")
+
+  # Test PAD_PKCS5 with CBC encryption mode.
+
+  k = pyDes_des("IGoodKey", mode=pyDes_CBC, IV="\0\1\2\3\4\5\6\7")
+  data = "String to Pad"
+  d = k.encrypt(data, padmode=pyDes_PAD_PKCS5)
+  if k.decrypt(d, padmode=pyDes_PAD_PKCS5) != data:
+    print ("Test 12: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 12: Successful")
+
+  k = pyDes_des("IGoodKey", mode=pyDes_CBC, IV="\0\1\2\3\4\5\6\7")
+  data = "String not need Padding."
+  d = k.encrypt(data, padmode=pyDes_PAD_PKCS5)
+  if k.decrypt(d, padmode=pyDes_PAD_PKCS5) != data:
+    print ("Test 13: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 13: Successful")
+
+  k = pyDes_triple_des("\r\n\tkey\rIsGoodKey", mode=pyDes_CBC, IV="\0\1\2\3\4\5\6\7")
+  data = "String to Pad"
+  d = k.encrypt(data, padmode=pyDes_PAD_PKCS5)
+  if k.decrypt(d, padmode=pyDes_PAD_PKCS5) != data:
+    print ("Test 14: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 14: Successful")
+
+  k = pyDes_triple_des("\r\n\tkey\rIsGoodKey", mode=pyDes_CBC, IV="\0\1\2\3\4\5\6\7")
+  data = "String not need Padding."
+  d = k.encrypt(data, padmode=pyDes_PAD_PKCS5)
+  if k.decrypt(d, padmode=pyDes_PAD_PKCS5) != data:
+    print ("Test 15: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 15: Successful")
+
+  k = pyDes_triple_des("\r\n\tkey\rIsGoodKey", mode=pyDes_CBC, IV="\0\1\2\3\4\5\6\7", padmode=pyDes_PAD_PKCS5)
+  data = "String to Pad"
+  d = k.encrypt(data)
+  if k.decrypt(d) != data:
+    print ("Test 16: Error: decrypt does not match. %r != %r" % (data, k.decrypt(d)))
+  else:
+    print ("Test 16: Successful")
+
+  print ("")
+  print ("Total time taken: %f" % (getruntime() - t))
+  
+  
+
+#if __name__ == '__main__':
+if callfunc == "initialize":
+  # Other tests not currently suported in repy and have commented out.
+  #_example_des_()
+  #_example_triple_des_()
+  _fulltest_()
+  #_filetest_()
+  #_profile_()

@@ -1,0 +1,434 @@
+"""
+<Program Name>
+  $Id$
+
+<Started>
+  April 14, 2009
+
+<Author>
+  Michael Phan-Ba <mdphanba@gmail.com>
+
+<Purpose>
+  Runs unit tests on base64.repy.
+
+<Changes>
+
+  2009-04-14  Michael Phan-Ba  <mdphanba@gmail.com>
+
+  * Initial release
+
+  2009-05-23  Michael Phan-Ba  <mdphanba@gmail.com>  (#431)
+
+  * Refactored to use unittest.repy module
+
+  2009-05-23  Michael Phan-Ba  <mdphanba@gmail.com>
+
+  * Set property svn:keyword to "Id" 
+  * Updated documentation 
+
+"""
+
+include repyunit.repy
+include base64.repy
+
+
+class test_base64_TestHelloWorld(repyunit_TestCase):
+  """
+  <Purpose>
+    Test the base64 module with the "Hello world!" string.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestHelloWorld"
+
+  def get_test_method_names(self):
+    return ("test_b64encode", "test_b64decode", "test_standard_b64encode",
+            "test_standard_b64decode", "test_urlsafe_b64encode",
+            "test_urlsafe_b64decode")
+
+  def set_up(self):
+    self.decoded_string = "Hello world!"
+    self.encoded_string = "SGVsbG8gd29ybGQh"
+
+  def test_b64encode(self):
+    self.assert_equals(self.encoded_string,
+                      base64_b64encode(self.decoded_string))
+
+  def test_b64decode(self):
+    self.assert_equals(self.decoded_string,
+                       base64_b64decode(self.encoded_string))
+
+  def test_standard_b64encode(self):
+    self.assert_equals(self.encoded_string,
+                       base64_standard_b64encode(self.decoded_string))
+
+  def test_standard_b64decode(self):
+    self.assert_equals(self.decoded_string,
+                       base64_standard_b64decode(self.encoded_string))
+
+  def test_urlsafe_b64encode(self):
+    self.assert_equals(self.encoded_string,
+                       base64_urlsafe_b64encode(self.decoded_string))
+
+  def test_urlsafe_b64decode(self):
+    self.assert_equals(self.decoded_string,
+                       base64_urlsafe_b64decode(self.encoded_string))
+
+
+
+
+
+class test_base64_TestEmptyString(test_base64_TestHelloWorld):
+  """
+  <Purpose>
+    Test the base64 module with the empty string.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestEmptyString"
+
+  def set_up(self):
+    self.decoded_string = ""
+    self.encoded_string = ""
+
+
+
+
+
+class test_base64_TestOneByte(test_base64_TestHelloWorld):
+  """
+  <Purpose>
+    Test the base64 module with a string of one byte.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestOneByte"
+
+  def set_up(self):
+    self.decoded_string = "\x01"
+    self.encoded_string = "AQ=="
+
+
+
+
+
+class test_base64_TestTwoByte(test_base64_TestHelloWorld):
+  """
+  <Purpose>
+    Test the base64 module with a string of two bytes.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestTwoByte"
+
+  def set_up(self):
+    self.decoded_string = "\x01\x10"
+    self.encoded_string = "ARA="
+
+
+
+
+
+class test_base64_TestSafeEncoding(test_base64_TestHelloWorld):
+  """
+  <Purpose>
+    Test the base64 module with a safe encoding characters.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestSafeEncoding"
+
+  def set_up(self):
+    self.decoded_string = "\xfb\xff\xbd"
+    self.encoded_string = "+/+9"
+    self.safe_encoded_string = "-_-9"
+
+  def test_urlsafe_b64encode(self):
+    self.assert_equals(self.safe_encoded_string,
+                       base64_urlsafe_b64encode(self.decoded_string))
+
+  def test_urlsafe_b64decode(self):
+    self.assert_equals(self.decoded_string,
+                       base64_urlsafe_b64decode(self.safe_encoded_string))
+
+
+
+
+
+class test_base64_TestCustomEncoding(repyunit_TestCase):
+  """
+  <Purpose>
+    Test the base64 module with a custom base64 encoding.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestCustomEncoding"
+
+  def get_test_method_names(self):
+    return ("test_b64encode", "test_b64decode")
+
+  def set_up(self):
+    self.decoded_string = "\xfb\xff\xbd"
+    self.encoded_string = "?!?9"
+    self.mapping = "?!"
+
+  def test_b64encode(self):
+    self.assert_equals(self.encoded_string,
+                       base64_b64encode(self.decoded_string, self.mapping))
+
+  def test_b64decode(self):
+    self.assert_equals(self.decoded_string,
+                       base64_b64decode(self.encoded_string, self.mapping))
+
+
+
+
+
+class test_base64_TestSelectedQuote(test_base64_TestHelloWorld):
+  """
+  <Purpose>
+    Test the base64 module with a selected quote.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestSelectedQuote"
+
+  def set_up(self):
+    self.decoded_string = '''"Why are we inspired by another person's courage? \
+Maybe because it gives us the sweet and genuine surprise of discovering some \
+trace, at least, of the same courage in ourselves." --Laurence Shames'''
+    self.encoded_string = 'IldoeSBhcmUgd2UgaW5zcGlyZWQgYnkgYW5vdGhlciBwZXJzb24n\
+cyBjb3VyYWdlPyBNYXliZSBiZWNhdXNlIGl0IGdpdmVzIHVzIHRoZSBzd2VldCBhbmQgZ2VudWluZSB\
+zdXJwcmlzZSBvZiBkaXNjb3ZlcmluZyBzb21lIHRyYWNlLCBhdCBsZWFzdCwgb2YgdGhlIHNhbWUgY2\
+91cmFnZSBpbiBvdXJzZWx2ZXMuIiAtLUxhdXJlbmNlIFNoYW1lcw=='
+
+
+
+
+
+class test_base64_TestLoremIpsum(test_base64_TestHelloWorld):
+  """
+  <Purpose>
+    Test the base64 module with lorem ipsum text.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestSelectedQuote"
+
+  def set_up(self):
+    self.decoded_string = 'Lorem ipsum dolor sit amet, consectetur adipisicing \
+elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut \
+enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut \
+aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in \
+voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint \
+occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit \
+anim id est laborum.'
+    self.encoded_string = 'TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVy\
+IGFkaXBpc2ljaW5nIGVsaXQsIHNlZCBkbyBlaXVzbW9kIHRlbXBvciBpbmNpZGlkdW50IHV0IGxhYm9\
+yZSBldCBkb2xvcmUgbWFnbmEgYWxpcXVhLiBVdCBlbmltIGFkIG1pbmltIHZlbmlhbSwgcXVpcyBub3\
+N0cnVkIGV4ZXJjaXRhdGlvbiB1bGxhbWNvIGxhYm9yaXMgbmlzaSB1dCBhbGlxdWlwIGV4IGVhIGNvb\
+W1vZG8gY29uc2VxdWF0LiBEdWlzIGF1dGUgaXJ1cmUgZG9sb3IgaW4gcmVwcmVoZW5kZXJpdCBpbiB2\
+b2x1cHRhdGUgdmVsaXQgZXNzZSBjaWxsdW0gZG9sb3JlIGV1IGZ1Z2lhdCBudWxsYSBwYXJpYXR1ci4\
+gRXhjZXB0ZXVyIHNpbnQgb2NjYWVjYXQgY3VwaWRhdGF0IG5vbiBwcm9pZGVudCwgc3VudCBpbiBjdW\
+xwYSBxdWkgb2ZmaWNpYSBkZXNlcnVudCBtb2xsaXQgYW5pbSBpZCBlc3QgbGFib3J1bS4='
+
+
+
+
+
+class test_base64_TestRandomData(test_base64_TestSafeEncoding):
+  """
+  <Purpose>
+    Test the base64 module with random data.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestRandomData"
+
+  def set_up(self):
+    self.decoded_string = '0i5\xe1\xf2\x97\xe0\x10@G3\xe6\xae\x8f@\xfbg|\x1bcq\
+\x0esm\xe0X:\x1f\xaa\xd9 \x03.:o\x97\xee\x03St\xe0E{\x1b\x94cz\x94\xd6\x98\xf7 \
+;E)\xa5/\xbcN\xd9\xa1+\x99.3\xd9\x90\xa9\x05\xa0\xe9\x10\xa6\x9d\xe2_\xa06\x0f\
+\xf5\xa0\x7f\xfd}\x1dy\xf7\xd7\x08\xe3[E7\xf3K\xdb\xcb\xb8\xd1\xbf\xe1 n\xb3\
+\x06\x9a\xadZu\xef)#6\xc8\x1c\xc5\xc9\xcc\xe13\x05 \x99+\xbb\xad\xcc/!ZpW\xa4_\
+\x91\xe0B@\xafM\xf1o^\x13k\xd0v\xf4?\xe7\xf3\x93\xf0\x1b\x13\x00\x0f,\x0fA\x9a'
+    self.encoded_string = 'MGk14fKX4BBARzPmro9A+2d8G2NxDnNt4Fg6H6rZIAMuOm+X7gNT\
+dOBFexuUY3qU1pj3IDtFKaUvvE7ZoSuZLjPZkKkFoOkQpp3iX6A2D/Wgf/19HXn31wjjW0U380vby7j\
+Rv+EgbrMGmq1ade8pIzbIHMXJzOEzBSCZK7utzC8hWnBXpF+R4EJAr03xb14Ta9B29D/n85PwGxMADy\
+wPQZo='
+    self.safe_encoded_string = 'MGk14fKX4BBARzPmro9A-2d8G2NxDnNt4Fg6H6rZIAMuOm-\
+X7gNTdOBFexuUY3qU1pj3IDtFKaUvvE7ZoSuZLjPZkKkFoOkQpp3iX6A2D_Wgf_19HXn31wjjW0U380\
+vby7jRv-EgbrMGmq1ade8pIzbIHMXJzOEzBSCZK7utzC8hWnBXpF-R4EJAr03xb14Ta9B29D_n85PwG\
+xMADywPQZo='
+
+
+
+
+
+class test_base64_TestDecodeBadData(repyunit_TestCase):
+  """
+  <Purpose>
+    Test the base64 module with bad data.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestDecodeBadData"
+
+  def get_test_method_names(self):
+    return ("test_b64decode", "test_standard_b64decode",
+            "test_urlsafe_b64decode")
+
+  def set_up(self):
+    self.encoded_string = "TGIF IT*S FRIDAY!"
+
+  def test_b64decode(self):
+    def test():
+      base64_b64decode(self.encoded_string)
+    self.assert_error(TypeError, test)
+
+  def test_standard_b64decode(self):
+    def test():
+      base64_standard_b64decode(self.encoded_string)
+    self.assert_error(TypeError, test)
+
+  def test_urlsafe_b64decode(self):
+    def test():
+      base64_urlsafe_b64decode(self.encoded_string)
+    self.assert_error(TypeError, test)
+
+
+
+
+
+class test_base64_TestMisalignment1(test_base64_TestDecodeBadData):
+  """
+  <Purpose>
+    Test the base64 module with misaligned data.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestMisalignment1"
+
+  def set_up(self):
+    self.encoded_string = "AA = "
+
+
+
+
+
+class test_base64_TestMisalignment2(test_base64_TestDecodeBadData):
+  """
+  <Purpose>
+    Test the base64 module with misaligned data.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_base64_TestMisalignment1"
+
+  def set_up(self):
+    self.encoded_string = "AAA"
+
+
+
+
+
+if callfunc == 'initialize':
+
+  suite = repyunit_TestSuite()
+  suite.add_test(test_base64_TestHelloWorld)
+  suite.add_test(test_base64_TestEmptyString)
+  suite.add_test(test_base64_TestOneByte)
+  suite.add_test(test_base64_TestTwoByte)
+  suite.add_test(test_base64_TestSafeEncoding)
+  suite.add_test(test_base64_TestCustomEncoding)
+  suite.add_test(test_base64_TestSelectedQuote)
+  suite.add_test(test_base64_TestLoremIpsum)
+  suite.add_test(test_base64_TestRandomData)
+  suite.add_test(test_base64_TestDecodeBadData)
+  suite.add_test(test_base64_TestMisalignment1)
+  suite.add_test(test_base64_TestMisalignment2)
+  repyunit_text_test_run(suite)

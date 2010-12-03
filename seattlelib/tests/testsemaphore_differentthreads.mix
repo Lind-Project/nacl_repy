@@ -1,0 +1,37 @@
+"""
+  Author: Justin Cappos
+ 
+  Start Date: May 16th, 2009
+
+  Description: Basic tests for the semaphore library...
+"""
+
+include semaphore.repy
+
+def down_then_exit(sem):
+  semaphore_down(sem)
+  exitall()
+
+ 
+def toolong():
+  print "This operation is taking too long"
+  exitall()
+
+
+if callfunc == 'initialize':
+  sem1 = semaphore_create()
+
+  settimer(10,toolong,())
+
+  settimer(.1, semaphore_up,(sem1,))
+  semaphore_down(sem1)
+
+
+  settimer(.1, down_then_exit,(sem1,))
+  semaphore_up(sem1)
+
+  sleep(2)
+  print "Error, other thread should have exited..."
+  exitall() 
+
+  

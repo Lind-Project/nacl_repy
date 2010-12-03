@@ -1,0 +1,12 @@
+"""
+  a file which is used as a base for testing the file checks
+"""
+
+# a simple function that indicates if we were imported
+def rhtest_filetests_exists():
+  return True
+
+if callfunc == "initialize":
+  print "hello, world!"
+  
+

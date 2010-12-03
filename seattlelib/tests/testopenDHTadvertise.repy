@@ -1,0 +1,10 @@
+include openDHTadvertise.repy
+
+if callfunc == "initialize":
+
+  # Not throwing an exception means we're happy.
+  openDHTadvertise_announce("some_really_super_random_value?", "valuehere", 40, concurrentevents=1)
+  vals = openDHTadvertise_lookup("some_really_super_random_value?", concurrentevents=1)
+
+  if not "valuehere" in vals:
+    print "This shouldn't happen!"

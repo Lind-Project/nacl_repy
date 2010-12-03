@@ -1,0 +1,7 @@
+The run_tests.py framework can't be used for these tests because they need
+to be run as regular python in the form "python z_test_XXX.py", rather than
+through repy.
+
+They should still exhibit the same behavior as those defined in run_tests.py, 
+meaning z_* tests should have no output on success
+

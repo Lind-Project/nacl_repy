@@ -1,0 +1,59 @@
+"""
+  Author: Justin Cappos
+ 
+  Start Date: May 16th, 2009
+
+  Description: Basic tests for the semaphore library...
+"""
+
+include semaphore.repy
+
+
+# This test has the main thread start three others in order and then
+# verifies that up releases them in the right order
+
+# These should be first in, first out.   That means that if we know who
+# is after us, they should not be in the list when we join and should be in
+# the list when we leave.
+
+mycontext['currentnames'] = []
+
+def child(sem, myname, namesbefore, namesafter):
+
+  if mycontext['currentnames'] != namesbefore:
+    print myname, "names before aren't correct '", mycontext['currentnames'],"' != '",namesbefore,"'"
+    exitall()
+  
+  # add my name to the list
+  mycontext['currentnames'].append(myname)
+
+  semaphore_down(sem)
+
+  # remove my name from the list
+  mycontext['currentnames'].remove(myname)
+
+  if mycontext['currentnames'] != namesafter:
+    print myname, "names after aren't correct '", mycontext['currentnames'],"' != '",namesafter,"'"
+    exitall()
+
+  semaphore_up(sem)
+
+ 
+
+if callfunc == 'initialize':
+  sem1 = semaphore_create()
+
+  # start children that should block in the order listed here.
+  settimer(0, child,(sem1,'1', [], ['2','3']))
+  settimer(1, child,(sem1,'2', ['1'], ['3']))
+  settimer(2, child,(sem1,'3', ['1','2'], []))
+
+  sleep(3)
+  semaphore_up(sem1)
+ 
+  # wait until the children are done and then exit
+  semaphore_down(sem1)
+  exitall()
+
+
+  

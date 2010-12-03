@@ -1,0 +1,58 @@
+"""
+  Author: Justin Cappos
+ 
+  Start Date: May 16th, 2009
+
+  Description: Basic tests for the semaphore library...
+"""
+
+include semaphore.repy
+
+
+# I use this to know when all threads have exited...
+
+mycontext['countlist'] = []
+
+def blockingchild(mynumber,sem):
+  mycontext['countlist'].append(mynumber)
+  try:
+    semaphore_down(sem)
+  except ValueError:
+    print "It took more than 1 second to start a thread and do a down...   "
+    print "This isn't technically wrong, but is suspicious"
+
+  mycontext['countlist'].pop()
+  if mycontext['countlist'] == []:
+    # if this was the last element then exit...
+    exitall()
+
+ 
+def timedout():
+  print "Timed out!"
+  exitall()
+
+if callfunc == 'initialize':
+
+  # prevent this from hanging...
+  settimer(10, timedout,())
+
+  sem1 = semaphore_create()
+
+  children = 5
+
+  # start some number of children
+  for num in range(children):
+    settimer(0.0, blockingchild,(num, sem1))
+
+  # wait for the children to start and block...
+  while len(mycontext['countlist']) != children:
+    sleep(.1)
+
+  # destroy the semaphore.   The children should be released...
+  semaphore_destroy(sem1)
+
+  sleep(5)
+  print "Error, a child should have caused us to exit..."
+  exitall() 
+
+  

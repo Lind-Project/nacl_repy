@@ -1,0 +1,36 @@
+include listops.repy
+
+# Okay, let's test the ops...
+
+if callfunc == 'initialize':
+  a = [1,2,3]
+  b = [3,4,5]
+
+  # a - b = [1,2]
+  assert(listops_difference(a,b) == [1,2])
+
+  # a union b = [1,2,3,4,5]
+  assert(listops_union(a,b) == [1,2,3,4,5])
+
+  # a intersect b = [3]
+  assert(listops_intersect(a,b) == [3])
+
+
+  c = [1,1,2,3]
+  d = [3,4,5,5]
+
+  # These should all be identical to what was listed above
+  # c - d = [1,2]
+  assert(listops_difference(c,d) == [1,2])
+
+  # c union d = [1,2,3,4,5]
+  assert(listops_union(c,d) == [1,2,3,4,5])
+
+  # c intersect d = [3]
+  assert(listops_intersect(c,d) == [3])
+
+
+  assert(listops_uniq(c) == [1,2,3])
+  assert(listops_uniq(d) == [3,4,5])
+
+

@@ -1,0 +1,153 @@
+include parallelize.repy
+
+
+def sleep_function(foo):
+  sleep(foo)
+
+def are_there_extra_args_function(foo,bar):
+  if bar != 42:
+    raise Exception, "Extra args are not correct"
+
+
+def are_there_lots_of_extra_args_function(foo,bar,baz,zap):
+  if bar != 'hi' or baz != 17 or zap != True:
+    raise Exception, "Lots of extra args are not correct"
+
+
+
+def funnyfunc(number):
+  if number==0:
+    raise Exception, "Zero!"
+  if number % 2 == 0:
+    return "Even"
+  if number % 2 == 1:
+    return "Odd"
+
+
+if callfunc == 'initialize':
+
+  # I'm going to run the sleep function in parallel and see if it seems to work
+  phandle = parallelize_initfunction([2.0,1.0,1.0,2.0,1.0], sleep_function)
+  starttime = getruntime()
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+
+  endtime = getruntime()
+
+  elapsedtime1 = endtime - starttime
+
+
+  # now I'll try with only two helpers.   Should be much longer (at least 4)
+  phandle = parallelize_initfunction([2.0,1.0,1.0,2.0,1.0], sleep_function,2)
+  starttime = getruntime()
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+
+  endtime = getruntime()
+
+  elapsedtime2 = endtime - starttime
+
+
+  assert(elapsedtime1 >= 2.0)
+  assert(elapsedtime2 >= 4.0)
+
+
+if callfunc == 'initialize':
+
+  # I'm going to run the sleep function in parallel and see if it seems to work
+  phandle = parallelize_initfunction([2.0,1.0,1.0,2.0,1.0], sleep_function)
+  starttime = getruntime()
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+
+  endtime = getruntime()
+
+  elapsedtime1 = endtime - starttime
+
+  parallelize_closefunction(phandle)
+
+
+
+
+  # now I'll try with only two helpers.   Should be much longer (at least 4)
+  phandle = parallelize_initfunction([2.0,1.0,1.0,2.0,1.0], sleep_function,2)
+  starttime = getruntime()
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+
+  endtime = getruntime()
+
+  elapsedtime2 = endtime - starttime
+
+  parallelize_closefunction(phandle)
+
+
+
+
+  assert(elapsedtime1 >= 2.0)
+  assert(elapsedtime2 >= 4.0)
+  if elapsedtime1 > elapsedtime2:
+    print "Highly unlikely!   Takes longer with more events!!!"
+  
+  
+
+  # try with an extra arg...
+  phandle = parallelize_initfunction(range(50), are_there_extra_args_function,5,42)
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+
+  assert(len(parallelize_getresults(phandle)['returned'])==50)
+
+  parallelize_closefunction(phandle)
+
+
+
+
+  # lots of extra args!
+  phandle = parallelize_initfunction(range(50), are_there_lots_of_extra_args_function,5,'hi',17,True)
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+
+  assert(len(parallelize_getresults(phandle)['returned'])==50)
+
+  parallelize_closefunction(phandle)
+
+
+  
+  # test that exceptions work...
+  phandle = parallelize_initfunction(range(50), funnyfunc,5)
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+
+  resultdict = parallelize_getresults(phandle)
+  assert(len(resultdict['exception']) == 1)
+  assert(len(resultdict['returned']) == 49)
+  
+
+  parallelize_closefunction(phandle)
+
+
+  
+  # let's see if abort works...
+  phandle = parallelize_initfunction(range(5)+range(5), sleep_function,2)
+
+  while not parallelize_isfunctionfinished(phandle):
+    sleep(.1)
+    parallelize_abortfunction(phandle)
+
+  resultdict = parallelize_getresults(phandle)
+  print resultdict
+  assert(len(resultdict['aborted']) > 1)
+  
+
+  parallelize_closefunction(phandle)
+
+
+  

@@ -1,0 +1,64 @@
+"""
+Times the length of time taken to do a
+specified number of calls to noop()
+"""
+
+# Get the number of recursions to do
+recurse = int(callargs.pop(0))
+
+# Get the number of calls
+num_calls = int(callargs[0])
+
+# Called on bad argument
+def fatal_error():
+  log("Fatal Error!\n")
+
+# Constructs one layer of the stack
+STACK = []
+def make_stack_layer():
+  if len(STACK) == 0:
+    def _noop():
+      raise ZeroDivisionError, "Last Layer!"
+    def _checked():
+      try:
+        v = _noop()
+        fatal_error()
+      except ZeroDivisionError:
+        raise
+      except:
+        fatal_error()
+    STACK.append(_checked)
+  else:
+    noop = STACK[-1]
+    def _noop():
+      try:
+        noop()
+      except ZeroDivisionError:
+        raise
+      except:
+        fatal_error()
+    STACK.append(_noop)
+
+# Constructs the stack of noop functions
+def make_stack():
+  for x in xrange(recurse):
+    make_stack_layer()
+  return STACK[-1]
+
+# Get the top-level noop function
+noop = make_stack()
+      
+# Get the start time
+start = getruntime()
+
+for x in xrange(num_calls):
+  try:
+    noop()
+  except:
+    pass
+
+end = getruntime()
+
+# Output the time
+log("Hand Optimized Start:",start,"End:",end,"Time:",(end-start),"\n")
+

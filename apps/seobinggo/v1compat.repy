@@ -1,0 +1,64 @@
+"""
+Author: Armon Dadgar
+Description:
+  Basic effort at V1 compatibility with the Repy STD. Libraries
+"""
+
+# Re-map getlock to the Lock() object 
+CHILD_CONTEXT["getlock"] = Lock
+
+# Re-maps waitforconn
+def remap_waitforconn(ip, port, func):
+  def wrapper_func(sockobj):
+    ip,port = sockobj.getpeername()
+    func(ip,port,sockobj,None,None)
+
+  stopfunc = waitforconn(port, wrapper_func, ip)
+  return stopfunc
+
+# Re-maps stopcomm
+def remap_stopcomm(stopfunc):
+  if stopfunc == None:
+    log("Calling stopcomm on None handle! This code path cannot be re-written.\n")
+
+  else:
+    stopfunc()
+
+  return True
+
+# Re-maps recvmess
+def remap_recvmess(ip, port, func):
+  def wrapper_func(ip, port, mess):
+    func(ip, port, mess, None)
+
+  stopfunc = recvmess(port, wrapper_func, ip)
+  return stopfunc
+
+CHILD_CONTEXT["waitforconn"] = remap_waitforconn
+CHILD_CONTEXT["recvmess"] = remap_recvmess
+CHILD_CONTEXT["stopcomm"] = remap_stopcomm
+
+# Re-map listdir to listfiles
+CHILD_CONTEXT["listdir"] = listfiles
+
+# Try to remat settimer
+def remap_settimer(time, func, args=None):
+  if time <= 0.0:
+    time = 0.001
+  t = Timer(time, func, args)
+  t.start()
+  return t
+
+def remap_canceltimer(t):
+  try:
+    t.cancel()
+    return True
+  except RuntimeError:
+    return False
+
+CHILD_CONTEXT["settimer"] = remap_settimer
+CHILD_CONTEXT["canceltimer"] = remap_canceltimer
+
+# Dispatch
+dy_dispatch_module()
+

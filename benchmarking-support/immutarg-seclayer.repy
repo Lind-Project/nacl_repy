@@ -1,0 +1,20 @@
+"""
+This is a no-op security layer used
+for micro-benchmarking.
+"""
+
+def secure_noop(arg1):
+  return noop(arg1)
+
+
+# Define this function
+CHILD_CONTEXT_DEF["noop"] = {"type":"func",
+                             "args":((int,long),),
+                             "return":(int,long),
+                             "exceptions":None,
+                             "target":secure_noop
+                            }
+
+# Dispatch the next module
+secure_dispatch_module()
+

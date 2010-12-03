@@ -1,0 +1,34 @@
+"""
+This is a no-op security layer used
+for micro-benchmarking.
+"""
+
+# Check for -s
+if callargs[0] == "-s":
+  log("Security layer start: ",getruntime(),"\n")
+  callargs.pop(0)
+
+# Get the number of layers
+num_layers = int(callargs.pop(0))
+
+# Add this layer this number of times
+# This will cause us to stack this module
+# this many times
+for x in xrange(num_layers-1):
+  callargs.insert(0, "noarg-seclayer.repy")
+
+
+def secure_noop():
+  return
+
+# Define this function
+CHILD_CONTEXT_DEF["noop"] = {"type":"func",
+                             "args":None,
+                             "return":None,
+                             "exceptions":None,
+                             "target":secure_noop
+                            }
+
+# Dispatch the next module
+secure_dispatch_module()
+

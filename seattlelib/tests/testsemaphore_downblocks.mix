@@ -1,0 +1,18 @@
+"""
+  Author: Justin Cappos
+ 
+  Start Date: May 16th, 2009
+
+  Description: Basic tests for the semaphore library...
+"""
+
+include semaphore.repy
+
+
+if callfunc == 'initialize':
+  sem1 = semaphore_create()
+  settimer(1,exitall,())
+  semaphore_down(sem1)
+  print "If down blocks, it should not get here"
+
+  

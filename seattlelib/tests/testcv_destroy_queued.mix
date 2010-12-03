@@ -1,0 +1,51 @@
+"""
+  Author: Vjekoslav Brajkovic
+ 
+  Start Date: May 16th, 2009
+  
+  Purpose: Test cases for the condition variable primitive implementation.
+"""
+
+include cv.repy
+
+
+
+def _cv_functor(condition, number, container):
+  """
+  Internal function that adds the specified number to the specified
+  container only when it receives a notification for a given condition.
+  """
+  cv_wait(condition)
+  container.append(number)
+
+
+
+
+
+def cv_test_destroy_queued():
+  """
+  Make sure that we throw an exception when the precondition for a condition
+  variable destructor is not met (refer to cv API documentation).
+  """
+  condition = cv_create()
+  container = []
+  
+  settimer(0.0, _cv_functor, (condition, 0, container,))
+  
+  sleep(0.1)
+  
+  try:
+    cv_destroy(condition)
+  except RuntimeError:
+    pass
+    return
+  
+  print "fail: exception expected (waiting queue not empty on cv_destroy)"
+
+
+
+if callfunc == 'initialize':
+
+  cv_test_destroy_queued()
+  
+  exitall()

@@ -1,0 +1,12 @@
+"""
+Times the length of time taken to do a
+specified number of calls to noop()
+"""
+
+# Get the memory
+lim, usage, stops = getresources()
+mem = usage["memory"]
+
+# Output the time
+log("Encasement Memory RSS:",mem, "Bytes\n")
+

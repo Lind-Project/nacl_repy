@@ -1,0 +1,182 @@
+"""
+  Justin Cappos
+
+  April 28, 2010
+
+  Forensic Logging Layer
+"""
+
+
+TYPE="type"
+ARGS="args"
+RETURN="return"
+EXCP="exceptions"
+TARGET="target"
+FUNC="func"
+OBJC="objc"
+
+
+
+
+
+################## tcpserverobject #################
+
+class SecureTCPServer():
+  def __init__(self, sock):
+    self.sock = sock
+
+  def getconnection(self):
+    ip,port,s = self.sock.getconnection()
+    logthis('TCP G:"'+ip+'",'+str(port)+'\n')
+    # no need to wrap because it's not interesting once connected...
+    return (ip, port, s)
+
+  def close(self):
+    return self.sock.close()
+
+sec_tcp_def = {"obj-type":SecureTCPServer,
+               "name":"SecureTCPServer",
+               "getconnection":{TYPE:FUNC,ARGS:None,RETURN:tuple,EXCP:Exception,TARGET:SecureTCPServer.getconnection},
+               "close":{TYPE:FUNC,ARGS:None,RETURN:bool,EXCP:Exception,TARGET:SecureTCPServer.close}
+              }
+
+################## listenforconnection #################
+
+def secure_listenforconnection(localip, localport):
+  logthis('TCP L:"'+localip+'",'+str(localport)+'\n')
+  return SecureTCPServer(listenforconnection(localip, localport))
+
+# I'll change the return value at the object def...
+CHILD_CONTEXT_DEF["listenforconnection"] = {TYPE:OBJC,ARGS:(str,int),RETURN:sec_tcp_def,
+                                       EXCP:Exception,TARGET:secure_listenforconnection}
+
+
+
+################## udpserverobject #################
+
+class SecureUDPServer():
+  def __init__(self, sock):
+    self.sock = sock
+
+  def getmessage(self):
+    (ip, port, message) = self.sock.getmessage()
+    logthis('UDP G:"'+ip+'",'+str(port)+' '+str(len(message))+'\n')
+    return (ip, port, message)
+
+
+
+  def close(self):
+    return self.sock.close()
+
+sec_udp_def = {"obj-type":SecureUDPServer,
+               "name":"SecureUDPServer",
+               "getmessage":{TYPE:FUNC,ARGS:None,RETURN:tuple,EXCP:Exception,TARGET:SecureUDPServer.getmessage},
+               "close":{TYPE:FUNC,ARGS:None,RETURN:bool,EXCP:Exception,TARGET:SecureUDPServer.close}
+              }
+
+
+################## listenformessage #################
+
+def secure_listenformessage(localip, localport):
+  logthis('UDP L:'+localip+":"+str(localport)+'\n')
+  return SecureUDPServer(listenformessage(localip,localport))
+
+
+CHILD_CONTEXT_DEF["listenformessage"] = {TYPE:OBJC,ARGS:(str,int),RETURN:sec_udp_def,
+                                         EXCP:Exception,TARGET:secure_listenformessage}
+
+
+
+################## sendmessage #################
+
+def secure_sendmessage(destip, destport, message, localip, localport):
+  try: 
+    count = sendmessage(destip, destport, message, localip, localport)
+  except:
+    logthis('UDP S:'+destip+':'+str(destport)+','+localip+":"+str(localport)+' '+str(len(message))+' FAILED\n')
+    raise
+  else:
+    logthis('UDP S:'+destip+':'+str(destport)+','+localip+":"+str(localport)+' '+str(len(message))+' '+str(count)+' SUCCESS\n')
+  return count
+
+
+CHILD_CONTEXT_DEF["sendmessage"] = {TYPE:FUNC,ARGS:(str,int,str,str,int),RETURN:int,
+                                    EXCP:RepyException,TARGET:secure_sendmessage}
+
+
+################## gethostbyname #################
+
+def secure_gethostbyname(name):
+  try: 
+    s = gethostbyname(name)
+  except:
+    logthis('L:'+name+' FAILED\n')
+    raise
+  else:
+    logthis('L:'+name+' "'+s+'"\n')
+  return s
+
+CHILD_CONTEXT_DEF["gethostbyname"] = {TYPE:FUNC,ARGS:str,RETURN:str,EXCP:RepyException,TARGET:secure_gethostbyname}
+
+
+############## openconnection ##############
+
+
+def secure_openconnection(destip, destport, localip, localport, timeout):
+  try: 
+    s = openconnection(destip, destport, localip, localport, timeout)
+  except:
+    logthis('TCP O:'+destip+':'+str(destport)+','+localip+":"+str(localport)+' FAILED\n')
+    raise
+  else:
+    logthis('TCP O:'+destip+':'+str(destport)+','+localip+":"+str(localport)+' SUCCESS\n')
+  return s
+
+
+CHILD_CONTEXT_DEF["openconnection"] = {TYPE:FUNC,ARGS:(str,int,str,int,(int,float)),RETURN:"any",
+                                       EXCP:Exception,TARGET:secure_openconnection}
+
+
+############## removefile ##############
+
+def secure_removefile(filestring):
+  logthis('R:"'+filestring+'"\n')
+  return removefile(filestring)
+
+
+CHILD_CONTEXT_DEF["removefile"] = {TYPE:FUNC,ARGS:(str,),EXCP:Exception,RETURN:(bool,None),TARGET:secure_removefile}
+
+
+
+############## openfile ##############
+
+def secure_openfile(filenamestring,createbool):
+  logthis('O:"'+filenamestring+'",'+str(createbool)+'\n')
+  return openfile(filenamestring,createbool)
+
+CHILD_CONTEXT_DEF["openfile"] = {TYPE:FUNC,ARGS:(str,bool),EXCP:Exception,RETURN:"any",TARGET:secure_openfile}
+
+
+
+############################## init / logging helpers #####################
+  
+def logthis(message):
+  myloglock.acquire(True)
+  myfileobj.writeat(message, myfilepos[0])
+  myfilepos[0] = myfilepos[0] + len(message)
+  myloglock.release()
+
+
+myloglock = createlock()
+
+mylogfn = 'forensic.log'
+
+myfileobj = openfile(mylogfn,True)
+
+# For a more general layer, we'd need to append to the end...
+myfilepos = [0]
+
+
+# Dispatch
+secure_dispatch_module()
+

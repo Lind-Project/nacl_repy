@@ -1,0 +1,8 @@
+include serialize.repy
+
+if callfunc == 'initialize':
+  for stuff in [{1:2, 3:4, 5:6, 9:10, 8:7}, {}, {'asdf':True, None: 234}, {'sdkfj':(1,2)}, {(3,):None}, {234.12:{'sdf':{None:{True:{}}}}}]:
+    serdata = serialize_serializedata(stuff)
+    newstuff = serialize_deserializedata(serdata)
+    if newstuff != stuff:
+      print "BAD STUFF:",stuff, newstuff

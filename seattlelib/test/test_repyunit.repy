@@ -1,0 +1,817 @@
+"""
+<Program Name>
+  $Id$
+
+<Started>
+  May 24, 2009
+
+<Author>
+  Michael Phan-Ba <mdphanba@gmail.com>
+
+<Purpose>
+  Runs unit tests on repyunit.repy.
+
+<Changes>
+
+  2009-05-24  Michael Phan-Ba  <mdphanba@gmail.com>  (#431)
+
+  * Initial release
+  * (test_repyunit_TestTextTestRun) Edited output strings
+
+"""
+
+
+include repyunit.repy
+
+
+class test_repyunit_GoodTestCase(repyunit_TestCase):
+  """
+  <Purpose>
+    .
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_test_method_names(self):
+    return ("test_empty", "test_assert_equals", "test_assert_equals_failure",
+            "test_assert_false", "test_assert_false_failure", "test_fail",
+            "test_error")
+
+  def get_class_name(self):
+    return "test_repyunit_GoodTestCase"
+
+  def set_up(self):
+    self.has_set_up = True
+
+  def tear_down(self):
+    self.has_torn_down = True
+
+  def test_empty(self):
+    pass
+
+  def test_assert_equals(self):
+    self.assert_equals(True, True)
+
+  def test_assert_equals_failure(self):
+    self.assert_equals(True, False)
+
+  def test_assert_false(self):
+    self.assert_false(False)
+
+  def test_assert_false_failure(self):
+    self.assert_false(True)
+
+  def test_fail(self):
+    self.fail()
+
+  def test_error(self):
+    raise ValueError("Test error")
+
+
+
+
+
+if callfunc == 'initialize':
+
+
+  test_repyunit_success_count = 0
+  test_repyunit_failure_count = 0
+  test_repyunit_error_count = 0
+
+
+  print "test_init (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    assert(result.test_count == 0)
+    assert(result.success_count == 0)
+    assert(result.failure_count == 0)
+    assert(result.error_count == 0)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_init_failure (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult("")
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failed"
+
+
+  print "test_starttest (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.start_test(test_repyunit_GoodTestCase())
+    assert(result.test_count == 0)
+    assert(result.success_count == 0)
+    assert(result.failure_count == 0)
+    assert(result.error_count == 0)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_starttest_failure (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.start_test()
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failed"
+
+
+  print "test_stoptest (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.stop_test(test_repyunit_GoodTestCase())
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_stoptest_failure (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.stop_test()
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failed"
+
+
+  print "test_addsuccess (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.add_success(test_repyunit_GoodTestCase())
+    assert(result.test_count == 1)
+    assert(result.success_count == 1)
+    assert(result.failure_count == 0)
+    assert(result.error_count == 0)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_addsuccess_failure (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.add_success()
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failed"
+
+
+  print "test_addfailure (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.add_failure(test_repyunit_GoodTestCase())
+    assert(result.test_count == 1)
+    assert(result.success_count == 0)
+    assert(result.failure_count == 1)
+    assert(result.error_count == 0)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_addfailure_failure (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.add_failure()
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failed"
+
+
+  print "test_adderror (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.add_error(test_repyunit_GoodTestCase(), ValueError("test error"))
+    assert(result.test_count == 1)
+    assert(result.success_count == 0)
+    assert(result.failure_count == 0)
+    assert(result.error_count == 1)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_adderror_failure (test_repyunit_TestResult)",
+  try:
+    result = repyunit_TestResult()
+    result.add_error(test_repyunit_GoodTestCase())
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failed"
+
+
+  print "test_init (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    assert(testcase.run_method == testcase.run_test)
+    assert(testcase.run_method_name == "run_test")
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_run (test_repyunit_TestCase)",
+  try:
+    result = repyunit_TestResult()
+    testcase = repyunit_TestCase()
+    testcase.run(result)
+    assert(result.test_count == 1)
+    assert(result.success_count == 0)
+    assert(result.failure_count == 0)
+    assert(result.error_count == 1)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_setup (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.set_up()
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_runtest (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.run_test()
+  except NotImplementedError, inst:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_teardown (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.set_up()
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_getmethodnames (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    assert(("run_test",), testcase.get_test_method_names())
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_getclassname (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.get_class_name()
+  except NotImplementedError, inst:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_assertequals (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.assert_equals(1, 1)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_assertequals_failure (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.assert_equals(1, 0)
+  except AssertionError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_assertfalse (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.assert_false(0)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_assertfalse_failure (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.assert_false(1)
+  except AssertionError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_asserttrue (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.assert_true(1)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_asserttrue_failure (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.assert_true(0)
+  except AssertionError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_error (test_repyunit_TestCase)",
+  try:
+    def func():
+      raise ValueError("test error")
+    testcase = repyunit_TestCase()
+    testcase.assert_error(ValueError, func)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_error_failure (test_repyunit_TestCase)",
+  try:
+    def func():
+      pass
+    testcase = repyunit_TestCase()
+    testcase.assert_error(ValueError, func)
+  except AssertionError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_error_error (test_repyunit_TestCase)",
+  try:
+    def func():
+      raise TypeError("test error")
+    testcase = repyunit_TestCase()
+    testcase.assert_error(ValueError, func)
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_fail (test_repyunit_TestCase)",
+  try:
+    testcase = repyunit_TestCase()
+    testcase.fail()
+  except AssertionError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_init (test_repyunit_TestTestSuite)",
+  try:
+    suite = repyunit_TestSuite()
+    assert(len(suite.tests) == 0)
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_addtest (test_repyunit_TestTestSuite)",
+  try:
+    suite = repyunit_TestSuite()
+    suite.add_test(repyunit_TestCase())
+    assert(len(suite.tests) == 1)
+    suite.add_test(repyunit_TestSuite())
+    assert(len(suite.tests) == 2)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_addtest_failure (test_repyunit_TestTestSuite)",
+  try:
+    suite = repyunit_TestSuite()
+    suite.add_test(object)
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_addtests (test_repyunit_TestTestSuite)",
+  try:
+    suite = repyunit_TestSuite()
+    suite.add_tests([repyunit_TestCase()])
+    assert(len(suite.tests) == 1)
+    suite.add_test(repyunit_TestSuite())
+    assert(len(suite.tests) == 2)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_addtests_failure (test_repyunit_TestTestSuite)",
+  try:
+    suite = repyunit_TestSuite()
+    suite.add_tests([object])
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_run (test_repyunit_TestTestSuite)",
+  try:
+    result = repyunit_TestResult()
+    suite = repyunit_TestSuite()
+    suite.run(result)
+    assert(result.test_count == 0)
+    assert(result.success_count == 0)
+    assert(result.failure_count == 0)
+    assert(result.error_count == 0)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "test_run_failure (test_repyunit_TestTestSuite)",
+  try:
+    suite = repyunit_TestSuite()
+    suite.run()
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_testcase_class (test_repyunit_TestTextTestRun)"
+  print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+  try:
+    repyunit_text_test_run(test_repyunit_GoodTestCase)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... success"
+
+
+  print "test_testcase_instance (test_repyunit_TestTextTestRun)"
+  print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+  try:
+    repyunit_text_test_run(test_repyunit_GoodTestCase())
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... success"
+
+
+  print "test_testsuite_class (test_repyunit_TestTextTestRun)"
+  print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+  try:
+    repyunit_text_test_run(repyunit_TestSuite)
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... success"
+
+
+  print "test_testsuite_instance (test_repyunit_TestTextTestRun)"
+  print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+  try:
+    repyunit_text_test_run(repyunit_TestSuite())
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "==>+++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print "\t... success"
+
+
+  print "test_testcase_failure (test_repyunit_TestTextTestRun)",
+  try:
+    repyunit_text_test_run(object)
+  except TypeError:
+    test_repyunit_success_count += 1
+    print "... success"
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_failure_count += 1
+    print "... failure"
+
+
+  print "test_load (test_repyunit_TestLoadTestsFromTestCase)",
+  try:
+    testcase = test_repyunit_GoodTestCase()
+    test_method_names = testcase.get_test_method_names()
+    suite = repyunit_load_tests_from_test_case(test_repyunit_GoodTestCase)
+    assert(len(suite.tests) == len(test_method_names))
+    for test in suite.tests:
+      assert(test.run_method_name in test_method_names)
+  except AssertionError, inst:
+    test_repyunit_failure_count += 1
+    print "... failure"
+    print inst.message
+  except Exception, inst:
+    test_repyunit_error_count += 1
+    print "... error"
+    print inst.message
+  else:
+    test_repyunit_success_count += 1
+    print "... success"
+
+
+  print "----------------"
+  print "Ran %d tests: %d successes, %d failures, %d errors" % \
+    (test_repyunit_success_count + test_repyunit_failure_count +
+     test_repyunit_error_count, test_repyunit_success_count,
+     test_repyunit_failure_count, test_repyunit_error_count)

@@ -1,0 +1,63 @@
+"""
+  Author: Vjekoslav Brajkovic
+ 
+  Start Date: May 16th, 2009
+  
+  Purpose: Test cases for the condition variable primitive implementation.
+"""
+
+include cv.repy
+
+
+  
+def _cv_functor(condition, number, container):
+  """
+  Internal function that adds the specified number to the specified
+  container only when it receives a notification for a given condition.
+  """
+  cv_wait(condition)
+  container.append(number)
+
+
+
+
+
+def cv_test_notify_one():
+  """
+  Populate a list with the sequence of N numbers. Assign N threads to append
+  each number individually to a secondary container. Then, do norify_one() N
+  times. After that's done both containers should be identical. Basically,
+  we are testing that FIFO order is preserved and that the internal state of
+  a condition variable is consistent.
+  """
+  condition = cv_create()
+  original_container = []
+  populated_container = []
+  limit = 5
+  
+  for count in range(limit):
+    original_container.append(count);
+    settimer(0.0, _cv_functor, (condition, count, populated_container,))
+    sleep(0.1)
+  
+  for count in range(limit):
+    cv_notify_one(condition)
+    sleep(0.1)
+
+  cv_destroy(condition)
+
+  if original_container == populated_container:
+    pass
+  else:
+    print "fail: FIFO order broken or missing values"
+    print "\t", original_container, "!=", populated_container
+
+
+
+
+    
+if callfunc == 'initialize':
+
+  cv_test_notify_one()
+  
+  exitall()

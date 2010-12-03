@@ -1,0 +1,45 @@
+"""
+  Author: Justin Cappos
+ 
+  Start Date: May 16th, 2009
+
+  Description: Basic tests for the semaphore library...
+"""
+
+include semaphore.repy
+
+
+def error_exit(sem):
+  print "This timer shouldn't fire.   It indicates a timeout."
+  exitall()
+
+ 
+
+if callfunc == 'initialize':
+  sem1 = semaphore_create()
+
+  # exit and error out if we take too long...
+  th = settimer(2, error_exit,(sem1,))
+
+  semaphore_up(sem1)
+  semaphore_up(sem1)
+  semaphore_up(sem1)
+
+  # none of these should block.   
+  semaphore_down(sem1)
+  semaphore_down(sem1)
+  semaphore_down(sem1)
+
+  # cancel the error timer...
+  canceltimer(th)
+
+  # exit in a second
+  settimer(1, exitall,())
+
+  # this should block
+  semaphore_down(sem1)
+
+  print "Error, other thread should have exited..."
+  exitall() 
+
+  

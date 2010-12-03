@@ -1,0 +1,43 @@
+"""
+<Description>
+  Tests a timeout value for timeout_openconn that should timeout is large
+  enough to timeout during the send() call (not earlier) but short enough
+  to be sure to timeout during the send() call.
+  
+<Date>
+  Sun Mar  1 10:27:35 PST 2009
+"""
+# hello world
+include sockettimeout.repy
+
+
+MESSAGE = 1000000 * "a" # 1 MB of data to fill buffer and block
+
+
+def mycallback(ip, port, sockobj, commhandle, listenhandle):
+  pass # don't recv at all
+  
+  
+def server():
+  commhandle = timeout_waitforconn(getmyip(), 12345, mycallback)
+
+
+def client():
+  sockobj = timeout_openconn(getmyip(), 12345, timeout=1)
+  try: 
+    sockobj.send(MESSAGE) 
+  except SocketTimeoutError:
+    pass
+  else:
+    raise Exception("should have raised timeout")
+
+
+def main():
+  server()
+  client()
+  sleep(.1)
+  exitall()
+
+
+if callfunc == 'initialize':
+  main()

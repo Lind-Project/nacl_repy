@@ -1,0 +1,180 @@
+include xmlparse.repy
+
+if callfunc == 'initialize':
+
+
+  # A simple parse of some expected XML should not throw an
+  # exception:
+
+
+  xmlparse_parse("""
+    <methodCall>
+      <methodName>shutdown</methodName>
+      <params></params>
+    </methodCall>
+    """)
+
+
+  # Reading attributes should work, accurately:
+
+
+  attrdict, remainderstr = \
+      _xmlparse_read_attributes("aone='valueone\"' atwo=\"'valuetwo\">")
+
+  assert(attrdict.has_key("aone"))
+  assert(attrdict.has_key("atwo"))
+  assert(attrdict["aone"] == "valueone\"")
+  assert(attrdict["atwo"] == "'valuetwo")
+  assert(remainderstr == ">")
+
+
+  # Parsing simple nodes should work:
+
+
+  node1 = _xmlparse_node_from_string("<somenode>String</somenode>")
+
+  assert(node1.tag_name == "somenode")
+  assert(node1.content is not None)
+  assert(node1.children is None)
+  assert(node1.content == "String")
+
+  node2 = _xmlparse_node_from_string("""
+      <somenode>
+        <nestedNode>String</nestedNode>
+      </somenode>
+      """)
+
+  assert(node2.tag_name == "somenode")
+  assert(node2.content is None)
+  assert(node2.children is not None)
+  assert(len(node2.children) == 1)
+  assert(node2.children[0].tag_name == "nestedNode")
+  assert(node2.children[0].content is not None)
+  assert(node2.children[0].content == "String")
+  assert(node2.children[0].children is None)
+
+  node3 = _xmlparse_node_from_string("""
+    <selfclosingnode />
+  """)
+
+  assert(node3.tag_name == "selfclosingnode")
+  assert(node3.children is None)
+  assert(node3.content is not None)
+  assert(node3.content == "")
+
+
+  # Locating the start of the next tag should be correct:
+
+
+  teststring = """
+    <xml>
+      <nested>
+        <nestedagain>
+          <nestedagain></nestedagain>
+        </nestedagain>
+      </nested>
+    </xml>
+    <nexttag>
+    """
+
+  assert(_xmlparse_find_next_tag(teststring) == teststring.find("<nexttag>"))
+
+  teststring = """
+    <info>
+      <tag />
+    </info>
+    <stuff>
+    """
+
+  assert(_xmlparse_find_next_tag(teststring) == teststring.find("<stuff>"))
+
+
+  # Parse multiple elements in sequence.
+
+
+  teststring = """
+    <li>list item 1</li>
+    <li>list item 2</li>
+    <li>list item 3</li>
+    <li>list item 4</li>
+    <li>list item 5</li>
+  """
+
+  listofnodes = _xmlparse_parse(teststring)
+  assert(len(listofnodes) == 5)
+  for item in range(5):
+    assert(listofnodes[item].tag_name == "li")
+    assert(listofnodes[item].content is not None)
+    assert(listofnodes[item].content == "list item %d" % \
+        (item + 1))
+    assert(listofnodes[item].children is None)
+
+
+  # Some more complicated expected parses:
+
+
+  teststring = """
+    <methodCall>
+      <methodName>functionName</methodName>
+      <params>
+        <param>
+          <value><int>5</int></value>
+        </param>
+      </params>
+    </methodCall>
+  """
+
+  rpccallnode = xmlparse_parse(teststring)
+  assert(rpccallnode.tag_name == "methodCall")
+  assert(rpccallnode.children is not None)
+  assert(rpccallnode.content is None)
+  assert(len(rpccallnode.children) == 2)
+  assert(rpccallnode.children[0].tag_name == "methodName")
+  assert(rpccallnode.children[1].tag_name == "params")
+  assert(rpccallnode.children[0].content is not None)
+  assert(rpccallnode.children[0].children is None)
+  assert(rpccallnode.children[0].content == "functionName")
+  assert(rpccallnode.children[1].content is None)
+  assert(rpccallnode.children[1].children is not None)
+  assert(len(rpccallnode.children[1].children) == 1)
+
+
+  # Some misformed XML that should fail to parse:
+
+
+  excepted = False
+  try:
+    parsed = xmlparse_parse("<startnode>")
+  except xmlparse_XMLParseError:
+    excepted = True
+
+  assert(excepted)
+
+  excepted = False
+  try:
+    parsed = xmlparse_parse("<a><b>blar</a></b>")
+  except xmlparse_XMLParseError:
+    excepted = True
+
+  assert(excepted)
+
+  excepted = False
+  try:
+    parsed = xmlparse_parse("<a></a><a></a>")
+  except xmlparse_XMLParseError:
+    excepted = True
+
+  assert(excepted)    # XML documents have *one* root node, no more.
+
+
+  # XML comments should be allowed
+
+
+  teststring = """
+  <!-- Hi, a comment -->
+  <xml>
+    <blah>5</blah>
+  </xml>
+  """
+
+  parsed = xmlparse_parse(teststring)

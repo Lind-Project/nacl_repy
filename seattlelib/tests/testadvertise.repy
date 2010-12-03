@@ -1,0 +1,10 @@
+include advertise.repy
+
+if callfunc == "initialize":
+
+  # Not throwing an exception means we're happy.
+  advertise_announce("some_really_super_random_value?", "valuehere", 60)
+  vals = advertise_lookup("some_really_super_random_value?")
+
+  if not "valuehere" in vals:
+    print "This shouldn't happen!"

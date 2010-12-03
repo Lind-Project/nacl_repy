@@ -1,0 +1,8 @@
+include serialize.repy
+
+if callfunc == 'initialize':
+  for stuff in ['asdf', 12323413123123, -134, 123.3242, True, False, None, complex('1+4j'), complex('-2374-73454523j')]:
+    serdata = serialize_serializedata(stuff)
+    newstuff = serialize_deserializedata(serdata)
+    if newstuff != stuff:
+      print "BAD STUFF:",stuff

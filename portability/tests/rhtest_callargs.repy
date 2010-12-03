@@ -1,0 +1,10 @@
+x = callargs[1]
+
+#print "in rhtest_callargs! callargs = ", callargs
+
+if x is not "samoas":
+  print "callargs wasn't as expected!"
+
+def num_callargs():
+  return len(callargs)
+  

@@ -1,0 +1,959 @@
+"""
+<Program Name>
+  $Id$
+
+<Started>
+  May 16, 2009
+
+<Author>
+  Michael Phan-Ba
+
+<Purpose>
+  Runs unit tests on urlparse.repy.
+
+<Changes>
+
+  2009-05-16  Michael Phan-Ba  <mdphanba@gmail.com>  (#418)
+
+  * Initial release
+
+  2009-05-24  Michael Phan-Ba  <mdphanba@gmail.com>  (#431)
+
+  * Added change log
+  * Refactored to use unittest.repy module
+
+"""
+
+
+include repyunit.repy
+include urlparse.repy
+
+
+class test_urlparse_TestValidAbsoluteUrl(repyunit_TestCase):
+  """
+  <Purpose>
+    Test the urlparse module with a valid absolute URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestValidAbsoluteUrl"
+
+  def get_test_method_names(self):
+    return ("test_urlsplit", "test_urlsplit_defaultscheme",
+            "test_urlsplit_nofragments")
+
+  def set_up(self):
+    self.input = "scheme://user:pass@host:8888/path?query#fragment"
+
+    self.populate_expected_default_values()
+
+    self.expected_scheme = "scheme"
+    self.expected_netloc = "user:pass@host:8888"
+    self.expected_path = "/path"
+    self.expected_query = "query"
+    self.expected_fragment = "fragment"
+    self.expected_username = "user"
+    self.expected_password = "pass"
+    self.expected_hostname = "host"
+    self.expected_port = 8888
+
+    self.populate_expected_values()
+
+    self.expected_query_nofragments = "query#fragment"
+
+
+  def populate_expected_default_values(self):
+    self.default_scheme = "defaultscheme"
+
+    self.expected_scheme = ""
+    self.expected_netloc = ""
+    self.expected_path = ""
+    self.expected_query = ""
+    self.expected_fragment = ""
+    self.expected_username = None
+    self.expected_password = None
+    self.expected_hostname = None
+    self.expected_port = None
+
+
+  def populate_expected_values(self):
+    self.expected_scheme_defaultscheme = self.expected_scheme or \
+      self.default_scheme
+    self.expected_netloc_defaultscheme = self.expected_netloc
+    self.expected_path_defaultscheme = self.expected_path
+    self.expected_query_defaultscheme = self.expected_query
+    self.expected_fragment_defaultscheme = self.expected_fragment
+    self.expected_username_defaultscheme = self.expected_username
+    self.expected_password_defaultscheme = self.expected_password
+    self.expected_hostname_defaultscheme = self.expected_hostname
+    self.expected_port_defaultscheme = self.expected_port
+
+    self.expected_scheme_nofragments = self.expected_scheme
+    self.expected_netloc_nofragments = self.expected_netloc
+    self.expected_path_nofragments = self.expected_path
+    self.expected_query_nofragments = self.expected_query
+    self.expected_fragment_nofragments = ""
+    self.expected_username_nofragments = self.expected_username
+    self.expected_password_nofragments = self.expected_password
+    self.expected_hostname_nofragments = self.expected_hostname
+    self.expected_port_nofragments = self.expected_port
+
+
+  def test_urlsplit(self):
+    result = urlparse_urlsplit(self.input)
+    self.assert_equals(self.expected_scheme, result["scheme"])
+    self.assert_equals(self.expected_netloc, result["netloc"])
+    self.assert_equals(self.expected_path, result["path"])
+    self.assert_equals(self.expected_query, result["query"])
+    self.assert_equals(self.expected_fragment, result["fragment"])
+    self.assert_equals(self.expected_username, result["username"])
+    self.assert_equals(self.expected_password, result["password"])
+    self.assert_equals(self.expected_hostname, result["hostname"])
+    self.assert_equals(self.expected_port, result["port"])
+
+  def test_urlsplit_defaultscheme(self):
+    result = urlparse_urlsplit(self.input, self.default_scheme)
+    self.assert_equals(self.expected_scheme_defaultscheme, result["scheme"])
+    self.assert_equals(self.expected_netloc_defaultscheme, result["netloc"])
+    self.assert_equals(self.expected_path_defaultscheme, result["path"])
+    self.assert_equals(self.expected_query_defaultscheme, result["query"])
+    self.assert_equals(self.expected_fragment_defaultscheme, result["fragment"])
+    self.assert_equals(self.expected_username_defaultscheme, result["username"])
+    self.assert_equals(self.expected_password_defaultscheme, result["password"])
+    self.assert_equals(self.expected_hostname_defaultscheme, result["hostname"])
+    self.assert_equals(self.expected_port_defaultscheme, result["port"])
+
+  def test_urlsplit_nofragments(self):
+    result = urlparse_urlsplit(self.input, allow_fragments=False)
+    self.assert_equals(self.expected_scheme_nofragments, result["scheme"])
+    self.assert_equals(self.expected_netloc_nofragments, result["netloc"])
+    self.assert_equals(self.expected_path_nofragments, result["path"])
+    self.assert_equals(self.expected_query_nofragments, result["query"])
+    self.assert_equals(self.expected_fragment_nofragments, result["fragment"])
+    self.assert_equals(self.expected_username_nofragments, result["username"])
+    self.assert_equals(self.expected_password_nofragments, result["password"])
+    self.assert_equals(self.expected_hostname_nofragments, result["hostname"])
+    self.assert_equals(self.expected_port_nofragments, result["port"])
+
+
+
+
+
+class test_urlparse_TestValidRelativeUrl(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a valid relative URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestValidRelativeUrl"
+
+  def set_up(self):
+    self.input = "scheme:/path?query#fragment"
+
+    self.populate_expected_default_values()
+
+    self.expected_scheme = "scheme"
+    self.expected_path = "/path"
+    self.expected_query = "query"
+    self.expected_fragment = "fragment"
+
+    self.populate_expected_values()
+
+    self.expected_query_nofragments = "query#fragment"
+
+
+
+
+
+class test_urlparse_TestEmptyString(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with the empty string.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestEmptyString"
+
+  def set_up(self):
+    self.input = ""
+
+    self.populate_expected_default_values()
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestInvalidPort(repyunit_TestCase):
+  """
+  <Purpose>
+    Test the urlparse module with an invalid port.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_InvalidPort"
+
+  def get_test_method_names(self):
+    return ("test_invalidport", "test_invalidport_defaultscheme",
+            "test_invalidport_nofragments")
+
+  def test_invalidport(self):
+    def func():
+      urlparse_urlsplit("scheme://user:pass@host:88-88/path?query#fragment")
+    self.assert_error(ValueError, func)
+
+  def test_invalidport_defaultscheme(self):
+    def func():
+      urlparse_urlsplit("scheme://user:pass@host:88-88/path?query#fragment",
+                        "defaultscheme")
+    self.assert_error(ValueError, func)
+
+  def test_invalidport_nofragments(self):
+    def func():
+      urlparse_urlsplit("scheme://user:pass@host:88-88/path?query#fragment",
+                        allow_fragments=False)
+    self.assert_error(ValueError, func)
+
+
+
+
+
+class test_urlparse_TestStrangeUrl1(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl1"
+
+  def set_up(self):
+    self.input = "://?#"
+    self.populate_expected_default_values()
+    self.expected_path = "://"
+    self.populate_expected_values()
+    self.expected_query_nofragments = "#"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl2(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl2"
+
+  def set_up(self):
+    self.input = "@://?#"
+    self.populate_expected_default_values()
+    self.expected_path = "@://"
+    self.populate_expected_values()
+    self.expected_query_nofragments = "#"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl3(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl3"
+
+  def set_up(self):
+    self.input = ":@//?#"
+    self.populate_expected_default_values()
+    self.expected_path = ":@//"
+    self.populate_expected_values()
+    self.expected_query_nofragments = "#"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl4(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl4"
+
+  def set_up(self):
+    self.input = "://?@#"
+    self.populate_expected_default_values()
+    self.expected_path = "://"
+    self.expected_query = "@"
+    self.populate_expected_values()
+    self.expected_query_nofragments = "@#"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl5(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl5"
+
+  def set_up(self):
+    self.input = "foo1"
+    self.populate_expected_default_values()
+    self.expected_path = "foo1"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl6(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl6"
+
+  def set_up(self):
+    self.input = "foo1:bar2"
+    self.populate_expected_default_values()
+    self.expected_scheme = "foo1"
+    self.expected_path = "bar2"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl7(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl7"
+
+  def set_up(self):
+    self.input = "foo1@bar2"
+    self.populate_expected_default_values()
+    self.expected_path = "foo1@bar2"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl8(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl8"
+
+  def set_up(self):
+    self.input = "foo1?bar2"
+    self.populate_expected_default_values()
+    self.expected_path = "foo1"
+    self.expected_query = "bar2"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl9(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl9"
+
+  def set_up(self):
+    self.input = "foo1#bar2"
+    self.populate_expected_default_values()
+    self.expected_path = "foo1"
+    self.expected_fragment = "bar2"
+    self.populate_expected_values()
+    self.expected_path_nofragments = "foo1#bar2"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl10(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl10"
+
+  def set_up(self):
+    self.input = "foo1/bar2"
+    self.populate_expected_default_values()
+    self.expected_path = "foo1/bar2"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl11(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl11"
+
+  def set_up(self):
+    self.input = "."
+    self.populate_expected_default_values()
+    self.expected_path = "."
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl11(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl11"
+
+  def set_up(self):
+    self.input = "/."
+    self.populate_expected_default_values()
+    self.expected_path = "/."
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl12(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl12"
+
+  def set_up(self):
+    self.input = ".."
+    self.populate_expected_default_values()
+    self.expected_path = ".."
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl13(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl13"
+
+  def set_up(self):
+    self.input = "../.."
+    self.populate_expected_default_values()
+    self.expected_path = "../.."
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl14(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl14"
+
+  def set_up(self):
+    self.input = "../../foo"
+    self.populate_expected_default_values()
+    self.expected_path = "../../foo"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl15(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl15"
+
+  def set_up(self):
+    self.input = "../../foo/bar/baz/.."
+    self.populate_expected_default_values()
+    self.expected_path = "../../foo/bar/baz/.."
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl16(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl16"
+
+  def set_up(self):
+    self.input = "/foo/bar/baz/.."
+    self.populate_expected_default_values()
+    self.expected_path = "/foo/bar/baz/.."
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl17(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl17"
+
+  def set_up(self):
+    self.input = "//foo"
+    self.populate_expected_default_values()
+    self.expected_netloc = "foo"
+    self.expected_hostname = "foo"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl18(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl18"
+
+  def set_up(self):
+    self.input = "//foo/bar"
+    self.populate_expected_default_values()
+    self.expected_netloc = "foo"
+    self.expected_path = "/bar"
+    self.expected_hostname = "foo"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl19(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl19"
+
+  def set_up(self):
+    self.input = "//foo/bar?baz=1&q=2"
+    self.populate_expected_default_values()
+    self.expected_netloc = "foo"
+    self.expected_path = "/bar"
+    self.expected_query = "baz=1&q=2"
+    self.expected_hostname = "foo"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl20(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl20"
+
+  def set_up(self):
+    self.input = "baz=1&q=2"
+    self.populate_expected_default_values()
+    self.expected_path = "baz=1&q=2"
+    self.populate_expected_values()
+
+
+
+
+
+class test_urlparse_TestStrangeUrl21(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl21"
+
+  def set_up(self):
+    self.input = "baz=1&q=2#frag#frag"
+    self.populate_expected_default_values()
+    self.expected_path = "baz=1&q=2"
+    self.expected_fragment = "frag#frag"
+    self.populate_expected_values()
+    self.expected_path_nofragments = "baz=1&q=2#frag#frag"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl22(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl22"
+
+  def set_up(self):
+    self.input = "baz=1&q=2#frag#frag?a"
+    self.populate_expected_default_values()
+    self.expected_path = "baz=1&q=2"
+    self.expected_fragment = "frag#frag?a"
+    self.populate_expected_values()
+    self.expected_path_nofragments = "baz=1&q=2#frag#frag"
+    self.expected_query_nofragments = "a"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl23(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl23"
+
+  def set_up(self):
+    self.input = "?baz=1&q=2#frag#frag?a"
+    self.populate_expected_default_values()
+    self.expected_query = "baz=1&q=2"
+    self.expected_fragment = "frag#frag?a"
+    self.populate_expected_values()
+    self.expected_query_nofragments = "baz=1&q=2#frag#frag?a"
+
+
+
+
+
+class test_urlparse_TestStrangeUrl24(test_urlparse_TestValidAbsoluteUrl):
+  """
+  <Purpose>
+    Test the urlparse module with a strange URL.
+
+  <Side Effects>
+    None.
+
+  <Example Use>
+    See repyunit_TestCase.
+
+  """
+
+  def get_class_name(self):
+    return "test_urlparse_TestStrangeUrl24"
+
+  def set_up(self):
+    self.input = "http://host/path?baz=1&q=2#frag#frag?a"
+    self.populate_expected_default_values()
+    self.expected_scheme = "http"
+    self.expected_netloc = "host"
+    self.expected_path = "/path"
+    self.expected_query = "baz=1&q=2"
+    self.expected_fragment = "frag#frag?a"
+    self.expected_hostname = "host"
+    self.populate_expected_values()
+    self.expected_query_nofragments = "baz=1&q=2#frag#frag?a"
+
+
+
+
+
+if callfunc == 'initialize':
+
+  suite = repyunit_TestSuite()
+  suite.add_test(test_urlparse_TestValidAbsoluteUrl)
+  suite.add_test(test_urlparse_TestValidRelativeUrl)
+  suite.add_test(test_urlparse_TestEmptyString)
+  suite.add_test(test_urlparse_TestInvalidPort)
+  suite.add_test(test_urlparse_TestStrangeUrl1)
+  suite.add_test(test_urlparse_TestStrangeUrl2)
+  suite.add_test(test_urlparse_TestStrangeUrl3)
+  suite.add_test(test_urlparse_TestStrangeUrl4)
+  suite.add_test(test_urlparse_TestStrangeUrl5)
+  suite.add_test(test_urlparse_TestStrangeUrl6)
+  suite.add_test(test_urlparse_TestStrangeUrl7)
+  suite.add_test(test_urlparse_TestStrangeUrl8)
+  suite.add_test(test_urlparse_TestStrangeUrl9)
+  suite.add_test(test_urlparse_TestStrangeUrl10)
+  suite.add_test(test_urlparse_TestStrangeUrl11)
+  suite.add_test(test_urlparse_TestStrangeUrl12)
+  suite.add_test(test_urlparse_TestStrangeUrl13)
+  suite.add_test(test_urlparse_TestStrangeUrl14)
+  suite.add_test(test_urlparse_TestStrangeUrl15)
+  suite.add_test(test_urlparse_TestStrangeUrl16)
+  suite.add_test(test_urlparse_TestStrangeUrl17)
+  suite.add_test(test_urlparse_TestStrangeUrl18)
+  suite.add_test(test_urlparse_TestStrangeUrl19)
+  suite.add_test(test_urlparse_TestStrangeUrl20)
+  suite.add_test(test_urlparse_TestStrangeUrl21)
+  suite.add_test(test_urlparse_TestStrangeUrl22)
+  suite.add_test(test_urlparse_TestStrangeUrl23)
+  suite.add_test(test_urlparse_TestStrangeUrl24)
+  repyunit_text_test_run(suite)

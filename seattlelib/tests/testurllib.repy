@@ -1,0 +1,49 @@
+include urllib.repy
+
+if callfunc == 'initialize':
+
+  # Make sure exceptions are thrown when they should be:
+
+  excepted = []
+
+  try:
+    # A wrapped octet needs to have trailing hex digits.
+    urllib_unquote("foo%")
+    excepted.append(False)
+  except ValueError:
+    excepted.append(True)
+
+  try:
+    # A wrapped octet needs to have two trailing hex digits.
+    urllib_unquote("foo%4")
+    excepted.append(False)
+  except ValueError:
+    excepted.append(True)
+
+  try:
+    # A wrapped octet needs to have two valid trailing hex digits.
+    urllib_unquote("foo%4g")
+    excepted.append(False)
+  except ValueError:
+    excepted.append(True)
+
+  for case in excepted:
+    assert(case)
+
+  # Make sure some things are encoded correctly:
+
+  assert(urllib_quote("foo") == "foo")
+  assert(urllib_quote("foo\xfb") == "foo%FB")
+  assert(urllib_quote("~f oo\xfb") == "%7Ef%20oo%FB")
+  assert(urllib_quote("/home/foo bar") == "/home/foo%20bar")
+
+  assert(urllib_quote_plus("~f oo\xfb") == "%7Ef+oo%FB")
+
+  # Make sure we decode correctly:
+
+  assert(urllib_unquote("foo") == "foo")
+  assert(urllib_unquote("foo%FB") == "foo\xfb")
+  assert(urllib_unquote("%7Ef%20oo%FB") == "~f oo\xfb")
+  assert(urllib_unquote("/home/foo%20bar") == "/home/foo bar")
+
+  assert(urllib_unquote_plus("%7Ef+oo%FB") == "~f oo\xfb")

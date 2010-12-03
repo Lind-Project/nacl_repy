@@ -1,0 +1,28 @@
+"""
+  Author: Vjekoslav Brajkovic
+ 
+  Start Date: May 16th, 2009
+  
+  Purpose: Test cases for the condition variable primitive implementation.
+"""
+
+include cv.repy
+
+
+
+def cv_test_simple():
+  """
+  Very simple test: create and then destroy a condition variable.
+  """
+  condition = cv_create()
+  cv_destroy(condition)
+
+
+
+
+
+if callfunc == 'initialize':
+  
+  cv_test_simple()
+  
+  exitall()

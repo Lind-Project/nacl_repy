@@ -1,0 +1,25 @@
+"""
+  Author: Justin Cappos
+ 
+  Start Date: May 16th, 2009
+
+  Description: Basic tests for the semaphore library...
+"""
+
+include semaphore.repy
+
+
+if callfunc == 'initialize':
+  sem1 = semaphore_create()
+
+  sem2 = semaphore_create()
+  if sem1 == sem2:
+    print "The semaphore handles are the same"
+    exitall()
+  semaphore_up(sem2)
+  settimer(1,exitall,())
+  # should block...
+  semaphore_down(sem1)
+  print "Error, semdown didn't block"
+
+  

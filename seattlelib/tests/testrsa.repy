@@ -1,0 +1,547 @@
+"""
+<Program Name>
+  testrsa.repy
+
+<Started>
+  May 9 2009
+
+<Author>
+  Anthony Honstain:
+    Added new tests as well as modified scheme origionally
+    implemented by Dwayne C. Litzenberger <dlitz@dlitz.net> in
+    PyCrypto.
+    Test use:
+      Test vectors from "RSA-OAEP and RSA-PSS test vectors (.zip file)"
+      ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1-vec.zip
+      See RSADSI's PKCS#1 page at
+      http://www.rsa.com/rsalabs/node.asp?id=2125
+    
+  Armon Dadgar:
+    test_rsa_matching_keys
+
+<Purpose>
+  Tests the rsa.repy file, this test takes a black box approach
+  towards the inner workings of the cryptographic operations and 
+  focuses more on the rsa.repy. Does not test the pycrypto suite
+  directly, that is done by a different module that is
+  run from repy.
+
+<Tested>
+  A non-comprehensive list of some tests ran in this module.
+  
+  test_generate: 
+    Test that a 512 bit key is generated and that it
+    has the correct size.
+  
+  test_rsa_keydict_to_keyobj
+    Tests that the publickey and privatekey dictionaries
+    successfully constrct a RSA_RSAobj to be used by the main
+    encrypt, decrypt, sign, and verify methods.
+    
+    
+  test_basic 1,2,3:
+    Test rsa_encrypt and rsa_decrypt to ensure that no information is lost.
+    Tests that plaintext == rsa_decrypt( rsa_encrypt(plaintest,key), key)
+    Simple black box testing to ensure "1", "\x00"*1000 and ord(255)*1000 
+    are correctly encrypted. Small keys are used to ensure choping is working
+    correctly.
+    
+  test_publickey_to_string and test_privatekey_to_string:
+    Tests to ensure that a string with two integers is returned.
+    
+"""  
+
+include rsa.repy
+include math.repy
+
+def test_number_bytes_to_long():
+  """ Tests long to bytes for small boundry cases. """
+  teststrings = [ (chr(0)*9 + chr(0), 0) ]
+  teststrings.append((chr(0)*9 + chr(1), 1))
+  teststrings.append((chr(0)*9 + chr(2), 2))
+  teststrings.append((chr(0)*9 + chr(255), 255))
+  
+  teststrings.append((chr(0)*8 + chr(1) + chr(0), 256))
+  teststrings.append((chr(0)*8 + chr(1) + chr(1), 257))
+  teststrings.append((chr(0)*8 + chr(1) + chr(255), 511))
+  teststrings.append((chr(0)*8 + chr(2) + chr(0), 512))
+  teststrings.append((chr(0)*8 + chr(2) + chr(1), 513))
+
+  for string in teststrings:
+    assert(len(string[0]) == 10)
+    assert(number_bytes_to_long(string[0]) == string[1])  
+
+      
+def test_number_long_to_bytes():
+  """ Tests long_to_bytes for small boundry cases. """
+  assert(number_long_to_bytes(0) == (chr(0)))
+  assert(number_long_to_bytes(1) == (chr(1)))
+  assert(number_long_to_bytes(2) == (chr(2)))
+  
+  # 2**8
+  assert(number_long_to_bytes(255) == (chr(255)))  
+  assert(number_long_to_bytes(256) == (chr(1) + chr(0)))
+  assert(number_long_to_bytes(257) == (chr(1) + chr(1)))
+  
+  # 2**9
+  assert(number_long_to_bytes(511) == (chr(1) + chr(255)))
+  assert(number_long_to_bytes(512) == (chr(2) + chr(0)))
+  assert(number_long_to_bytes(513) == (chr(2) + chr(1)))
+  
+  assert(number_long_to_bytes(2**56 - 1) == chr(255)*7)    
+  
+  # will be 2**56 - 1  = 0xfffffff
+  assert(number_long_to_bytes(2**56 - 1) == chr(255)*7)
+          
+  assert(number_long_to_bytes(2**64 - 1) == chr(255)*8)        
+  assert(number_long_to_bytes(2**64 - 2) != chr(255)*8) 
+     
+
+def test_gen_pubpriv_keys():
+  """
+  Tests to ensure that the key generate has the desired number of bits
+  """  
+  pub, priv = rsa_gen_pubpriv_keys(512)
+  assert(1<<511 <=pub['n'] and pub['n'] <= (1<<512)-1)
+  assert(pub['e'] == 65537L)
+  assert(priv['p'] > 0)
+  assert(priv['q'] > 0)
+  assert(priv['d'] > 0)
+
+    
+def test_rsa_keydict_to_keyobj():
+  # Sanity check key data
+  newobj = _rsa_keydict_to_keyobj(mycontext['publickey'], mycontext['privatekey'])
+  
+  assert(mycontext['n'] == newobj.n)
+  assert(mycontext['e'] == newobj.e)
+  assert(mycontext['d'] == newobj.d)
+  assert(mycontext['p'] == newobj.p)
+  assert(mycontext['q'] == newobj.q)
+  
+  assert(newobj.p < newobj.q)            # p < q
+  assert(newobj.n == newobj.p * newobj.q)     # n = pq
+  assert(1 == newobj.d * newobj.e % ((newobj.p-1) * (newobj.q-1))) # ed = 1 (mod (p-1)(q-1))
+  assert(newobj.p > 1)   # p > 1
+  assert(newobj.q > 1)   # q > 1
+  assert(newobj.e > 1)   # e > 1
+  assert(newobj.d > 1)   # d > 1
+
+
+def test_encrypt_decrypt_one():
+  """Simple test rsa encryption and decryption on small string"""
+  _check_encrypt_decrypt("\000", mycontext['publickey'], mycontext['privatekey'])  
+  
+
+def test_encrypt_decrypt_two():
+  """Test rsa encryption, ensure that a string of binary zeroes
+  is properly encrypted and decrypted with no loss of information.
+  A small modulus is used so that it is must be choped, pickled,
+  unpickled, and glued. """    
+  plain = '\000'*1000
+  publickey, privatekey = rsa_gen_pubpriv_keys(128)
+  
+  _check_encrypt_decrypt(plain, publickey, privatekey)
+    
+    
+def test_encrypt_decrypt_three():
+  """Test rsa encryption, ensure that a string of characters
+  is properly encrypted and decrypted with no loss of information.
+  A small modulus is used so that it is must be choped, pickled,
+  unpickled, and glued. """    
+  plain = chr(255)*1000  
+  publickey, privatekey = rsa_gen_pubpriv_keys(128)
+  
+  _check_encrypt_decrypt(plain, publickey, privatekey)
+  
+def test_encrypt_decrypt_exception():
+  """Test rsa encrypt and decrypt to ensure proper exception is raised"""
+  plain = chr(255)*1000  
+  publickey, privatekey = rsa_gen_pubpriv_keys(128)
+  
+  # Try to encrypt with a private key
+  exception = False
+  try:
+    cipher = rsa_encrypt(plain, privatekey) 
+  except ValueError:
+    exception = True
+  
+  assert(exception)  
+  
+  # Try to decrypt with a public key
+  exception = False
+  try:
+    cipher = rsa_decrypt(" 100000", publickey) 
+  except ValueError:
+    exception = True
+  
+  assert(exception)  
+      
+def _check_encrypt_decrypt(plaintext, pubkey, privkey):
+  cipher = rsa_encrypt(plaintext, pubkey) 
+  assert(plaintext == rsa_decrypt(cipher, privkey))
+
+
+def test_sign_verify_one():
+  """Simple test rsa encryption and decryption on small string"""
+  _check_sign_verify("\x00", mycontext['publickey'], mycontext['privatekey'])  
+  
+
+def test_sign_verify_two():
+  """Test sign and verify with string of 1000 binary zeroes"""
+  """Test rsa encryption, ensure that a string of binary zeroes
+  is properly encrypted and decrypted with no loss of information.
+  A small modulus is used so that it is must be choped, pickled,
+  unpickled, and glued. """    
+  plain = '\x00'*1000
+  publickey, privatekey = rsa_gen_pubpriv_keys(128)
+  
+  _check_sign_verify(plain, publickey, privatekey)
+  
+    
+def test_sign_verify_three():
+  """Tests sign and verify with a string of 1000 chr(255)"""
+  """Test rsa encryption, ensure that a string of characters
+  is properly encrypted and decrypted with no loss of information.
+  A small modulus is used so that it is must be choped, pickled,
+  unpickled, and glued. """    
+  plain = chr(255)*1000  
+  publickey, privatekey = rsa_gen_pubpriv_keys(128)
+  
+  _check_sign_verify(plain, publickey, privatekey)
+  
+def test_sign_verify_exception():
+  """Test rsa encryption to ensure proper exception is raised"""    
+  plain = chr(255)*1000  
+  publickey, privatekey = rsa_gen_pubpriv_keys(128)
+  
+  # Try to sign with a public key
+  exception = False
+  try:
+    cipher = rsa_sign(plain, publickey) 
+  except ValueError:
+    exception = True
+  
+  assert(exception)  
+  
+  # Try to verify with a private key
+  exception = False
+  try:
+    cipher = rsa_verify(" 100000", privatekey) 
+  except ValueError:
+    exception = True
+  
+  assert(exception)  
+  
+      
+def _check_sign_verify(plaintext, pubkey, privkey):
+  cipher = rsa_sign(plaintext, privkey) 
+  assert(plaintext == rsa_verify(cipher, pubkey))
+  
+# Anthony not a valid test because chopstring will
+# split the plaintext.    
+#def test_check_signing(self):
+#  """Test rsa_sign using the provided rsa vectors."""
+#  signature = " " + str(number_bytes_to_long(chr(1) + a2b_hex(self.plaintext)))
+#  
+#  message = a2b_hex(self.ciphertext)
+#  
+#  print "KEY LENGTH", math.log(self.sample_key_public['n'],2)
+#  print "Length of message as string", len(message)
+#  print "Length of message as long in bits", math.log(number_bytes_to_long(message),2)
+#  
+#  self.assertEqual(signature, rsa_sign(message, mycontext['privatekey']))
+
+   
+def test_publickey_to_string():
+  """ Test to convert publickey dictionary to string.
+  Ex: '65537 87824...'
+  """
+  pubkey = rsa_publickey_to_string(mycontext['publickey'])
+  pubkey = pubkey.split()
+  assert(2 == len(pubkey))
+  e = long(pubkey[0])
+  n = long(pubkey[1])
+  assert(1024 == int( math_log(long(pubkey[1]), 2) + 1))
+  assert(mycontext['e'] == e)
+  assert(mycontext['n'] == n)
+
+  
+def test_string_to_publickey_one():
+  """ Test the conversion of a string to a publickey"""
+  publickeystring = str(mycontext['e']) + " " + str(mycontext['n'])
+  publickey = rsa_string_to_publickey(publickeystring)
+  assert(rsa_is_valid_publickey(publickey))
+  assert(publickey['e'] == mycontext['e']) 
+  assert(publickey['n'] == mycontext['n'])
+
+    
+def test_string_to_publickey_two():
+  """ Test the conversion of a string to a publickey"""
+  e = 44717615366136694077213180863126608222269851510924491018154532615918970152979
+  n = 43625238532543597469715966591212944935550987045762622372951454204208142383150611922636917500333756512471989325522771610699336565975386449360925333645426185855393055167377289189621767552406714547427782058801062171778725699111330489978841441722414037888157512195232830566655305996700901513714235378235261172123
+  publickeystring = str(e) + " " + str(n)
+  publickey = rsa_string_to_publickey(publickeystring)
+  assert(rsa_is_valid_publickey(publickey))
+  assert(publickey['e'] == e) 
+  assert(publickey['n'] == n)
+
+
+def test_privatekey_to_string():
+  """ Test to convert privatekey dicrionary to string"""
+  privatekey = rsa_privatekey_to_string(mycontext['privatekey'])
+  privatekey = privatekey.split()
+  assert(3 == len(privatekey))
+  d = long(privatekey[0])
+  p = long(privatekey[1])
+  q = long(privatekey[2])
+  n = p*q
+  assert(1024 == int( math_log((p*q), 2) + 1)) 
+  assert(mycontext['d'] == d)
+  assert(mycontext['n'] == n)
+
+    
+def test_string_to_privatekey():
+  """ Test the conversion of a string to a privatekey """
+  privatekeystring = str(mycontext['d']) + " " + str(mycontext['p']) + " " + str(mycontext['q'])
+  privatekey = rsa_string_to_privatekey(privatekeystring)
+  assert(rsa_is_valid_privatekey(privatekey))
+  assert(privatekey['d'] == mycontext['d']) 
+  assert(privatekey['p'] == mycontext['p'])
+  assert(privatekey['q'] == mycontext['q'])
+
+
+def test_is_valid_publickey():
+  """ Test with several valid and invalid public keys """
+  #Valid key
+  assert(rsa_is_valid_publickey(mycontext['publickey']))
+  
+  #Invalid keys
+  badkey1 = {'e': 1234}
+  assert(not rsa_is_valid_publickey(badkey1))
+  badkey2 = {'d': 1234}
+  assert(not rsa_is_valid_publickey(badkey2)) 
+  badkey3 = {'a': 1, 'b': 2}
+  assert(not rsa_is_valid_publickey(badkey3))
+  
+  #Bad key size
+  badkey4  = {'e': 2001, 'n':500}
+  assert(not rsa_is_valid_publickey(badkey4))
+  
+  #Key not a dictionary
+  badkey5 = ['e', 'n']
+  assert(not rsa_is_valid_publickey(badkey5))
+  
+  #Key has extra data
+  badkey6 = {'e': 3, 'n':9, 'd':4}
+  assert(not rsa_is_valid_publickey(badkey6))
+  
+  #Key incorrect type
+  badkey7 = {'e': 'dog', 'n':27}
+  assert(not rsa_is_valid_publickey(badkey7))
+
+    
+def test_is_valid_privatekey():
+  """ Test with several valid and invalid private keys """
+  #Valid key
+  assert(rsa_is_valid_privatekey(mycontext['privatekey']))
+  
+  #Valid value for d, p, and q
+  d = 116467631542930861601478893145535067646063536882841491209835874887938222956830669640652587163148071314937674955822237189053368758722351580531956820574156366843733156436163097164007967904900300775223658035432332923992450647439719694734683045367149790102198810033962358618370829441895425705728523874962107052993
+  p = 10553348935321349098708401203217373529736516872897815887866666361622732987827061646884190485302047334528175415912687182844924393023674139906406943407084803
+  q = 12507560385898395063155377438652785015406816933846982747539518586622849241981265061903326335357883560741496856341342737342150564026983421615432869995046297
+  assert(rsa_is_valid_privatekey({'d':d,'p':p,'q':q}))    
+              
+  #Invalid keys, missing the correct keys
+  badkey1 = {'d': d}
+  assert(not rsa_is_valid_privatekey(badkey1))
+  badkey2 = {'p': p}
+  assert(not rsa_is_valid_privatekey(badkey2)) 
+  badkey3 = {'p': p, 'q': q}
+  assert(not rsa_is_valid_privatekey(badkey3))
+      
+  #Bad key size
+  badkey4  = {'e': 2001, 'n':500}
+  assert(not rsa_is_valid_privatekey(badkey4))
+  
+  #Key not a dictionary
+  badkey5 = ['d', 'p', 'q']
+  assert(not rsa_is_valid_privatekey(badkey5))
+  
+  #Key has extra data
+  badkey6 = {'d': d, 'p':p, 'q':q, 'e':16667}
+  assert(not rsa_is_valid_privatekey(badkey6))
+  
+  #Key incorrect type
+  badkey7 = {'d':'dog', 'p':p, 'q':q}
+  assert(not rsa_is_valid_privatekey(badkey7))  
+  
+  #Test nonprime p and nonprime q
+  badkey8 = {'d':d, 'p':(p-1), 'q':q}
+  assert(not rsa_is_valid_privatekey(badkey8))
+  badkey9 = {'d':d, 'p':p, 'q':(q-1)}
+  assert(not rsa_is_valid_privatekey(badkey9))    
+
+    
+def test_rsa_picklechops():
+  """ Simple test of the picklechops function. """
+  testlist0 = [0]
+  testlist1 = [0, 0]
+  assert(_rsa_picklechops(testlist0) == ' 0')
+  assert(_rsa_picklechops(testlist1) == ' 0 0')
+
+
+def test_rsa_unpicklechops():
+  """ Simple test of the unpicklechops function. """
+  teststr0 = ' 0'
+  teststr1 = ' 0 0'
+  assert(_rsa_unpicklechops(teststr0) == [0])
+  assert(_rsa_unpicklechops(teststr1) == [0,0])
+  assert(isinstance(_rsa_unpicklechops(teststr1)[0], long))
+
+
+def test_rsa_chopstring_smallkey():
+  """ Test chopstring with a key with 32bit modulus."""
+  keysize = 31
+  teststring = '0'
+  
+  # A simple object to simulate the key used for pycrypto.
+  class testkey(): 
+    def __init__(self, size):
+      self.keysize = size
+    def size(self):
+      return self.keysize
+    def testfunc(self, string, k):
+      return (string,)
+  
+  # The max message length will be 2, because
+  # 31/8 - 1 = 2
+  key = testkey(keysize)     
+  
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x010')
+  
+  teststring = '0'* 2
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x0100')
+  
+  teststring = '0'* 3
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x0100 \x010')
+  
+  teststring = '0'* 4
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x0100 \x0100')
+  
+  teststring = '0'* 5
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x0100 \x0100 \x010') 
+
+
+def test_rsa_chopstring_bigkey():
+  """Tests chopstring with a key with 1024 bit modulus."""
+  keysize = 1023
+  teststring = '0'
+  
+  # A simple object to simulate the key used for pycrypto.
+  class testkey(): 
+    def __init__(self, size):
+      self.keysize = size
+    def size(self):
+      return self.keysize
+    def testfunc(self, string, k):
+      return (string,)
+  
+  # The max message length will be 2, because
+  # 31/8 - 1 = 2
+  key = testkey(keysize)     
+  
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x010')
+  
+  teststring = '0'* 2
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x0100')
+  
+  teststring = '0'* 126
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x01' + 126*'0')
+  
+  teststring = '0'* 127
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x01' + 126*'0' + ' \x010')
+  
+  teststring = '0'* 253
+  cipher = _rsa_chopstring(teststring, key, key.testfunc)
+  assert(cipher == ' \x01' + 126*'0' + ' \x01' + 126*'0' + ' \x010') 
+
+
+def test_rsa_gluechops():
+  """Tests gluechops with a key with 1024 bit modulus."""
+  keysize = 1023
+      
+  # A simple object to simulate the key used for pycrypto.
+  class testkey(): 
+    def __init__(self, size):
+      self.keysize = size
+    def size(self):
+      return self.keysize
+    def testfunc(self, string):
+      return str(string)
+  
+  key = testkey(keysize)     
+  
+  teststring = ' 11'
+  cipher = _rsa_gluechops(teststring, key, key.testfunc)
+  assert(cipher == '1')
+  
+  teststring = ' 11 11'
+  cipher = _rsa_gluechops(teststring, key, key.testfunc)
+  assert(cipher == '11')
+    
+def test_rsa_matching_keys():    
+   # Test rsa_matching_keys
+   privategood = rsa_file_to_privatekey("good.privatekey")
+   publicgood = rsa_file_to_publickey("good.publickey")
+   publicjustin = rsa_file_to_publickey("justin.publickey")
+
+   goodwithgood = rsa_matching_keys(privategood, publicgood)
+   goodwithjustin = rsa_matching_keys(privategood, publicjustin)
+   assert(goodwithgood == True)
+   assert(goodwithjustin == False) 
+
+
+if callfunc == "initialize":
+  mycontext['e'] = 17
+  mycontext['n'] = 131996649081988309815009412231606409998872008467220356704480658206329986017741425592739598784901147490262698283265202147593817926551998457936217729984043905483806898514062338649654338829045552688587285851621946053376392312680578795692682905599590422046720587710762927130740460442438533124053848898103790124491
+  mycontext['d'] = 116467631542930861601478893145535067646063536882841491209835874887938222956830669640652587163148071314937674955822237189053368758722351580531956820574156366843733156436163097164007967904900300775223658035432332923992450647439719694734683045367149790102198810033962358618370829441895425705728523874962107052993
+  mycontext['p'] = 10553348935321349098708401203217373529736516872897815887866666361622732987827061646884190485302047334528175415912687182844924393023674139906406943407084803
+  mycontext['q'] = 12507560385898395063155377438652785015406816933846982747539518586622849241981265061903326335357883560741496856341342737342150564026983421615432869995046297
+  mycontext['publickey'] = {'n': mycontext['n'], 'e':mycontext['e']}
+  mycontext['privatekey'] = {'d': mycontext['d'], 'p':mycontext['p'], 'q':mycontext['q']}
+  
+  test_number_bytes_to_long()
+  test_number_long_to_bytes()
+  test_gen_pubpriv_keys()
+  test_rsa_keydict_to_keyobj()
+  test_encrypt_decrypt_one()
+  test_encrypt_decrypt_two()
+  test_encrypt_decrypt_three()
+  test_encrypt_decrypt_exception()
+  test_sign_verify_one()
+  test_sign_verify_two()
+  test_sign_verify_three()
+  test_sign_verify_exception()
+  test_publickey_to_string()
+  test_string_to_publickey_one()
+  test_string_to_publickey_two()
+  test_privatekey_to_string()
+  test_string_to_privatekey()
+  test_is_valid_publickey()
+  test_is_valid_privatekey
+  test_rsa_picklechops()
+  test_rsa_unpicklechops()
+  test_rsa_chopstring_smallkey()
+  test_rsa_chopstring_bigkey()
+  test_rsa_gluechops()
+  test_rsa_matching_keys()

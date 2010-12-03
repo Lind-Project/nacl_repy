@@ -1,0 +1,68 @@
+"""
+  Author: Justin Cappos
+ 
+  Start Date: May 16th, 2009
+
+  Description: Basic tests for the semaphore library...
+"""
+
+include semaphore.repy
+
+def timedout():
+  print "Timedout!"
+  exitall()
+
+if callfunc == 'initialize':
+  settimer(10, timedout, ())
+
+  sem1 = semaphore_create()
+  semaphore_destroy(sem1)
+  
+  
+  # should have an exception
+  try:
+    semaphore_up(sem1)
+  except ValueError:
+    pass
+  else:
+    print "Up did not have a problem on a destroyed handle!"
+    exitall()
+    
+
+  # should have an exception
+  try:
+    semaphore_down(sem1)
+  except ValueError:
+    pass
+  else:
+    print "Down did not have a problem on a destroyed handle!"
+    exitall()
+    
+
+  # Now use an invalid handle instead
+
+
+  # should have an exception
+  try:
+    semaphore_up('asdfksjakdf')
+  except ValueError:
+    pass
+  else:
+    print "Up did not have a problem on an invalid handle!"
+    exitall()
+    
+
+  # should have an exception
+  try:
+    semaphore_down('asdfksjakdf')
+  except ValueError:
+    pass
+  else:
+    print "Down did not have a problem on an invalid handle!"
+    exitall()
+    
+
+  exitall()
+
+  
+  

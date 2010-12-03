@@ -1,0 +1,43 @@
+"""
+<Description>
+  This tests the hard-coded default timeout of 5 seconds for sockets passed
+  to the callback when using timeout_waitforconn.
+"""
+
+# hello world
+include sockettimeout.repy
+
+
+def mycallback(ip, port, sockobj, commhandle, listenhandle):
+  try:
+    # This should hang until it times out.
+    sockobj.recv(100)
+  except SocketTimeoutError:
+    pass
+  except:
+    raise
+  else:
+    raise Exception("No SocketTimeoutError raised by sockobj.recv()")
+  
+  
+def server():
+  commhandle = timeout_waitforconn(getmyip(), 12345, mycallback)
+
+
+def client():
+  sockobj = timeout_openconn(getmyip(), 12345)
+  # The timeout on the socket the callback gets is 5 seconds. We want to
+  # avoid the socket being closed because we lose the reference to it. 
+  sleep(10)
+  # The client never sends anything.
+
+
+def main():
+  server()
+  client()
+  sleep(.1)
+  exitall()
+
+
+if callfunc == 'initialize':
+  main()

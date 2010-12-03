@@ -1,0 +1,155 @@
+"""
+<Name>
+  testsshkey.repy
+
+<Started>
+  2009-06-03
+
+<Purpose>
+  Test the sshkey.repy module.
+
+<Authors>
+  Modified by Anthony Honstain
+  
+
+"""
+
+include sshkey.repy
+include rsa.repy
+
+
+
+def test_StringIO_read():
+  _line = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!'
+  _lines = (_line + '\n') * 3
+  
+  testobj = _sshkey_StringIO(_lines)
+  assert(testobj.read(10) == _line[:10])
+  assert(testobj.read(44) == _line[10:] + '\n')
+                    
+
+            
+def test_sshkey_file_to_privatekey():
+  """ Test for expected values from file plain and encrypted privatekeys """
+  n = 21667921211657225837662407896465902368515789297235434239596619924307206899294162617496908503082255788741331054510718239898239470029019964004015025454981572368698224916216238294783977496064641263839384657113694578478832964586562534638415195769419049079940485169596961691551690001282150028245137262488209214161129366123652506206000877580765505669160809419715434736933306709983256215776587641397097270565321315570096720236499564697436971911768999865113008192781439377934850376539083555988066915494601219079196695008621852622523855275891959381489627706984641922468411931242527601288136532337181942245358441104751310960989
+  e = 35
+  d = 19191587358896400027643846994012656383542556234694241755071291932957811825089115461211547531301426555742321791138064726767012102025703396689270451117269392669418427782934382489665808639371539405114883553443558055224109197205241102108310601967199729185090144007357308926802925429707047167874264432489556732542453586577220152199191920645686109851661594625327561780547897824761140649880350710294306175401656673395653145938065406582309847186075495640206612295174402288257050271062509421383350762777048326465932300121916119246950795864870557559701939525257704168585272407992459797118934531508061739578632497825308150980747
+  p = 153653782373283859188591363337626073562841407056031192451976717944185477385532875826710595707386009603927532465398709520339794929245886661025021998336740733224252921394665490249874166260339796441936711408899583294804881579853658481030292267513462083747622415633560431672069305046881066510038869788574598031773
+  q = 141017818611308573531085488427432988883264403418607985798219544728105488526142673302621638114129384390431764937801202584166704353083037481274069086989728319259089084589971944821506404163400408885400935074978263726322913848603800429828113394825384809672901313036835140610818562684424718146540944739215897305793
+  
+  filename = 'test_sshkey_privatekey_plain'
+  
+  publickey, privatekey = sshkey_file_to_privatekey(filename, )            
+  assert(publickey['n'] == n)
+  assert(publickey['e'] == e)
+  assert(privatekey['d'] == d)
+  assert(privatekey['p'] == p)
+  assert(privatekey['q'] == q)
+  
+  filename = 'test_sshkey_privatekey_encrypted'
+  
+  publickey, privatekey = sshkey_file_to_privatekey(filename, 'seattletestkey')            
+  assert(publickey['n'] == n)
+  assert(publickey['e'] == e)
+  assert(privatekey['d'] == d)
+  assert(privatekey['p'] == p)
+  assert(privatekey['q'] == q)
+
+
+
+def test_sshkey_file_to_privatekey_exception1():
+  """ Test for expected exception from file 'test_sshkey_privatekey_corrupted' """
+  filename = 'test_sshkey_privatekey_corrupted'
+  
+  wasraised = False  
+  # This privatekey file has been intentionally corrupted
+  try:
+    publickey, privatekey = sshkey_file_to_privatekey(filename, 'seattletestkey')
+  except sshkey_SSHException:
+    wasraised = True
+    
+  assert(wasraised) 
+  
+
+
+def test_sshkey_file_to_privatekey_exception2():
+  """ Test for password exception from file 'test_sshkey_privatekey_encrypted' """
+  filename = 'test_sshkey_privatekey_encrypted'
+  
+  wasraised = False  
+  # Test with the wrong password password
+  try:
+    publickey, privatekey = sshkey_file_to_privatekey(filename, )
+  except sshkey_EncryptionException:
+    wasraised = True
+    
+  assert(wasraised)    
+  
+
+
+def test_sshkey_file_to_privatekey_exception3():
+  """ Test for private encryption exception from file 'test_sshkey_privatekey4'"""
+  filename = 'test_sshkey_privatekey_unsupported'
+  
+  wasraised = False  
+  # This sshkey should cause an exception to be raise before it is
+  # decrypted. The privatekey's header says that it is encrypted with
+  # AES instead of DES3.
+  try:
+    publickey, privatekey = sshkey_file_to_privatekey(filename, "does not matter")
+  except sshkey_EncryptionException:
+    wasraised = True
+    
+  assert(wasraised) 
+  
+  
+
+def test_sshkey_file_to_publickey():
+  """ Test for expected values from file 'test_sshkey_publickey' """
+  n = 21667921211657225837662407896465902368515789297235434239596619924307206899294162617496908503082255788741331054510718239898239470029019964004015025454981572368698224916216238294783977496064641263839384657113694578478832964586562534638415195769419049079940485169596961691551690001282150028245137262488209214161129366123652506206000877580765505669160809419715434736933306709983256215776587641397097270565321315570096720236499564697436971911768999865113008192781439377934850376539083555988066915494601219079196695008621852622523855275891959381489627706984641922468411931242527601288136532337181942245358441104751310960989
+  e = 35
+  
+  filename = 'test_sshkey_publickey'
+  
+  publickey = sshkey_file_to_publickey(filename)        
+  assert(publickey['n'] == n)
+  assert(publickey['e'] == e)
+  
+  
+  
+def test_sshkey_file_to_publickey_except1():
+  """ Test for exception from file 'test_sshkey_publickey_corrupted' """
+  
+  filename = 'test_sshkey_publickey_corrupted'
+  wasraised = False  
+  
+  try:
+    publickey = sshkey_file_to_publickey(filename)        
+  except sshkey_SSHException:
+    wasraised = True
+  assert(wasraised)
+  
+  
+  
+def test_keys_with_rsa():
+  """ Uses the sshkey to encrypt and decrypt using the rsa.repy module """
+  
+  filename = 'test_sshkey_privatekey_plain'
+  
+  publickey, privatekey = sshkey_file_to_privatekey(filename, ) 
+  cipher = rsa_encrypt("\x00" * 200 ,publickey)
+  result = rsa_decrypt(cipher , privatekey)
+  assert(result == "\x00"*200)
+    
+    
+            
+if callfunc == "initialize":
+  test_StringIO_read()
+  test_sshkey_file_to_privatekey()
+  test_sshkey_file_to_privatekey_exception1()
+  test_sshkey_file_to_privatekey_exception2()
+  test_sshkey_file_to_privatekey_exception3()
+  test_sshkey_file_to_publickey()
+  test_keys_with_rsa()
+  test_sshkey_file_to_publickey_except1()
+  

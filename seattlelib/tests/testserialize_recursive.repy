@@ -1,0 +1,10 @@
+include serialize.repy
+
+if callfunc == 'initialize':
+  for stuff in [None, -123, -233.35345234, [], set(), {frozenset([1,2,3]):'here', 1:2, 3:4, 5:6, 9:10, 8:7}, {}, [set(frozenset(((),3, None)))], False, {'this':['asdf',True, {'here':[False]}], frozenset([1,2,3,4]):complex('3245-292834j')}]:
+    serdata1 = serialize_serializedata(stuff)
+    serdata2 = serialize_serializedata(serdata1)
+    newstuff2 = serialize_deserializedata(serdata2)
+    newstuff = serialize_deserializedata(newstuff2)
+    if newstuff != stuff:
+      print "BAD STUFF:",stuff, newstuff

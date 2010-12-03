@@ -1,0 +1,4 @@
+if callfunc == "plankton":
+  pass
+else:
+  print "callfunc was wrong: was actually", callfunc

@@ -1,0 +1,36 @@
+"""
+Author: Armon Dadgar
+Description:
+    Tests the basic functionality of safe_eval()
+"""
+
+include safe_eval.repy
+
+if callfunc == "initialize":
+  # Test some basic math
+  val = safe_eval('123')
+  if not val == 123:
+    print "Error, failed to evaluate '123'!"
+
+  val = safe_eval('10 * 10 * 10')
+  if not val == 1000:
+    print "Error, failed to evaluate '10 * 10 * 10'"
+
+  try:
+    val = safe_eval('1/0')
+  except ZeroDivisionError:
+    pass
+  else:
+    print "Error, '1/0' did not raise an Exception!"
+
+  # Test some deserialization
+  arr = [1,2L,3.1415,"Hi!",False,None]
+  val = safe_eval(str(arr))
+  if not arr == val:
+    print "Error, failed to deserialize an array!"
+
+  dic = {1:"Hi!", 2L:None, False:3.1415, "zero":None}
+  val = safe_eval(str(dic))
+  if not dic == val:
+    print "Error, failed to deserialize a dictionary!"
+

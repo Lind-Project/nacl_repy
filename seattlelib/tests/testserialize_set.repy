@@ -1,0 +1,8 @@
+include serialize.repy
+
+if callfunc == 'initialize':
+  for stuff in [set((1,)), set(), set(('asdf',True, None, 234)), set(((1,2),3,None)), set(())]:
+    serdata = serialize_serializedata(stuff)
+    newstuff = serialize_deserializedata(serdata)
+    if newstuff != stuff:
+      print "BAD STUFF:",stuff

@@ -1,0 +1,127 @@
+"""
+<Program Name>
+  testbinascii.repy
+
+<Started>
+  Jun 29, 2009
+
+<Purpose>
+  Test the functions in the binascii module.
+  
+<Authors> 
+  binascii_a2b_hex and binascii_b2a_hex:
+    Modified by Anthony
+    Origionally written by: Maciek Fijalkowski from 
+    http://codespeak.net/pypy/dist/pypy/doc/
+      
+    pypy source is released under the 
+    The MIT License
+
+    Permission is hereby granted, free of charge, to any person 
+    obtaining a copy of this software and associated documentation 
+    files (the "Software"), to deal in the Software without 
+    restriction, including without limitation the rights to use, 
+    copy, modify, merge, publish, distribute, sublicense, and/or 
+    sell copies of the Software, and to permit persons to whom the 
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included 
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+    DEALINGS IN THE SOFTWARE.
+
+"""
+
+include binascii.repy
+
+
+
+def test_hex1():
+  """ Test a2b_hex and b2a_hex with string of boundary characters."""
+  
+  s = '{s\005\000\000\000worldi\002\000\000\000s\005\000\000\000helloi\001\000\000\0000'
+  t = '7b7305000000776f726c646902000000730500000068656c6c6f690100000030'
+    
+  t_result = binascii_a2b_hex(t)
+  s_result = binascii_b2a_hex(s)
+  
+  assert(s == t_result)
+  assert(t == s_result)
+  
+
+
+def test_hex2():
+  """ Test a2b_hex and b2a_hex with the hex string '00'."""
+  
+  s = '\00'
+  t = '00'
+    
+  t_result = binascii_a2b_hex(t)
+  s_result = binascii_b2a_hex(s)
+  
+  assert(s == t_result)
+  assert(t == s_result)
+  
+
+
+def test_hex3():
+  """ Test a2b_hex and b2a_hex with the hex string '01'."""
+  
+  s = '\01'
+  t = '01'
+    
+  t_result = binascii_a2b_hex(t)
+  s_result = binascii_b2a_hex(s)
+  
+  assert(s == t_result)
+  assert(t == s_result)  
+  
+  
+
+def test_hex4():
+  """ Test a2b_hex and b2a_hex with the hex string 'ff'."""
+  
+  s = chr(255)
+  t = 'ff'
+    
+  t_result = binascii_a2b_hex(t)
+  s_result = binascii_b2a_hex(s)
+  
+  assert(s == t_result)
+  assert(t == s_result)  
+  
+  
+
+def test_hex_exception():
+  t = '00'
+  
+  # Test exception raised for odd length string
+  raised = False
+  try:
+    binascii_a2b_hex(t+'1')
+  except TypeError:
+    raised = True
+  assert(raised)  
+  
+  # Test exception for non hex digit
+  raised = False
+  try:
+    binascii_a2b_hex(t+'1g')
+  except TypeError:
+    raised = True
+  assert(raised)
+  
+  
+        
+if callfunc == "initialize":
+  test_hex1()
+  test_hex2()
+  test_hex3()
+  test_hex4()
+  test_hex_exception()

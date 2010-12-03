@@ -1,0 +1,38 @@
+include xmlrpc_server.repy
+include xmlrpc_client.repy
+
+if callfunc == 'initialize':
+  def foo(i):
+    return i == 42
+
+  def struct_setter(s):
+    s["foo"] = "bar"
+    return s
+
+  def test(a,b,c,d,e):
+    return a == 5 and b == 6.5 and c == "hi" and d == [1,2] and e == {"1":2}
+
+  # Test that we can pass a couple different kinds of object over XMLRPC
+  # and get correct results from methods.
+
+  server = xmlrpc_server_SimpleXMLRPCServer(("localhost", 12345))
+  server.register_function(foo, "foo")
+  server.register_function(test, "text")
+  server.register_function(struct_setter, "struct_setter")
+  server.serve_nonblocking()
+
+  client = xmlrpc_client_Client("localhost", server_port=12345)
+  assert(client.send_request("foo", [42]))
+  assert(not client.send_request("foo", [41]))
+
+  mystruct = {"a": "b", "c": "d", "foo": "baz"}
+  newstruct = client.send_request("struct_setter", [mystruct])
+  for key in mystruct.keys():
+    if key == "foo":
+      assert(newstruct[key] == "bar")
+    else:
+      assert(newstruct[key] == mystruct[key])
+
+  assert(client.send_request("test", [5, 6.5, "hi", [1,2], {"1": 2}]))
+
+  server.shutdown()

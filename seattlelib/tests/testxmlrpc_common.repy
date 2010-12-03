@@ -1,0 +1,333 @@
+"""
+<Program Name>
+  $Id$
+
+<Started>
+  May 3, 2009
+
+<Author>
+  Michael Phan-Ba
+
+<Purpose>
+  Runs unit tests on xmlrpc_common.repy.
+
+<Changes>
+
+  2009-05-03  Michael Phan-Ba  <mdphanba@gmail.com>
+
+  * Initial release
+
+  2009-05-24  Michael Phan-Ba  <mdphanba@gmail.com>
+
+  * Added change log
+  * Set property svn:keyword to "Id" 
+
+"""
+
+
+include xmlrpc_server.repy
+include xmlrpc_client.repy
+
+
+if callfunc == 'initialize':
+
+  # Test _xmlrpc_common_value2xml for correctness.
+
+  expected_output = "<value><nil/></value>"
+  actual_output = _xmlrpc_common_value2xml(None)
+  assert(expected_output == actual_output)
+
+  expected_output = "<value><boolean>1</boolean></value>"
+  actual_output = _xmlrpc_common_value2xml(True)
+  assert(expected_output == actual_output)
+
+  expected_output = "<value><boolean>0</boolean></value>"
+  actual_output = _xmlrpc_common_value2xml(False)
+  assert(expected_output == actual_output)
+
+  expected_output = "<value><int>42</int></value>"
+  actual_output = _xmlrpc_common_value2xml(42)
+  assert(expected_output == actual_output)
+  actual_output = _xmlrpc_common_value2xml(long(42))
+  assert(expected_output == actual_output)
+
+  left_expected_output = "<value><double>"
+  right_expected_output = "</double></value>"
+  input_value = 3.14
+  actual_output = _xmlrpc_common_value2xml(input_value)
+  assert(actual_output.find(left_expected_output) == 0)
+  left_index = len(left_expected_output)
+  right_index = actual_output.rfind(right_expected_output)
+  assert(right_index > left_index)
+  output_value = float(actual_output[left_index:right_index])
+  assert(-0.00001 < input_value - output_value < 0.00001)
+
+  expected_output = "<value><array><data><value><int>1</int></value>\
+<value><string>a</string></value><value><boolean>1</boolean></value>\
+</data></array></value>"
+  actual_output = _xmlrpc_common_value2xml(list((1, 'a', True)))
+  assert(expected_output == actual_output)
+  actual_output = _xmlrpc_common_value2xml((1, 'a', True))
+  assert(expected_output == actual_output)
+
+  expected_output = "<value><array><data><value><string>a</string>\
+</value><value><int>1</int></value></data></array></value>"
+  actual_output = _xmlrpc_common_value2xml(set((1, 'a', True)))
+  assert(expected_output == actual_output)
+  actual_output = _xmlrpc_common_value2xml(frozenset((1, 'a', True)))
+  assert(expected_output == actual_output)
+
+  expected_output = "<value><array><data><value><int>0</int></value>\
+<value><int>1</int></value><value><int>2</int></value></data></array>\
+</value>"
+  actual_output = _xmlrpc_common_value2xml(range(3))
+  assert(expected_output == actual_output)
+  actual_output = _xmlrpc_common_value2xml(xrange(3))
+  assert(expected_output == actual_output)
+
+  expected_output = "<value><array><data></data></array></value>"
+  actual_output = _xmlrpc_common_value2xml([])
+  assert(expected_output == actual_output)
+
+  value = xmlrpc_common_Binary("Hello World")
+  expected_output = "<value><base64>SGVsbG8gV29ybGQ=</base64></value>"
+  actual_output = _xmlrpc_common_value2xml(value)
+  assert(expected_output == actual_output)
+
+  error_raised = False
+  try:
+    _xmlrpc_common_value2xml(complex(1, 1))
+  except ValueError, inst:
+    error_raised = True
+  assert(error_raised)
+
+  error_raised = False
+  try:
+    _xmlrpc_common_value2xml(ValueError())
+  except ValueError:
+    error_raised = True
+  assert(error_raised)
+
+  # Test _xmlrpc_common_params2xml for correctness.
+
+  expected_output = "<params><param><value><int>1</int></value></param>\
+<param><value><string>a</string></value></param><param><value><boolean>\
+1</boolean></value></param></params>"
+  actual_output = _xmlrpc_common_params2xml((1, 'a', True))
+  assert(expected_output == actual_output)
+
+  # Test xmlrpc_common_call2xml for correctness.
+
+  expected_output = '<?xml version="1.0"?><methodCall><methodName>foo\
+</methodName></methodCall>'
+  actual_output = xmlrpc_common_call2xml("foo", ())
+  assert(expected_output == actual_output)
+
+  expected_output = '<?xml version="1.0"?><methodCall><methodName>foo\
+</methodName><params><param><value><int>1</int></value></param><param>\
+<value><string>a</string></value></param><param><value><boolean>1\
+</boolean></value></param></params></methodCall>'
+  actual_output = xmlrpc_common_call2xml("foo", (1, 'a', True))
+  assert(expected_output == actual_output)
+
+  expected_output = '<?xml version="1.0"?><methodResponse><params>\
+<param><value><boolean>1</boolean></value></param></params>\
+</methodResponse>'
+  actual_output = xmlrpc_common_response2xml(True)
+  assert(expected_output == actual_output)
+
+  # Test xmlrpc_common_fault2xml for correctness.
+
+  expected_output = '<?xml version="1.0"?><methodResponse><fault>\
+<value><struct><member><name>faultCode</name><value><int>-1</int>\
+</value></member><member><name>faultString</name><value><string>foo \
+fault</string></value></member></struct></value></fault>\
+</methodResponse>'
+  actual_output = xmlrpc_common_fault2xml("foo fault", -1)
+  assert(expected_output == actual_output)
+
+  # Test xmlrpc_common_call2python for correctness.
+
+  test_input = """<?xml version="1.0"?>
+    <methodCall>
+      <methodName>examples.getStateName</methodName>
+      <params>
+        <param>
+            <value><i4>40</i4></value>
+        </param>
+      </params>
+    </methodCall>"""
+  expected_output = ('examples.getStateName', [40])
+  actual_output = xmlrpc_common_call2python(test_input)
+  assert(expected_output == actual_output)
+
+  test_input = """<?xml version="1.0"?>
+    <methodCall>
+      <methodName>examples.getStateName</methodName>
+      <params>
+        <param>
+            <value><base64>SGVsbG8gV29ybGQ=</base64></value>
+        </param>
+      </params>
+    </methodCall>"""
+  value = xmlrpc_common_Binary("Hello World")
+  expected_output = ('examples.getStateName', [value])
+  actual_output = xmlrpc_common_call2python(test_input)
+  assert(expected_output[0] == actual_output[0])
+  assert(expected_output[1][0].data == actual_output[1][0].data)
+
+  test_input = """<?xml version="1.0"?>
+    <methodCall>
+      <methodName>noArgsFunc</methodName>
+    </methodCall>"""
+  expected_output = ('noArgsFunc', ())
+  actual_output = xmlrpc_common_call2python(test_input)
+  assert(expected_output == actual_output)
+
+  test_input = """<?xml version="1.0"?>
+    <methodCall>
+      <methodName>examples.getStateName</methodName>
+      <params>
+      </params>
+    </methodCall>"""
+  error_raised = False
+  try:
+    xmlrpc_common_call2python(test_input)
+  except xmlrpc_common_XMLParseError:
+    error_raised = True
+  assert(error_raised)
+
+  test_input = """<?xml version="1.0"?>
+    <call>
+      <methodName>examples.getStateName</methodName>
+      <params>
+        <param>
+            <value><i4>40</i4></value>
+        </param>
+      </params>
+    </call>"""
+  error_raised = False
+  try:
+    xmlrpc_common_call2python(test_input)
+  except xmlrpc_common_XMLParseError:
+    error_raised = True
+  assert(error_raised)
+
+  # Test xmlrpc_common_response2python for correctness.
+
+  test_input = """<?xml version="1.0"?>
+    <methodResponse>
+      <params>
+        <param>
+          <value><string>foo bar</string></value>
+        </param>
+      </params>
+    </methodResponse>"""
+  expected_output = "foo bar"
+  actual_output = xmlrpc_common_response2python(test_input)
+  assert(expected_output == actual_output)
+
+  test_input = """<?xml version="1.0"?>
+    <methodResponse>
+      <fault>
+        <value>
+          <struct>
+            <member>
+              <name>faultCode</name>
+              <value>
+                <int>-1</int>
+              </value>
+            </member>
+            <member>
+              <name>faultString</name>
+              <value>
+                <string>foo fault</string>
+              </value>
+            </member>
+          </struct>
+        </value>
+      </fault>
+    </methodResponse>"""
+  expected_output_faultString = "foo fault"
+  expected_output_faultCode = -1
+  actual_output = xmlrpc_common_response2python(test_input)
+  assert(expected_output_faultString == actual_output.message)
+  assert(expected_output_faultCode == actual_output.code)
+
+
+  test_input = """<?xml version="1.0"?>
+    <methodResponse>
+      <params>
+        <param>
+        </param>
+      </params>
+    </methodResponse>"""
+  error_raised = False
+  try:
+    xmlrpc_common_response2python(test_input)
+  except xmlrpc_common_XMLParseError:
+    error_raised = True
+  assert(error_raised)
+
+  test_input = """<?xml version="1.0"?>
+    <response>
+      <params>
+        <param>
+          <value><string>foo bar</string></value>
+        </param>
+      </params>
+    </response>"""
+  error_raised = False
+  try:
+    xmlrpc_common_response2python(test_input)
+  except xmlrpc_common_XMLParseError:
+    error_raised = True
+  assert(error_raised)
+
+  test_input = """<?xml version="1.0"?>
+    <methodResponse>
+      <fault>
+        <value>
+          <struct>
+            <member>
+              <name>faultString</name>
+              <value>
+                <string>foo fault</string>
+              </value>
+            </member>
+          </struct>
+        </value>
+      </fault>
+    </methodResponse>"""
+  try:
+    xmlrpc_common_response2python(test_input)
+  except xmlrpc_common_XMLParseError:
+    error_raised = True
+  assert(error_raised)
+
+  test_input = """<?xml version="1.0"?>
+    <methodResponse>
+      <fault>
+      </fault>
+    </methodResponse>"""
+  try:
+    xmlrpc_common_response2python(test_input)
+  except xmlrpc_common_XMLParseError:
+    error_raised = True
+  assert(error_raised)
+
+  # Test to make sure xmlrpc handles functions of zero parameters.
+
+  def a():
+    return 5
+
+  server = xmlrpc_server_SimpleXMLRPCServer(("localhost", 12345))
+  server.register_function(a)
+  server.serve_nonblocking()
+  sleep(0.2)
+  client = xmlrpc_client_Client("http://localhost:12345")
+  client.send_request("a", ())
+  sleep(0.2)
+  server.shutdown()
+
+  print "All tests passed"

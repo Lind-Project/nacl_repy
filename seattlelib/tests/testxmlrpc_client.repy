@@ -1,0 +1,78 @@
+"""
+<Program Name>
+  testxmlrpc_client.py
+
+<Started>
+  May 3, 2009
+
+<Author>
+  Michael Phan-Ba
+
+<Purpose>
+  Runs unit tests on xmlrpc_client.repy.
+
+  To run these tests, start the test XML-RPC server:
+  python tests/xmlrpc_client/testserver.py
+
+"""
+
+
+include xmlrpc_client.repy
+
+
+if callfunc == 'initialize':
+
+  client = xmlrpc_client_Client("http://localhost:8000/")
+
+  # Test the client for functionality with scalars.
+
+  expected_result = 1
+  actual_result = client.send_request("echo", (expected_result,))
+  assert(expected_result == actual_result)
+
+  expected_result = False
+  actual_result = client.send_request("echo", (expected_result,))
+  assert(expected_result == actual_result)
+
+  # Test the client for functionality with lists and dictionaries.
+
+  expected_result = [1, 2, 3]
+  actual_result = client.send_request("echo", (expected_result,))
+  assert(expected_result == actual_result)
+
+  expected_result = [1, 2, 3, [1, 2, 3]]
+  actual_result = client.send_request("echo", (expected_result,))
+  assert(expected_result == actual_result)
+
+  expected_result = {"A": "foo", "B": "bar", "C": "baz"}
+  actual_result = client.send_request("echo", (expected_result,))
+  assert(expected_result == actual_result)
+
+  expected_result = {"A": "foo", "B": "bar", "C": "baz",
+    "D": {"A": "foo", "B": "bar", "C": "baz"}}
+  actual_result = client.send_request("echo", (expected_result,))
+  assert(expected_result == actual_result)
+
+  expected_result = "Hello World!"
+  actual_result = client.send_request("hello_world", None)
+  assert(expected_result == actual_result)
+
+  # Test for proper errors.
+
+  # No such method.
+  error_raised = False
+  try:
+    client.send_request("foobar", (1,))
+  except xmlrpc_common_Fault:
+    error_raised = True
+  assert(error_raised)
+
+  # Not enough arguments.
+  error_raised = False
+  try:
+    client.send_request("echo", ())
+  except xmlrpc_common_Fault, inst:
+    error_raised = True
+  assert(error_raised)
+
+  print "All tests passed"

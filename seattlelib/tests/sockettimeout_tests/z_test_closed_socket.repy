@@ -1,0 +1,51 @@
+"""
+<Description>
+  This tests that timeout sockets behave the same way as regular sockets
+  when trying to call methods belonging to already-closed sockets.
+"""
+
+# hello world
+include sockettimeout.repy
+
+
+def mycallback(ip, port, sockobj, commhandle, listenhandle):
+  sockobj.close()
+  
+  try:
+    sockobj.recv(100)
+  except Exception, e:
+    if "Socket closed" not in str(e):
+      raise
+  
+  try:
+    sockobj.send("abc")
+  except Exception, e:
+    if "Socket closed" not in str(e):
+      raise
+  
+  try:
+    sockobj.close()
+  except Exception, e:
+    if "Socket closed" not in str(e):
+      raise
+  
+  
+def server():
+  commhandle = timeout_waitforconn(getmyip(), 12345, mycallback)
+
+
+def client():
+  sockobj = timeout_openconn(getmyip(), 12345)
+  sleep(2)
+  # The client never sends anything.
+
+
+def main():
+  server()
+  client()
+  sleep(.1)
+  exitall()
+
+
+if callfunc == 'initialize':
+  main()

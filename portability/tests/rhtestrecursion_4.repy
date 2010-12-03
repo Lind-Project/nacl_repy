@@ -1,0 +1,10 @@
+#including yourself is a rather contrived test case, but lets do it anyway
+
+include rhtestrecursion_4.repy
+
+def four():
+  print "four says hi"
+
+def four_two(a, b):
+  return a ** b
+ 
