@@ -1,0 +1,22 @@
+#Chris Matthews cmatthew@cs.uvic.ca
+
+print "Building RePyC - Chris Matthes <cmatthew@cs.uvic.ca>"
+
+env = Environment()
+env.Append(CCFLAGS='-Wall')
+env.Append(CPPPATH = ['/usr/include/python2.6'])
+env.Append(LIBS_PATH = ['/usr/lib/python2.6'])
+env.Append(CPPPATH = ['#src'])
+
+
+conf = Configure(env)
+#if not conf.CheckLibWithHeader('python2.6', 'Python.h', 'c'):
+#        print 'Did not find python-dev, exiting!'
+#      	Exit(1)
+env = conf.Finish()
+Export('env')
+
+libs = SConscript('src/SConscript', variant_dir='lib')
+
+program = SConscript('tests/SConscript', variant_dir='bin/tests', exports='libs')
+
