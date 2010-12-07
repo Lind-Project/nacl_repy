@@ -179,6 +179,8 @@ def main():
     # The web server is used in the software updater tests
     #copy_to_target("assignments/webserver/*", target_dir)
     #copy_to_target("softwareupdater/test/*", target_dir)
+    copy_to_target("repy/tests_naclrepy/*", target_dir)
+    
 
   #set working directory to the test folder
   os.chdir(target_dir)
