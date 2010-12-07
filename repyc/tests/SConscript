@@ -2,6 +2,8 @@
 
 Import('env','libs')
 
-prog = env.Program('test', ['test.c','#src/repy.h'], LIBS=libs + ['python2.6'],  CFLAGS='-g')
+prog = env.Program('test', ['test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python2.6'],  CFLAGS='-g')
+
+env.Program('hello', ['hello.c','#src/repy.h'], LIBS=libs + ['python2.6'],  CFLAGS='-g')
 
 Return('prog')
