@@ -1,81 +1,43 @@
 Future API:
 https://seattle.cs.washington.edu/wiki/FutureRepyAPI
 
-gethostbyname(name)
-getmyip()
 sendmessage(destip, destport, message, localip, localport)
 listenformessage(localip, localport)
-openconnection(destip, destport, localip, localport, timeout)
 listenforconnection(localip, localport)
-openfile(filename, create)
-file.close()
-file.readat(sizelimit, offset)
-file.writeat(data, offset)
-listfiles()
-removefile(filename)
-exitall()
-createlock()
-lock.acquire(blocking)
-lock.release()
-getruntime()
-randombytes()
-createthread(function)
-sleep(seconds)
-socket.close()
-socket.recv(numbytes)
-socket.send(message)
+virtualnamespace.evaluate(context)
 tcpserversocket.getconnection()
 tcpserversocket.close()
 udpserversocket.getmessage()
 udpserversocket.close()
-getthreadname()
 createvirtualnamespace(code, name)
-virtualnamespace.evaluate(context)
 getresources()
 getlasterror()
+createthread(function)
+getthreadname()
 
-
-
-To Finish:
-
-recvmess(localip, localport, function)
-sendmess(desthost, destport, message, localip=None, localport=None)
-openconn(desthost, destport, localip=None, localport=0, timeout = 5)
-waitforconn(localip, localport, function)
-stopcomm(commhandle)
-
-
-settimer(waittime, function, args)
-canceltimer(timerhandle)
 socket.close()
-socket.recv(bytes)
+socket.recv(numbytes)
 socket.send(message)
+openconnection(destip, destport, localip, localport, timeout)
+
 
 
 Done:
-
-gethostbyname_ex(name)
+listfiles()
+gethostbyname(name)
 getmyip()
-lock.acquire(blocking=1)
-lock.release()
+randombytes()
 getruntime()
-randomfloat()
-getlock()
+createlock()
 sleep(seconds)
-listdir()
-open(filename, mode='r')
+lock.acquire(blocking)
+lock.release()
+openfile(filename, create)
 file.close()
-file.flush()
-file.next()
-file.read(size)
-file.readline(size)
-file.readlines(size)
-file.seek(offset, whence=0)
-file.write(data)
-file.writelines(lines)
 exitall()
 removefile(filename)
-
+file.readat(sizelimit, offset)
+file.writeat(data, offset)
 
 
 Notes:

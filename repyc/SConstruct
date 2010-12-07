@@ -16,7 +16,7 @@ conf = Configure(env)
 env = conf.Finish()
 Export('env')
 
-libs = SConscript('src/SConscript', variant_dir='lib')
+libs = SConscript('src/SConscript', variant_dir='bin/lib')
 
 program = SConscript('tests/SConscript', variant_dir='bin/tests', exports='libs')
 

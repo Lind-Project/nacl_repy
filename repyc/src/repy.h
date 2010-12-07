@@ -61,7 +61,7 @@ double * getruntime();
 /** Returns a random floating point number between 0.0 (inclusive)
  * and 1.0 (exclusive).
  */
-double * randomfloat();
+void * repy_randombytes();
 
 
 /** Sleeps the current thread for some time (waits for a specific time before
@@ -82,7 +82,7 @@ typedef struct repy_lock_s {
 /** Returns a lock object that can be used for mutual exclusion and critical
  * section protection.
  */
-repy_lock* repy_getlock();
+repy_lock* repy_createlock();
 
 
 /** Blocks until the lock is available, then takes it (lock is an object
@@ -106,7 +106,7 @@ void repy_lock_release(repy_lock*);
 
 void free_repy_lock(repy_lock *);
 
-char ** listdir(int* num_entries);
+char ** repy_listfiles(int* num_entries);
 
 
 
@@ -115,7 +115,7 @@ typedef struct repy_file_s {
 } repy_file;
 
 
-repy_file * repy_open(char * filename, char * mode);
+repy_file * repy_openfile(char * filename, int mode);
 
 void repy_close(repy_file *);
 
@@ -123,17 +123,9 @@ void repy_flush(repy_file *);
 
 void repy_next(repy_file *);
 
-int repy_read(char * loc, int size, repy_file *);
+char * repy_readat(int size, int offset ,repy_file *);
 
-int repy_readline(char * location, int size, repy_file *);
-
-void repy_readlines(repy_file *, int size);
-
-void repy_seek(repy_file *, int offset, int whence);
-
-void repy_write(repy_file *, char * data);
-
-void repy_writelines(repy_file *, char ** lines);
+void repy_writeat(char * data, int size, repy_file *);
 
 void repy_exitall();
 

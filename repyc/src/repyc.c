@@ -5,6 +5,8 @@
 #include <repy.h>
 #include <linux/limits.h>
 #include <assert.h>
+
+#include "util.h"
 /** We only need to init python once, use this as a gaurd.  */
 int is_init = 0;
 
@@ -16,25 +18,23 @@ const char * repy_fn = "repyc.py";
 /** Contains the bound objects which constitiue the RePy API. */
 static PyObject *client_dict = NULL;
 static PyObject * global_dict_b = NULL;
-/** Destry a reference to a python object which we OWN. */
-#define REF_WIPE(name) Py_XDECREF(name); name = NULL
 
 #define REPYC_API_GETMYIP "getmyip"
 #define REPYC_API_GETHOSTBYNAME "gethostbyname"
 #define REPYC_API_GETRUNTIME "getruntime"
-#define REPYC_API_GETRANDOMFLOAT "randomfloat"
+#define REPYC_API_GETRANDOMBYTES "randombytes"
 #define REPYC_API_SLEEP "sleep"
-#define REPYC_API_GETLOCK "getlock"
+#define REPYC_API_GETLOCK "createlock"
 #define REPYC_API_LOCK_ACQUIRE "acquire"
 #define REPYC_API_LOCK_RELEASE "release"
-#define REPYC_API_LISTDIR "listdir"
-#define REPYC_API_OPEN "open"
+#define REPYC_API_LISTDIR "listfiles"
+#define REPYC_API_OPEN "openfile"
 #define REPYC_API_CLOSE "close"
 #define REPYC_API_FLUSH "flush"
-#define REPYC_API_WRITE "write"
+#define REPYC_API_WRITEAT "writeat"
 #define REPYC_API_WRITELINES "writelines"
 #define REPYC_API_SEEK "seek"
-#define REPYC_API_READ "read"
+#define REPYC_API_READ "readat"
 #define REPYC_API_READLINE "readline"
 #define REPYC_API_EXITALL "exitall"
 #define REPYC_API_REMOVEFILE "removefile"
@@ -62,18 +62,14 @@ char * getmyip() {
 	return temp;
 }
 
-#define MARK(X) 	printf(X);fflush(stdout);
-
 char * repy_gethostbyname(char * name) {
 	PyObject * instnace, * rc, * param;
 	CHECK_LIB_STATUS();
 	if( name == NULL) {
 		return NULL;
 	}
-	MARK("1");
 	param = Py_BuildValue("(s)", name);
 	instnace = PyDict_GetItemString(client_dict, REPYC_API_GETHOSTBYNAME);
-	MARK("2");
 	rc = PyObject_CallObject(instnace, param);
 	REF_WIPE(param);
 	if (rc == NULL) {
@@ -81,7 +77,6 @@ char * repy_gethostbyname(char * name) {
 		return NULL;
 	}
 
-	MARK("3");
 	char * new_string = strdup(PyString_AsString(rc));
 	REF_WIPE(rc);
 	return new_string;
@@ -106,21 +101,22 @@ double * getruntime() {
 	return time;
 }
 
-double * randomfloat() {
+void * repy_randombytes() {
 	CHECK_LIB_STATUS();
-	double * rfloat = NULL;
+	void * rbytes = NULL;
 	PyObject* instance, * rc;
-	instance = PyDict_GetItemString(client_dict, REPYC_API_GETRANDOMFLOAT);
+	instance = PyDict_GetItemString(client_dict, REPYC_API_GETRANDOMBYTES);
 	rc = PyObject_CallObject(instance, NULL);
 	if (rc == NULL) {
 		PyErr_Print();
 		return NULL;
 	}
-	rfloat = (double*) malloc(sizeof(double));
-	*rfloat = PyFloat_AS_DOUBLE(rc);
+	rbytes = malloc(1024);
+	memcpy(rbytes, PyString_AsString(rc), 1024);
+
 	REF_WIPE(rc);
 
-	return rfloat;
+	return rbytes;
 }
 
 void repy_sleep(double seconds) {
@@ -135,7 +131,7 @@ void repy_sleep(double seconds) {
 
 
 
-repy_lock * repy_getlock() {
+repy_lock * repy_createlock() {
 	CHECK_LIB_STATUS();
 	repy_lock * l = NULL;
 	PyObject* instance, * rc;
@@ -213,7 +209,7 @@ void repy_lock_release(repy_lock* l) {
 
 
 
-char** listdir(int* num_entries) {
+char** repy_listfiles(int* num_entries) {
 
 	PyObject * instnace, * rc;
 	CHECK_LIB_STATUS();
@@ -242,20 +238,19 @@ char** listdir(int* num_entries) {
 }
 
 
-repy_file * repy_open(char * filename, char * mode)  {
+repy_file * repy_openfile(char * filename, int create)  {
 	CHECK_LIB_STATUS();
-	if (filename == NULL || mode == NULL) {
+	if (filename == NULL) {
 		return NULL;
 	}
 	repy_file * fp = NULL;
-
-	PyObject* instance, * params, *rc = NULL, *dict;
+	PyObject* instance, * params, *rc = NULL;
 	instance = PyDict_GetItemString(client_dict, REPYC_API_OPEN);
-	params = Py_BuildValue("(s)", filename);
-	dict = Py_BuildValue("{s:s}", "mode", mode);
-	rc = PyObject_Call(instance, params, dict);
+	PyObject * bool = (create)?Py_True:Py_False;
+	params = Py_BuildValue("(sO)", filename, bool);
+	rc = PyObject_Call(instance, params, NULL);
 	REF_WIPE(params);
-	REF_WIPE(dict);
+
 	if (rc == NULL) {
 		PyErr_Print();
 		return NULL;
@@ -321,99 +316,92 @@ void repy_next(repy_file * fp)  {
 }
 
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
-#define PRINT_TYPE(X) PyObject_Print(PyObject_Type(X),stdout,0)
 
-int repy_read(char * location, int size_to_read, repy_file * fp)  {
+
+char * repy_readat( int size_to_read, int offset, repy_file * fp)  {
 	CHECK_LIB_STATUS();
-
 	if (fp == NULL || fp->repy_python_file == NULL) {
-		return -1;
+		return NULL;
 	}
 
 	PyObject *rc = NULL;
-
-	rc = PyObject_CallMethod(fp->repy_python_file,REPYC_API_READ,"i",size_to_read);
-
+	rc = PyObject_CallMethod(fp->repy_python_file,REPYC_API_READ,"ii", size_to_read, offset);
 	if (rc == NULL) {
 		PyErr_Print();
-		return -1;
+		return NULL;
 	}
 	char * python_string = PyString_AsString(rc);
-	int py_s_size = PyString_Size(rc);
-	int min = MIN(size_to_read,py_s_size);
-	memcpy(location, python_string, min );
-
+	python_string = strdup(python_string);
 	REF_WIPE(rc);
-
-	return min;
+	return python_string;
 }
 
 
-int repy_readline(char * location, int size_to_read, repy_file * fp)  {
-	CHECK_LIB_STATUS();
-
-	if (fp == NULL || fp->repy_python_file == NULL) {
-		return -1;
-	}
-
-	PyObject *rc = NULL;
-
-	rc = PyObject_CallMethod(fp->repy_python_file,REPYC_API_READLINE,"i",size_to_read);
-
-	if (rc == NULL) {
-		PyErr_Print();
-		return -1;
-	}
-	char * python_string = PyString_AsString(rc);
-	int py_s_size = PyString_Size(rc);
-	int min = MIN(size_to_read,py_s_size);
-	memcpy(location, python_string, min );
-
-	REF_WIPE(rc);
-
-	return min;
-
-}
-
-
-
-void repy_readlines(repy_file * fp, int size)  {
-	CHECK_LIB_STATUS();
-	assert(1);
-}
+//int repy_readline(char * location, int size_to_read, repy_file * fp)  {
+//	CHECK_LIB_STATUS();
+//
+//	if (fp == NULL || fp->repy_python_file == NULL) {
+//		return -1;
+//	}
+//
+//	PyObject *rc = NULL;
+//
+//	rc = PyObject_CallMethod(fp->repy_python_file,REPYC_API_READLINE,"i",size_to_read);
+//
+//	if (rc == NULL) {
+//		PyErr_Print();
+//		return -1;
+//	}
+//	char * python_string = PyString_AsString(rc);
+//	int py_s_size = PyString_Size(rc);
+//	int min = MIN(size_to_read,py_s_size);
+//	memcpy(location, python_string, min );
+//
+//	REF_WIPE(rc);
+//
+//	return min;
+//
+//}
 
 
 
-void repy_seek(repy_file * fp, int offset, int whence)  {
-	CHECK_LIB_STATUS();
-	if (fp == NULL || fp->repy_python_file == NULL || offset > -1 || whence > -1) {
-		return;
-	}
+//void repy_readlines(repy_file * fp, int size)  {
+//	CHECK_LIB_STATUS();
+//	assert(1);
+//}
+//
+//
+//
+//void repy_seek(repy_file * fp, int offset, int whence)  {
+//	CHECK_LIB_STATUS();
+//	if (fp == NULL || fp->repy_python_file == NULL || offset > -1 || whence > -1) {
+//		return;
+//	}
+//
+//	PyObject * rc = NULL;
+//	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_SEEK, "(dd)", offset, whence);
+//	if (rc == NULL) {
+//		PyErr_Print();
+//		return;
+//	}
+//
+//	REF_WIPE(rc);
+//
+//	return;
+//
+//
+//}
 
-	PyObject * rc = NULL;
-	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_SEEK, "(dd)", offset, whence);
-	if (rc == NULL) {
-		PyErr_Print();
-		return;
-	}
-
-	REF_WIPE(rc);
-
-	return;
 
 
-}
-
-
-
-void repy_write(repy_file * fp, char * data)  {
+void repy_writeat(char * data, int offset, repy_file * fp)  {
 	CHECK_LIB_STATUS();
 	if (fp == NULL || fp->repy_python_file == NULL || data == NULL) {
 		return;
 	}
 
 	PyObject * rc = NULL;
-	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_WRITE, "(s)", data);
+	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_WRITEAT, "(si)", data, offset);
 	if (rc == NULL) {
 		PyErr_Print();
 		return;
@@ -485,9 +473,10 @@ void repy_exitall() {
 
 
 void repy_removefile(char * filename) {
-	PyObject * instnace, * rc;
+	PyObject * instnace = NULL, * rc = NULL;
 	CHECK_LIB_STATUS();
-
+	if (filename == NULL)
+		return;
 	instnace = PyDict_GetItemString(client_dict, REPYC_API_REMOVEFILE);
 	PyObject * params = Py_BuildValue("(s)", filename);
 	rc = PyObject_CallObject(instnace, params);
@@ -533,21 +522,19 @@ int repy_init() {
 	exp_file = fopen(repy_fn, "r");
 	PyRun_SimpleFile(exp_file, repy_fn);
 	fclose(exp_file);
+
 	// Get a reference to the main module
 	// and global dictionary
 	main_module_b = PyImport_AddModule("__main__");
-
 	global_dict_b = PyModule_GetDict(main_module_b);
-
 	repy_init_b = PyDict_GetItemString(global_dict_b, "repyc_init_helper");
-
 	pid_t mypid = getpid();
 	rc = PyObject_CallObject(repy_init_b, NULL);
-	pid_t new_pid = getpid();
+
 	//when repy exits the monitor process returns here too, we have to
 	//terminate the extra control flow.
+	pid_t new_pid = getpid();
 	if (mypid == new_pid) {
-
 		exit(0);
 	}
 

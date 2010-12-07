@@ -1,6 +1,6 @@
 
 Import('env')
 
-libs = env.StaticLibrary('repyc',['repyc.c','repy.h'], LIBS='python2.6', CFLAGS='-g')
+libs = env.StaticLibrary('repyc',['repyc.c','repy.h','util.h'], LIBS='python2.6', CFLAGS='-g')
 
 Return('libs')
