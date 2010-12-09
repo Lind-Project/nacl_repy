@@ -211,13 +211,10 @@ def repyc_shutdown():
   harshexit.harshexit(0)
 
 def repyc_init_helper():
-  print "Starting RePyC With Helper..."
+  print "Starting RePyC With Helper...",
   repy_path = os.environ['REPY_PATH']
   return repyc_init(['%s/repyc.py'%(repy_path),
-                     '%s/restrictions.default'%(repy_path)])
-                                                
-
-
+                     '%s/restrict.txt'%(repy_path)])
 
 
 def repyc_init(argv):
