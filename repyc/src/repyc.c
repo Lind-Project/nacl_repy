@@ -159,7 +159,8 @@ repy_lock * repy_createlock() {
 
 void free_repy_lock(repy_lock * l) {
 	CHECK_LIB_STATUS();
-	REF_WIPE(l->python_lock);
+	PyObject * lock = (PyObject*)l->python_lock;
+	REF_WIPE(lock);
 	free(l);
 }
 
@@ -289,7 +290,8 @@ void repy_close(repy_file * fp)  {
 
 	REF_WIPE(params);
 	REF_WIPE(rc);
-	REF_WIPE(fp->repy_python_file);
+	PyObject * lock = (PyObject *) fp->repy_python_file;
+	REF_WIPE(lock);
 	free(fp);
 	return;
 
@@ -553,7 +555,8 @@ void repy_closesocket(repy_socket * tofree) {
 		return;
 	}
 	REF_WIPE(rc);
-	REF_WIPE(tofree->repy_python_socket);
+	PyObject * socket = (PyObject*) tofree->repy_python_socket;
+	REF_WIPE(socket);
 	free(tofree);
 }
 
@@ -568,7 +571,8 @@ void repy_closesocketserver(repy_tcpserversocket * tofree) {
 		return;
 	}
 	REF_WIPE(rc);
-	REF_WIPE(tofree->repy_python_socket);
+	PyObject * socket = (PyObject*) tofree->repy_python_socket;
+	REF_WIPE(socket);
 	free(tofree);
 }
 
@@ -653,7 +657,8 @@ void repy_close_udpserver(repy_udpserver * server) {
 		return;
 	}
 	REF_WIPE(rc);
-	REF_WIPE(server->repy_python_udpserver);
+	PyObject * towipe = (PyObject*) server->repy_python_udpserver;
+	REF_WIPE(towipe);
 	free(server);
 }
 
