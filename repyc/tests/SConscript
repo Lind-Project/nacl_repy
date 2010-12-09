@@ -1,9 +1,10 @@
 #Build the main Test
 
 Import('env','libs')
+import sys
+version = sys.version[:3]
+prog = env.Program('test', ['test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python'+version],  CFLAGS='-g')
 
-prog = env.Program('test', ['test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python2.6'],  CFLAGS='-g')
-
-env.Program('hello', ['hello.c','#src/repy.h'], LIBS=libs + ['python2.6'],  CFLAGS='-g')
+env.Program('hello', ['hello.c','#src/repy.h'], LIBS=libs + ['python'+version],  CFLAGS='-g')
 
 Return('prog')
