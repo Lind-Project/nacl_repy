@@ -38,6 +38,14 @@ static PyObject * global_dict_b = NULL;
 #define REPYC_API_READLINE "readline"
 #define REPYC_API_EXITALL "exitall"
 #define REPYC_API_REMOVEFILE "removefile"
+#define REPYC_API_OPENCON "openconnection"
+#define REPYC_API_OPENTCP "listenforconnection"
+#define REPYC_API_SOCKETSEND "send"
+#define REPYC_API_SOCKETRECV  "recv"
+#define REPYC_API_SENDMESSAGE "sendmessage"
+#define REPYC_API_OPENUDP "listenformessage"
+#define REPYC_API_UDPGETMESSAGE "getmessage"
+
 
 void static inline CHECK_LIB_STATUS() {
 	if (client_dict == NULL || is_init == 0) {
@@ -48,7 +56,7 @@ void static inline CHECK_LIB_STATUS() {
 }
 
 
-char * getmyip() {
+char * repy_getmyip() {
 	PyObject * instnace, * rc;
 	CHECK_LIB_STATUS();
 	instnace = PyDict_GetItemString(client_dict, REPYC_API_GETMYIP);
@@ -57,7 +65,7 @@ char * getmyip() {
 		PyErr_Print();
 		return NULL;
 	}
-	char* temp = PyString_AsString(rc);
+	char* temp = strdup(PyString_AsString(rc));
 	REF_WIPE(rc);
 	return temp;
 }
@@ -84,7 +92,7 @@ char * repy_gethostbyname(char * name) {
 }
 
 
-double * getruntime() {
+double * repy_getruntime() {
 	CHECK_LIB_STATUS();
 	double * time = NULL;
 	PyObject* instance, * rc;
@@ -281,7 +289,8 @@ void repy_close(repy_file * fp)  {
 
 	REF_WIPE(params);
 	REF_WIPE(rc);
-
+	REF_WIPE(fp->repy_python_file);
+	free(fp);
 	return;
 
 }
@@ -488,6 +497,206 @@ void repy_removefile(char * filename) {
 }
 
 
+repy_socket * repy_openconnection(char * destip, int destport, char * localip, int localport, double timeout) {
+	CHECK_LIB_STATUS();
+	if (destip == NULL || localip == NULL || destport < 0 || localport < 0 || timeout < 0) {
+		return NULL;
+	}
+	PyObject* instance, * params, *rc = NULL;
+		instance = PyDict_GetItemString(client_dict, REPYC_API_OPENCON);
+
+	params = Py_BuildValue("(sisid)", destip, destport, localip, localport, timeout);
+	rc = PyObject_Call(instance, params, NULL );
+	if (rc == NULL) {
+		PyErr_Print();
+		return NULL;
+	}
+	repy_socket * sp = malloc(sizeof(struct repy_socket_s));
+	sp->repy_python_socket = rc;
+	return sp;
+
+
+
+}
+
+
+repy_tcpserversocket * repy_listenforconnection(char * localip, int localport) {
+	CHECK_LIB_STATUS();
+	if (localip == NULL || localport < 0) {
+		return NULL;
+	}
+	PyObject* instance, * params, *rc = NULL;
+		instance = PyDict_GetItemString(client_dict, REPYC_API_OPENTCP);
+
+	params = Py_BuildValue("(si)", localip, localport);
+	rc = PyObject_Call(instance, params, NULL );
+	if (rc == NULL) {
+		PyErr_Print();
+		return NULL;
+	}
+	repy_tcpserversocket * sp = malloc(sizeof(struct repy_tcpserversocket_s));
+	sp->repy_python_socket = rc;
+	return sp;
+
+
+
+}
+
+
+void repy_closesocket(repy_socket * tofree) {
+	PyObject * rc = NULL;
+	if (tofree == NULL || tofree->repy_python_socket == NULL)
+		return;
+	rc = PyObject_CallMethod(tofree->repy_python_socket, REPYC_API_CLOSE, NULL);
+	if (rc == NULL) {
+		PyErr_Print();
+		return;
+	}
+	REF_WIPE(rc);
+	REF_WIPE(tofree->repy_python_socket);
+	free(tofree);
+}
+
+
+void repy_closesocketserver(repy_tcpserversocket * tofree) {
+	PyObject * rc = NULL;
+	if (tofree == NULL || tofree->repy_python_socket == NULL)
+		return;
+	rc = PyObject_CallMethod(tofree->repy_python_socket, REPYC_API_CLOSE, NULL);
+	if (rc == NULL) {
+		PyErr_Print();
+		return;
+	}
+	REF_WIPE(rc);
+	REF_WIPE(tofree->repy_python_socket);
+	free(tofree);
+}
+
+
+long int repy_socket_send(char* message, repy_socket* sp) {
+
+	PyObject * rc = NULL;
+	if (message == NULL || sp == NULL || sp->repy_python_socket == NULL)
+		return -1;
+	rc = PyObject_CallMethod(sp->repy_python_socket, REPYC_API_SOCKETSEND, "s", message);
+	if (rc == NULL) {
+		PyErr_Print();
+		return -1;
+	}
+
+	return PyInt_AsLong(rc);
+
+}
+
+
+repy_socket * repy_tcpserver_getconnection(repy_tcpserversocket * server) {
+	CHECK_LIB_STATUS();
+	if (server == NULL) {
+		return NULL;
+	}
+	PyObject * rc = NULL;
+
+	rc = PyObject_CallMethod(server->repy_python_socket, "getconnection", NULL );
+	if (rc == NULL) {
+		PyErr_Print();
+		return NULL;
+	}
+	repy_socket * sp = malloc(sizeof(struct repy_socket_s));
+	sp->repy_python_socket = PyTuple_GetItem(rc, 2);
+	return sp;
+}
+
+
+char * repy_socket_recv(int size, repy_socket* sp) {
+	CHECK_LIB_STATUS();
+	if (sp == NULL) {
+		return NULL;
+	}
+	PyObject * rc = NULL;
+	rc = PyObject_CallMethod(sp->repy_python_socket,REPYC_API_SOCKETRECV ,"(i)", size, NULL );
+	if (rc == NULL) {
+		PyErr_Print();
+		return NULL;
+	}
+	char * val = strdup(PyString_AsString(rc));
+	REF_WIPE(rc);
+	return val;
+}
+
+
+repy_udpserver * repy_listenformessage(char * localip, int localport) {
+	CHECK_LIB_STATUS();
+	if (localip == NULL || localport < 0) {
+		return NULL;
+	}
+	PyObject* instance, * params, *rc = NULL;
+		instance = PyDict_GetItemString(client_dict, REPYC_API_OPENUDP);
+
+	params = Py_BuildValue("(si)", localip, localport);
+	rc = PyObject_Call(instance, params, NULL );
+	if (rc == NULL) {
+		PyErr_Print();
+		return NULL;
+	}
+	repy_udpserver * sp = malloc(sizeof(struct repy_udpserver_s));
+	sp->repy_python_udpserver = rc;
+	return sp;
+}
+
+void repy_close_udpserver(repy_udpserver * server) {
+	PyObject * rc = NULL;
+	if (server == NULL || server->repy_python_udpserver == NULL)
+		return;
+	rc = PyObject_CallMethod(server->repy_python_udpserver, REPYC_API_CLOSE, NULL);
+	if (rc == NULL) {
+		PyErr_Print();
+		return;
+	}
+	REF_WIPE(rc);
+	REF_WIPE(server->repy_python_udpserver);
+	free(server);
+}
+
+repy_message * repy_udpserver_getmessage(repy_udpserver * server) {
+	PyObject * rc = NULL;
+	if (server == NULL || server->repy_python_udpserver == NULL)
+		return NULL;
+	rc = PyObject_CallMethod(server->repy_python_udpserver, REPYC_API_UDPGETMESSAGE, NULL);
+	if (rc == NULL) {
+		PyErr_Print();
+		return NULL;
+	}
+	repy_message * retval = malloc(sizeof(struct repy_message_s));
+	retval->message = strdup(PyString_AsString(PyTuple_GetItem(rc,2)));
+	retval->ip = strdup(PyString_AsString(PyTuple_GetItem(rc,0)));
+	retval->port = (int) PyInt_AsLong(PyTuple_GetItem(rc,1));
+	REF_WIPE(rc);
+	return retval;
+}
+
+long int repy_sendmessage(char * destip, int destport, char * message, char * localip, int localport ) {
+	CHECK_LIB_STATUS();
+	if (destip == NULL || message == NULL || localip == NULL) {
+		return -1;
+	}
+	PyObject* instance, * params, *rc = NULL;
+	instance = PyDict_GetItemString(client_dict, REPYC_API_SENDMESSAGE);
+	params = Py_BuildValue("(sissi)",
+							destip,
+							destport,
+							message,
+							localip,
+							localport);
+	rc = PyObject_Call(instance, params, NULL);
+	REF_WIPE(params);
+	long int val = PyInt_AsLong(rc);
+	if (val == -1) {
+		PyErr_Print();
+	}
+	REF_WIPE(rc);
+	return val;
+}
+
 static void setup_python_path() {
 
 	PyRun_SimpleString("import sys");
@@ -541,8 +750,7 @@ int repy_init() {
 	if (rc == NULL) {
 		printf("C: Problem calling RePy Init.\n");
 	} else {
-		printf("C: RePy has loaded...\n");
-		PyObject_Print(rc, stdout,0);
+		printf(" RePy has loaded.\n");
 		REF_WIPE(rc);
 	}
 

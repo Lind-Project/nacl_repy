@@ -1,26 +1,18 @@
 Future API:
 https://seattle.cs.washington.edu/wiki/FutureRepyAPI
 
-sendmessage(destip, destport, message, localip, localport)
-listenformessage(localip, localport)
-listenforconnection(localip, localport)
-virtualnamespace.evaluate(context)
-tcpserversocket.getconnection()
-tcpserversocket.close()
-udpserversocket.getmessage()
-udpserversocket.close()
-createvirtualnamespace(code, name)
-getresources()
-getlasterror()
-createthread(function)
+
+
+
+
+INTERESTING: createthread(function)
 getthreadname()
+getresources() - this is a pretty crazy data structure...
 
-socket.close()
-socket.recv(numbytes)
-socket.send(message)
-openconnection(destip, destport, localip, localport, timeout)
-
-
+Skipping:
+getlasterror()
+virtualnamespace.evaluate(context)
+createvirtualnamespace(code, name) -- skip?
 
 Done:
 listfiles()
@@ -38,6 +30,17 @@ exitall()
 removefile(filename)
 file.readat(sizelimit, offset)
 file.writeat(data, offset)
+openconnection(destip, destport, localip, localport, timeout)
+socket.close()
+tcpserversocket.getconnection()
+tcpserversocket.close()
+listenforconnection(localip, localport)
+socket.recv(numbytes)
+socket.send(message)
+sendmessage(destip, destport, message, localip, localport)
+listenformessage(localip, localport)
+udpserversocket.getmessage()
+udpserversocket.close()
 
 
 Notes:
@@ -46,4 +49,4 @@ Notes:
 - We should talk about error handeling.
 - python provides its own mallocs? should we use?
 - file i/o has to be memcpyd to avoid GC
-- readlines is skipped, memory implementation is complex. Who frees?
+

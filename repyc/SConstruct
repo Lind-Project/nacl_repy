@@ -11,7 +11,7 @@ env.Append(CPPPATH = ['#src'])
 
 conf = Configure(env)
 if not conf.CheckLibWithHeader('python2.6', 'Python.h', 'c'):
-        print 'Did not find python2.6-dev: looking for libpython2.6 and Python.h, exiting!'
+        print 'Did not find python2.6-dev: looking for libpython2.6.so and Python.h, exiting!'
       	Exit(1)
 env = conf.Finish()
 

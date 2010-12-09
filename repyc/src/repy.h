@@ -24,12 +24,109 @@ int repy_init();
 int repy_shutdown();
 
 
-///////////////////////////////////////////////////////////////////////////////
+/*----------------System Services----------------*/
+
+
+/** Returns a float containing the number of seconds the program has
+ * been running. Note that in very rare circumstances (like the user
+ * resetting their clock), this will not produce increasing values. */
+double * repy_getruntime();
+
+
+/** Returns a random floating point number between 0.0 (inclusive)
+ * and 1.0 (exclusive).
+ */
+void * repy_randombytes();
+
+
+/*----------------Control Flow----------------*/
+
+
+/** Sleeps the current thread for some time (waits for a specific time before
+ * executing any further instructions). This thread will not consume CPU cycles
+ * during this time. Timing issues that confuse getruntime() may also cause
+ * sleep to behave in undefined ways. */
+void repy_sleep(double);
+
+typedef struct repy_lock_s {
+	void * python_lock;
+} repy_lock;
+
+
+/** Returns a lock object that can be used for mutual exclusion and critical
+ * section protection.
+ */
+repy_lock* repy_createlock();
+
+
+/**  Blocks until the lock is available, then takes it (lock is an object
+ * obtained by calling getlock()).
+ */
+int repy_lock_blocking_acquire(repy_lock*);
+
+
+/**  Blocks until the lock is available, then takes it (lock is an object
+ * obtained by calling getlock()).
+ *
+ * If the lock is already taken, method returns False immediately instead of
+ * waiting to acquire the lock; if the lock is available it takes it and
+ * returns True.
+ */
+int repy_lock_nonblocking_acquire(repy_lock*);
+
+
+/**  Releases the lock. Do not call it if the lock is unlocked. */
+void repy_lock_release(repy_lock*);
+
+/**  Used to release and free a lock. */
+void free_repy_lock(repy_lock *);
+
+/**  Terminates the program immediately. The program will not execute the "exit" callfunc or finally blocks. */
+void repy_exitall();
+
+/*----------------FileSytem----------------*/
+
+/*  Returns a list of file names for the files in the vessel. */
+char ** repy_listfiles(int* num_entries);
+
+typedef struct repy_file_s {
+	void * repy_python_file;
+} repy_file;
+
+
+/**  Open a file, returning an object of the file type.
+ *
+ * FILENAMEs may only be in the current directory and may only contain lowercase letters,
+ * numbers, the hyphen, underscore, and period characters. Also, filenames cannot be '.',
+ * '..', the blank string or start with a period. There is no concept of a directory or a
+ * folder in repy. Filenames must be no more than 120 characters long.
+ *
+ * Every file object is capable of both reading and writing.
+ *
+ * If CREATE is 1, the file is created if it does not exist. Neither mode truncates the file on open. */
+repy_file * repy_openfile(char * filename, int create);
+
+/** Close the file. A closed file cannot be read or written any more. Any operation which requires
+ * that the file be open will raise a FileClosedError? after the file has been closed. */
+void repy_close(repy_file *);
+
+/**  Seek to a location in a file and reads up to SIZELIMIT bytes from the file, returning what is read.
+ * If SIZELIMIT is None, the file is read to EOF. */
+char * repy_readat(int sizelimit, int offset ,repy_file *);
+
+/**  Seek to the OFFET in the FILE and then write some DATA to a file. */
+void repy_writeat(char * data, int size, repy_file * file);
+
+/**  Deletes a file named FILENAME in the vessel. If FILENAME does not exist, an exception is raised. */
+void repy_removefile(char * filename);
+
+
+/*----------------Network----------------*/
 
 
 /** Returns the localhost's "Internet facing" IP address. It may raise an
  * exception on hosts that are not connected to the Internet. */
-char * getmyip();
+char * repy_getmyip();
 
 
 typedef struct host_s {
@@ -52,81 +149,49 @@ typedef struct host_s {
 char * repy_gethostbyname(char * name);
 
 
-/** Returns a float containing the number of seconds the program has
- * been running. Note that in very rare circumstances (like the user
- * resetting their clock), this will not produce increasing values. */
-double * getruntime();
+/*----------------TCP----------------*/
 
 
-/** Returns a random floating point number between 0.0 (inclusive)
- * and 1.0 (exclusive).
- */
-void * repy_randombytes();
+typedef struct repy_socket_s {
+	void * repy_python_socket;
+} repy_socket;
 
+repy_socket * repy_openconnection(char * destip, int destport, char * localip, int localport, double timeout);
+long int repy_socket_send(char* message, repy_socket* sp);
 
-/** Sleeps the current thread for some time (waits for a specific time before
- * executing any further instructions). This thread will not consume CPU cycles
- * during this time. Timing issues that confuse getruntime() may also cause
- * sleep to behave in undefined ways. */
-void repy_sleep(double);
+void repy_closesocket(repy_socket * tofree);
 
+typedef struct repy_tcpserversocket_s {
+	void * repy_python_socket;
+} repy_tcpserversocket;
 
-///////////////////////////////////////////////////////////////////////////////
+repy_tcpserversocket * repy_listenforconnection(char * localip, int localport);
 
+void repy_closesocketserver(repy_tcpserversocket * tofree);
 
-typedef struct repy_lock_s {
-	void * python_lock;
-} repy_lock;
+repy_socket * repy_tcpserver_getconnection(repy_tcpserversocket * server);
 
+char * repy_socket_recv(int size, repy_socket* sp);
 
-/** Returns a lock object that can be used for mutual exclusion and critical
- * section protection.
- */
-repy_lock* repy_createlock();
+/*----------------UDP----------------*/
 
+typedef struct repy_udpserver_s {
+	void * repy_python_udpserver;
+} repy_udpserver;
 
-/** Blocks until the lock is available, then takes it (lock is an object
- * obtained by calling getlock()).
- */
-int repy_lock_blocking_acquire(repy_lock*);
+repy_udpserver * repy_listenformessage(char * localip, int localport);
 
+void repy_close_udpserver(repy_udpserver *);
 
-/** Blocks until the lock is available, then takes it (lock is an object
- * obtained by calling getlock()).
- *
- * If the lock is already taken, method returns False immediately instead of
- * waiting to acquire the lock; if the lock is available it takes it and
- * returns True.
- */
-int repy_lock_nonblocking_acquire(repy_lock*);
+typedef struct repy_message_s {
+	char * ip;
+	int port;
+	char * message;
+} repy_message;
 
+repy_message * repy_udpserver_getmessage(repy_udpserver *);
 
-/** Releases the lock. Do not call it if the lock is unlocked. */
-void repy_lock_release(repy_lock*);
-
-void free_repy_lock(repy_lock *);
-
-char ** repy_listfiles(int* num_entries);
-
-
-
-typedef struct repy_file_s {
-	void * repy_python_file;
-} repy_file;
-
-
-repy_file * repy_openfile(char * filename, int mode);
-
-void repy_close(repy_file *);
-
-void repy_flush(repy_file *);
-
-void repy_next(repy_file *);
-
-char * repy_readat(int size, int offset ,repy_file *);
-
-void repy_writeat(char * data, int size, repy_file *);
-
-void repy_exitall();
-
-void repy_removefile(char * filename);
+/**  Sends a UDP message to a destination host / port using a specified localip and localport.
+ * Returns the number of bytes sent. This may not be the entire message.
+ **/
+long int repy_sendmessage(char * destip, int destport, char * message, char * localip, int localport );

@@ -17,10 +17,9 @@ int main(int argc, char** argv) {
 		printf("Problem loading repy: %d", rc);
 		return rc;
 	} else {
-		printf("Repy Says: %s", getmyip());
-
-		repy_shutdown();
+		printf("Repy Says: %s", repy_getmyip());
+		return repy_shutdown();
 	}
-	return 0;
+
 }
 

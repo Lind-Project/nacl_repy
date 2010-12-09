@@ -19,7 +19,7 @@ static tresult fail(char * message) {
 
 tresult test_getmyup() {
 	char * myip = NULL;
-	myip = getmyip();
+	myip = repy_getmyip();
 	//shortest ip string might be 1.1.1.1 -> len = 6
 	if (myip == NULL || strlen(myip) < 6) {
 		return fail("address null or too short.");
@@ -48,7 +48,7 @@ tresult test_gethostbyname() {
 
 tresult test_getruntime() {
 	double* time = NULL;
-	time = getruntime();
+	time = repy_getruntime();
 	if (time == NULL) {
 		return fail("did not return time.");
 	} else {
@@ -208,6 +208,63 @@ tresult test_removefile() {
 }
 
 
+tresult test_open_socket() {
+	char * loopback = "127.0.0.1";
+
+	repy_tcpserversocket * server = repy_listenforconnection(loopback,12345);
+	if (server == NULL) {
+		return fail("no socket pointer after server open.");
+	}
+
+	repy_socket* sp = repy_openconnection(loopback, 12345, loopback, 12346, 1.0);
+	if (sp == NULL) {
+		return fail("no socket pointer after open.");
+	}
+
+	int sent = repy_socket_send("a message thorough the socket.", sp);
+
+	if (sent < 1) {
+		return fail("sending message through the socket returned no length.");
+	}
+
+	repy_socket * reciever = repy_tcpserver_getconnection(server);
+	char * new_message = repy_socket_recv(50, reciever);
+	repy_closesocket(sp);
+	repy_closesocketserver(server);
+
+	if(strstr(new_message,"a message thorough the socket")) {
+		return PASS;
+	} else {
+		return fail("String was not found in other end of socket");
+	}
+	return PASS;
+}
+
+tresult test_udp_messages() {
+	char * loopback = "127.0.0.1";
+	int dest = 12345;
+	repy_udpserver * server = repy_listenformessage(loopback, dest);
+	if (server == NULL) {
+		return fail("no message server pointer after server open.");
+	}
+
+	long int rc = repy_sendmessage(loopback, dest, "A test UDP message", loopback, 12346);
+	if (rc < 1) {
+		return fail("failed to send UDP message");
+	}
+
+	repy_message * new_message = repy_udpserver_getmessage(server);
+	repy_close_udpserver(server);
+
+	if(strstr(new_message->message,"A test UDP message")) {
+		return PASS;
+	} else {
+		return fail("String was not found in other end of message.");
+	}
+	return PASS;
+
+}
+
 void run_test(tresult(*func)(void), char * name) {
 	printf("Running Test: %s... ", name);
 	fflush(stdout);
@@ -220,6 +277,7 @@ void run_test(tresult(*func)(void), char * name) {
 		fflush(stdout);
 	} else {
 		printf("Test %s failed.\n", name);
+		printf("Exiting cleanly from failed test.\n");
 		fflush(stdout);
 		exit(1);
 	}
@@ -247,6 +305,8 @@ int main(int argc, char** argv) {
 		run_test((&test_readat), "ReadAt");
 		run_test((&test_exitall), "Exitall");
 		run_test((&test_removefile), "Removefile");
+		run_test((&test_open_socket), "OpenSocket");
+		run_test((&test_udp_messages), "UDP Message");
 		repy_shutdown();
 	}
 	return 0;

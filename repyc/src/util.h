@@ -12,9 +12,9 @@
 #define REF_WIPE(name) Py_XDECREF(name); name = NULL
 
 /** Since debugging does not work, a flushed debug printer.  */
-#define MARK(X) 	printf(X);fflush(stdout);
+#define MARK(X) 	printf("%d: ",__LINE__);printf(X);printf("\n");fflush(stdout);
 
 /** Print the type of a python object. */
-#define PRINT_TYPE(X) PyObject_Print(PyObject_Type(X),stdout,0)
+#define PRINT_TYPE(X) PyObject_Print(PyObject_Type(X),stdout,0); fflush(stdout);
 
 #endif /* UTIL_H_ */
