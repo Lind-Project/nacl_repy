@@ -1,14 +1,23 @@
 To build repyc the scons build system must be installed, and you 
 must also have the python 2.5-2.6 development package installed.
 
-#first install repyv2 somewhere:
+# first install repyv2 somewhere:
 % cd repy
 % python preparetest.py -t /home/cmatthew/tmp/repy
-#now set a environment variable so repyc can detect repy
+
+# now set a environment variable so repyc can detect repy
 % export REPY_PATH=/home/cmatthew/tmp/repy
-#compile repyc (you will need gcc for that)
+
+# compile repyc (you will need gcc for that)
 % cd repyc
 % scons
-#try out the test program or the hello world
+
+# try out the test program or the hello world
 % ./bin/test/hello
 % ./bin/tests/test
+
+# librepyc.ar (static library)  is build during the compile. to
+# compile your own programs:
+
+% gcc -o foo.o -c foo.c -I~/path_to_repy.h
+% gcc -o foo foo.o src/repy.h bin/lib/librepyc.a -lpython2.6
