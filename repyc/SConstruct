@@ -2,17 +2,25 @@
 
 print "Building RePyC - Chris Matthews <cmatthew@cs.uvic.ca>"
 
+#this is to find the correct python 2.5 or 2.6 path
+import sys
+version = sys.version[:3]
+path = sys.exec_prefix
+pathstring = path + "/include/python" + version
+libstring = path + "/lib/python" + version
 env = Environment()
 env.Append(CCFLAGS='-Wall')
-env.Append(CPPPATH = ['/usr/include/python2.6'])
-env.Append(LIBS_PATH = ['/usr/lib/python2.6'])
+env.Append(CPPPATH = [pathstring])
+
+env.Append(LIBS_PATH = [libstring])
 env.Append(CPPPATH = ['#src'])
 
 
 conf = Configure(env)
 if not conf.CheckLibWithHeader('python2.6', 'Python.h', 'c'):
-        print 'Did not find python2.6-dev: looking for libpython2.6.so and Python.h, exiting!'
-      	Exit(1)
+	if not conf.CheckLibWithHeader('python2.5', 'Python.h', 'c'):
+		print 'Did not find python-dev: looking for libpython.so version 2.5 or 2.6 and Python.h, exiting!'
+		Exit(1)
 env = conf.Finish()
 
 Export('env')
