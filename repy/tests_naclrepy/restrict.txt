@@ -2,8 +2,8 @@ resource cpu .20
 resource memory 15000000   # 15 Million bytes
 resource diskused 100000000 # 100 MB
 resource events 10
-resource filewrite 10000
-resource fileread 10000
+resource filewrite 100000
+resource fileread 100000
 resource filesopened 5
 resource insockets 5
 resource outsockets 8
