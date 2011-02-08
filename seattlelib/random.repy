@@ -288,10 +288,21 @@ def random_int_below(upper_bound):
     Returns a random integer between [0, upper_bound).
   
   """
+  
+  try:
+    upper_bound = int(upper_bound)
+  except ValueError:
+    raise TypeError('number should be an integer')
+  
   if upper_bound <= 0:
     raise ValueError('number must be greater than zero')
-  if upper_bound != int(upper_bound):
-    raise TypeError('number should be an integer')
+  
+    
+  # If upper_bound == 1, the math_log call will loop infinitely.
+  # The only int in [0, 1) is 0 anyway, so return 0 here.
+  # Resolves bug #927
+  if upper_bound == 1:
+    return 0
   
   k = int(1.00001 + math_log(upper_bound - 1, 2.0))   # 2**k > n-1 > 2**(k-2)
   r = random_nbit_int(k)
