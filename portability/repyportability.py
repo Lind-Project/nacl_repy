@@ -2,7 +2,6 @@
 # I'm importing these so I can neuter the calls so that they aren't 
 # restricted...
 import nanny
-import restrictions
 import emulfile
 
 
@@ -15,8 +14,7 @@ oldrestrictioncalls = {}
 oldrestrictioncalls['nanny.tattle_quantity'] = nanny.tattle_quantity
 oldrestrictioncalls['nanny.tattle_add_item'] = nanny.tattle_add_item
 oldrestrictioncalls['nanny.tattle_remove_item'] = nanny.tattle_remove_item
-oldrestrictioncalls['nanny.tattle_check'] = nanny.tattle_check
-oldrestrictioncalls['restrictions.assertisallowed'] = restrictions.assertisallowed
+oldrestrictioncalls['nanny.is_item_allowed'] = nanny.is_item_allowed
 oldrestrictioncalls['emulfile.assert_is_allowed_filename'] = emulfile._assert_is_allowed_filename
 
 
@@ -46,8 +44,7 @@ def override_restrictions():
   nanny.tattle_quantity = _do_nothing
   nanny.tattle_add_item = _do_nothing
   nanny.tattle_remove_item = _do_nothing
-  nanny.tattle_check = _do_nothing
-  restrictions.assertisallowed = _do_nothing
+  nanny.is_item_allowed = _do_nothing
   emulfile.assert_is_allowed_filename = _do_nothing
 
 
@@ -74,9 +71,7 @@ def initialize_restrictions(restrictionsfn):
    <Returns>
       None
   """
-  restrictions.init_restriction_tables(restrictionsfn)
-  nanny.initialize_consumed_resource_tables()
-  enable_restrictions()
+  nanny.start_resource_nanny(restrictionsfn)
 
 def enable_restrictions():
   """
@@ -101,8 +96,7 @@ def enable_restrictions():
   nanny.tattle_quantity = oldrestrictioncalls['nanny.tattle_quantity']
   nanny.tattle_add_item = oldrestrictioncalls['nanny.tattle_add_item'] 
   nanny.tattle_remove_item = oldrestrictioncalls['nanny.tattle_remove_item'] 
-  nanny.tattle_check = oldrestrictioncalls['nanny.tattle_check'] 
-  restrictions.assertisallowed = oldrestrictioncalls['restrictions.assertisallowed'] 
+  nanny.is_item_allowed = oldrestrictioncalls['nanny.is_item_allowed'] 
   emulfile.assert_is_allowed_filename = oldrestrictioncalls['emulfile.assert_is_allowed_filename']
   
 from virtual_namespace import VirtualNamespace
