@@ -166,7 +166,8 @@ API_dict = { \
   'ChangeAdvertise': (2, 'Owner', nmAPI.changeadvertise), \
   'SplitVessel': (2, 'Owner', nmAPI.splitvessel), \
   'JoinVessels': (2, 'Owner', nmAPI.joinvessels), \
-  'SetRestrictions': (2, 'Owner', nmAPI.setrestrictions) \
+# obsoleted
+#  'SetRestrictions': (2, 'Owner', nmAPI.setrestrictions) \
 }
 
 

@@ -17,8 +17,8 @@ functions are listed in the API_dict.
 # used to persist data...
 import persist
 
-# used to do resource arithmatic magic...
-import nmresourcemath
+# used to do resource file parsing and math...
+import resourcemanipulation
 
 # Is this the same as nmrequesthandler.BadRequest?  (the expected type of 
 # exception)
@@ -339,10 +339,10 @@ def addfiletovessel(vesselname,filename, filedata):
   # get the current amount of data used by the vessel...
   currentsize = nonportable.compute_disk_use(vesselname+"/")
   # ...and the allowed amount
-  resourcedata = nmresourcemath.read_resources_from_file(vesseldict[vesselname]['resourcefilename'])
+  resourcedict = resourcemanipulation.read_resourcedict_from_file(vesseldict[vesselname]['resourcefilename'])
 
   # If the current size + the size of the new data is too large, then deny
-  if currentsize + len(filedata) > resourcedata['diskused']:
+  if currentsize + len(filedata) > resourcedict['diskused']:
     raise BadRequest("Not enough free disk space")
   
   try:
@@ -634,9 +634,12 @@ def get_new_vessel_name():
 
 
 # Private.   Creates a new vessel's state in the dictionary and on disk
-def setup_vessel(vesselname, examplevessel):
+def _setup_vessel(vesselname, examplevessel, resourcedict):
   if vesselname in vesseldict:
     raise Exception, "Internal Error, setting up vessel '"+vesselname+"' already in vesseldict"
+
+  # write the new resource file
+  resourcemanipulation.write_resourcedict_to_file(resourcedict, 'resource.'+vesselname)
 
   # Set the invariants up...
   item = {}
@@ -656,7 +659,7 @@ def setup_vessel(vesselname, examplevessel):
 
   else:
     if examplevessel not in vesseldict:
-      raise Exception, "Internal Error, examplevessel '"+examplevessel+"' not in vesseldict"
+      raise Exception("Internal Error, examplevessel '"+examplevessel+"' not in vesseldict")
 
     item['userkeys'] = vesseldict[examplevessel]['userkeys']
     item['ownerkey'] = vesseldict[examplevessel]['ownerkey']
@@ -664,30 +667,18 @@ def setup_vessel(vesselname, examplevessel):
     item['advertise'] = vesseldict[examplevessel]['advertise']
     item['ownerinformation'] = vesseldict[examplevessel]['ownerinformation']
 
-    # let's copy restrictions from the other vessel...
-
-    # get the old restrictions...
-    resourcefo = open(vesseldict[examplevessel]['resourcefilename'])
-    restrictionsdata = resourcefo.read()
-    resourcefo.close()
-    restrictionsstring = nmresourcemath.read_restrictionsstring_from_data(restrictionsdata)
-
-    # append to the resource file...
-    outfo = open(item['resourcefilename'],"a")
-    outfo.write(restrictionsstring)
-    outfo.close()
-
   # create the directory on the file system
   os.mkdir(vesselname)
 
   # now we're ready to add the entry to the table (so other threads can use it)
   vesseldict[vesselname] = item
 
+
     
 
 # Private
 # BUG: What about a running vessel?
-def destroy_vessel(vesselname):
+def _destroy_vessel(vesselname):
   if vesselname not in vesseldict:
     raise Exception, "Internal Error, destroying a non-existant vessel '"+vesselname+"'"
 
@@ -723,23 +714,35 @@ def splitvessel(vesselname, resourcedata):
   newname1 = get_new_vessel_name()
   newname2 = get_new_vessel_name()
 
-  resourcefo = open("resource.temp","w")
-  resourcefo.write(resourcedata)
-  resourcefo.close()
-  
   try:
-    nmresourcemath.split(vesseldict[vesselname]['resourcefilename'], "resource.temp", offcutfilename, "resource."+newname1)
-
-  except nmresourcemath.ResourceParseError, e:
-    os.remove("resource.temp")
+    proposedresourcedict = resourcemanipulation.parse_resourcedict_from_string(resourcedata)
+  except resourcemanipulation.ResourceParseError, e:
     raise BadRequest(str(e))
+  
+  # we must have enough so that starting - offcut - proposed > 0
+  startingresourcedict = resourcemanipulation.read_resourcedict_from_file(vesseldict[vesselname]['resourcefilename'])
 
-  os.rename("resource.temp","resource."+newname2)
+  offcutresourcedict = resourcemanipulation.read_resourcedict_from_file(offcutfilename)
+
+  # let's see what happens if we just remove the offcut...
+  try:
+    intermediateresourcedict = resourcemanipulation.subtract_resourcedicts(startingresourcedict,offcutresourcedict)
+
+  except resourcemanipulation.ResourceMathError, e:
+    raise BadRequest('Existing resources are so small they cannot be split.\n'+str(e))
+
+  # now let's remove the proposed bits!
+  try:
+    finalresourcedict = resourcemanipulation.subtract_resourcedicts(intermediateresourcedict,proposedresourcedict)
+  except resourcemanipulation.ResourceMathError, e:
+    raise BadRequest('Proposed vessel is too large.\n'+str(e))
+
+
   # newname1 becomes the leftovers...
-  setup_vessel(newname1, vesselname)
+  _setup_vessel(newname1, vesselname, finalresourcedict)
   # newname2 is what the user requested
-  setup_vessel(newname2, vesselname)
-  destroy_vessel(vesselname)
+  _setup_vessel(newname2, vesselname, proposedresourcedict)
+  _destroy_vessel(vesselname)
     
   persist.commit_object(vesseldict, "vesseldict")
   return newname1+" "+newname2+"\nSuccess"
@@ -763,39 +766,25 @@ def joinvessels(vesselname1, vesselname2):
   # get the new name
   newname = get_new_vessel_name()
 
-  nmresourcemath.combine(vesseldict[vesselname1]['resourcefilename'], vesseldict[vesselname2]['resourcefilename'], offcutfilename, "resource."+newname)
 
-  setup_vessel(newname, vesselname1)
-  destroy_vessel(vesselname1)
-  destroy_vessel(vesselname2)
+  currentresourcedict1 = resourcemanipulation.read_resourcedict_from_file(vesseldict[vesselname1]['resourcefilename'])
+  currentresourcedict2 = resourcemanipulation.read_resourcedict_from_file(vesseldict[vesselname2]['resourcefilename'])
+  offcutresourcedict = resourcemanipulation.read_resourcedict_from_file(offcutfilename)
+
+
+  # the final resources are reconstructed from the offcut + vessel1 + vessel2
+  intermediateresourcedict = resourcemanipulation.add_resourcedicts(currentresourcedict1, currentresourcedict2)
+
+  finalresourcedict = resourcemanipulation.add_resourcedicts(intermediateresourcedict, offcutresourcedict)
+
+  _setup_vessel(newname, vesselname1, finalresourcedict)
+  _destroy_vessel(vesselname1)
+  _destroy_vessel(vesselname2)
     
   persist.commit_object(vesseldict, "vesseldict")
   return newname+"\nSuccess"
 
     
 
-def setrestrictions(vesselname, restrictionsdata):
-  if vesselname not in vesseldict:
-    raise BadRequest, "No such vessel '"+vesselname1+"'"
-
-  if vesseldict[vesselname]['status'] == 'Started':
-    raise BadRequest("Attempting to SetRestrictions for a running vessel")
-  
-  # Now we read the resources for the vessel...
-  resourcedata = nmresourcemath.read_resources_from_file(vesseldict[vesselname]['resourcefilename'])
- 
-  # I think that all we really want to do is write out the restrictions file 
-  # (assuming it contains no resource entries)...
-
-  restrictionsstring = nmresourcemath.read_restrictionsstring_from_data(restrictionsdata)
-
-  # write the new file...
-  nmresourcemath.write_resource_dict(resourcedata, "resource.temp")
-  outfo = open("resource.temp","a")
-  outfo.write(restrictionsstring)
-  outfo.close()
- 
-  os.remove(vesseldict[vesselname]['resourcefilename'])
-  os.rename("resource.temp",vesseldict[vesselname]['resourcefilename'])
-  
-  return "\nSuccess"
+# JAC: note that setrestrictions is obsolete...
+#def setrestrictions(vesselname, restrictionsdata):

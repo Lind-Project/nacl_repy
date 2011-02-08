@@ -7,9 +7,6 @@ Description:
 
 """
 
-# Use this for generic processing
-import nmrestrictionsprocessor
-    
 import servicelogger
 
 # This allows us to get the system thread count
@@ -18,6 +15,12 @@ import nonportable
 # This allows us to access the NM configuration
 import persist
 
+import nmAPI
+
+# needed to read and write resource files
+import resourcemanipulation
+
+
 EVENT_SCALAR = 0.5 # Scalar number of threads, relative to current
 HARD_MIN = 1 # Minimum number of events
 
@@ -25,86 +28,51 @@ HARD_MIN = 1 # Minimum number of events
 DEFAULT_NOOP_THRESHOLD = .10
 NOOP_CONFIG_KEY = "threaderr_noop_thres" # The key used in the NM config file
 
-# Updates the restrictions files, to use 50% of the threads
-def update_restrictions():
-  # Create an internal handler function, takes a resource line and returns the new number of threads
-  def _internal_func(lineContents):
-    try:
-      threads = float(lineContents[2])
-      threads = threads * EVENT_SCALAR
-      threads = int(threads)
-      threads = max(threads, HARD_MIN) # Set a hard minimum
-      return threads
-    except:
-      # On failure, return the minimum
-      return HARD_MIN
-      
-  
-  # Create a task that uses our internal function
-  task = ("resource","events",_internal_func,True)
-  taskList = [task]
-  
-  # Process all the resource files
-  errors = nmrestrictionsprocessor.process_all_files(taskList)
-  
-  # Log any errors we encounter
-  if errors != []:
-    for e in errors:
-      print e
-      servicelogger.log("[ERROR]:Unable to patch events limit in resource file "+ e[0] + ", exception " + str(e[1]))
 
-# Store the threads
-_allocatedThreads = 0
       
-# Gets our allocated thread count
-def get_allocated_threads():
-  global _allocatedThreads
-  
-  # Create an internal handler function, takes a resource line and stores the allocated threads
-  # Makes no changes
-  def _internal_func(lineContents):
-    global _allocatedThreads
-    try:
-      threads = int(float(lineContents[2]))
-      _allocatedThreads += threads
-      return lineContents[2]
-    except Exception, e:
-      # On failure, return the initial value
-      return lineContents[2]
-  
-  # Reset the thread count
-  _allocatedThreads = 0
-  
-  # Create a task that uses our internal function, which will tally up the allocated threads
-  task = ("resource","events",_internal_func,True)
-  taskList = [task]
-  
-  # Process all the resource files
-  errors = nmrestrictionsprocessor.process_all_files(taskList)
-  
-  return _allocatedThreads
-
-def handle_threading_error(nmAPI):
+# BUG: I make the assumption that there isn't a race condition with the worker
+# thread!!!   This should only really matter if splits / joins are happening.
+def handle_threading_error():
   """
   <Purpose>
-    Handles a repy node failing with ThreadErr. Reduces global thread count by 50%.
-    Restarts all existing vesselts
+    Handles a repy node failing with ThreadErr. If repy is allowed to use
+    more than 10% of the current threads, reduce the global thread count by 50%
+    and stop all existing vessels
 
   <Arguments>
-    nmAPI: the nmAPI module -- passed to the function to avoid import loops;
-           see ticket #590 for more information about this.
+    None
+  
+  <Exceptions>
+    None
+
+  <Side Effects>
+    May re-write all resource files and stop all vessels
+
+  <Returns>
+    None
   """
   # Make a log of this
-  servicelogger.log("[ERROR]:A Repy vessel has exited with ThreadErr status. Patching restrictions and reseting all vessels.")
+  servicelogger.log("[ERROR]:A Repy vessel has exited with ThreadErr status. Checking to determine next step")
+
+  # Get all the names of the vessels
+  vesselnamelist = nmAPI.vesseldict.keys()
+  
+  # read in all of the resource files so that we can look at and possibly 
+  # manipulate them.
+  resourcedicts = {}
+  for vesselname in vesselnamelist:
+    resourcedicts[vesselname] = resourcemanipulation.read_resourcedict_from_file('resource.'+vesselname)
   
   # Get the number of threads Repy has allocated
-  allocatedThreads = get_allocated_threads()
+  allowedthreadcount = 0
+  for vesselname in vesselnamelist:
+    allowedthreadcount = allowedthreadcount + resourcedicts[vesselname]['events']
   
-  # Get the number os system threads currently
-  systemThreads = nonportable.os_api.get_system_thread_count()
+  # Get the total number os system threads currently used 
+  totalusedthreads = nonportable.os_api.get_system_thread_count()
   
   # Log this information
-  servicelogger.log("[ERROR]:System Threads: "+str(systemThreads)+"  Repy Allocated Threads: "+str(allocatedThreads))
+  servicelogger.log("[WARNING]:System Threads: "+str(totalusedthreads)+"  Repy Allocated Threads: "+str(allowedthreadcount))
   
   # Get the NM configuration
   configuration = persist.restore_object("nodeman.cfg")
@@ -120,25 +88,33 @@ def handle_threading_error(nmAPI):
   
   # Check if we are below the threshold, if so
   # then just return, this is a noop
-  if allocatedThreads < systemThreads * threshold:
+  if allowedthreadcount < totalusedthreads * threshold:
     return
   
-  # We are continuing, so we are above the threshold!
-  # First, update the restrictions
-  update_restrictions()
+  servicelogger.log("[ERROR]:Reducing number of system threads!")
+
+
+
+  #### We are above the threshold!   Let's cut everything by 1/2
+
+  # First, update the resource files
+  for vesselname in vesselnamelist:
+    # cut the events by 1/2
+    resourcedicts[vesselname]['events'] = resourcedicts[vesselname]['events'] / 2
+    # write out the new resource files...
+    resourcemanipulation.write_resourcedict_to_file(resourcedicts[vesselname], 'resource.'+vesselname)
   
-  # Then, stop the vessels
-  # Get all the vessels
-  vessels = nmAPI.vesseldict.keys()
+
+  
   
   # Create the stop tuple, exit code 57 with an error message
   stoptuple = (57, "Fatal system-wide threading error! Stopping all vessels.")
   
   # Stop each vessel
-  for vessel in vessels:
+  for vesselname in vesselnamelist:
     try:
       # Stop each vessel, using our stoptuple
-      nmAPI.stopvessel(vessel,stoptuple)
+      nmAPI.stopvessel(vesselname,stoptuple)
     except Exception, exp:
       # Forge on, regardless of errors
       servicelogger.log("[ERROR]:Failed to reset vessel (Handling ThreadErr). Exception: "+str(exp))
