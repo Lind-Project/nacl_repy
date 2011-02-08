@@ -1,42 +1,12 @@
 """ 
 <Author>
-  Justin Cappos
-  Ivan Beschastnikh (12/24/08) -- added usage
-  Brent Couvrette   (2/27/09) -- added servicelog commandline option
-  Conrad Meyer (5/22/09) -- switch option parsing to getopt
-
+  Chris Matthews (cmatthew@cs.uvic.ca)
 <Start Date>
-  June 26th, 2008
+  Dececmber 2010
 
 <Description>
-  Restricted execution environment for python.  Should stop someone
-  from doing "bad things" (which is also defined to include many
-  useful things).  This module allows the user to define code that
-  gets called either on the reciept of a packet, when a timer fires,
-  on startup, and on shutdown.  The restricted code can only do a few
-  "external" things like send data packets and store data to disk.
-  The CPU, memory, disk usage, and network bandwidth are all limited.
+  Based off Repy.py, build a backend for a C program to bind to.
 
-<Usage>
-  Usage: repy.py [options] restrictionsfile.txt program_to_run.py [program args]
-
-  Where [options] are some combination of the following:
-
-  --simple               : Simple execution mode -- execute and exit
-  --ip IP                : This flag informs Repy that it is allowed to bind to the given given IP.
-                         : This flag may be asserted multiple times.
-                         : Repy will attempt to use IP's and interfaces in the order they are given.
-  --iface interface      : This flag informs Repy that it is allowed to bind to the given interface.
-                         : This flag may be asserted multiple times.
-  --nootherips           : Instructs Repy to only use IP's and interfaces that are explicitly given.
-                         : It should be noted that loopback (127.0.0.1) is always permitted.
-  --logfile filename.txt : Set up a circular log buffer and output to logfilename.txt
-  --stop filename        : Repy will watch for the creation of this file and abort when it happens
-                         : File can have format EXITCODE;EXITMESG. Code 44 is Stopped and is the default.
-                         : EXITMESG will be printed prior to exiting if it is non-null.
-  --status filename.txt  : Write status information into this file
-  --cwd dir              : Set Current working directory
-  --servicelog           : Enable usage of the servicelogger for internal errors
 """
 
 
@@ -117,7 +87,7 @@ import repy
 ## allow __ in strings.   I'm 99% sure this is okay (do I want to risk it?)
 #safe._NODE_ATTR_OK.append('value')
 usercontext = {'mycontext':{}}
-def main(restrictionsfn):
+def main(resourcefn, program, args):
   global usercontext
   # Armon: Initialize the circular logger before forking in init_restrictions()
   if logfile:
@@ -130,6 +100,12 @@ def main(restrictionsfn):
     # let's make it so that the output (via print) is always flushed
     sys.stdout = loggingrepy.flush_logger(sys.stdout)
     
+    # start the nanny up and read the resource file.  
+  nanny.start_resource_nanny(resourcefn)
+
+  # now, let's fire up the cpu / disk / memory monitor...
+  nonportable.monitor_cpu_disk_and_mem()
+  
   # start the nanny up and read the restrictions files.  
   restrictions.init_restrictions(restrictionsfn)
 
