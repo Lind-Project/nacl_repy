@@ -21,7 +21,7 @@ import getopt
 import emulcomm
 import namespace
 import nanny
-import restrictions
+
 import time
 import threading
 import loggingrepy
@@ -41,7 +41,7 @@ import virtual_namespace
 
 ## we'll use tracebackrepy to print our exceptions
 import tracebackrepy
-
+import traceback
 import nonportable
 
 from exception_hierarchy import *
@@ -105,9 +105,6 @@ def main(resourcefn, program, args):
 
   # now, let's fire up the cpu / disk / memory monitor...
   nonportable.monitor_cpu_disk_and_mem()
-  
-  # start the nanny up and read the restrictions files.  
-  restrictions.init_restrictions(restrictionsfn)
 
   # Armon: Update our IP cache
   emulcomm.update_ip_cache()
@@ -141,6 +138,7 @@ def main(resourcefn, program, args):
   #usercontext["getthreadname"] = emulmisc.getthreadname
   usercontext["createvirtualnamespace"] = virtual_namespace.createvirtualnamespace
   usercontext["getlasterror"] = emulmisc.getlasterror
+  print "repyc init done."
       
 def get_repyAPI():
    # These will be the functions and variables in the user's namespace (along
@@ -189,8 +187,13 @@ def repyc_shutdown():
 def repyc_init_helper():
   print "Starting RePyC With Helper...",
   repy_path = os.environ['REPY_PATH']
-  return repyc_init(['%s/repyc.py'%(repy_path),
-                     '%s/restrict.txt'%(repy_path)])
+  try:
+    return repyc_init(['%s/repyc.py'%(repy_path),
+                     '%s/restrict.txt'%(repy_path),""])
+  except:
+    traceback.print_exc()
+    return -1
+	
 
 
 def repyc_init(argv):
@@ -311,11 +314,13 @@ def repyc_init(argv):
 
   # Initialize the NM status interface
   nmstatusinterface.init(stopfile, statusfile)
-  
+
   # Write out our initial status
   statusstorage.write_status("Started")
 
-  restrictionsfn = fnlist[0]
+  resourcefn = fnlist[0]
+  progname = fnlist[1]
+  progargs = fnlist[2:]
 
 
   # We also need to pass in whether or not we are going to be using the service
@@ -323,9 +328,11 @@ def repyc_init(argv):
   # can be found regardless of where we are called from...
   tracebackrepy.initialize(servicelog, absolute_repy_directory)
 
+  print "starting repy main"
   try:
-    main(restrictionsfn)
+    main(resourcefn, progname, progargs)
   except SystemExit:
+    print "Exiting intentionally."
     harshexit.harshexit(4)
   except:
     tracebackrepy.handle_exception()
