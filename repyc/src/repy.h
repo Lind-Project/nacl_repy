@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
 * This file is part of RePyC.
 *
@@ -195,3 +199,8 @@ repy_message * repy_udpserver_getmessage(repy_udpserver *);
  * Returns the number of bytes sent. This may not be the entire message.
  **/
 long int repy_sendmessage(char * destip, int destport, char * message, char * localip, int localport );
+
+#ifdef __cplusplus
+} /* closing brace for extern "C" */
+#endif
+
