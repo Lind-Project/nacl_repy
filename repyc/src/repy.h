@@ -20,7 +20,9 @@ extern "C" {
 */
 
 
-/* Start the library and python bindings */
+/* Start the library and python bindings.
+ * returns 0 on sucessful start, otherwise a positive error code.
+*/
 int repy_init();
 
 

@@ -716,13 +716,15 @@ static void setup_python_path() {
 
 
 int repy_init() {
-	printf("Loading RePy...\n");
+	printf("repyc: Loading RePy...\n");
 	path_to_repyc_python_binding = getenv("REPY_PATH");
 	if (path_to_repyc_python_binding == NULL) {
-		path_to_repyc_python_binding = "/home/cmatthew/naclrepy/testing";
+		fprintf(stderr, "repyc: $REPY_PATH must be set before running recpyc.\n");
+		return 1;
 	}
 	if (chdir(path_to_repyc_python_binding)) {
-		printf("chdir failed.");
+		fprintf(stderr, "repyc: chdir failed.\n");
+		return 2;
 	}
 
 	Py_Initialize();
@@ -753,9 +755,10 @@ int repy_init() {
 	}
 
 	if (rc == NULL) {
-		printf("C: Problem calling RePy Init.\n");
+		fprintf(stderr,"repyc: problem calling RePy init.\n");
+		return 3;
 	} else {
-		printf(" RePy has loaded.\n");
+		printf("repyc: RePy has loaded.\n");
 		REF_WIPE(rc);
 	}
 
@@ -770,8 +773,8 @@ int repy_init() {
 	//PyObject_Print(client_dict, stdout, 0);
 	//	printf("\n\n\n");
 	if (client_dict == NULL) {
-		printf("Failed to get Client Dict.");
-		return 1;
+		fprintf(stderr,"Failed to get Client Dict.");
+		return 4;
 	}
 
 
