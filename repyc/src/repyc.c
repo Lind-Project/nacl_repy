@@ -299,32 +299,32 @@ void repy_close(repy_file * fp)  {
 
 
 
-void repy_flush(repy_file * fp)  {
-	CHECK_LIB_STATUS();
+/* void repy_flush(repy_file * fp)  { */
+/* 	CHECK_LIB_STATUS(); */
 
-	if (fp == NULL || fp->repy_python_file == NULL) {
-		return;
-	}
+/* 	if (fp == NULL || fp->repy_python_file == NULL) { */
+/* 		return; */
+/* 	} */
 
-	PyObject *rc = NULL;
+/* 	PyObject *rc = NULL; */
 
-	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_FLUSH, NULL);
-	if (rc == NULL) {
-		PyErr_Print();
-		return;
-	}
+/* 	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_FLUSH, NULL); */
+/* 	if (rc == NULL) { */
+/* 		PyErr_Print(); */
+/* 		return; */
+/* 	} */
 
-	REF_WIPE(rc);
+/* 	REF_WIPE(rc); */
 
-	return;
-}
+/* 	return; */
+/* } */
 
 
 
-void repy_next(repy_file * fp)  {
-	CHECK_LIB_STATUS();
+/* void repy_next(repy_file * fp)  { */
+/* 	CHECK_LIB_STATUS(); */
 
-}
+/* } */
 
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
@@ -427,43 +427,43 @@ void repy_writeat(char * data, int offset, repy_file * fp)  {
 
 
 
-void repy_writelines(repy_file * fp, char ** lines)  {
-	CHECK_LIB_STATUS();
+/* void repy_writelines(repy_file * fp, char ** lines)  { */
+/* 	CHECK_LIB_STATUS(); */
 
-	if (fp == NULL || fp->repy_python_file == NULL || lines == NULL) {
-		return;
-	}
+/* 	if (fp == NULL || fp->repy_python_file == NULL || lines == NULL) { */
+/* 		return; */
+/* 	} */
 
-	int num_elements = 0;
-	char * curr = *lines;
-	while (curr != NULL) {
-		num_elements++;
-		curr = lines[num_elements];
-	}
+/* 	int num_elements = 0; */
+/* 	char * curr = *lines; */
+/* 	while (curr != NULL) { */
+/* 		num_elements++; */
+/* 		curr = lines[num_elements]; */
+/* 	} */
 
-	PyObject * string_list = PyList_New(0);
-	Py_INCREF(string_list);
-	int i;
-	for (i = 0; i < num_elements; i++) {
-		char * curr = lines[i];
-		PyObject * s = PyString_FromString(curr);
-		PyList_Append(string_list, s);
-	}
+/* 	PyObject * string_list = PyList_New(0); */
+/* 	Py_INCREF(string_list); */
+/* 	int i; */
+/* 	for (i = 0; i < num_elements; i++) { */
+/* 		char * curr = lines[i]; */
+/* 		PyObject * s = PyString_FromString(curr); */
+/* 		PyList_Append(string_list, s); */
+/* 	} */
 
-	PyObject * rc = NULL;
-	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_WRITELINES,
-			"O", string_list);
-	if (rc == NULL) {
-		PyErr_Print();
-		return;
-	}
-	REF_WIPE(string_list);
-	REF_WIPE(rc);
+/* 	PyObject * rc = NULL; */
+/* 	rc = PyObject_CallMethod(fp->repy_python_file, REPYC_API_WRITELINES, */
+/* 			"O", string_list); */
+/* 	if (rc == NULL) { */
+/* 		PyErr_Print(); */
+/* 		return; */
+/* 	} */
+/* 	REF_WIPE(string_list); */
+/* 	REF_WIPE(rc); */
 
-	return;
+/* 	return; */
 
 
-}
+/* } */
 
 
 void repy_exitall() {
