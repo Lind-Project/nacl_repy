@@ -1,5 +1,5 @@
 Import('env')
 
-libs = env.StaticLibrary('repyc',['repyc.c','repy.h','util.h'], LIBS='python', CFLAGS='-g')
+libs = env.StaticLibrary('repyc',['repyc.c','repy_locking.c','repy_fileops.c','repy_netops.c','handle_storage.c','repy.h','repy_private.h','util.h','handle_storage.h'], LIBS='python', CFLAGS='-g -Werror -Wall')
 
 Return('libs')
