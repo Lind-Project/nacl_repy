@@ -2,6 +2,9 @@
 extern "C" {
 #endif
 
+#ifndef __REPY_H__
+#define __REPY_H__
+
 /*
 * This file is part of RePyC.
 *
@@ -99,6 +102,8 @@ typedef struct repy_file_s {
 	void * repy_python_file;
 } repy_file;
 
+typedef int repy_handle;
+
 
 /**  Open a file, returning an object of the file type.
  *
@@ -110,18 +115,18 @@ typedef struct repy_file_s {
  * Every file object is capable of both reading and writing.
  *
  * If CREATE is 1, the file is created if it does not exist. Neither mode truncates the file on open. */
-repy_file * repy_openfile(char * filename, int create);
+repy_handle  repy_openfile(char * filename, int create);
 
 /** Close the file. A closed file cannot be read or written any more. Any operation which requires
  * that the file be open will raise a FileClosedError? after the file has been closed. */
-void repy_close(repy_file *);
+void repy_close(repy_handle);
 
 /**  Seek to a location in a file and reads up to SIZELIMIT bytes from the file, returning what is read.
  * If SIZELIMIT is None, the file is read to EOF. */
-char * repy_readat(int sizelimit, int offset ,repy_file *);
+char * repy_readat(int sizelimit, int offset, repy_handle);
 
 /**  Seek to the OFFET in the FILE and then write some DATA to a file. */
-void repy_writeat(char * data, int size, repy_file * file);
+void repy_writeat(char * data, int size, repy_handle);
 
 /**  Deletes a file named FILENAME in the vessel. If FILENAME does not exist, an exception is raised. */
 void repy_removefile(char * filename);
@@ -162,22 +167,25 @@ typedef struct repy_socket_s {
 	void * repy_python_socket;
 } repy_socket;
 
-repy_socket * repy_openconnection(char * destip, int destport, char * localip, int localport, double timeout);
-long int repy_socket_send(char* message, repy_socket* sp);
+typedef int repy_socket_handle;
 
-void repy_closesocket(repy_socket * tofree);
+repy_socket_handle repy_openconnection(char * destip, int destport, char * localip, int localport, double timeout);
+long int repy_socket_send(char* message, repy_socket_handle sp);
+
+void repy_closesocket(repy_socket_handle tofree);
 
 typedef struct repy_tcpserversocket_s {
 	void * repy_python_socket;
 } repy_tcpserversocket;
+typedef int repy_tcpserver_handle;
 
-repy_tcpserversocket * repy_listenforconnection(char * localip, int localport);
+repy_tcpserver_handle repy_listenforconnection(char * localip, int localport);
 
-void repy_closesocketserver(repy_tcpserversocket * tofree);
+void repy_closesocketserver(repy_tcpserver_handle  tofree);
 
-repy_socket * repy_tcpserver_getconnection(repy_tcpserversocket * server);
+repy_socket_handle repy_tcpserver_getconnection(repy_tcpserver_handle  server);
 
-char * repy_socket_recv(int size, repy_socket* sp);
+char * repy_socket_recv(int size, repy_socket_handle sp);
 
 /*----------------UDP----------------*/
 
@@ -185,9 +193,11 @@ typedef struct repy_udpserver_s {
 	void * repy_python_udpserver;
 } repy_udpserver;
 
-repy_udpserver * repy_listenformessage(char * localip, int localport);
+typedef int repy_udpserver_handle;
 
-void repy_close_udpserver(repy_udpserver *);
+repy_udpserver_handle repy_listenformessage(char * localip, int localport);
+
+void repy_close_udpserver(repy_udpserver_handle );
 
 typedef struct repy_message_s {
 	char * ip;
@@ -195,7 +205,7 @@ typedef struct repy_message_s {
 	char * message;
 } repy_message;
 
-repy_message * repy_udpserver_getmessage(repy_udpserver *);
+repy_message * repy_udpserver_getmessage(repy_udpserver_handle );
 
 /**  Sends a UDP message to a destination host / port using a specified localip and localport.
  * Returns the number of bytes sent. This may not be the entire message.
@@ -206,3 +216,4 @@ long int repy_sendmessage(char * destip, int destport, char * message, char * lo
 } /* closing brace for extern "C" */
 #endif
 
+#endif /* repy_h */

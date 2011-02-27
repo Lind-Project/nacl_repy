@@ -7,4 +7,7 @@ prog = env.Program('test', ['test.c','#src/repy.h', '#src/util.h'], LIBS=libs + 
 
 env.Program('hello', ['hello.c','#src/repy.h'], LIBS=libs + ['python'+version],  CFLAGS='-g')
 
+env.Program('handle_tester', ['handle_storage_tester.c','#src/repy.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+
+
 Return('prog')
