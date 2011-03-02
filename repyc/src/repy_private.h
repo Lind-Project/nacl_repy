@@ -28,5 +28,6 @@
 
 extern PyObject *client_dict;
 extern PyObject * global_dict_b;
+extern int repy_errno;
 
 void CHECK_LIB_STATUS();

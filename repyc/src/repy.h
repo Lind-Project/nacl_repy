@@ -212,6 +212,11 @@ repy_message * repy_udpserver_getmessage(repy_udpserver_handle );
  **/
 long int repy_sendmessage(char * destip, int destport, char * message, char * localip, int localport );
 
+/* If an error occured in the last call, tell us what it was. */  
+void repy_perror();
+
+int repy_get_errno();
+
 #ifdef __cplusplus
 } /* closing brace for extern "C" */
 #endif

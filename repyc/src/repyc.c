@@ -5,7 +5,7 @@
 #include <repy.h>
 #include <linux/limits.h>
 #include <assert.h>
-
+#include <errno.h>
 #include "util.h"
 #include "handle_storage.h"
 #include "repy_private.h"
@@ -21,15 +21,70 @@ const char * repy_fn = "repyc.py";
 /** Contains the bound objects which constitiue the RePy API. */
 PyObject *client_dict = NULL;
 PyObject * global_dict_b = NULL;
+int repy_errno = 0;
+
 
 void CHECK_LIB_STATUS() {
-	if (client_dict == NULL || is_init == 0) {
-		printf("RepyC is not Currently initialized... Exiting.");
-		fflush(stdout);
-		exit(2);
-	}
+  if (client_dict == NULL || is_init == 0) {
+    fprintf(stderr,"RepyC is not Currently initialized... Exiting.\n");
+    exit(ENODEV);
+  }
+  PyErr_Clear();
+  repy_errno = 0;
+}
+#define name_as_string(x) PyString_AsString(PyObject_Str(PyObject_GetAttrString(x,"__name__"))) 
+
+#define repy_check(type,str, rc)   if (!strcmp(type,str)) { return rc; }	     
+
+
+int repy_get_errno() {
+  PyObject* type, * value, *traceback;
+  if(0 != repy_errno) {
+    return repy_errno;
+  }
+  PyErr_Fetch(&type, &value, &traceback);
+  char * et;
+  if (type == NULL) {
+    return 0;
+  }
+  
+  et = name_as_string(type);
+  repy_check(et,"FileNotFoundError",ENOENT);
+  
+
+
+  fprintf(stderr, "Could not find %s in the error table.\n", et);
+  return -1;
+
 }
 
+
+void repy_perror(char * your_message) {
+  char * our_message = "";
+  char * error_type = "";
+  PyObject* type, * value, *traceback;
+
+  if(repy_errno != 0) {
+    our_message = strerror(repy_errno);
+    goto show_message;
+  }
+
+  PyErr_Fetch(&type, &value, &traceback);
+
+  if (type == NULL) {
+    return;
+  }
+  
+  error_type = name_as_string(type);
+  our_message = PyString_AsString(PyObject_Str(value));
+  
+ show_message:
+  if (your_message) {
+    fprintf(stderr, "%s: %s--%s\n", your_message, error_type ,our_message);
+  } else {
+    fprintf(stderr, "%s\n", our_message);
+  }
+}
 
 char * repy_getmyip() {
 	PyObject * instnace, * rc;
@@ -37,18 +92,22 @@ char * repy_getmyip() {
 	instnace = PyDict_GetItemString(client_dict, REPYC_API_GETMYIP);
 	rc = PyObject_CallObject(instnace, NULL);
 	if (rc == NULL) {
-		PyErr_Print();
 		return NULL;
 	}
 	char* temp = strdup(PyString_AsString(rc));
+	
+
 	REF_WIPE(rc);
 	return temp;
 }
+
+
 
 char * repy_gethostbyname(char * name) {
 	PyObject * instnace, * rc, * param;
 	CHECK_LIB_STATUS();
 	if( name == NULL) {
+	  repy_errno = EINVAL;
 		return NULL;
 	}
 	param = Py_BuildValue("(s)", name);
@@ -56,7 +115,6 @@ char * repy_gethostbyname(char * name) {
 	rc = PyObject_CallObject(instnace, param);
 	REF_WIPE(param);
 	if (rc == NULL) {
-		PyErr_Print();
 		return NULL;
 	}
 
@@ -74,7 +132,6 @@ double * repy_getruntime() {
 	instance = PyDict_GetItemString(client_dict, REPYC_API_GETRUNTIME);
 	rc = PyObject_CallObject(instance, NULL);
 	if (rc == NULL) {
-		PyErr_Print();
 		return NULL;
 	}
 	time = (double*) malloc(sizeof(double));
@@ -91,7 +148,6 @@ void * repy_randombytes() {
 	instance = PyDict_GetItemString(client_dict, REPYC_API_GETRANDOMBYTES);
 	rc = PyObject_CallObject(instance, NULL);
 	if (rc == NULL) {
-		PyErr_Print();
 		return NULL;
 	}
 	rbytes = malloc(1024);
@@ -124,7 +180,6 @@ char** repy_listfiles(int* num_entries) {
 	rc = PyObject_CallObject(instnace, NULL);
 
 	if (rc == NULL) {
-		PyErr_Print();
 		return NULL;
 	}
 
@@ -157,7 +212,6 @@ void repy_exitall() {
 	rc = PyObject_CallObject(instnace, NULL);
 
 	if (rc == NULL) {
-		PyErr_Print();
 		return;
 	}
 
@@ -169,13 +223,13 @@ void repy_removefile(char * filename) {
 	PyObject * instnace = NULL, * rc = NULL;
 	CHECK_LIB_STATUS();
 	if (filename == NULL)
-		return;
+	  repy_errno = EINVAL;
+	  return;
 	instnace = PyDict_GetItemString(client_dict, REPYC_API_REMOVEFILE);
 	PyObject * params = Py_BuildValue("(s)", filename);
 	rc = PyObject_CallObject(instnace, params);
 
 	if (rc == NULL) {
-		PyErr_Print();
 		return;
 	}
 }
@@ -256,7 +310,6 @@ int repy_init() {
 		fprintf(stderr,"Failed to get Client Dict.");
 		return 4;
 	}
-
 
 	is_init = 1;
 	return 0;

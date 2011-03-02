@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <errno.h>
 /* #define DEBUG */
 
 typedef enum t_result {
@@ -105,7 +105,7 @@ tresult test_sleep() {
 /* 	return PASS; */
 /* } */
 
-#define DEBUG
+
 tresult test_listdir() {
 		int size = -1;
 		char ** dirents;
@@ -277,6 +277,24 @@ tresult test_udp_messages() {
 
 }
 
+
+tresult test_perror() {
+	char * test_file_name = "somefile.that.does.not.exist";
+	repy_handle fp = repy_openfile(test_file_name, 0);
+	if (fp != -1) {
+	  return fail("opening file that does not exist worked...");
+	}
+	repy_perror("Missing file");
+	fp = repy_openfile(test_file_name, 0);
+	if (repy_get_errno() != ENOENT )
+	  return fail("get error no did not send correct value");
+	fp = repy_openfile(NULL,0);
+	repy_perror("Invalid Arguemnt test");
+	if (repy_get_errno() != EINVAL )
+	  return fail("did not get correct error val.");
+	return PASS;
+}
+
 void run_test(tresult(*func)(void), char * name) {
 	printf("Running Test: %s... ", name);
 	fflush(stdout);
@@ -321,7 +339,9 @@ int main() {
 		run_test((&test_open_socket), "OpenSocket");
 		run_test((&test_udp_messages), "UDP Message");
 		run_test((&test_getmyup), "getmyip");
-	  /* } */
+		run_test((&test_perror), "perror");
+		
+
 		repy_exitall();
 		
 	}
