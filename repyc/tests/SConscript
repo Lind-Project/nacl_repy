@@ -27,6 +27,6 @@ AlwaysBuild(t1)
 AlwaysBuild(t2)
 env.Alias("test", [t2, t1])
 
-
+env.Default(prog,hello)
 
 Return('prog')
