@@ -34,7 +34,7 @@ void CHECK_LIB_STATUS() {
 }
 #define name_as_string(x) PyString_AsString(PyObject_Str(PyObject_GetAttrString(x,"__name__"))) 
 
-#define repy_check(type,str, rc)   if (!strcmp(type,str)) { return rc; }	     
+#define repy_check(type,str, rc) do { if (strstr(type,str) != NULL) { return rc; } else {} } while(0);	     
 
 
 int repy_get_errno() {
@@ -50,10 +50,10 @@ int repy_get_errno() {
   
   et = name_as_string(type);
   repy_check(et,"FileNotFoundError",ENOENT);
-  
+  repy_check(et,"RepyArgumentError",EINVAL);
+ 
 
-
-  fprintf(stderr, "Could not find %s in the error table.\n", et);
+  fprintf(stderr, "Could not find \"%s\" in the error table...\n", et);
   return -1;
 
 }
@@ -125,17 +125,17 @@ char * repy_gethostbyname(char * name) {
 }
 
 
-double * repy_getruntime() {
+double  repy_getruntime() {
 	CHECK_LIB_STATUS();
-	double * time = NULL;
+	double  time = 0;
 	PyObject* instance, * rc;
 	instance = PyDict_GetItemString(client_dict, REPYC_API_GETRUNTIME);
 	rc = PyObject_CallObject(instance, NULL);
 	if (rc == NULL) {
-		return NULL;
+		return 0;
 	}
-	time = (double*) malloc(sizeof(double));
-	*time = PyFloat_AS_DOUBLE(rc);
+	
+	time = PyFloat_AS_DOUBLE(rc);
 	REF_WIPE(rc);
 
 	return time;
@@ -199,10 +199,6 @@ char** repy_listfiles(int* num_entries) {
 }
 
 
-#define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
-
-
-
 void repy_exitall() {
 
 	PyObject * instnace, * rc;
@@ -263,7 +259,7 @@ int repy_init() {
 
 	Py_Initialize();
 	setup_python_path();
-	//Derived from: http://www.linuxjournal.com/article/8497
+	//Derived from: http:/y/www.linuxjournal.com/article/8497
 	FILE*        exp_file;
 	PyObject*    main_module_b, * expression;
 	PyObject* rc, * repy_init_b;
@@ -322,7 +318,6 @@ int repy_shutdown() {
 	PyObject * repy_shutdown_fp = NULL, * rc = NULL;
 
 	repy_shutdown_fp = PyDict_GetItemString(global_dict_b, "repyc_shutdown");
-
 	rc = PyObject_CallObject(repy_shutdown_fp, NULL);
 	REF_WIPE(client_dict);
 	//Py_Finalize();

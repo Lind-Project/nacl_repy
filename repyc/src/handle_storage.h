@@ -19,6 +19,7 @@ typedef struct filehandles_s {
 /* Setup a table to store the repy file handles
  */
 void repy_ft_inithandles();
+void repy_ft_teardown();
 
 int repy_ft_size();
 

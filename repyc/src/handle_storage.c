@@ -29,6 +29,11 @@ void repy_ft_inithandles() {
   file_storage->ftable_siz = 0;
 }
 
+void repy_ft_teardown(){
+  free(file_storage->file_handles);
+  free(file_storage);
+}
+
 int repy_ft_size() {
   return file_storage->ftable_siz;
 }

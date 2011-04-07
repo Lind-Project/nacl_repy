@@ -331,10 +331,11 @@ def repyc_init(argv):
   print "starting repy main"
   try:
     main(resourcefn, progname, progargs)
-  except SystemExit:
-    print "Exiting intentionally."
-    harshexit.harshexit(4)
+  except SystemExit, e:
+    print "Exiting with System Exit."
+    harshexit.harshexit(e.code)
   except:
+    print "Exiting with Exception"
     tracebackrepy.handle_exception()
     harshexit.harshexit(3)
     

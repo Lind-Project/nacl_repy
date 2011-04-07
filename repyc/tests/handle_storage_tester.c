@@ -7,9 +7,9 @@
 #include <repy.h>
 #include <assert.h>
 #include "../src/handle_storage.h"
+#include "repy_test_headers.h"
 
-
-int main() {
+int handle_main() {
   int i;
   for(i=0; i<2050; i++) {
     assert(handle_to_index(index_to_handle(i)) == i);
@@ -41,6 +41,8 @@ int main() {
   assert(-1 != repy_ft_set_handle((repy_handle*)500));
   /* full again */
   assert(repy_ft_set_handle((repy_handle*)100) == -1);
+
+  repy_ft_teardown();
 
   return 0;
 

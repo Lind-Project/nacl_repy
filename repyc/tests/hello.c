@@ -20,6 +20,5 @@ int main(int argc, char** argv) {
 		printf("Repy Says: %s", repy_getmyip());
 		return repy_shutdown();
 	}
-
 }
 

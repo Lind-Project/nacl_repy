@@ -15,8 +15,7 @@
 repy_handle repy_openfile(char * filename, int create)  {
 	CHECK_LIB_STATUS();
 	if (filename == NULL) {
-	  repy_errno = EINVAL;
-	  return -1;
+	  filename = "";
 	}
 	repy_file * fp = NULL;
 	PyObject* instance, * params, *rc = NULL;
@@ -65,25 +64,24 @@ void repy_close(repy_handle hp)  {
 }
 
 
-char * repy_readat( int size_to_read, int offset, repy_handle hp)  {
+int repy_readat(char * buffer,  int size_to_read, int offset, repy_handle hp)  {
 	CHECK_LIB_STATUS();
 	repy_file* fp = repy_ft_get_handle(hp);
 	if (fp == NULL || fp->repy_python_file == NULL) {
 	  repy_errno = EINVAL;
-	  return NULL;
+	  return -1;
 	}
 
 	PyObject *rc = NULL;
 	rc = PyObject_CallMethod(fp->repy_python_file,REPYC_API_READ,"ii", size_to_read, offset);
 	if (rc == NULL) {
-	  return NULL;
+	  return -1;
 	}
-	char * python_string = PyString_AsString(rc);
-	python_string = strdup(python_string);
+	int len = PyObject_Length(rc) + 1; //plus one for null terminator 
+	memcpy(buffer, PyString_AsString(rc), MIN(len, size_to_read));
 	REF_WIPE(rc);
-	return python_string;
+	return MIN(len, size_to_read);
 }
-
 
 
 void repy_writeat(char * data, int offset, repy_handle hp)  {

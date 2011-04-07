@@ -8,6 +8,8 @@ version = sys.version[:3]
 path = sys.exec_prefix
 pathstring = path + "/include/python" + version
 libstring = path + "/lib/python" + version
+
+
 env = Environment()
 env.Append(CCFLAGS='-Wall')
 env.Append(CPPPATH = [pathstring])
@@ -25,8 +27,21 @@ env = conf.Finish()
 
 Export('env')
 
-libs = SConscript('src/SConscript', variant_dir='bin/lib')
+libs = SConscript('src/SConscript')
 
-program = SConscript('tests/SConscript', variant_dir='bin/tests', exports='libs')
+program = SConscript('tests/SConscript',  exports='libs')
 
-#env.Alias('install', [program])
+
+
+
+import os
+rpath = os.getenv("REPY_PATH")
+
+installer = env.Command(rpath+'/lib/librepyc.a', [libs, program],
+            "python preparetest.py -t " + rpath,
+            chdir='..')
+AlwaysBuild(installer)
+env.Alias('install', [installer])
+env.Alias('all',[libs,program])
+Default(libs, program)
+

@@ -1,9 +1,18 @@
+/*
+ * repy.h
+ *
+ *  Created on: 2010-12-27
+ *      Author: cmatthew
+ */
+
+#ifndef REPY_H_
+#define REPY_H_
+
+
 #ifdef __cplusplus
-extern "C" {
+	extern "C" {
 #endif
 
-#ifndef __REPY_H__
-#define __REPY_H__
 
 /*
 * This file is part of RePyC.
@@ -39,7 +48,7 @@ int repy_shutdown();
 /** Returns a float containing the number of seconds the program has
  * been running. Note that in very rare circumstances (like the user
  * resetting their clock), this will not produce increasing values. */
-double * repy_getruntime();
+double repy_getruntime();
 
 
 /** Returns a random floating point number between 0.0 (inclusive)
@@ -123,7 +132,7 @@ void repy_close(repy_handle);
 
 /**  Seek to a location in a file and reads up to SIZELIMIT bytes from the file, returning what is read.
  * If SIZELIMIT is None, the file is read to EOF. */
-char * repy_readat(int sizelimit, int offset, repy_handle);
+int repy_readat(char* buffer, int sizelimit, int offset, repy_handle);
 
 /**  Seek to the OFFET in the FILE and then write some DATA to a file. */
 void repy_writeat(char * data, int size, repy_handle);
@@ -200,12 +209,13 @@ repy_udpserver_handle repy_listenformessage(char * localip, int localport);
 void repy_close_udpserver(repy_udpserver_handle );
 
 typedef struct repy_message_s {
-	char * ip;
-	int port;
-	char * message;
+  char * ip;
+  int port;
+  char * message;
+  int message_size;
 } repy_message;
 
-repy_message * repy_udpserver_getmessage(repy_udpserver_handle );
+  repy_message * repy_udpserver_getmessage(char * message_buffer, int size,  repy_udpserver_handle h);
 
 /**  Sends a UDP message to a destination host / port using a specified localip and localport.
  * Returns the number of bytes sent. This may not be the entire message.
@@ -213,9 +223,13 @@ repy_message * repy_udpserver_getmessage(repy_udpserver_handle );
 long int repy_sendmessage(char * destip, int destport, char * message, char * localip, int localport );
 
 /* If an error occured in the last call, tell us what it was. */  
-void repy_perror();
+void repy_perror(char* message);
 
 int repy_get_errno();
+
+
+#define MIN(x,y) (x<y)?x:y
+
 
 #ifdef __cplusplus
 } /* closing brace for extern "C" */

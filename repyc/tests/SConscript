@@ -2,12 +2,31 @@
 
 Import('env','libs')
 import sys
+import os
 version = sys.version[:3]
-prog = env.Program('test', ['test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python'+version],  CFLAGS='-g')
 
-env.Program('hello', ['hello.c','#src/repy.h'], LIBS=libs + ['python'+version],  CFLAGS='-g')
+def builder_unit_test(target, source, env):
+    app = str(source[0].abspath)
+    rc = os.spawnl(os.P_WAIT, app, app)
+    if rc==-15:  #repy exits with -15 on success
+        open(str(target[0]),'w').write("PASSED\n")
+    else:
+        return rc
 
-env.Program('handle_tester', ['handle_storage_tester.c','#src/repy.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+# Create a builder for tests
+bld = Builder(action = builder_unit_test)
+env.Append(BUILDERS = {'Test' :  bld})
+
+prog = env.Program('test', ['test_harness.c','handle_storage_tester.c','test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+
+hello = env.Program('hello', ['hello.c','#src/repy.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+
+t1 = env.Test("test.program", prog)
+t2 = env.Test("test.hello", hello)
+AlwaysBuild(t1)
+AlwaysBuild(t2)
+env.Alias("test", [t2, t1])
+
 
 
 Return('prog')

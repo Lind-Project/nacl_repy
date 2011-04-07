@@ -69,9 +69,6 @@ def process_mix(script_path):
     (theout, theerr) =  exec_command("python " + script_path + " " + file_path + " " + processed_file_path)
 
 def build_repyc(file_path, target_dir, repytest):
-  if os.getenv("REPY_PATH") == None:
-    print "$REPY_PATH not defined, skipping repyc build."
-    return
   current_dir = os.getcwd()
   os.chdir(file_path)
   exec_command("scons --clean")
@@ -80,14 +77,14 @@ def build_repyc(file_path, target_dir, repytest):
 
   os.mkdir(target_dir + "/include")
   os.mkdir(target_dir + "/lib")
-  copy_to_target("repyc/bin/lib/librepyc.a", target_dir + "/lib/")
-  copy_to_target("repyc/bin/lib/repy.h", target_dir + "/include/")
+  copy_to_target("repyc/src/librepyc.a", target_dir + "/lib/")
+  copy_to_target("repyc/src/repy.h", target_dir + "/include/")
 
   if repytest:
     os.mkdir(target_dir + "/bin")
-    copy_to_target("repyc/bin/tests/test", target_dir + "/bin")
+    copy_to_target("repyc/tests/test", target_dir + "/bin")
     os.chmod(target_dir + "/bin/test", stat.S_IXUSR)
-    copy_to_target("repyc/bin/tests/hello", target_dir + "/bin")
+    copy_to_target("repyc/tests/hello", target_dir + "/bin")
     os.chmod(target_dir + "/bin/hello", stat.S_IXUSR)
 
 def exec_command(command):
@@ -202,7 +199,7 @@ def main():
     #copy_to_target("assignments/webserver/*", target_dir)
     #copy_to_target("softwareupdater/test/*", target_dir)
     copy_to_target("repy/tests_naclrepy/*", target_dir)
-    
+    copy_to_target("repyc/tests/test.c",target_dir)
 
   #set working directory to the test folder
   os.chdir(target_dir)

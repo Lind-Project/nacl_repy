@@ -56,9 +56,10 @@ void repy_closesocket(repy_socket_handle hp) {
   repy_socket* tofree = repy_ft_get_handle(hp);
   repy_ft_clear(hp);
   PyObject * rc = NULL;
-  if (tofree == NULL || tofree->repy_python_socket == NULL)
+  if (tofree == NULL || tofree->repy_python_socket == NULL) {
     repy_errno = EINVAL;
     return;
+  }
   rc = PyObject_CallMethod(tofree->repy_python_socket, REPYC_API_CLOSE, NULL);
   if (rc == NULL) {
     return;
@@ -75,9 +76,10 @@ void repy_closesocketserver(repy_tcpserver_handle hp) {
   repy_tcpserversocket* tofree = repy_ft_get_handle(hp);
   repy_ft_clear(hp);
   PyObject * rc = NULL;
-  if (tofree == NULL || tofree->repy_python_socket == NULL)
+  if (tofree == NULL || tofree->repy_python_socket == NULL) {
     repy_errno = EINVAL;
     return;
+  }
   rc = PyObject_CallMethod(tofree->repy_python_socket, REPYC_API_CLOSE, NULL);
   if (rc == NULL) {
     return;
@@ -93,13 +95,16 @@ long int repy_socket_send(char* message, repy_socket_handle hp) {
   CHECK_LIB_STATUS();
   repy_socket* sp = repy_ft_get_handle(hp);
   PyObject * rc = NULL;
-  if (message == NULL || sp == NULL || sp->repy_python_socket == NULL)
+  if (message == NULL || sp == NULL || sp->repy_python_socket == NULL) {
     repy_errno = EINVAL;
     return -1;
+  }
+
   rc = PyObject_CallMethod(sp->repy_python_socket, REPYC_API_SOCKETSEND, "s", message);
   if (rc == NULL) {
     return -1;
   }
+
   return PyInt_AsLong(rc);
 }
 
@@ -165,9 +170,10 @@ void repy_close_udpserver(repy_udpserver_handle hserver) {
   repy_udpserver* server = repy_ft_get_handle(hserver);
   repy_ft_clear(hserver);
   PyObject * rc = NULL;
-  if (server == NULL || server->repy_python_udpserver == NULL)
+  if (server == NULL || server->repy_python_udpserver == NULL) {
     repy_errno = EINVAL;
     return;
+  }
   rc = PyObject_CallMethod(server->repy_python_udpserver, REPYC_API_CLOSE, NULL);
   if (rc == NULL) {
     return;
@@ -178,21 +184,25 @@ void repy_close_udpserver(repy_udpserver_handle hserver) {
 }
 
 
-repy_message * repy_udpserver_getmessage(repy_udpserver_handle hserver) {
+repy_message* repy_udpserver_getmessage(char* message_buffer, int size, repy_udpserver_handle hserver) {
   CHECK_LIB_STATUS();
   repy_udpserver * server = repy_ft_get_handle(hserver);
+  repy_message* retval = (repy_message*) malloc(sizeof(struct repy_message_s));
   PyObject * rc = NULL;
-  if (server == NULL || server->repy_python_udpserver == NULL)
+  if (server == NULL || server->repy_python_udpserver == NULL) {
     repy_errno = EINVAL;
     return NULL;
+  }
   rc = PyObject_CallMethod(server->repy_python_udpserver, REPYC_API_UDPGETMESSAGE, NULL);
   if (rc == NULL) {
     return NULL;
   }
-  repy_message * retval = malloc(sizeof(struct repy_message_s));
-  retval->message = strdup(PyString_AsString(PyTuple_GetItem(rc,2)));
+
+  retval->message_size = MIN(PyObject_Length(PyTuple_GetItem(rc,2))+1, size);
+  retval->message = memcpy(message_buffer, PyString_AsString(PyTuple_GetItem(rc,2)), retval->message_size);
   retval->ip = strdup(PyString_AsString(PyTuple_GetItem(rc,0)));
   retval->port = (int) PyInt_AsLong(PyTuple_GetItem(rc,1));
+
   REF_WIPE(rc);
   return retval;
 }

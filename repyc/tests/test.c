@@ -1,5 +1,10 @@
-
+/* is this a stnadalone test, or running in nacl? */
+#ifdef __native_client__
+#include <repy.h>
+#else
 #include "../src/repy.h"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,7 +54,7 @@ tresult test_gethostbyname() {
 }
 
 tresult test_getruntime() {
-	double* time = 0;
+	double time = 0;
 	time = repy_getruntime();
 	if (time == 0) {
 		return fail("did not return time.");
@@ -151,8 +156,8 @@ tresult test_writeat() {
 	repy_close(fp);
 
 	fp = repy_openfile(test_file_name, 0);
-
-	char * read = repy_readat(50, 0, fp);
+	char* read = malloc(51);
+	repy_readat(read, 50, 0, fp);
 	repy_close(fp);
 	if (read == NULL) {
 		return fail("no data read from file.");
@@ -168,15 +173,17 @@ tresult test_writeat() {
 tresult test_readat() {
 	char * test_file_name = "readtest.junk";
 	repy_handle fp = repy_openfile(test_file_name, 0);
-	if (fp == -1) {
+	if (fp == -1 ) {
 		return fail("no file pointer after open.");
 	}
 
-	char * space = repy_readat(499, 0 ,fp);
+	char * space = malloc(499);
+	int amount_read = repy_readat(space, 499, 0 ,fp);
 	repy_close(fp);
 
-	if(	strstr(space, "any emotion akin to love for Irene Adler") != NULL &&
-			strstr(space, "He ") != NULL) {
+	if(amount_read > 1 &&	
+	   strstr(space, "any emotion akin to love for Irene Adler") != NULL &&
+	   strstr(space, "He ") != NULL) {
 		free(space);
 		return PASS;
 	} else {
@@ -216,62 +223,74 @@ tresult test_removefile() {
 
 
 tresult test_open_socket() {
-	char * loopback = "127.0.0.1";
+  char * loopback = "127.0.0.1";
 
-	repy_tcpserver_handle server = repy_listenforconnection(loopback,12345);
-	if (server == -1) {
-		return fail("no socket pointer after server open.");
-	}
+  repy_tcpserver_handle server = repy_listenforconnection(loopback,12345);
+  if (server == -1) {
+    return fail("no socket pointer after server open.");
+  }
 
-	repy_socket_handle sp = repy_openconnection(loopback, 12345, loopback, 12346, 1.0);
-	if (sp == -1) {
-		return fail("no socket pointer after open.");
-	}
+  repy_socket_handle sp = repy_openconnection(loopback, 12345, loopback, 12346, 1.0);
+  if (sp == -1) {
+    repy_perror("");
+    return fail("no socket pointer after open.");
+  }
 
-	int sent = repy_socket_send("a message thorough the socket.", sp);
+  int sent = repy_socket_send("a message thorough the socket.", sp);
 
-	if (sent < 1) {
-		return fail("sending message through the socket returned no length.");
-	}
+  if (sent < 1) {
+    repy_perror("Sending over socket.");
+    return fail("sending message through the socket returned no length.");
+  }
 
-	repy_socket_handle reciever = repy_tcpserver_getconnection(server);
+  repy_socket_handle reciever = repy_tcpserver_getconnection(server);
        
-	char * new_message = repy_socket_recv(50, reciever);
+  char * new_message = repy_socket_recv(50, reciever);
 
-	repy_closesocket(sp);
-        repy_closesocketserver(server);
+  repy_closesocket(sp);
+  repy_closesocketserver(server);
 
-	if(strstr(new_message,"a message thorough the socket")) {
-		return PASS;
-	} else {
-		return fail("String was not found in other end of socket");
-	}
-	return PASS;
+  if(strstr(new_message,"a message thorough the socket")) {
+    return PASS;
+  } else {
+    return fail("String was not found in other end of socket");
+  }
+  return PASS;
 }
 
 tresult test_udp_messages() {
 	char * loopback = "127.0.0.1";
 	int dest = 12345;
+	char * m = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()\n";
+	int message_size = 500;
+	char * buffer = (char *) calloc(1, message_size);
 	repy_udpserver_handle server = repy_listenformessage(loopback, dest);
 	if (server == -1) {
-		return fail("no message server pointer after server open.");
+	  repy_perror("UDP Test");
+	  return fail("no message server pointer after server open.");
 	}
 	
-	long int rc = repy_sendmessage(loopback, dest, "A test UDP message", loopback, 12346);
+	long int rc = repy_sendmessage(loopback, dest, m, loopback, 12346);
 	if (rc < 1) {
-		return fail("failed to send UDP message");
+	  repy_perror("UDP Test");
+	  return fail("failed to send UDP message");
+	}
+	repy_message * new_message = repy_udpserver_getmessage(buffer,message_size, server);
+	repy_close_udpserver(server);
+	
+	if(new_message == NULL) {
+	  repy_perror("UDP Test");
+	  return fail("new message was null");
+	}
+
+	if ( new_message->message == NULL) {
+	  repy_perror("UDP Test");
+	  return fail("new_message message was null");
 	}
 	
-	repy_message * new_message = NULL;
-	new_message = repy_udpserver_getmessage(server);
-	//repy_close_udpserver(server);
-	
-	if(new_message != NULL &&
-	   new_message->message != NULL &&
-	   strstr(new_message->message,"A test UDP message")) {
-		return PASS;
-	} else {
-		return fail("String was not found in other end of message.");
+	if (strstr(new_message->message, m)==NULL) {
+	  repy_perror("UDP Test");
+	  return fail("message did not match expected");
 	}
 	return PASS;
 
@@ -284,16 +303,20 @@ tresult test_perror() {
 	if (fp != -1) {
 	  return fail("opening file that does not exist worked...");
 	}
+
 	repy_perror("Missing file");
 	fp = repy_openfile(test_file_name, 0);
 	if (repy_get_errno() != ENOENT )
 	  return fail("get error no did not send correct value");
+
 	fp = repy_openfile(NULL,0);
-	repy_perror("Invalid Arguemnt test");
+	repy_perror("perror argument");
+	fp = repy_openfile(NULL,0);
 	if (repy_get_errno() != EINVAL )
 	  return fail("did not get correct error val.");
 	return PASS;
 }
+
 
 void run_test(tresult(*func)(void), char * name) {
 	printf("Running Test: %s... ", name);
@@ -314,36 +337,33 @@ void run_test(tresult(*func)(void), char * name) {
 }
 
 
-int main() {
+int repy_main(int argc, char** argv) {
 	int rc = 0;
-	/* int i = 0; */
+	
 	rc = repy_init();
+	
 	if (rc) {
-		printf("Problem loading repy: %d", rc);
-		return rc;
+	  printf("Problem loading repy: %d", rc);
+	  return rc;
 	} else {
-	  /* for (i; i<3; i++) { */
-		run_test((&test_getmyup), "getmyip");
-		run_test((&test_gethostbyname), "test_gethostbyname");
-		run_test((&test_getruntime), "getruntime");
-		run_test((&test_getrandombytes), "getrandombytes");
-		run_test((&test_sleep), "sleep");
-		//run_test((&test_locking), "locking");
-		run_test((&test_listdir), "listdir");
-		run_test((&test_open_close), "Open and Close");
-		run_test((&test_open_close), "Open and Close");
-	       	run_test((&test_readat), "ReadAt");
-		run_test((&test_writeat), "WriteAt");
-		run_test((&test_exitall), "Exitall");
-		run_test((&test_removefile), "Removefile");
-		run_test((&test_open_socket), "OpenSocket");
-		run_test((&test_udp_messages), "UDP Message");
-		run_test((&test_getmyup), "getmyip");
-		run_test((&test_perror), "perror");
-		
+	  run_test((&test_getmyup), "getmyip");
+	  run_test((&test_getmyup), "repeated call test");
 
-		repy_exitall();
-		
+	  run_test((&test_gethostbyname), "test_gethostbyname");
+	  run_test((&test_getruntime), "getruntime");
+	  run_test((&test_getrandombytes), "getrandombytes");
+	  run_test((&test_sleep), "sleep");
+	  run_test((&test_listdir), "listdir");
+	  run_test((&test_open_close), "fops open and close");
+	  run_test((&test_open_close), "repeated file ops test");
+	  run_test((&test_readat), "readAt");
+	  run_test((&test_writeat), "writeAt");
+	  run_test((&test_exitall), "exitall");
+	  run_test((&test_removefile), "removefile");
+	  run_test((&test_open_socket), "open socket");
+	  // There is a bug in UDP right now...
+	  run_test((&test_udp_messages), "UDP Message");
+	  run_test((&test_perror), "perror");
 	}
 	return 0;
 }
