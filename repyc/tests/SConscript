@@ -17,16 +17,39 @@ def builder_unit_test(target, source, env):
 bld = Builder(action = builder_unit_test)
 env.Append(BUILDERS = {'Test' :  bld})
 
-prog = env.Program('test', ['test_harness.c','handle_storage_tester.c','test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+test_framework = env.Object('test_harness.o','test_harness.c')
+unit_test = env.Object('unittest.o','unittest.c')
+repy_test_launcher = env.Object('repy_test_launcher.','repy_test_launcher.c')
+
+
 
 hello = env.Program('hello', ['hello.c','#src/repy.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
 
-t1 = env.Test("test.program", prog)
+api_test = env.Program('test', [unit_test, test_framework,repy_test_launcher, 'test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+
+exit_all = env.Program('test_exitall', [test_framework, 'test_exitall.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+
+handle_test = env.Program('handle_storage_tester', ['handle_storage_tester.c','#src/repy.h', '#src/handle_storage.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+
+loop_test = env.Program('hammer_test', [unit_test,test_framework,repy_test_launcher,'loop_test.c','#src/repy.h', '#src/util.h'], LIBS=libs + ['python'+version],  CFLAGS='-g -Werror')
+
+
+
+t1 = env.Test("test.api", api_test)
 t2 = env.Test("test.hello", hello)
+t3 = env.Test("test.exitall",exit_all)
+t4 = env.Test("test.handles",handle_test)
+t5 = env.Test("test.hammer",loop_test)
+
+
 AlwaysBuild(t1)
 AlwaysBuild(t2)
-env.Alias("test", [t2, t1])
+AlwaysBuild(t3)
+AlwaysBuild(t4)
+AlwaysBuild(t5)
 
-env.Default(prog,hello)
+env.Alias("test", [t4, t2, t1, t3, t5])
 
-Return('prog')
+env.Default(api_test,hello)
+
+Return('api_test')

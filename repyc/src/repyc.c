@@ -240,6 +240,8 @@ static void setup_python_path() {
 	char * syspath = calloc(len + strlen(path_to_repyc_python_binding), sizeof(char));
 	snprintf(syspath, len + strlen(path_to_repyc_python_binding), format, path_to_repyc_python_binding );
 	PyRun_SimpleString(syspath);
+	free(syspath);
+	syspath = NULL;
 
 }
 
@@ -260,12 +262,13 @@ int repy_init() {
 	Py_Initialize();
 	setup_python_path();
 	//Derived from: http:/y/www.linuxjournal.com/article/8497
-	FILE*        exp_file;
-	PyObject*    main_module_b, * expression;
-	PyObject* rc, * repy_init_b;
+	FILE*        exp_file = NULL;
+	PyObject*    main_module_b = NULL, * expression = NULL;
+	PyObject* rc = NULL, * repy_init_b = NULL;
 
 	// Open and execute the Python file
 	exp_file = fopen(repy_fn, "r");
+	assert(exp_file != NULL);
 	PyRun_SimpleFile(exp_file, repy_fn);
 	fclose(exp_file);
 
@@ -281,7 +284,7 @@ int repy_init() {
 	//terminate the extra control flow.
 	pid_t new_pid = getpid();
 	if (mypid == new_pid) {
-		exit(0);
+	  exit(0);
 	}
 
 	if (rc == NULL) {

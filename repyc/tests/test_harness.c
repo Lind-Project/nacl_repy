@@ -4,14 +4,16 @@
  */
 #include "repy_test_headers.h"
 
+extern void run_tests();
+
 
 int main(int argc, char** argv) {
 
-  int handle_rc = 0;
   int repy_tests_rc = 0;
-  handle_rc = handle_main();
   repy_tests_rc = repy_main(argc, argv);
 
-  return handle_rc + repy_tests_rc;
+  return repy_tests_rc;
 
 }
+
+

@@ -45,7 +45,7 @@ int repy_ft_set_handle(void * handle) {
     return -1;
   }
   
-  int curr = file_storage->last_allocated + 1;
+  int curr = (file_storage->last_allocated + 1) % REPY_FTABLE_MAX_SIZ;
   while(1){
     if (file_storage->file_handles[curr] == NULL) {
       file_storage->file_handles[curr] = handle;

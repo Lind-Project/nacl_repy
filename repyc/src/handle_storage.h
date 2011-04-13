@@ -1,5 +1,3 @@
-#include <repy.h>
-
 #define REPY_FTABLE_MAX_SIZ 1024
 
 

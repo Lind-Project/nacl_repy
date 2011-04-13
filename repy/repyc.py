@@ -149,40 +149,45 @@ def get_repyAPI():
 
 
 def repyc_shutdown():
+  pass
   # I'll use this to detect when the program is idle so I know when to quit...
-  idlethreadcount =  threading.activeCount()
-
+  #idlethreadcount =  threading.activeCount()
+  #print "1"
   # call the initialize function
-  usercontext['callfunc'] = 'initialize'
-  usercontext['callargs'] = args[:]
- 
-  event_id = idhelper.getuniqueid()
-  try:
-    nanny.tattle_add_item('events', event_id)
-  except Exception, e:
-    tracebackrepy.handle_internalerror("Failed to aquire event for '" + \
-              "initialize' event.\n(Exception was: %s)" % e.message, 140)
- 
-  try:
-    main_namespace.evaluate(usercontext)
-  except SystemExit:
-    raise
-  except:
+  #usercontext['callfunc'] = 'initialize'
+  #print "1.-1"
+  #usercontext['callargs'] = args[:]
+  #print "1.0"
+  #event_id = idhelper.getuniqueid()
+  #print "1.1"
+  #try:
+  #  print "1.2"
+  #  nanny.tattle_add_item('events', event_id)
+  #  print "1.3"
+  #except Exception, e:
+  #  tracebackrepy.handle_internalerror("Failed to aquire event for '" + \
+  #            "initialize' event.\n(Exception was: %s)" % e.message, 140)
+  #print "2"
+  #try:
+  #  main_namespace.evaluate(usercontext)
+  #except SystemExit, e:
+  #  raise e
+  #except:
     # I think it makes sense to exit if their code throws an exception...
-    tracebackrepy.handle_exception()
-    harshexit.harshexit(6)
-  finally:
-    nanny.tattle_remove_item('events', event_id)
-
+  #  tracebackrepy.handle_exception()
+  #  harshexit.harshexit(6)
+  #finally:
+  #  nanny.tattle_remove_item('events', event_id)
+  #print "3"
   # I've changed to the threading library, so this should increase if there are
   # pending events
-  while threading.activeCount() > idlethreadcount:
+  #while threading.activeCount() > idlethreadcount:
     # do accounting here?
-    time.sleep(0.25)
-
+   # time.sleep(0.25)
+  #print "4"
 
   # Once there are no more pending events for the user thread, we exit
-  harshexit.harshexit(0)
+  # harshexit.harshexit(0)
 
 def repyc_init_helper():
   print "Starting RePyC With Helper...",
@@ -332,7 +337,6 @@ def repyc_init(argv):
   try:
     main(resourcefn, progname, progargs)
   except SystemExit, e:
-    print "Exiting with System Exit."
     harshexit.harshexit(e.code)
   except:
     print "Exiting with Exception"

@@ -45,3 +45,7 @@ env.Alias('install', [installer])
 env.Alias('all',[libs,program])
 Default(libs, program)
 
+#valgrind = env.Command(None, [libs,program],
+#		  "valgrind --leak-check=yes --gen-suppressions=no  --suppressions=repyc.supp --track-fds=yes --num-callers=50 tests/test ")
+
+#env.Alias('valgrind',valgrind)
