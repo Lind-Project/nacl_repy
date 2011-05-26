@@ -43,7 +43,9 @@
 # Let's make sure the version of python is supported
 import checkpythonversion
 checkpythonversion.ensure_python_version_is_supported()
-
+import time
+import os
+print "RePy: %s" % time.ctime(os.path.getmtime(os.path.realpath(__file__)))
 import idhelper
 import safe
 import sys
@@ -92,8 +94,9 @@ safe._NODE_CLASS_OK.append("ExcepthandlerType")
 safe._NODE_CLASS_OK.append("Invert")
 
 # Armon: Repy V2, remove support for print()
-safe._NODE_CLASS_OK.remove("Print")
-safe._NODE_CLASS_OK.remove("Printnl")
+# Chris: Add back in for lind debugging
+#safe._NODE_CLASS_OK.append("Print")
+#safe._NODE_CLASS_OK.append("Printnl")
 
 # needed for traceback
 # NOTE: still needed for tracebackrepy
@@ -154,6 +157,15 @@ def main(resourcefn, program, args):
   # These will be the functions and variables in the user's namespace (along
   # with the builtins allowed by the safe module).
   usercontext = {'mycontext':{}}
+
+  #for Lind, add the send and recvive sockets
+  try:
+    import lind_launcher
+  except ImportError:
+    print "Problem Finding Lind.  Are you Launching from LindLauncher?"
+    sys.exit(1)
+  usercontext['mycontext']['recv_socket'] = lind_launcher.getrecv()
+  usercontext['mycontext']['send_socket'] = lind_launcher.getsend()
   
   # Add to the user's namespace wrapped versions of the API functions we make
   # available to the untrusted user code.
@@ -281,13 +293,13 @@ Where [options] are some combination of the following:
 """
   return
 
-
-if __name__ == '__main__':
+def repy_main(argv=sys.argv):
+  """Run repy with these command line arguments"""
   global simpleexec
   global logfile
 
   # Armon: The CMD line path to repy is the first argument
-  repy_location = sys.argv[0]
+  repy_location = argv[0]
 
   # Get the directory repy is in
   repy_directory = os.path.dirname(repy_location)
@@ -318,7 +330,7 @@ if __name__ == '__main__':
   sys.path = newsyspath
 
   
-  args = sys.argv[1:]
+  args = argv[1:]
 
   try:
     optlist, fnlist = getopt.getopt(args, '', [
@@ -420,3 +432,8 @@ if __name__ == '__main__':
   except:
     tracebackrepy.handle_exception()
     harshexit.harshexit(3)
+
+if __name__ == '__main__':
+  repy_main()
+
+#  LocalWords:  recvive

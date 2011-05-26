@@ -1,0 +1,90 @@
+[12530,3256383264:16:26:06.650803] NaClPerfCounterInterval(SelMain __start__:SnapshotNaclFile): 4043 microsecs
+[12530,3256383264:16:26:06.808776] NaClPerfCounterInterval(NaClAppLoadFile __start__:*MakeDynText): 157912 microsecs
+[12530,3256383264:16:26:06.885426] NaClPerfCounterInterval(NaClAppLoadFile *MakeDynText:*ValidateImg): 76652 microsecs
+[12530,3256383264:16:26:06.885648] NaClPerfCounterInterval(NaClAppLoadFile __start__:EndLoadFile): 234785 microsecs
+[12530,3256383264:16:26:06.885666] NaClPerfCounterInterval(SelMain SnapshotNaclFile:AppLoadEnd): 234865 microsecs
+[12530,3256383264:16:26:06.885887] NaClPerfCounterInterval(SelMain AppLoadEnd:AppPrepLaunch): 222 microsecs
+[12530,3256383264:16:26:06.885897] NACL: Application output follows
+[12530,3256383264:16:26:06.885952] NaClPerfCounterInterval(SelMain AppPrepLaunch:CreateMainThread): 63 microsecs
+[12530,3256243968:16:26:06.886026] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[12530,3256243968:16:26:06.886334] mmap: rounded length to 0x10000
+[12530,3256243968:16:26:06.888016] NaClPerfCounterInterval(NaClTextDyncodeCreate __start__:*DynRegionValidate): 1642 microsecs
+[12530,3256243968:16:26:06.888052] munmap: rounded length to 0x10000
+[12530,3256243968:16:26:06.888073] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:06.888098] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:06.888122] mmap: rounded length to 0x10000
+[12530,3256243968:16:26:06.888414] mmap: rounded length to 0xf0000
+[12530,3256243968:16:26:07.354095] NaClPerfCounterInterval(NaClTextDyncodeCreate __start__:*DynRegionValidate): 464533 microsecs
+[12530,3256243968:16:26:07.355391] munmap: rounded length to 0xf0000
+[12530,3256243968:16:26:07.355464] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:07.355487] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:07.355923] mmap: rounded length to 0x50000
+[12530,3256243968:16:26:07.498872] NaClPerfCounterInterval(NaClTextDyncodeCreate __start__:*DynRegionValidate): 142730 microsecs
+[12530,3256243968:16:26:07.499340] munmap: rounded length to 0x50000
+[12530,3256243968:16:26:07.499377] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:07.499397] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:07.499681] mmap: rounded length to 0x10000
+[12530,3256243968:16:26:07.527226] NaClPerfCounterInterval(NaClTextDyncodeCreate __start__:*DynRegionValidate): 27429 microsecs
+[12530,3256243968:16:26:07.527384] munmap: rounded length to 0x10000
+[12530,3256243968:16:26:07.527409] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:07.527427] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:07.527753] mmap: rounded length to 0x1b0000
+[12530,3256243968:16:26:08.337048] NaClPerfCounterInterval(NaClTextDyncodeCreate __start__:*DynRegionValidate): 807038 microsecs
+[12530,3256243968:16:26:08.339579] munmap: rounded length to 0x1b0000
+[12530,3256243968:16:26:08.339697] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:08.339720] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:08.340285] mmap: rounded length to 0x10000
+[12530,3256243968:16:26:08.347127] NaClPerfCounterInterval(NaClTextDyncodeCreate __start__:*DynRegionValidate): 6787 microsecs
+[12530,3256243968:16:26:08.347174] munmap: rounded length to 0x10000
+[12530,3256243968:16:26:08.347195] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:08.347209] invalid mmap flags 04022, ignoring extraneous bits
+[12530,3256243968:16:26:08.349185] mmap: rounded length to 0x10000
+[12530,3256243968:16:26:08.349268] Exit syscall handler: 0
+[12530,3256383264:16:26:08.349362] NaClPerfCounterInterval(SelMain CreateMainThread:WaitForMainThread): 1463411 microsecs
+[12530,3256383264:16:26:08.349392] NaClPerfCounterInterval(SelMain __start__:SelMainEnd): 1702634 microsecs
+[14648,2767914752:16:34:23.247738] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[14648,2767914752:16:34:23.249787] munmap: rounded length to 0x10000
+[14648,2767914752:16:34:23.249821] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:23.249848] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:23.719247] munmap: rounded length to 0xf0000
+[14648,2767914752:16:34:23.719339] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:23.719364] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:23.868062] munmap: rounded length to 0x50000
+[14648,2767914752:16:34:23.868117] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:23.868139] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:23.895835] munmap: rounded length to 0x10000
+[14648,2767914752:16:34:23.895872] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:23.895897] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:24.700495] munmap: rounded length to 0x1b0000
+[14648,2767914752:16:34:24.700640] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:24.700667] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:24.708712] munmap: rounded length to 0x10000
+[14648,2767914752:16:34:24.708749] invalid mmap flags 04022, ignoring extraneous bits
+[14648,2767914752:16:34:24.708773] invalid mmap flags 04022, ignoring extraneous bits
+[27919,2087704320:10:50:11.577369] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[11399,1031362304:13:50:58.872170] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[11773,1535760128:13:52:31.733654] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[11857,4154889984:13:52:50.315850] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[12977,3799684864:13:57:29.754309] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[13345,3740321536:13:58:59.895325] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[13665,874161920:14:00:17.427061] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[13936,440526592:14:01:12.903147] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[14958,1102845696:14:04:58.521607] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[18248,322651904:14:18:30.362380] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[18389,2057737984:14:19:04.972294] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[18535,2684278528:14:19:37.539676] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[18907,4249868032:14:21:07.592893] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[19141,2316572416:14:22:03.042082] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[19756,1269233408:14:24:34.466479] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[20286,1524274944:14:26:45.056493] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[20805,1273759488:14:28:52.769200] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[21509,3767682816:14:31:35.083274] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[22358,2245351168:14:35:04.314656] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[22499,1719437056:14:35:37.993093] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[22668,882579200:14:36:19.319705] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[24491,3295139584:14:43:23.438766] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[25031,532612864:14:45:09.861618] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[25388,2582308608:14:46:24.770119] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[25563,466106112:14:46:33.838539] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[28620,4059068160:19:25:17.934475] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
+[29331,3680872192:19:27:42.352715] AcceptConn method is not implemented for object of type NACL_DESC_IMC_SOCKET
