@@ -37,6 +37,7 @@
   --status filename.txt  : Write status information into this file
   --cwd dir              : Set Current working directory
   --servicelog           : Enable usage of the servicelogger for internal errors
+  --safebinary           : Allow safe binaries to be run
 """
 
 
@@ -50,6 +51,13 @@ import idhelper
 import safe
 import sys
 import getopt
+
+#this needs to be early on since it changes the python path
+import repy_constants   
+import lind
+repy_constants.NACL_ENV = lind.setup_nacl_path(repy_constants.NACL_PATH)
+import safebinary
+
 import emulcomm
 import namespace
 import nanny
@@ -63,7 +71,6 @@ import harshexit
 
 import statusstorage
 
-import repy_constants   
 
 import os
 
@@ -159,13 +166,13 @@ def main(resourcefn, program, args):
   usercontext = {'mycontext':{}}
 
   #for Lind, add the send and recvive sockets
-  try:
-    import lind_launcher
-  except ImportError:
-    print "Problem Finding Lind.  Are you Launching from LindLauncher?"
-    sys.exit(1)
-  usercontext['mycontext']['recv_socket'] = lind_launcher.getrecv()
-  usercontext['mycontext']['send_socket'] = lind_launcher.getsend()
+  # try:
+  #   import lind_launcher
+  # except ImportError:
+  #   print "Problem Finding Lind.  Are you Launching from LindLauncher?"
+  #   sys.exit(1)
+  # usercontext['mycontext']['recv_socket'] = lind_launcher.getrecv()
+  # usercontext['mycontext']['send_socket'] = lind_launcher.getsend()
   
   # Add to the user's namespace wrapped versions of the API functions we make
   # available to the untrusted user code.
@@ -290,6 +297,7 @@ Where [options] are some combination of the following:
 --status filename.txt  : Write status information into this file
 --cwd dir              : Set Current working directory
 --servicelog           : Enable usage of the servicelogger for internal errors
+--safebinary           : Allow safe binaries to be run
 """
   return
 
@@ -335,7 +343,7 @@ def repy_main(argv=sys.argv):
   try:
     optlist, fnlist = getopt.getopt(args, '', [
       'simple', 'ip=', 'iface=', 'nootherips', 'logfile=',
-      'stop=', 'status=', 'cwd=', 'servicelog'
+      'stop=', 'status=', 'cwd=', 'servicelog', 'safebinary'
       ])
 
   except getopt.GetoptError:
@@ -356,6 +364,9 @@ def repy_main(argv=sys.argv):
 
   # Default stopfile (if the option --stopfile isn't passed)
   statusfile = None
+
+  #by default safe binary mode is off
+  safebinary.safebinary = False
 
   if len(fnlist) < 2:
     usage("Must supply a resource file and a program file to execute")
@@ -406,7 +417,11 @@ def repy_main(argv=sys.argv):
     # Enable logging of internal errors to the service logger.
     elif option == '--servicelog':
       servicelog = True
-
+    
+    # Enable safe binary mode
+    elif option == '--safebinary':
+      safebinary.safebinary = True
+      
   # Update repy current directory
   repy_constants.REPY_CURRENT_DIR = os.path.abspath(os.getcwd())
 
@@ -425,6 +440,7 @@ def repy_main(argv=sys.argv):
   # can be found regardless of where we are called from...
   tracebackrepy.initialize(servicelog, absolute_repy_directory)
 
+  
   try:
     main(resourcefn, progname, progargs)
   except SystemExit:

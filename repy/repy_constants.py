@@ -46,3 +46,15 @@ STABLE_PUBLIC_IPS = ["18.7.22.69",      # M.I.T
                     "169.229.131.81",   # Berkley
                     "140.142.12.202"]   # Univ. of Washington
 
+
+#NACL Related Constats
+# Descriptor for a bound socket that the NaCl browser plugin sets up
+NACL_PLUGIN_BOUND_SOCK = 3
+
+# Descriptors for connected sockets that the NaCl browser plugin sets up
+NACL_PLUGIN_ASYNC_FROM_CHILD_FD = 6
+NACL_PLUGIN_ASYNC_TO_CHILD_FD = 7
+
+
+NACL_PATH = "/home/cmatthew/lind/native_client"
+NACL_ENV = None

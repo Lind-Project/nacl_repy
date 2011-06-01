@@ -10,46 +10,23 @@ The Lind OS Server.  This module services system calls coming from glibc
 """
 
 
-def PackStringList(strings):
-  return "".join(arg + "\0" for arg in strings)
-
-
-def PackArgsMessage(argv, envv):
-  return (struct.pack("4sII", "ARGS", len(argv), len(envv))
-          + PackStringList(argv)
-          + PackStringList(envv))
-
-
-
-def NaclRPCServer():
+def NaclRPCServer(nacl_instance):
   #todo these should come in the context  
-  recv_socket = mycontext['recv_socket'] 
-  send_socket = mycontext['send_socket']
-  print recv_socket
-  print send_socket
+  #(recv_socket,send_socket) = nacl_instance.get_comm_channels()
+  #print "Sockets are:", str(recv_socket), str(send_socket)
   while True:
-    try:
-      message, fds = recv_socket.imc_recvmsg(1024)
-    # TODO(mseaborn): When the Python bindings raise a specific
-    # exception type, we should test for that for EOF instead.
-    except Exception:
-      print "Error reading from socket."
+    message = nacl_instance.recv(1024)
+    print "[Trace]", message
+    if message == "EOT":
       break
- 
-    method_id = message[:4]
-    message_body = message[4:]
- 
-    print "Trace ", method_id, message_body
-    
-    send_socket.imc_sendmsg(1)
-
-
-
+       
 def main():
-    #print "Starting Lind OS Server."
-    NaclRPCServer()
-
-
+  code_loc = "/home/cmatthew/lind/native_client/scons-out/nacl-x86-64-glibc/staging/hello_world.nexe"
+  nacl = safelyexecutenativecode(code_loc, ["1","2"])
+  if nacl != None:
+    NaclRPCServer(nacl)
+  else:
+    print "Safe Binary mode must be switched on for this program to work."
 
 if callfunc == "initialize":
   main()

@@ -105,7 +105,6 @@
       it should result in termination of the running program (see the except blocks
       in NamespaceAPIFunctionWrapper.wrapped_function).
 """
-
 import types
 
 # To check if objects are thread.LockType objects.
@@ -115,11 +114,13 @@ import emulcomm
 import emulfile
 import emulmisc
 import emultimer
+import safebinary
 import nonportable
 import safe # Used to get SafeDict
 import tracebackrepy
 import virtual_namespace
 
+from naclimc import * 
 from exception_hierarchy import *
 
 # Save a copy of a few functions not available at runtime.
@@ -182,6 +183,8 @@ tcp_socket_object_wrapped_functions_dict = {}
 tcp_server_socket_object_wrapped_functions_dict = {}
 udp_server_socket_object_wrapped_functions_dict = {}
 virtual_namespace_object_wrapped_functions_dict = {}
+binary_object_wrapped_functions_dict = {}
+
 
 def _prepare_wrapped_functions_for_object_wrappers():
   """
@@ -195,7 +198,10 @@ def _prepare_wrapped_functions_for_object_wrappers():
                     (TCP_SOCKET_OBJECT_WRAPPER_INFO, tcp_socket_object_wrapped_functions_dict),
                     (TCP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, tcp_server_socket_object_wrapped_functions_dict),
                     (UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, udp_server_socket_object_wrapped_functions_dict),
-                    (VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO, virtual_namespace_object_wrapped_functions_dict)]
+                    (VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO, virtual_namespace_object_wrapped_functions_dict),
+                    (BINARY_OBJECT_WRAPPER_INFO, binary_object_wrapped_functions_dict),
+                    
+]
 
   for description_dict, wrapped_func_dict in objects_tuples:
     for function_name in description_dict:
@@ -325,6 +331,20 @@ class Int(ValueProcessor):
 
     if val < self.min:
       raise RepyArgumentError("Min value is %s." % self.min)
+
+
+
+
+
+class Imc(ObjectProcessor):
+  """Allows NaclIMC descriptors."""
+
+  def check(self, val):
+    # Help! I can't get this to check for Imc Sockets
+    if not _is_in(type(val), [naclimc.NaclDesc]):
+      raise RepyArgumentError("Invalid type %s" % type(val))
+
+
 
 
 class NoneOrInt(ValueProcessor):
@@ -522,6 +542,21 @@ class TCPSocket(ObjectProcessor):
 
 
 
+class NaClRuntime(ObjectProcessor):
+  """Allows TCPSocket objects."""
+
+  def check(self, val):
+    if val == None:
+      return
+    if not isinstance(val, safebinary.NaClRuntime):
+      raise RepyArgumentError("Invalid type %s" % type(val))
+
+
+  def wrap(self, val):
+    return NamespaceObjectWrapper("binary", val, binary_object_wrapped_functions_dict)
+
+
+
 
 class VirtualNamespace(ObjectProcessor):
   """Allows VirtualNamespace objects."""
@@ -637,6 +672,10 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emultimer.sleep,
        'args' : [Float()],
        'return' : None},
+  'safelyexecutenativecode' :
+      {'func' : safebinary.safelyexecutenativecode,
+       'args' : [Str(),ListOfStr()],
+       'return' : NaClRuntime()},
   'log' :
       {'func' : emulmisc.log,
        'args' : [NonCopiedVarArgs()],
@@ -706,7 +745,7 @@ UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO = {
   'getmessage' :
       {'func' : emulcomm.UDPServerSocket.getmessage,
        'args' : [],
-       'return' : (Str(), Int(), Str())},
+       'return' : (Str(), Int(), Str())}
 }
 
 LOCK_OBJECT_WRAPPER_INFO = {
@@ -732,6 +771,34 @@ VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO = {
       {'func' : 'evaluate',
        'args' : [DictOrSafeDict()],
        'return' : SafeDict()},
+}
+
+BINARY_OBJECT_WRAPPER_INFO = {
+  'isalive' :
+      {'func' : 'isalive',
+       'args' : [],
+       'return' : Bool()},
+
+  'send' :
+      {'func' : 'send',
+       'args' : [Str()],
+       'return' : None},
+  
+  'recv' :
+      {'func' : 'recv',
+       'args' : [Int()],
+       'return' :Str()},
+  
+
+  
+  # This does not work? Why not?
+  # '__str__' :
+  #     {'func' : '__str__',
+  #      'args' : [],
+  #      'return' : Str()},
+  
+
+  
 }
 
 
