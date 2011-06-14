@@ -60,20 +60,25 @@ def safelyexecutenativecode(binary_file_name, arglist):
   """
   <Purpose>
 
-    Executes code in an arbitrary programming language that was compiled 
+    Experimental! Executes code in an arbitrary programming language that was compiled 
     using the toolchain.
 
   <Arguments>
 
-    binary: The binary contents of the program to check.
+    binary: The file name of the binary to launch.
 
     arglist: A list of strings that should be used as the command line arguments.
 
   <Exceptions>
 
+    TODO
+
     A CodeUnsafeError? is raised if the binary does not pass verification. 
-    RepyArgumentError is raised if the binary is not a string or the arglist 
+
+    RepyArgumentError? is raised if the binary is not a string or the arglist 
     does not contain only strings
+    
+    LaunchFailedError? is raised if the launch fails
 
   <Side Effects>
 
@@ -87,8 +92,8 @@ def safelyexecutenativecode(binary_file_name, arglist):
 
   <Returns>
 
-    A object containing a send socket and a recv socket, and . 
-    These allow communication with the NaCl? process. (More to come on these)
+    A NaclRuntime object which can be used to check if the process is alive,
+    and send and receive data to the process. 
 
   """
   if safebinary == True:
