@@ -354,9 +354,6 @@ def repy_main(argv=sys.argv):
   # Default stopfile (if the option --stopfile isn't passed)
   statusfile = None
 
-  #by default safe binary mode is off
-  safebinary.safebinary = False
-
   if len(fnlist) < 2:
     usage("Must supply a resource file and a program file to execute")
     sys.exit(1)
@@ -409,7 +406,7 @@ def repy_main(argv=sys.argv):
     
     # Enable safe binary mode
     elif option == '--safebinary':
-      safebinary.safebinary = True
+      safebinary.SAFEBINARY = True
       
   # Update repy current directory
   repy_constants.REPY_CURRENT_DIR = os.path.abspath(os.getcwd())

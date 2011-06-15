@@ -205,8 +205,6 @@ def main():
   #go back to root project directory
   os.chdir(current_dir) 
 
-  build_repyc("repyc", target_dir, repytest)
- 
 
 if __name__ == '__main__':
   main()

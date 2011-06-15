@@ -8,7 +8,10 @@ Chris Matthews
 
 import repy_constants
 import lind_launcher
-import repy
+
+
+#by default safe binary mode is off
+SAFEBINARY = False
 
 class NaClRuntime:
   """An wrapper for a running NaCl instance"""
@@ -105,7 +108,7 @@ def safelyexecutenativecode(binary_file_name, arglist):
     and send and receive data to the process. 
 
   """
-  if repy.safebinary == True:
+  if SAFEBINARY == True:
     #Perhaps it is better to do the launch directly in here?
     return lind_launcher.launch_nacl(repy_constants.NACL_ENV, 
                                      binary_file_name, arglist)
