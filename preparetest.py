@@ -68,24 +68,6 @@ def process_mix(script_path):
     processed_file_path = (os.path.basename(file_path)).replace(".mix",".py")
     (theout, theerr) =  exec_command("python " + script_path + " " + file_path + " " + processed_file_path)
 
-def build_repyc(file_path, target_dir, repytest):
-  current_dir = os.getcwd()
-  os.chdir(file_path)
-  exec_command("scons --clean")
-  exec_command("scons")
-  os.chdir(current_dir)
-
-  os.mkdir(target_dir + "/include")
-  os.mkdir(target_dir + "/lib")
-  copy_to_target("repyc/src/librepyc.a", target_dir + "/lib/")
-  copy_to_target("repyc/src/repy.h", target_dir + "/include/")
-
-  if repytest:
-    os.mkdir(target_dir + "/bin")
-    copy_to_target("repyc/tests/test", target_dir + "/bin")
-    os.chmod(target_dir + "/bin/test", stat.S_IXUSR)
-    copy_to_target("repyc/tests/hello", target_dir + "/bin")
-    os.chmod(target_dir + "/bin/hello", stat.S_IXUSR)
 
 def exec_command(command):
 # Windows does not like close_fds and we shouldn't need it so...

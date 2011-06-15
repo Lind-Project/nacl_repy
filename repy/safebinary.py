@@ -1,12 +1,21 @@
+""" The interface for running binary programs as presented to a repy program
+
+Chris Matthews
+<cmatthew@cs.uvic.ca>
+2011
+
+"""
+
 import repy_constants
 import lind_launcher
+import repy
 
 class NaClRuntime:
   """An wrapper for a running NaCl instance"""
 
-  def __init__(self, proc, fd, recv, send):
+  def __init__(self, proc, file_desc, recv, send):
     self._proc = proc
-    self._fd = fd
+    self._file_desc = file_desc
     self._recv = recv
     self._send = send
 
@@ -22,7 +31,7 @@ class NaClRuntime:
       True when the process is still running, false otherwise.
 
     """  
-    return self.proc.poll() == None
+    return self._proc.poll() == None
 
   def send(self, message):
     """Send a message string to the Native Client instance.
@@ -46,8 +55,8 @@ class NaClRuntime:
       a messsage string, or a string containing "EOT" if channel closed.
     """
     try:
-      (message, crap) = self._recv.imc_recvmsg(size)
-    except Exception, e:
+      (message, _) = self._recv.imc_recvmsg(size)
+    except Exception, _: #at the moment Exception is the best we can do.
       message = "EOT"
     return message
   
@@ -96,8 +105,9 @@ def safelyexecutenativecode(binary_file_name, arglist):
     and send and receive data to the process. 
 
   """
-  if safebinary == True:
+  if repy.safebinary == True:
     #Perhaps it is better to do the launch directly in here?
-    return lind_launcher.launch_nacl(repy_constants.NACL_ENV, binary_file_name, arglist)
+    return lind_launcher.launch_nacl(repy_constants.NACL_ENV, 
+                                     binary_file_name, arglist)
   else:
     return None

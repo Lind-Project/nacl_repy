@@ -55,13 +55,13 @@ import getopt
 #this needs to be early on since it changes the python path
 import repy_constants   
 import lind
+#lind must get some stuff in the python path before things really start up.
 repy_constants.NACL_ENV = lind.setup_nacl_path(repy_constants.NACL_PATH)
 import safebinary
 
 import emulcomm
 import namespace
 import nanny
-import time
 import threading
 import loggingrepy
 
@@ -71,8 +71,6 @@ import harshexit
 
 import statusstorage
 
-
-import os
 
 # Armon: Using VirtualNamespace as an abstraction around direct execution
 import virtual_namespace
@@ -164,15 +162,6 @@ def main(resourcefn, program, args):
   # These will be the functions and variables in the user's namespace (along
   # with the builtins allowed by the safe module).
   usercontext = {'mycontext':{}}
-
-  #for Lind, add the send and recvive sockets
-  # try:
-  #   import lind_launcher
-  # except ImportError:
-  #   print "Problem Finding Lind.  Are you Launching from LindLauncher?"
-  #   sys.exit(1)
-  # usercontext['mycontext']['recv_socket'] = lind_launcher.getrecv()
-  # usercontext['mycontext']['send_socket'] = lind_launcher.getsend()
   
   # Add to the user's namespace wrapped versions of the API functions we make
   # available to the untrusted user code.
