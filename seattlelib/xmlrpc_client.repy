@@ -29,7 +29,7 @@ class xmlrpc_client_Client(object):
 
   <Example Use>
     client = xmlrpc_client_Client("http://phpxmlrpc.sourceforge.net/server.php")
-    print client.send_request("examples.getStateName", (1,))
+    log(client.send_request("examples.getStateName", (1,)),'\n')
 
   """
 

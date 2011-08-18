@@ -1,0 +1,233 @@
+"""
+<Program Name>
+  baseshim.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+  Monzur Muhammad, monzum@cs.washington.edu
+
+<Date Started>
+  March 7th, 2011.
+  Originally written by Danny on June 2010.
+
+<Purpose>
+  This is the core of a shim. The very base interface
+  that every shim has to extend and implement specified
+  functions. Note that this file itself is not a shim
+  in itself but rather the skeleton of a shim.
+"""
+
+# Import all the exceptions.
+dy_import_module_symbols("shim_exceptions")
+
+# Import all the wrapper classes.
+dy_import_module_symbols("shim_wrapper_lib")
+
+
+
+class BaseShim:
+
+
+  def __init__(self, shim_stack, optional_args=None):
+    """
+    <Purpose>
+      Initialize this particular shim.
+
+    <Arguments>
+      shim_stack - This is the shim stack that resides beneath
+          the current shim. It can be used to view and modify
+          the stack beneath it.
+
+      optional_args - Any optional argument that this particular 
+          shim takes.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      None
+
+    <Return>
+      None
+    """
+
+    # Global variables that are used to keep the state of this shim.
+    self.shim_context = {'optional_args' : None,
+                         'shim_stack' : None
+                        }
+
+
+    # Ensure that the reference to the shimstack that we get
+    # is of the type ShimStack.
+    try:
+      assert(isinstance(shim_stack, ShimStack))
+    except:
+      err = "Bad arg provided. shim_stack must be of type ShimStack."
+      err += " Type provided: '%s'" % str(type(shim_stack))
+      raise ShimArgumentError(err)
+
+    self.shim_context['optional_args'] = optional_args
+    
+    # I am going to do a copy just to make sure we don't have any 
+    # reference to it.
+    self.shim_context['shim_stack'] = shim_stack
+
+
+
+  
+  # ===========================================================================
+  # Public methods that the child classes must override.
+  # ===========================================================================
+
+
+  def copy(self):
+    """
+    Returns a copy of the current instance. Be sure to set internal states to be
+    copied in the new object. An example would be:
+
+    class MyShim(BaseShim):
+      def copy(self):
+		mycopy = MyShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args']
+        mycopy._internalstate = self._internalstate
+        return mycopy
+
+    """
+    raise ShimError("The copy() method is not implemented.")
+
+
+
+  def get_advertisement_string(self):
+    """
+    Returns the string used for advertisement of this shim. For example:
+
+    class MyShim(BaseShim):
+      def get_advertisement_string(self):
+        return '(MyShim,' + str(self._some_shared_state) + ')' + self.get_next_shim_layer().get_advertisement_string()
+
+    If the subclass shim is not meant to be public, then simply return an empty
+    string.
+
+    """
+    raise ShimError("The get_advertisement_string() method is not implemented.")  
+
+
+
+
+  # ===============================================================================
+  # This is a public method that is used to retrieve the next layer of shim.
+  # ===============================================================================
+ 
+  def get_next_shim_layer(self):
+    """
+    <Purpose>
+      Peek into the shim stack and return the next layer
+      of shim. If the shim stack is empty, then we will 
+      return the RepyNetworkApi object, which is used to
+      call the original repy network calls.
+
+    <Arguments>
+      None
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      None.
+
+    <Return>
+      Next layer of shim or an object that encompasses the original
+      repy network api.
+    """
+    
+    try:
+      next_layer = self.shim_context['shim_stack'].peek()
+    except ShimStackError:
+      # This is the case when the shim stack is empty.
+      # So we return a wrapper object which will allow
+      # us to use the original repy network api calls.
+      next_layer = RepyNetworkApiWrapper()
+
+    return next_layer
+
+
+
+
+
+  # ============================================================================
+  # Public methods that directly interface with the application. The methods may
+  # be overwritten by the shim objects that inherit the base shim. If the methods
+  # are not overwritten, then these methods will be used in the shim that inherits
+  # them.
+  # ===========================================================================
+
+  def sendmessage(self, destip, destport, message, localip, localport):
+    return self.get_next_shim_layer().sendmessage(destip, destport, message, localip, localport)
+
+
+
+  def listenformessage(self, localip, localport):
+    next_layer_socket = self.get_next_shim_layer().listenformessage(localip, localport)
+    return ShimUDPServerSocket(next_layer_socket, self)
+
+
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+    # We make a copy of ourselves before we do anything as we may have multiple
+    # openconnection calls that return multiple real sockets.
+    #this_shim_copy = self.copy()
+    next_sockobj = self.get_next_shim_layer().openconnection(destip, destport, localip, localport, timeout)
+    
+    return ShimSocket(next_sockobj, self)
+
+
+
+  def listenforconnection(self, localip, localport):
+    # TODO: Not sure if we have to make a copy of self before retrieving
+    # the next layer.
+    next_layer_socket = self.get_next_shim_layer().listenforconnection(localip, localport)
+    return ShimTCPServerSocket(next_layer_socket, self)
+
+
+
+  def socket_close(self, socket):
+    return self.get_next_shim_layer().socket_close(socket)
+
+
+
+  def socket_send(self, socket, msg):
+    return self.get_next_shim_layer().socket_send(socket, msg)
+
+
+
+  def socket_recv(self, socket, bytes):
+    return self.get_next_shim_layer().socket_recv(socket, bytes)
+
+
+
+  def tcpserversocket_getconnection(self, tcpserversocket):
+    # We make a copy of ourselves before doing a getconnection
+    # as this function may be invoked multiple times and they 
+    # may each modify the shim stack below it differently. 
+    #this_shim_copy = self.copy()
+    (remote_ip, remote_port, repy_socket) = self.get_next_shim_layer().tcpserversocket_getconnection(tcpserversocket)
+
+    return (remote_ip, remote_port, ShimSocket(repy_socket, self))
+
+
+
+  def tcpserversocket_close(self, tcpserversocket):
+    return self.get_next_shim_layer().tcpserversocket_close(tcpserversocket)
+
+
+
+  def udpserversocket_getmessage(self, udpserversocket):
+    return self.copy().get_next_shim_layer().udpserversocket_getmessage(udpserversocket)
+
+
+
+  def udpserversocket_close(self, udpserversocket):
+    return self.get_next_shim_layer().udpserversocket_close(udpserversocket)
+
+
+  def __str__(self):
+    return '(%s)' % repr(self).replace(' instance at', '') + str(self.get_next_shim_layer())

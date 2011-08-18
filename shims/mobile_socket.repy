@@ -1,0 +1,549 @@
+import re
+import time
+
+
+# Prints debug statement ==========================
+_MOBILITY_SHIM_DEBUG = False
+_debug_log_bytes_written = 0
+_debug_log_lock = createlock()
+def debug_log(*p, **q):
+  _debug_log_lock.acquire(True)
+  if _MOBILITY_SHIM_DEBUG:
+    log(*p)
+  else:
+    if 'show' in q and q['show']:
+      log(*p)
+    global _debug_log_bytes_written
+    logstr = ' '.join([str(e) for e in p])
+    logstr = 't = %.2f ' % time.time() + logstr
+    f = openfile('mobility.log', True)
+    f.writeat(logstr, _debug_log_bytes_written)
+    _debug_log_bytes_written += len(logstr)
+    f.close()
+  _debug_log_lock.release()
+# =================================================
+_MOBILITY_SHIM_SLEEP_TIME = 0.010
+
+
+_mobility_shim_lock = createlock()
+
+_garbage_sockets = []
+
+
+def _atomic_call(target_func):
+  """
+  Function decorator. The target function is invoked atomically.
+
+  """
+  def wrapper(*args, **kwargs):
+    try:
+      _mobility_shim_lock.acquire(True)
+      return target_func(*args, **kwargs)
+    finally:
+      _mobility_shim_lock.release()
+
+  return wrapper
+
+
+
+
+
+def _abbrev(input_str):
+  """
+  Abbreviates the input string. Returns the first 100 bytes, followed by
+  elipses, and then the last 100 bytes.
+
+  """
+  length = len(input_str)
+  if length < 200:
+    return input_str
+  else:
+    return input_str[0:100] + ' ... (' + str(length - 200) + ' bytes omitted) ... ' + input_str[length-100 : ]
+
+
+
+
+
+class SendBuffer:
+
+  state_dict = {'total_chunks': 0}
+
+  def __init__(self):
+    
+    self.chunk_id = None
+    self.data = ''
+
+    self.bytes_sent = 0
+    self.completely_sent = False
+
+    self.pending_acks = ''
+
+
+  def __str__(self):
+    
+    state = 'SendBuffer: chunk_id: %s; ' % self.chunk_id
+    state += 'data: %s; ' % _abbrev(self.data)
+    state += 'bytes_sent: %s; ' % self.bytes_sent
+    state += 'completely_sent: %s; ' % self.completely_sent
+    state += 'pending_acks: %s' % self.pending_acks
+
+    return state
+   
+
+  
+class RecvBuffer:
+
+  def __init__(self):
+
+    self.data = ''
+    self.last_chunk_id_received = None
+
+    self.temp_buffer = ''
+
+  
+  def __str__(self):
+
+    state = 'RecvBuffer: data: %s; ' % _abbrev(self.data)
+    state += 'last_chunk_id_received: %s; ' % self.last_chunk_id_received
+    state += 'temp_buffer: %s' % _abbrev(self.temp_buffer)
+
+    return state
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class MobileSocket:
+
+
+
+
+  # Divide the original TCP stream into chunks of this size.
+  _CHUNK_SIZE = 2**16
+
+  # How many bytes we should receive every time.
+  _RECV_BLOCK_SIZE = 2**16
+
+  # How long (in seconds) we should sleep when a socket blocks.
+  _SLEEP_TIME = _MOBILITY_SHIM_SLEEP_TIME
+
+  # Counts how many chunks so far. Used to generate the chunk ID.
+  _chunk_counter = [0]
+
+  # The number of seconds that need to elapse for a connection to be considered
+  # broken. Subsequently, the mobility will re-establish the connection.
+  _DISCONNECTION_TIME = 10
+
+  # If connectivity is not restored after this many seconds, then the mobility
+  # shim gives up and considers the sockets as closed.
+  _MOBILITY_TIMEOUT = 20
+
+
+  def __init__(self, shim_socket, openconnection_arg_list=[]):
+
+    # References to the internal state of the Shim Socket
+    self._socket = shim_socket._socket
+    self._shim_object = shim_socket._shim_object
+    self._next_shim = self._shim_object.get_next_shim_layer()
+    
+    self._openconnection_arg_list = openconnection_arg_list
+
+    self._send_buffer = SendBuffer()
+    self._recv_buffer = RecvBuffer()
+
+    self.sock_state = {'closed_local': False,
+                       'closed_remote': False,
+                       'background_thread_active': True,
+                       'unhandled_exception': None,
+                       'inactive_time': None}
+
+    createthread(self._send_recv_thread)
+
+
+
+  def _process_buffers(self):
+    """
+    Processes both the send and receives buffers. Returns True on success.
+
+    """
+
+    # Socket is to be closed locally. 
+
+    send_buffer = self._send_buffer
+    if (self.sock_state['closed_local'] and 
+        send_buffer.chunk_id == None and send_buffer.data == '' and 
+        send_buffer.pending_acks == ''):
+
+      return False
+
+    # Attempt to send and receive data to and from the network.
+
+    try:
+
+      try:
+        self._send_chunks()
+        send_success = True
+      except SocketWouldBlockError:
+        send_success = False
+
+      recv_success = self._recv_chunks()
+
+    except SocketClosedRemote:
+      self.sock_state['closed_remote'] = True
+      self.sock_state['background_thread_active'] = False
+      return False
+
+    except Exception, err:
+      self.sock_state['unhandled_exception'] = err
+      self.sock_state['background_thread_active'] = False
+      return False
+
+    # Determine the first time when we fail to send or receive. It may be a
+    # sign that the connection is broken, but we're not sure yet. We will wait
+    # up to _DISCONNECTION_TIMEOUT before concluding so.
+
+    if send_success and recv_success:
+      self.sock_state['inactive_time'] = None
+
+    elif self.sock_state['inactive_time'] is None:
+      self.sock_state['inactive_time'] = getruntime()
+
+    debug_log('\nzzzz sock_state =', str(self.sock_state), '\n')
+    debug_log('zzzz send_success:', send_success, '; recv_success:', recv_success, '\n')
+    if self.sock_state['inactive_time']:
+      debug_log('zzzz socket inactive for', getruntime() - self.sock_state['inactive_time'], 's.\n')
+    debug_log('zzzz', str(self._send_buffer), '\n')
+    debug_log('zzzz', str(self._recv_buffer), '\n\n')
+
+    return True
+
+
+  @_atomic_call
+  def _send_recv_thread(self):
+    """
+    Constantly sends data from the send buffer or reads data into the
+    pending-chunk buffer. Handles ACKs and assembles chunks into streams ready
+    for the application.
+
+    """
+    while self.sock_state['background_thread_active']:
+      
+      _mobility_shim_lock.release()
+      sleep(self._SLEEP_TIME)
+      _mobility_shim_lock.acquire(True)
+
+      if not self._process_buffers():
+        break
+
+      # The socket has blocked for too long. We think the connection is dead and
+      # proceed to re-establish it with openconnection.
+
+      if (self.sock_state['inactive_time'] and 
+          getruntime() - self.sock_state['inactive_time'] > self._DISCONNECTION_TIME and
+          self._openconnection_arg_list):
+
+        debug_log('\n' * 2, show=True)
+        debug_log('*' * 80, '\n', show=True)
+        debug_log('Disconnection.\n', show=True)
+
+        self._next_shim.socket_close(self._socket)
+        self._socket = None
+
+        while True:
+          try:
+            _mobility_shim_lock.release()
+            # In case the local IP has changed, we update it in the openconn arg list.
+            self._openconnection_arg_list[2] = getmyip()
+            # Attempt to openconnection, ignoring the usual network errors.
+            debug_log('zzzz Attempting openconn', self._openconnection_arg_list, '\n', show=True)
+            new_socket = self._next_shim.openconnection(*(self._openconnection_arg_list))
+          except (ConnectionRefusedError, InternetConnectivityError, 
+                  TimeoutError, AddressBindingError), err:
+            debug_log('zzzz Openconn failed:', repr(err), err, '\n', show=True)
+            sleep(1)
+            _mobility_shim_lock.acquire(True)
+          except Exception, err:
+            _mobility_shim_lock.acquire(True)
+            self.sock_state['unhandled_exception'] = err
+            self.sock_state['background_thread_active'] = False
+            break
+          else:
+            _mobility_shim_lock.acquire(True)
+            self._socket = new_socket
+            break
+
+        # Connection restored. Reset state.
+        if self._socket:
+          self.reset_pending_state()
+          debug_log('zzzz Connectivity restored by openconn.\n', show=True)
+
+    debug_log('\nzzzz while loop exits \n')
+    debug_log('\nzzzz sock_state =', str(self.sock_state), '\n')
+    debug_log('\nzzzz', str(self._send_buffer), '\n')
+    debug_log('\nzzzz', str(self._recv_buffer), '\n\n')
+
+    if self._socket:
+      self._next_shim.socket_close(self._socket)
+
+
+
+  def reset_pending_state(self):
+
+    debug_log('zzzz reset_pending_state - before: send_buffer:', self._send_buffer, 'recv_buffer:', self._recv_buffer, '\n')
+
+    self._send_buffer.bytes_sent = 0
+    self._send_buffer.completely_sent = False
+    self._recv_buffer.temp_buffer = ''
+    self.sock_state['inactive_time'] = None
+
+    # Resend the last ACK in case it was lost.
+    last_chunk_id = self._recv_buffer.last_chunk_id_received
+    if last_chunk_id is not None:
+      self._send_buffer.pending_acks += 'A' + str(last_chunk_id) + 'A'
+
+    debug_log('zzzz reset_pending_state - after: send_buffer:', self._send_buffer, 'recv_buffer:', self._recv_buffer, '\n')
+
+
+
+
+  def _send_chunks(self):
+    """
+    Sends the chunk currently in the send buffer if it has not been completely
+    sent. When this is done, sends all pending ACKs.
+
+    """
+
+    send_buffer = self._send_buffer
+
+    # Send data chunk if it has not been completely sent.
+
+    while ((not send_buffer.completely_sent) and 
+           (send_buffer.bytes_sent < len(send_buffer.data))):
+
+      data = send_buffer.data[send_buffer.bytes_sent : ]
+      sent = self._next_shim.socket_send(self._socket, data)
+      send_buffer.bytes_sent += sent
+
+    if send_buffer.data and send_buffer.bytes_sent == len(send_buffer.data):
+      
+      send_buffer.completely_sent = True
+
+      # # TODO optimization:
+      # # It is possible that this is the second time we're sending this chunk,
+      # # and as it is being sent, the ACK for the first time arrived. Thus, we
+      # # don't need to wait for the ACK for the second attempt. Reset the send buffer.
+
+      # send_buffer.chunk_id = None
+      # send_buffer.data = ''
+      # send_buffer.bytes_send = 0
+      # send_buffer.completely_sent = False
+
+
+    # Now that the data chunk is completely sent over the network, we can send
+    # the ACKS, completely, without them interfering with the chunk.
+
+    if send_buffer.pending_acks:
+      sent = self._next_shim.socket_send(self._socket, send_buffer.pending_acks)
+      if sent == len(send_buffer.pending_acks):
+        send_buffer.pending_acks = ''
+
+
+    
+
+  def _recv_chunks(self):
+    """
+    Receives as much data as possible into the temporary receive buffer. Parses
+    the temporary receive buffer into the appropriate ACKs or data chunks. If
+    there is nothing to parse, returns False.
+
+    """
+    recv_buffer = self._recv_buffer
+
+    # Receive until socket blocks.
+
+    while True:
+      try:
+        recv_buffer.temp_buffer += self._next_shim.socket_recv(self._socket, self._RECV_BLOCK_SIZE)
+      except SocketWouldBlockError:
+        break
+
+    if recv_buffer.temp_buffer and recv_buffer.temp_buffer[0] not in ('A', 'C'):
+      debug_log('zzzz Bad temp buffer:', recv_buffer.temp_buffer, '\n')
+      exitall()
+
+    # Parse the temporary buffer first until nothing can be parsed.
+
+    successfully_parsed = False
+
+    while self._parse_temp_buffer():
+      successfully_parsed = True
+
+    return successfully_parsed
+
+    
+
+  def _parse_temp_buffer(self):
+
+    # Check if the temp buffer begins with an ACK or a data chunk
+
+    temp_buffer = self._recv_buffer.temp_buffer
+    ack_match = re.match('(A(\d+)A).*', temp_buffer)
+    data_match = re.match('(C(\d+),(\d+),).*', temp_buffer)
+
+    # ACK received. Need to parse the ACK ID and remove the corresponding chunk
+    # from the send buffer.
+
+    if ack_match:
+
+      ack_id = int( ack_match.groups()[1] )
+      ack_length = len( ack_match.groups()[0] )
+      debug_log('zzzz Got ack', ack_id, '\n')
+
+      # Reset the send buffer only if the current chunk is not being sent. It is
+      # possible that this is a dup ACK.
+
+      send_buffer = self._send_buffer
+      if ack_id == send_buffer.chunk_id and send_buffer.completely_sent:
+        send_buffer.chunk_id = None
+        send_buffer.data = ''
+        send_buffer.bytes_sent = 0
+        send_buffer.completely_sent = False
+
+      # Remove the ACK from the temp buffer.
+      temp_buffer = temp_buffer[ack_length : ]
+
+    # Data chunk received. Parse the contents in the chunk. Put them into the
+    # receive buffer. Send the corresponding ACK.
+
+    elif data_match:
+
+      header_length = len( data_match.groups()[0] )
+      chunk_id = int( data_match.groups()[1] )
+      data_length = int( data_match.groups()[2] )
+      total_chunk_length = header_length + data_length
+
+      # The temp buffer may not contain the entire chunk data. In that case, we
+      # exit.
+      if total_chunk_length > len(temp_buffer):
+        return False
+
+      debug_log('zzzz Got data', chunk_id, '\n')
+
+      # We received a complete data chunk. ACK regardless of whether we've seen
+      # it before.
+
+      ack_str = 'A' + str(chunk_id) + 'A'
+      self._send_buffer.pending_acks += ack_str
+
+      # Add this data to the receive buffer if we have never seen it before.
+
+      data = temp_buffer[header_length : total_chunk_length]
+      temp_buffer = temp_buffer[total_chunk_length : ]
+
+
+      if (self._recv_buffer.last_chunk_id_received is None or 
+          chunk_id > self._recv_buffer.last_chunk_id_received):
+        
+        self._recv_buffer.last_chunk_id_received = chunk_id
+        self._recv_buffer.data += data
+
+    else:
+
+      return False
+
+    self._recv_buffer.temp_buffer = temp_buffer
+    return True
+
+
+
+
+
+  @_atomic_call
+  def send(self, data):
+
+    # Raise all the exceptions first.
+
+    unhandled_exception = self.sock_state['unhandled_exception']
+    if unhandled_exception is not None:
+      raise unhandled_exception
+
+    if self.sock_state['closed_local']:
+      raise SocketClosedLocal
+    elif self.sock_state['closed_remote']:
+      raise SocketClosedRemote
+    
+    if len(self._send_buffer.data) > 0:
+      raise SocketWouldBlockError
+
+    # Turn data into chunk and add it to the send buffer. 
+
+    chunk_data = data[0 : self._CHUNK_SIZE]
+    chunk_length = len(chunk_data)
+    chunk_id = self._send_buffer.state_dict['total_chunks']
+    self._send_buffer.state_dict['total_chunks'] += 1
+
+    self._send_buffer.data = 'C' + str(chunk_id) + ',' 
+    self._send_buffer.data += str(chunk_length) + ',' + chunk_data
+    self._send_buffer.chunk_id = chunk_id
+
+    return chunk_length
+
+
+
+
+  @_atomic_call
+  def recv(self, bytes):
+
+    # Raise exceptions only if there is nothing else to read.
+
+    if self._recv_buffer.data == '':
+
+      unhandled_exception = self.sock_state['unhandled_exception']
+
+      if unhandled_exception is not None:
+        raise unhandled_exception
+
+      elif self.sock_state['closed_local']:
+        raise SocketClosedLocal
+
+      elif self.sock_state['closed_remote']:
+        raise SocketClosedRemote
+
+      else:
+        raise SocketWouldBlockError
+    
+    # Get data from the recv buffer
+    data = self._recv_buffer.data[0 : bytes]
+    self._recv_buffer.data = self._recv_buffer.data[bytes : ]
+    return data
+    
+
+
+  @_atomic_call
+  def close(self):
+
+    self.sock_state['closed_local'] = True
+    return True
+
+

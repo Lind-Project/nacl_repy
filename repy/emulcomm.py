@@ -52,6 +52,17 @@ from exception_hierarchy import *
 
 ###### Module Data
 
+# This is a library of all currently bound sockets. Since multiple 
+# UDP bindings on a single port is hairy, we store bound sockets 
+# here, and use them for both sending and receiving if they are 
+# available. This feels slightly byzantine, but it allows us to 
+# avoid modifying the repy API.
+#
+# Format of entries is as follows:
+# Key - 3-tuple of ("UDP", IP, Port)
+# Val - Bound socket object
+_BOUND_SOCKETS = {} # Ticket = 1015 (Resolved)
+
 # This dictionary holds all of the open sockets, and
 # is used to catalog all the used network tuples.
 #
@@ -471,6 +482,7 @@ def _is_valid_ip_address(ipaddr):
   <Purpose>
     Determines if ipaddr is a valid IP address.
     0.X and 224-255.X addresses are not allowed.
+    Additionally, 192.168.0.0 is not allowed.
 
   <Arguments>
     ipaddr: String to check for validity. (It will check that this is a string).
@@ -480,6 +492,9 @@ def _is_valid_ip_address(ipaddr):
   """
   # Argument must be of the string type
   if not type(ipaddr) == str:
+    return False
+
+  if ipaddr == '192.168.0.0':
     return False
 
   # A valid IP should have 4 segments, explode on the period
@@ -676,7 +691,7 @@ def getmyip():
       # Try to resolve using the current connection type and 
       # stable IP, using port 80 since some platforms panic
       # when given 0 (FreeBSD)
-      myip = _get_localIP_to_remoteIP(socket.SOCK_STREAM, ip_addr, 80)
+      myip = _get_localIP_to_remoteIP(socket.SOCK_DGRAM, ip_addr, 80)
     except (socket.error, socket.timeout):
       # We can ignore any networking related errors, since we want to try 
       # the other connection types and IP addresses. If we fail,
@@ -717,6 +732,10 @@ def _get_localIP_to_remoteIP(connection_type, external_ip, external_port=80):
   """
   # Open a socket
   sockobj = socket.socket(socket.AF_INET, connection_type)
+
+  # Make sure that the socket obj doesn't hang forever in 
+  # case connect() is blocking. Fix to #1003
+  sockobj.settimeout(1.0)
 
   try:
     sockobj.connect((external_ip, external_port))
@@ -912,10 +931,14 @@ def sendmessage(destip, destport, message, localip, localport):
   # Check if the tuple is in use
   identity = ("UDP", localip, localport, destip, destport)
   listen_identity = ("UDP", localip, localport, None, None)
+
+  # This check was necessary before _BOUND_SOCKETS was implemented.
+  """
   if identity in OPEN_SOCKET_INFO:
     raise DuplicateTupleError("The provided localip and localport are already in use!")
   elif listen_identity in OPEN_SOCKET_INFO:
     raise AlreadyListeningError("The provided localip and localport are being listened on!")
+  """
 
   # Check if the tuple is pending
   PENDING_SOCKETS_LOCK.acquire()
@@ -942,8 +965,14 @@ def sendmessage(destip, destport, message, localip, localport):
     nanny.tattle_add_item("outsockets", identity)
 
     try:
-      # Get the socket
-      sock = _get_udp_socket(localip, localport)
+      sock = None
+
+      if ("UDP", localip, localport) in _BOUND_SOCKETS:
+        sock = _BOUND_SOCKETS[("UDP", localip, localport)]
+        nanny.tattle_remove_item("outsockets", identity) 
+      else:
+        # Get the socket
+        sock = _get_udp_socket(localip, localport)
 
       # Send the message
       bytessent = sock.sendto(message, (destip, destport))
@@ -961,7 +990,9 @@ def sendmessage(destip, destport, message, localip, localport):
 
       # Try to close the socket
       try:
-        sock.close()
+        # If we're borrowing the socket, closing is not appropriate.
+        if not ("UDP", localip, localport) in _BOUND_SOCKETS:
+          sock.close()
       except:
         pass
 
@@ -1047,7 +1078,6 @@ def listenformessage(localip, localport):
     raise ResourceForbiddenError("Provided localport is not allowed! Port: "+str(localport))
 
 
-
   # Check if the tuple is in use
   identity = ("UDP", localip, localport, None, None)
   if identity in OPEN_SOCKET_INFO:
@@ -1073,6 +1103,10 @@ def listenformessage(localip, localport):
     try:
       # Get the socket
       sock = _get_udp_socket(localip,localport)
+
+      # Add the socket to _BOUND_SOCKETS so that we can 
+      # preserve send functionality on this port.
+      _BOUND_SOCKETS[("UDP", localip, localport)] = sock
 
     except Exception, e:
       nanny.tattle_remove_item('insockets',identity)
@@ -1505,8 +1539,13 @@ def listenforconnection(localip, localport):
       # Get the maximum number of outsockets
       max_outsockets = nanny.get_resource_limit("outsockets")
 
-      # Set the backlog to be the maximum number of outsockets
-      sock.listen(max_outsockets)
+      # If we have restrictions, then we want to set the outsocket
+      # limit
+      if max_outsockets:
+        # Set the backlog to be the maximum number of outsockets
+        sock.listen(max_outsockets)
+      else:
+        sock.listen(5)
 
     except Exception, e:
       nanny.tattle_remove_item('insockets',identity)
@@ -2269,6 +2308,7 @@ class TCPServerSocket (object):
       A tuple containing: (remote ip, remote port, socket object)
     """
     # Get the socket lock
+    
     try:
       socket_lock = OPEN_SOCKET_INFO[self.identity][0]
     except KeyError:

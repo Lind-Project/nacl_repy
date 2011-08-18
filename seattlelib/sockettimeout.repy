@@ -12,6 +12,7 @@
 
 """
 
+dy_import_module_symbols("librepysocket")
 
 class SocketTimeoutError(Exception):
   """The socket timed out before receiving a response"""

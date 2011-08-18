@@ -1,0 +1,994 @@
+
+checkpythonversion.py,84
+def ensure_python_version_is_supported():ensure_python_version_is_supported15,145
+
+darwin_api.py,2480
+exists_outgoing_network_socket = nix_api.exists_outgoing_network_socketexists_outgoing_network_socket25,708
+exists_listening_network_socket = nix_api.exists_listening_network_socketexists_listening_network_socket26,780
+get_available_interfaces = nix_api.get_available_interfacesget_available_interfaces27,854
+get_ctypes_errno = nix_api.get_ctypes_errnoget_ctypes_errno28,914
+get_ctypes_error_str = nix_api.get_ctypes_error_strget_ctypes_error_str29,958
+libc = nix_api.libclibc32,1038
+libproc = ctypes.CDLL(ctypes.util.find_library("proc"))libproc35,1073
+last_proc_info_struct = None   # The last structurelast_proc_info_struct43,1428
+_calloc = libc.calloc_calloc46,1493
+_free = libc.free_free47,1515
+_mach_thread_self = libc.mach_thread_self_mach_thread_self49,1534
+_thread_info = libc.thread_info_thread_info52,1619
+_proc_pidinfo = libproc.proc_pidinfo_proc_pidinfo55,1703
+PROC_pidTASKINFO = 4PROC_pidTASKINFO58,1753
+CTL_KERN = 1CTL_KERN59,1774
+KERN_BOOTTIME = 21KERN_BOOTTIME60,1787
+TwoIntegers = ctypes.c_int * 2 # C array with 2 intsTwoIntegers61,1806
+THREAD_BASIC_INFO = 3THREAD_BASIC_INFO62,1859
+class proc_taskinfo(ctypes.Structure):proc_taskinfo68,2006
+  _fields_ = [("pti_virtual_size", ctypes.c_uint64),_fields_69,2045
+class timeval(ctypes.Structure):timeval89,2980
+    _fields_ = [("tv_sec", ctypes.c_long),_fields_90,3013
+class time_value_t(ctypes.Structure):time_value_t93,3101
+    _fields_ = [("seconds", ctypes.c_int),_fields_94,3139
+class thread_basic_info(ctypes.Structure):thread_basic_info99,3326
+  _fields_ = [("user_time", time_value_t),_fields_100,3369
+PROC_TASKINFO_SIZE = ctypes.sizeof(proc_taskinfo)PROC_TASKINFO_SIZE111,3750
+THREAD_BASIC_INFO_SIZE = ctypes.sizeof(thread_basic_info)THREAD_BASIC_INFO_SIZE112,3800
+def _cast_calloc_type(casttype):_cast_calloc_type114,3859
+def _get_proc_info_by_pid(pid):_get_proc_info_by_pid125,4075
+def get_process_cpu_time(pid):get_process_cpu_time157,4998
+def get_process_rss(force_update=False,pid=None):get_process_rss187,5712
+def get_current_thread_cpu_time():get_current_thread_cpu_time225,6700
+def _get_boottime_struct():_get_boottime_struct263,7750
+def get_system_uptime():get_system_uptime277,8166
+def get_uptime_granularity():get_uptime_granularity293,8448
+def get_system_thread_count():get_system_thread_count325,9261
+def clean_up():clean_up345,9778
+def get_interface_ip_addresses(interfaceName):get_interface_ip_addresses358,10079
+
+emulcomm.py,3549
+OPEN_SOCKET_INFO = {}OPEN_SOCKET_INFO71,1792
+PENDING_SOCKETS = set([])PENDING_SOCKETS86,2202
+PENDING_SOCKETS_LOCK = threading.Lock()PENDING_SOCKETS_LOCK87,2228
+user_ip_interface_preferences = Falseuser_ip_interface_preferences91,2341
+allow_nonspecified_ips = Trueallow_nonspecified_ips94,2412
+user_specified_ip_interface_list = []user_specified_ip_interface_list98,2633
+allowediplist = []allowediplist104,2935
+cachelock = threading.Lock()  # This allows only a single simultaneous cache updatecachelock105,2954
+def _ip_is_allowed(ip):_ip_is_allowed111,3148
+def _unique_append(lst, elem):_unique_append136,3777
+def update_ip_cache():update_ip_cache142,4007
+def _is_already_connected_exception(exceptionobj):_is_already_connected_exception205,5719
+def _is_addr_in_use_exception(exceptionobj):_is_addr_in_use_exception241,6600
+def _is_addr_unavailable_exception(exceptionobj):_is_addr_unavailable_exception278,7536
+def _is_conn_refused_exception(exceptionobj):_is_conn_refused_exception315,8524
+def _is_network_down_exception(exceptionobj):_is_network_down_exception352,9477
+def _is_recoverable_network_exception(exceptionobj):_is_recoverable_network_exception388,10377
+def _is_terminated_connection_exception(exceptionobj):_is_terminated_connection_exception430,11633
+def _is_valid_ip_address(ipaddr):_is_valid_ip_address469,12836
+def _is_valid_network_port(port):_is_valid_network_port523,14294
+def _is_loopback_ipaddr(host):_is_loopback_ipaddr546,14796
+def _is_allowed_localport(type, localport):_is_allowed_localport568,15261
+def gethostbyname(name):gethostbyname588,15717
+def getmyip():getmyip632,17066
+def _get_localIP_to_remoteIP(connection_type, external_ip, external_port=80):_get_localIP_to_remoteIP697,19167
+RETRY_INTERVAL = 0.2 # In secondsRETRY_INTERVAL742,20220
+def _cleanup_socket(identity):_cleanup_socket745,20256
+def sendmessage(destip, destport, message, localip, localport):sendmessage829,22539
+def listenformessage(localip, localport):listenformessage989,27709
+def _conn_cleanup_check(identity):_conn_cleanup_check1114,31371
+def _timed_conn_initialize(identity, timeout):_timed_conn_initialize1153,32770
+def openconnection(destip, destport,localip, localport, timeout):openconnection1228,34876
+def listenforconnection(localip, localport):listenforconnection1421,41673
+def _get_tcp_socket(localip, localport):_get_tcp_socket1546,45397
+def _get_udp_socket(localip, localport):_get_udp_socket1568,45896
+def _check_socket_state(realsock, waitfor="rw", timeout=0.0):_check_socket_state1584,46218
+class EmulatedSocket:EmulatedSocket1642,48121
+  __slots__ = ["identity", "send_buffer_size", "on_loopback"]__slots__1663,48831
+  def __init__(self, identity):__init__1666,48897
+  def _close(self):_close1705,49972
+  def close(self):close1728,50396
+  def recv(self,bytes):recv1790,51916
+  def send(self,message):send1887,54715
+  def __del__(self):__del__1976,57283
+class UDPServerSocket:UDPServerSocket1996,57676
+  __slots__ = ["identity", "on_loopback"]__slots__2014,58278
+  def __init__(self, identity):__init__2018,58357
+  def getmessage(self):getmessage2055,59246
+  def close(self):close2140,61622
+  def __del__(self):__del__2186,62543
+class TCPServerSocket (object):TCPServerSocket2193,62640
+  __slots__ = ["identity", "on_loopback"]__slots__2211,63255
+  def __init__(self, identity):__init__2213,63298
+  def getconnection(self):getconnection2250,64190
+  def close(self):close2350,67245
+  def __del__(self):__del__2394,68039
+
+emulfile.py,964
+safe_open = opensafe_open34,758
+MAX_FILENAME_LENGTH = 120MAX_FILENAME_LENGTH39,848
+ALLOWED_FILENAME_CHAR_SET = set('abcdefghijklmnopqrstuvwxyz0123456789._-')ALLOWED_FILENAME_CHAR_SET42,940
+ILLEGAL_FILENAMES = set(["", ".", ".."])ILLEGAL_FILENAMES45,1068
+OPEN_FILES_LOCK = threading.Lock()OPEN_FILES_LOCK52,1258
+OPEN_FILES = set([])OPEN_FILES53,1293
+def listfiles():listfiles58,1340
+def removefile(filename):removefile89,1868
+def emulated_open(filename, create):emulated_open142,3360
+def _assert_is_allowed_filename(filename):_assert_is_allowed_filename181,4538
+class emulated_file (object):emulated_file223,5656
+  __slots__ = ["filename", "abs_filename", "fobj", "seek_lock", "filesize"]__slots__237,6242
+  def __init__(self, filename, create):__init__239,6319
+  def close(self):close311,8788
+  def readat(self,sizelimit,offset):readat356,9760
+  def writeat(self,data,offset):writeat431,12054
+  def __del__(self):__del__503,14093
+
+emulmisc.py,481
+def randombytes():randombytes34,1058
+def getruntime():getruntime76,2191
+def exitall():exitall97,2536
+def createlock():createlock120,3054
+def getthreadname():getthreadname142,3406
+def getlasterror():getlasterror167,3790
+def log(*args):log186,4182
+class emulated_lock (object):emulated_lock206,4533
+  __slots__ = ["lock"]__slots__214,4769
+  def __init__(self):__init__216,4793
+  def acquire(self, blocking):acquire221,4872
+  def release(self):release243,5268
+
+emultimer.py,217
+EVENT_PREFIX = "_EVENT:"EVENT_PREFIX35,554
+safe_callable = callablesafe_callable38,597
+def sleep(seconds):sleep43,648
+def createthread(function):createthread82,1632
+  def wrapped_func():wrapped_func113,2419
+
+exception_hierarchy.py,2272
+_EXPORTED_EXCEPTIONS = ["RepyException",_EXPORTED_EXCEPTIONS11,312
+class InternalRepyError (Exception):InternalRepyError43,1571
+class RepyException (Exception):RepyException50,1736
+class RepyArgumentError (RepyException):RepyArgumentError54,1833
+class TimeoutError (RepyException):TimeoutError61,2003
+class CodeUnsafeError (RepyException):CodeUnsafeError71,2152
+class ContextUnsafeError (RepyException):ContextUnsafeError78,2314
+class ResourceUsageError (RepyException):ResourceUsageError88,2527
+class ResourceExhaustedError (ResourceUsageError):ResourceExhaustedError94,2649
+class ResourceForbiddenError (ResourceUsageError):ResourceForbiddenError102,2838
+class FileError (RepyException):FileError112,3030
+class FileNotFoundError (FileError):FileNotFoundError116,3135
+class FileInUseError (FileError):FileInUseError123,3315
+class SeekPastEndOfFileError (FileError):SeekPastEndOfFileError131,3500
+class FileClosedError (FileError):FileClosedError138,3648
+class SafeException(RepyException):SafeException148,3839
+    def __init__(self,*value):__init__150,3916
+    def __str__(self):__str__152,3979
+class CheckNodeException(SafeException):CheckNodeException155,4029
+class CheckStrException(SafeException):CheckStrException159,4130
+class RunBuiltinException(SafeException):RunBuiltinException163,4226
+class LockDoubleReleaseError(RepyException):LockDoubleReleaseError170,4373
+class NetworkError (RepyException):NetworkError180,4560
+class NetworkAddressError (NetworkError):NetworkAddressError186,4682
+class AlreadyListeningError (NetworkError):AlreadyListeningError192,4796
+class DuplicateTupleError (NetworkError):DuplicateTupleError199,4970
+class CleanupInProgressError (NetworkError):CleanupInProgressError206,5165
+class InternetConnectivityError (NetworkError):InternetConnectivityError214,5356
+class AddressBindingError (NetworkError):AddressBindingError221,5526
+class ConnectionRefusedError (NetworkError):ConnectionRefusedError227,5653
+class LocalIPChanged (NetworkError):LocalIPChanged233,5787
+class SocketClosedLocal (NetworkError):SocketClosedLocal239,5902
+class SocketClosedRemote (NetworkError):SocketClosedRemote245,6015
+class SocketWouldBlockError (NetworkError):SocketWouldBlockError251,6139
+
+fakelinecache.py,77
+def checkcache(filename):checkcache4,111
+def getline(a,b,c):getline7,145
+
+freebsd_api.py,2073
+exists_outgoing_network_socket = nix_api.exists_outgoing_network_socketexists_outgoing_network_socket27,762
+exists_listening_network_socket = nix_api.exists_listening_network_socketexists_listening_network_socket28,834
+get_available_interfaces = nix_api.get_available_interfacesget_available_interfaces29,908
+get_ctypes_errno = nix_api.get_ctypes_errnoget_ctypes_errno30,968
+get_ctypes_error_str = nix_api.get_ctypes_error_strget_ctypes_error_str31,1012
+libc = nix_api.libclibc34,1092
+last_proc_info_struct = Nonelast_proc_info_struct39,1262
+last_proc_info_size   = 0    # Stores the size of the structlast_proc_info_size40,1291
+_sysctl = libc.sysctl # Makes system calls_sysctl43,1365
+_clock_gettime = libc.clock_gettime # Get the CPU time_clock_gettime44,1408
+CTL_KERN = 1CTL_KERN47,1476
+KERN_PROC = 14KERN_PROC48,1489
+KERN_PROC_PID = 1KERN_PROC_PID49,1504
+FourIntegers = ctypes.c_int * 4 # A C array with 4 ints, used for syscallsFourIntegers50,1522
+PAGE_SIZE = libc.getpagesize() # Call into libc to get our page sizePAGE_SIZE51,1597
+KERN_BOOTTIME = 21KERN_BOOTTIME52,1666
+TwoIntegers = ctypes.c_int * 2 # C array with 2 intsTwoIntegers53,1685
+CLOCK_THREAD_CPUTIME_ID	= 14 # Get the CPU time for the current threadCLOCK_THREAD_CPUTIME_ID54,1738
+kinfo_proc = freebsd_kinfo.kinfo_proc # Import from the external filekinfo_proc57,1823
+class timeval(ctypes.Structure):timeval59,1894
+    _fields_ = [("tv_sec", ctypes.c_long),_fields_60,1927
+def _get_proc_info_by_pid(pid):_get_proc_info_by_pid64,2016
+def get_process_cpu_time(pid):get_process_cpu_time107,3353
+def get_process_rss(force_update=False, pid=None):get_process_rss147,4359
+def get_current_thread_cpu_time():get_current_thread_cpu_time183,5259
+def _get_boottime_struct():_get_boottime_struct213,5994
+def get_system_uptime():get_system_uptime226,6381
+def get_uptime_granularity():get_uptime_granularity242,6687
+def get_system_thread_count():get_system_thread_count276,7518
+def get_interface_ip_addresses(interfaceName):get_interface_ip_addresses298,8020
+
+freebsd_kinfo.py,9289
+STRING = c_char_pSTRING8,141
+class kinfo_proc(Structure):kinfo_proc11,161
+class pargs(Structure):pargs13,199
+class proc(Structure):proc15,232
+class user(Structure):user17,264
+class vnode(Structure):vnode19,296
+class filedesc(Structure):filedesc21,329
+class vmspace(Structure):vmspace23,365
+__int32_t = c_int__int32_t25,400
+__pid_t = __int32_t__pid_t26,418
+pid_t = __pid_tpid_t27,438
+__uint32_t = c_uint__uint32_t28,454
+__dev_t = __uint32_t__dev_t29,474
+dev_t = __dev_tdev_t30,495
+class __sigset(Structure):__sigset31,511
+__sigset_t = __sigset__sigset_t36,603
+sigset_t = __sigset_tsigset_t37,625
+__uid_t = __uint32_t__uid_t38,647
+uid_t = __uid_tuid_t39,668
+__gid_t = __uint32_t__gid_t40,684
+gid_t = __gid_tgid_t41,705
+__vm_size_t = __uint32_t__vm_size_t42,721
+vm_size_t = __vm_size_tvm_size_t43,746
+__segsz_t = __int32_t__segsz_t44,770
+segsz_t = __segsz_tsegsz_t45,792
+u_short = c_ushortu_short46,812
+__fixpt_t = __uint32_t__fixpt_t47,831
+fixpt_t = __fixpt_tfixpt_t48,854
+u_int = c_uintu_int49,874
+__uint64_t = c_ulonglong__uint64_t50,889
+u_int64_t = __uint64_tu_int64_t51,914
+class timeval(Structure):timeval52,937
+__time_t = __int32_t__time_t54,972
+time_t = __time_ttime_t55,993
+__suseconds_t = c_long__suseconds_t56,1011
+suseconds_t = __suseconds_tsuseconds_t57,1034
+u_char = c_ubyteu_char62,1139
+__lwpid_t = __int32_t__lwpid_t63,1156
+lwpid_t = __lwpid_tlwpid_t64,1178
+class priority(Structure):priority65,1198
+class rusage(Structure):rusage73,1366
+class pcb(Structure):pcb93,1853
+class savefpu(Union):savefpu175,4134
+class save87(Structure):save87177,4165
+class env87(Structure):env87179,4199
+class fpacc87(Structure):fpacc87191,4447
+class savexmm(Structure):savexmm202,4667
+class envxmm(Structure):envxmm204,4702
+__uint16_t = c_ushort__uint16_t206,4736
+u_int16_t = __uint16_tu_int16_t207,4758
+u_int32_t = __uint32_tu_int32_t208,4781
+class N7savexmm3DOLLAR_1E(Structure):N7savexmm3DOLLAR_1E223,5161
+class xmmacc(Structure):xmmacc229,5296
+caddr_t = STRINGcaddr_t244,5600
+class segment_descriptor(Structure):segment_descriptor245,5617
+class pcb_ext(Structure):pcb_ext259,5984
+u_long = c_ulongu_long261,6019
+class file(Structure):file286,6636
+class sx(Structure):sx288,6668
+class lock_object(Structure):lock_object290,6698
+class N11lock_object4DOLLAR_11E(Union):N11lock_object4DOLLAR_11E292,6737
+class N11lock_object4DOLLAR_114DOLLAR_12E(Structure):N11lock_object4DOLLAR_114DOLLAR_12E294,6786
+class witness(Structure):witness299,6941
+__uintptr_t = __uint32_t__uintptr_t311,7265
+uintptr_t = __uintptr_tuintptr_t312,7290
+class kqlist(Structure):kqlist318,7422
+class kqueue(Structure):kqueue320,7456
+class N4proc4DOLLAR_30E(Structure):N4proc4DOLLAR_30E350,8183
+class N4proc4DOLLAR_31E(Structure):N4proc4DOLLAR_31E356,8334
+class thread(Structure):thread358,8379
+class N4proc4DOLLAR_32E(Structure):N4proc4DOLLAR_32E364,8526
+class kse_upcall(Structure):kse_upcall366,8571
+class mtx(Structure):mtx372,8730
+class ucred(Structure):ucred379,8871
+class filedesc_to_leader(Structure):filedesc_to_leader381,8904
+class pstats(Structure):pstats383,8950
+class plimit(Structure):plimit385,8984
+class callout(Structure):callout387,9018
+class N7callout4DOLLAR_13E(Union):N7callout4DOLLAR_13E389,9053
+class N7callout4DOLLAR_134DOLLAR_14E(Structure):N7callout4DOLLAR_134DOLLAR_14E391,9097
+class N7callout4DOLLAR_134DOLLAR_15E(Structure):N7callout4DOLLAR_134DOLLAR_15E396,9237
+class sigacts(Structure):sigacts414,9754
+PRS_NEW = 0PRS_NEW418,9823
+PRS_NORMAL = 1PRS_NORMAL419,9835
+PRS_ZOMBIE = 2PRS_ZOMBIE420,9850
+class N4proc4DOLLAR_34E(Structure):N4proc4DOLLAR_34E421,9865
+class N4proc4DOLLAR_35E(Structure):N4proc4DOLLAR_35E427,10016
+class N4proc4DOLLAR_36E(Structure):N4proc4DOLLAR_36E433,10167
+class N4proc4DOLLAR_37E(Structure):N4proc4DOLLAR_37E439,10318
+class ksiginfo(Structure):ksiginfo444,10429
+class sigqueue(Structure):sigqueue446,10465
+class N8sigqueue4DOLLAR_20E(Structure):N8sigqueue4DOLLAR_20E448,10501
+sigqueue_t = sigqueuesigqueue_t461,10849
+class itimerval(Structure):itimerval462,10871
+class rusage_ext(Structure):rusage_ext468,10990
+class sigiolst(Structure):sigiolst480,11282
+class sigio(Structure):sigio482,11318
+class nlminfo(Structure):nlminfo487,11410
+class kaioinfo(Structure):kaioinfo489,11445
+class itimers(Structure):itimers491,11481
+class kse_thr_mailbox(Structure):kse_thr_mailbox493,11516
+class pgrp(Structure):pgrp495,11559
+class sysentvec(Structure):sysentvec497,11591
+__int64_t = c_longlong__int64_t499,11628
+__rlim_t = __int64_t__rlim_t500,11651
+rlim_t = __rlim_trlim_t501,11672
+class knlist(Structure):knlist502,11690
+class klist(Structure):klist504,11724
+class knote(Structure):knote506,11757
+class mdproc(Structure):mdproc518,12059
+class proc_ldt(Structure):proc_ldt520,12093
+class label(Structure):label525,12186
+class p_sched(Structure):p_sched527,12219
+class N4proc4DOLLAR_38E(Structure):N4proc4DOLLAR_38E529,12254
+class ktr_request(Structure):ktr_request531,12299
+class N4proc4DOLLAR_39E(Structure):N4proc4DOLLAR_39E537,12463
+class mqueue_notifier(Structure):mqueue_notifier539,12508
+class uprof(Structure):uprof625,15058
+class vm_map(Structure):vm_map643,15413
+class vm_map_entry(Structure):vm_map_entry645,15447
+__vm_offset_t = __uint32_t__vm_offset_t647,15487
+vm_offset_t = __vm_offset_tvm_offset_t648,15514
+class vm_map_object(Union):vm_map_object649,15542
+class vm_object(Structure):vm_object651,15579
+__vm_ooffset_t = __int64_t__vm_ooffset_t657,15718
+vm_ooffset_t = __vm_ooffset_tvm_ooffset_t658,15745
+vm_eflags_t = u_intvm_eflags_t659,15775
+vm_prot_t = u_charvm_prot_t660,15795
+vm_inherit_t = c_charvm_inherit_t661,15814
+__vm_pindex_t = __uint64_t__vm_pindex_t662,15836
+vm_pindex_t = __vm_pindex_tvm_pindex_t663,15863
+vm_flags_t = u_charvm_flags_t684,16485
+vm_map_entry_t = POINTER(vm_map_entry)vm_map_entry_t685,16505
+class pmap(Structure):pmap686,16544
+pmap_t = POINTER(pmap)pmap_t688,16576
+uint32_t = __uint32_tuint32_t702,16907
+pd_entry_t = uint32_tpd_entry_t703,16929
+class N4pmap4DOLLAR_41E(Structure):N4pmap4DOLLAR_41E704,16951
+class pv_chunk(Structure):pv_chunk706,16996
+class pmap_statistics(Structure):pmap_statistics712,17149
+class N4pmap4DOLLAR_42E(Structure):N4pmap4DOLLAR_42E718,17284
+class shmmap_state(Structure):shmmap_state732,17650
+class N8pv_chunk4DOLLAR_44E(Structure):N8pv_chunk4DOLLAR_44E749,18040
+class pv_entry(Structure):pv_entry755,18209
+class N8pv_entry4DOLLAR_43E(Structure):N8pv_entry4DOLLAR_43E757,18245
+class N4pgrp4DOLLAR_21E(Structure):N4pgrp4DOLLAR_21E797,19195
+class N4pgrp4DOLLAR_22E(Structure):N4pgrp4DOLLAR_22E803,19346
+class session(Structure):session808,19457
+class N6thread4DOLLAR_23E(Structure):N6thread4DOLLAR_23E827,19824
+class N6thread4DOLLAR_24E(Structure):N6thread4DOLLAR_24E833,19985
+class N6thread4DOLLAR_25E(Structure):N6thread4DOLLAR_25E839,20146
+class N6thread4DOLLAR_26E(Structure):N6thread4DOLLAR_26E845,20307
+class selinfo(Structure):selinfo847,20354
+class sleepqueue(Structure):sleepqueue853,20506
+class turnstile(Structure):turnstile855,20544
+class umtx_q(Structure):umtx_q857,20581
+class N6thread4DOLLAR_27E(Structure):N6thread4DOLLAR_27E859,20615
+class lock_list_entry(Structure):lock_list_entry864,20735
+uint64_t = __uint64_tuint64_t866,20778
+class sigaltstack(Structure):sigaltstack867,20800
+__size_t = __uint32_t__size_t869,20839
+stack_t = sigaltstackstack_t875,20963
+TDS_INACTIVE = 0TDS_INACTIVE878,21019
+TDS_INHIBITED = 1TDS_INHIBITED879,21036
+TDS_CAN_RUN = 2TDS_CAN_RUN880,21054
+TDS_RUNQ = 3TDS_RUNQ881,21070
+TDS_RUNNING = 4TDS_RUNNING882,21083
+__register_t = __int32_t__register_t883,21099
+register_t = __register_tregister_t884,21124
+class trapframe(Structure):trapframe885,21150
+class mdthread(Structure):mdthread887,21187
+class td_sched(Structure):td_sched893,21317
+class kaudit_record(Structure):kaudit_record895,21353
+class N10kse_upcall4DOLLAR_29E(Structure):N10kse_upcall4DOLLAR_29E978,23842
+class kse_mailbox(Structure):kse_mailbox984,24021
+class N5sigio4DOLLAR_16E(Union):N5sigio4DOLLAR_16E1006,24462
+class N5sigio4DOLLAR_17E(Structure):N5sigio4DOLLAR_17E1012,24604
+__sighandler_t = CFUNCTYPE(None, c_int)__sighandler_t1026,24940
+sig_t = POINTER(__sighandler_t)sig_t1027,24980
+class N8ksiginfo4DOLLAR_19E(Structure):N8ksiginfo4DOLLAR_19E1045,25489
+class __siginfo(Structure):__siginfo1051,25658
+class sigval(Union):sigval1053,25695
+class N9__siginfo3DOLLAR_4E(Union):N9__siginfo3DOLLAR_4E1061,25859
+class N9__siginfo3DOLLAR_43DOLLAR_5E(Structure):N9__siginfo3DOLLAR_43DOLLAR_5E1063,25904
+class N9__siginfo3DOLLAR_43DOLLAR_6E(Structure):N9__siginfo3DOLLAR_43DOLLAR_6E1068,26032
+class N9__siginfo3DOLLAR_43DOLLAR_7E(Structure):N9__siginfo3DOLLAR_43DOLLAR_7E1074,26186
+class N9__siginfo3DOLLAR_43DOLLAR_8E(Structure):N9__siginfo3DOLLAR_43DOLLAR_8E1079,26311
+class N9__siginfo3DOLLAR_43DOLLAR_9E(Structure):N9__siginfo3DOLLAR_43DOLLAR_9E1084,26438
+siginfo_t = __siginfosiginfo_t1108,27148
+class tty(Structure):tty1117,27355
+__all__ = ['__uint16_t', 'ksiginfo', 'uid_t', 'segment_descriptor',__all__1148,27852
+
+harshexit.py,406
+  windows_api = Nonewindows_api22,588
+statuslock = statusstorage.statuslockstatuslock28,739
+ostype = Noneostype32,780
+osrealtype = Noneosrealtype33,794
+statusexiting = [False]statusexiting38,944
+class UnsupportedSystemException(Exception):UnsupportedSystemException42,971
+def portablekill(pid):portablekill47,1026
+def harshexit(val):harshexit75,1550
+def init_ostype():init_ostype133,3338
+
+idhelper.py,384
+uniqueid_idlist = [0]uniqueid_idlist18,460
+uniqueid_idlock = threading.Lock()uniqueid_idlock19,482
+def getuniqueid():getuniqueid22,519
+thread_name_prefix = "Thread:"thread_name_prefix57,1256
+thread_name_counter = [1]thread_name_counter58,1287
+thread_name_lock = threading.Lock()thread_name_lock59,1313
+def get_new_thread_name(extra_prefix=""):get_new_thread_name63,1448
+
+linux_api.py,1575
+running_32bit = Truerunning_32bit22,553
+architecture = platform.architecture()architecture23,574
+  running_32bit = Falserunning_32bit25,641
+exists_outgoing_network_socket = nix_api.exists_outgoing_network_socketexists_outgoing_network_socket28,713
+exists_listening_network_socket = nix_api.exists_listening_network_socketexists_listening_network_socket29,785
+get_available_interfaces = nix_api.get_available_interfacesget_available_interfaces30,859
+libc = nix_api.libclibc33,927
+myopen = open # This is an annoying restriction of repymyopen36,960
+syscall = libc.syscall # syscall functionsyscall37,1016
+last_stat_data = None   # Store the last array of data from _get_proc_info_by_pidlast_stat_data40,1069
+JIFFIES_PER_SECOND = 100.0JIFFIES_PER_SECOND43,1164
+PAGE_SIZE = os.sysconf('SC_PAGESIZE')PAGE_SIZE44,1191
+  GETTID = 224 GETTID48,1302
+  GETTID = 186GETTID50,1324
+FIELDS = {FIELDS53,1411
+def _process_stat_file(file):_process_stat_file98,2074
+def _get_proc_info_by_pid(pid):_get_proc_info_by_pid121,2604
+def get_process_cpu_time(pid):get_process_cpu_time142,3145
+def get_process_rss(force_update=False, pid=None):get_process_rss167,3705
+def _get_current_thread_id():_get_current_thread_id200,4602
+def get_current_thread_cpu_time():get_current_thread_cpu_time206,4723
+def get_system_uptime():get_system_uptime239,5529
+def get_uptime_granularity():get_uptime_granularity267,6116
+def get_system_thread_count():get_system_thread_count301,6929
+def get_interface_ip_addresses(interfaceName):get_interface_ip_addresses322,7428
+
+loggingrepy_core.py,745
+myfile = filemyfile18,277
+class flush_logger_core:flush_logger_core22,361
+  def __init__(self, fobj):__init__29,502
+  def close(self):close40,703
+  def flush(self):flush44,756
+  def write(self,writeitem):write48,809
+  def writelines(self,writelist):writelines53,891
+def get_size(fn):get_size63,1032
+class circular_logger_core:circular_logger_core72,1170
+  def __init__(self, fnp, mbs = 16 * 1024):__init__88,1765
+  def close(self):close150,3488
+  def flush(self):flush156,3555
+  def write(self,writeitem):write160,3587
+  def writelines(self,writelist):writelines172,3867
+  def rotate_log(self):rotate_log187,4291
+  def write_first_log(self):write_first_log199,4578
+  def writedata(self, data):writedata207,4774
+
+loggingrepy.py,532
+get_size = loggingrepy_core.get_sizeget_size17,208
+myfile = loggingrepy_core.myfilemyfile18,245
+class flush_logger(loggingrepy_core.flush_logger_core):flush_logger21,280
+  def write(self, writeitem):write28,473
+  def writelines(self, writelist):writelines40,781
+class circular_logger(loggingrepy_core.circular_logger_core):circular_logger56,1170
+  def __init__(self, fnp, mbs = 16*1024, use_nanny=True):__init__74,1871
+  def write(self, writeitem):write81,2089
+  def writelines(self, writelist):writelines102,2683
+
+namespace.py,5289
+_saved_getattr = getattr_saved_getattr126,5392
+_saved_callable = callable_saved_callable127,5417
+_saved_hash = hash_saved_hash128,5444
+_saved_id = id_saved_id129,5463
+def wrap_and_insert_api_functions(usercontext):wrap_and_insert_api_functions136,5704
+initialized = Falseinitialized160,6559
+def _init_namespace():_init_namespace162,6580
+file_object_wrapped_functions_dict = {}file_object_wrapped_functions_dict179,7102
+lock_object_wrapped_functions_dict = {}lock_object_wrapped_functions_dict180,7142
+tcp_socket_object_wrapped_functions_dict = {}tcp_socket_object_wrapped_functions_dict181,7182
+tcp_server_socket_object_wrapped_functions_dict = {}tcp_server_socket_object_wrapped_functions_dict182,7228
+udp_server_socket_object_wrapped_functions_dict = {}udp_server_socket_object_wrapped_functions_dict183,7281
+virtual_namespace_object_wrapped_functions_dict = {}virtual_namespace_object_wrapped_functions_dict184,7334
+def _prepare_wrapped_functions_for_object_wrappers():_prepare_wrapped_functions_for_object_wrappers186,7388
+def _handle_internalerror(message, exitcode):_handle_internalerror214,8792
+def _is_in(obj, sequence):_is_in224,9045
+class BaseProcessor(object):BaseProcessor247,9717
+class ValueProcessor(BaseProcessor):ValueProcessor254,9807
+  def check(self):check262,10095
+  def copy(self, val):copy265,10145
+class ObjectProcessor(BaseProcessor):ObjectProcessor270,10193
+  def check(self):check276,10366
+  def wrap(self, val):wrap279,10416
+  def unwrap(self, val):unwrap282,10470
+class Str(ValueProcessor):Str289,10532
+  def __init__(self, maxlen=None, minlen=None):__init__292,10591
+  def check(self, val):check298,10692
+class Int(ValueProcessor):Int314,11106
+  def __init__(self, min=0):__init__317,11162
+  def check(self, val):check322,11213
+class NoneOrInt(ValueProcessor):NoneOrInt330,11428
+  def check(self, val):check334,11545
+class StrOrInt(ValueProcessor):StrOrInt343,11699
+  def check(self, val):check347,11834
+class Float(ValueProcessor):Float355,11981
+  def __init__(self, allow_neg=False):__init__358,12047
+  def check(self, val):check363,12120
+class Bool(ValueProcessor):Bool375,12363
+  def check(self, val):check378,12413
+class ListOfStr(ValueProcessor):ListOfStr386,12533
+  def check(self, val):check390,12670
+class DictOfStrOrInt(ValueProcessor):DictOfStrOrInt401,12836
+  def check(self, val):check408,13056
+class Func(ValueProcessor):Func420,13265
+  def check(self, val):check423,13341
+class NonCopiedVarArgs(ValueProcessor):NonCopiedVarArgs431,13519
+  def check(self, val):check434,13635
+  def copy(self, val):copy439,13671
+class File(ObjectProcessor):File446,13714
+  def check(self, val):check449,13773
+  def wrap(self, val):wrap455,13913
+class Lock(ObjectProcessor):Lock462,14024
+  def check(self, val):check465,14083
+  def wrap(self, val):wrap471,14223
+class UDPServerSocket(ObjectProcessor):UDPServerSocket478,14334
+  def check(self, val):check481,14415
+  def wrap(self, val):wrap487,14557
+class TCPServerSocket(ObjectProcessor):TCPServerSocket494,14683
+  def check(self, val):check497,14764
+  def wrap(self, val):wrap503,14906
+class TCPSocket(ObjectProcessor):TCPSocket510,15032
+  def check(self, val):check513,15101
+  def wrap(self, val):wrap519,15242
+class VirtualNamespace(ObjectProcessor):VirtualNamespace526,15361
+  def check(self, val):check529,15444
+  def wrap(self, val):wrap535,15596
+class SafeDict(ObjectProcessor):SafeDict543,15766
+  def check(self, val):check548,15931
+class DictOrSafeDict(ObjectProcessor):DictOrSafeDict556,16064
+  def check(self, val):check561,16259
+USERCONTEXT_WRAPPER_INFO = {USERCONTEXT_WRAPPER_INFO577,16941
+FILE_OBJECT_WRAPPER_INFO = {FILE_OBJECT_WRAPPER_INFO658,19370
+TCP_SOCKET_OBJECT_WRAPPER_INFO = {TCP_SOCKET_OBJECT_WRAPPER_INFO673,19758
+TCP_SERVER_SOCKET_OBJECT_WRAPPER_INFO = {TCP_SERVER_SOCKET_OBJECT_WRAPPER_INFO690,20280
+UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO = {UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO701,20576
+LOCK_OBJECT_WRAPPER_INFO = {LOCK_OBJECT_WRAPPER_INFO712,20860
+VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO = {VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO727,21330
+def _copy(obj, objectmap=None):_copy742,21878
+class NamespaceInternalError(Exception):NamespaceInternalError866,26767
+class NamespaceObjectWrapper(object):NamespaceObjectWrapper873,26867
+  def __init__(self, wrapped_type_name, wrapped_object, allowed_functions_dict):__init__885,27376
+  def __getattr__(self, name):__getattr__912,28473
+      def __do_func_call(*args, **kwargs):__do_func_call922,28928
+  def __iter__(self):__iter__934,29240
+  def next(self):next945,29603
+  def __repr__(self):__repr__961,30310
+  def __hash__(self):__hash__966,30438
+  def __eq__(self, other):__eq__971,30509
+  def __ne__(self, other):__ne__981,30964
+class NamespaceAPIFunctionWrapper(object):NamespaceAPIFunctionWrapper991,31204
+  def __init__(self, func_dict, is_method=False):__init__999,31537
+  def _process_args(self, args):_process_args1043,32912
+  def _process_retval_helper(self, processor, retval):_process_retval_helper1071,33807
+  def _process_retval(self, retval):_process_retval1092,34477
+  def wrapped_function(self, *args, **kwargs):wrapped_function1115,35268
+
+nanny.py,1480
+_resources_allowed_dict = None_resources_allowed_dict45,1038
+_resources_consumed_dict = None_resources_consumed_dict47,1070
+def _update_resource_consumption_table(resource, resource_allowed_dict, consumed_resource_dict):_update_resource_consumption_table58,1198
+def _sleep_until_resource_drains(resource, resourcesalloweddict, resourcesuseddict):_sleep_until_resource_drains88,2136
+def _create_resource_consumption_dict():_create_resource_consumption_dict109,2847
+def _tattle_quantity(resource, quantity, resourcesalloweddict, resourcesuseddict):_tattle_quantity168,4953
+def _tattle_add_item(resource, item, resourcesalloweddict, resourcesuseddict):_tattle_add_item231,6973
+def _tattle_remove_item(resource, item, resourcesalloweddict, resourcesuseddict):_tattle_remove_item282,8438
+def _is_item_allowed(resource, item, resourcesalloweddict, resourcesuseddict):_is_item_allowed323,9359
+def start_resource_nanny(resourcefilename):start_resource_nanny364,10246
+def tattle_quantity(resource, quantity):tattle_quantity395,11003
+def tattle_add_item(resource, item):tattle_add_item399,11145
+def tattle_remove_item(resource, item):tattle_remove_item403,11277
+def is_item_allowed(resource, item):is_item_allowed406,11414
+def get_resource_limit(resource):get_resource_limit413,11670
+def calculate_cpu_sleep_interval(cpulimit, percentused, elapsedtime):calculate_cpu_sleep_interval442,12067
+def get_resource_information():get_resource_information488,13325
+
+nix_common_api.py,484
+libc = ctypes.CDLL(ctypes.util.find_library("c"))libc20,414
+_strerror = libc.strerror_strerror23,477
+def get_ctypes_errno():get_ctypes_errno29,718
+def get_ctypes_error_str():get_ctypes_error_str35,917
+def exists_outgoing_network_socket(localip, localport, remoteip, remoteport):exists_outgoing_network_socket40,1008
+def exists_listening_network_socket(ip, port, tcp):exists_listening_network_socket92,2717
+def get_available_interfaces():get_available_interfaces134,4008
+
+nmstatusinterface.py,674
+statuslock = statusstorage.statuslockstatuslock13,391
+  windows_api = Nonewindows_api31,690
+safe_open = opensafe_open34,752
+stopfilename = Nonestopfilename37,802
+statusfilename_prefix = Nonestatusfilename_prefix38,822
+frequency = 1     # Check rate in secondsfrequency39,851
+run_thread_lock = threading.Lock()run_thread_lock43,1013
+def init(stopfile=None, statusfile=None, freq=1):init46,1050
+def launch(pid):launch76,1868
+def stop():stop99,2341
+def _stopfile_exit(exitcode, pid):_stopfile_exit112,2720
+class nm_interface_thread(threading.Thread):nm_interface_thread143,3652
+  def __init__(self, pid):__init__144,3697
+  def run(self):run149,3793
+
+nonportable.py,2607
+  mobile_no_subprocess = Falsemobile_no_subprocess33,479
+  mobile_no_subprocess = True mobile_no_subprocess36,569
+  windows_api = Nonewindows_api61,993
+os_api = Noneos_api64,1090
+class UnsupportedSystemException(Exception):UnsupportedSystemException68,1164
+def compute_disk_use(dirname):compute_disk_use76,1335
+def preparesocket(socketobject):preparesocket99,2062
+def monitor_cpu_disk_and_mem():monitor_cpu_disk_and_mem125,3007
+elapsedtime = 0elapsedtime153,4023
+starttime = 0starttime156,4098
+last_uptime = 0last_uptime157,4112
+last_timestamp = time.time()last_timestamp160,4165
+granularity = 1granularity163,4228
+runtimelock = threading.Lock()runtimelock166,4313
+def getruntime():getruntime168,4345
+get_resources_lock = threading.Lock()get_resources_lock267,6954
+cached_disk_used = 0Lcached_disk_used270,7041
+process_stopped_timeline = []process_stopped_timeline276,7321
+process_stopped_max_entries = 100process_stopped_max_entries277,7351
+def get_resources():get_resources280,7431
+class WindowsNannyThread(threading.Thread):WindowsNannyThread364,9785
+  def __init__(self):__init__366,9830
+  def run(self):run369,9908
+winlastcpuinfo = [0,0]winlastcpuinfo420,12039
+def win_check_cpu_use(cpulim, pid):win_check_cpu_use423,12109
+class WinCPUNannyThread(threading.Thread):WinCPUNannyThread482,13794
+  pid = 0 # Process pidpid484,13858
+  def __init__(self):__init__486,13885
+  def run(self):run490,14003
+def IPC_handle_diskused(bytes):IPC_handle_diskused534,15501
+def IPC_handle_stoptime(info):IPC_handle_stoptime542,15829
+class ResourceException(Exception):ResourceException553,16177
+def write_message_to_pipe(writehandle, channel, data):write_message_to_pipe559,16356
+def read_message_from_pipe(readhandle):read_message_from_pipe599,17368
+IPC_HANDLER_FUNCTIONS = {"repystopped":IPC_handle_stoptime,IPC_HANDLER_FUNCTIONS663,19228
+class parent_process_checker(threading.Thread):parent_process_checker669,19467
+  def __init__(self, readhandle):__init__670,19515
+  def run(self):run684,19872
+repy_process_id = Nonerepy_process_id715,20820
+def do_forked_resource_monitor():do_forked_resource_monitor719,20941
+  def _internal_error(message):_internal_error747,21586
+def resource_monitor(childpid, pipe_handle):resource_monitor795,22897
+def calculate_granularity():calculate_granularity912,26811
+ostype = harshexit.ostypeostype948,27809
+osrealtype = harshexit.osrealtypeosrealtype949,27835
+  starttime = getruntime()starttime975,28623
+  last_uptime = starttimelast_uptime976,28650
+  elapsedtime = 0elapsedtime979,28701
+
+portable_popen.py,147
+  mobile_no_subprocess = Falsemobile_no_subprocess7,142
+  mobile_no_subprocess = True mobile_no_subprocess10,232
+def Popen(args):Popen15,293
+
+repy_constants.py,860
+PATH_PYTHON_INSTALL = "C:\\Python26\\python.exe"PATH_PYTHON_INSTALL8,225
+PYTHON_DEFAULT_FLAGS = ""PYTHON_DEFAULT_FLAGS14,503
+PATH_SEATTLE_INSTALL = "Z:\\Projects\\seattle\\trunk\\repy\\"PATH_SEATTLE_INSTALL19,675
+REPY_CURRENT_DIR = "."REPY_CURRENT_DIR22,766
+REPY_START_DIR = "."REPY_START_DIR25,829
+RESOURCE_POLLING_FREQ_LINUX = .5 # LinuxRESOURCE_POLLING_FREQ_LINUX30,1082
+RESOURCE_POLLING_FREQ_WIN = .5 # WindowsRESOURCE_POLLING_FREQ_WIN31,1123
+RESOURCE_POLLING_FREQ_WINCE = 4 # Mobile devices are pretty slowRESOURCE_POLLING_FREQ_WINCE32,1164
+CPU_POLLING_FREQ_LINUX = .1 # LinuxCPU_POLLING_FREQ_LINUX35,1278
+CPU_POLLING_FREQ_WIN = .1 # WindowsCPU_POLLING_FREQ_WIN36,1314
+CPU_POLLING_FREQ_WINCE = .5 # Mobile devices are pretty slowCPU_POLLING_FREQ_WINCE37,1350
+STABLE_PUBLIC_IPS = ["18.7.22.69",      # M.I.TSTABLE_PUBLIC_IPS44,1666
+
+repyc.py,66
+def NaclRPCServer(recv_socket, send_socket):NaclRPCServer49,960
+
+repy.py,225
+def nonSafe_fork():nonSafe_fork118,4163
+  __orig_fork = os.fork__orig_fork126,4371
+def main(resourcefn, program, args):main131,4423
+def usage(str_err=""):usage243,8125
+def repy_main(argv=sys.argv):repy_main284,9892
+
+resource_constants.py,659
+renewable_resources = ['cpu', 'filewrite', 'fileread', 'netsend', 'netrecv',renewable_resources18,325
+quantity_resources = ["cpu", "memory", "diskused", "filewrite", "fileread", quantity_resources22,514
+fungible_item_resources = ['events', 'filesopened', 'insockets', 'outsockets']fungible_item_resources28,828
+individual_item_resources = ['messport', 'connport']individual_item_resources35,1232
+item_resources = fungible_item_resources + individual_item_resourcesitem_resources38,1356
+known_resources = quantity_resources + item_resources known_resources42,1448
+must_assign_resources = ["cpu", "memory", "diskused"]must_assign_resources47,1713
+
+resourcemanipulation.py,760
+class ResourceParseError(Exception):ResourceParseError23,618
+class ResourceMathError(Exception):ResourceMathError26,721
+def _assert_resourcedict_doesnt_have_negative_resources(newdict):_assert_resourcedict_doesnt_have_negative_resources32,861
+def _assert_resourcedict_has_required_resources(newdict):_assert_resourcedict_has_required_resources41,1249
+def read_resourcedict_from_file(filename):read_resourcedict_from_file75,2102
+def parse_resourcedict_from_string(resourcestring):parse_resourcedict_from_string105,2840
+def write_resourcedict_to_file(resourcedict, filename):write_resourcedict_to_file237,6869
+def add_resourcedicts(dict1, dict2):add_resourcedicts276,7698
+def subtract_resourcedicts(dict1, dict2):subtract_resourcedicts332,9345
+
+safe_check.py,128
+  usercode = sys.stdin.read()usercode51,1715
+  output = ""output54,1766
+    value = safe._check_ast(usercode)value58,1809
+
+safe.py,4695
+EVALUTATION_TIMEOUT = 10EVALUTATION_TIMEOUT79,3661
+  EVALUTATION_TIMEOUT = 200EVALUTATION_TIMEOUT84,3822
+_NODE_CLASS_OK = [_NODE_CLASS_OK86,3851
+_NODE_ATTR_OK = []_NODE_ATTR_OK97,4472
+_STR_OK = ['__init__','__del__','__iter__']_STR_OK98,4491
+_STR_NOT_CONTAIN = ['__']_STR_NOT_CONTAIN99,4535
+_STR_NOT_BEGIN = ['im_','func_','tb_','f_','co_',]_STR_NOT_BEGIN100,4561
+def _is_string_safe(token):_is_string_safe108,4740
+def _check_node(node):_check_node140,5462
+def _check_ast(code):_check_ast153,5924
+_type = type_type157,5999
+def safe_type(*args, **kwargs):safe_type159,6013
+_BUILTIN_REPLACE = {_BUILTIN_REPLACE165,6216
+_BUILTIN_OK = [_BUILTIN_OK170,6358
+_BUILTIN_STR = [_BUILTIN_STR186,7869
+def _builtin_fnc(k):_builtin_fnc190,7951
+    def fnc(*vargs,**kargs):fnc191,7972
+_builtin_globals = None_builtin_globals194,8073
+_builtin_globals_r = None_builtin_globals_r195,8097
+def _builtin_init():_builtin_init196,8123
+def _builtin_destroy():_builtin_destroy222,9194
+def _builtin_restore():_builtin_restore226,9315
+SAFE_CHECK_LOCK = threading.Lock()SAFE_CHECK_LOCK233,9456
+def serial_safe_check(code):serial_safe_check236,9530
+def safe_check(code):safe_check264,10070
+BUILTINS_DESTROYED = FalseBUILTINS_DESTROYED318,11967
+def safe_run(code,context=None):safe_run320,11995
+def safe_exec(code,context = None):safe_exec339,12499
+def get_SafeDict(*args,**kwargs):get_SafeDict346,12711
+class SafeDict(UserDict.DictMixin):SafeDict350,12826
+  def __init__(self,from_dict=None):__init__357,12976
+  def __getitem__(self,key):__getitem__386,13852
+  def __setitem__(self,key,value):__setitem__395,14154
+  def __delitem__(self,key):__delitem__404,14469
+  def __contains__(self,key):__contains__413,14782
+  def keys(self):keys422,15085
+  def copy(self):copy437,15389
+  def __setattr__(self,name,value):__setattr__448,15689
+  def __delattr__(self,name):__delattr__456,15939
+    class TestSafe(unittest.TestCase):TestSafe463,16082
+        def test_check_node_import(self):test_check_node_import464,16121
+        def test_check_node_from(self):test_check_node_from466,16255
+        def test_check_node_exec(self):test_check_node_exec468,16394
+        def test_check_node_raise(self):test_check_node_raise470,16528
+        def test_check_node_global(self):test_check_node_global472,16667
+        def test_check_str_x(self):test_check_str_x475,16811
+        def test_check_str_str(self):test_check_str_str477,16936
+        def test_check_str_class(self):test_check_str_class479,17064
+        def test_check_str_func_globals(self):test_check_str_func_globals481,17200
+        def test_check_str_init(self):test_check_str_init483,17358
+        def test_check_str_subclasses(self):test_check_str_subclasses485,17447
+        def test_check_str_properties(self):test_check_str_properties487,17595
+        def test_check_str_unicode(self):test_check_str_unicode494,17812
+        def test_run_builtin_open(self):test_run_builtin_open497,17950
+        def test_run_builtin_getattr(self):test_run_builtin_getattr499,18095
+        def test_run_builtin_abs(self):test_run_builtin_abs501,18240
+        def test_run_builtin_open_fnc(self):test_run_builtin_open_fnc503,18313
+            def test():test504,18358
+        def test_run_builtin_open_context(self):test_run_builtin_open_context507,18527
+        def test_run_builtin_type_context(self):test_run_builtin_type_context512,18853
+        def test_run_builtin_dir(self):test_run_builtin_dir516,19093
+        def test_run_exeception_div(self):test_run_exeception_div519,19235
+        def test_run_exeception_i(self):test_run_exeception_i521,19343
+        def test_misc_callback(self):test_misc_callback524,19457
+            def test(): self.value = 1test526,19525
+        def test_misc_safe(self):test_misc_safe529,19655
+            def test(v): self.value = vtest531,19719
+        def test_misc_context_reset(self):test_misc_context_reset549,20144
+        def test_misc_syntax_error(self):test_misc_syntax_error556,20382
+        def test_misc_context_switch(self):test_misc_context_switch559,20494
+            def test(v): self.value = vtest561,20568
+        def test_misc_context_junk(self):test_misc_context_junk569,20822
+        def test_misc_context_later(self):test_misc_context_later576,21071
+        def test_misc_builtin_globals_write(self):test_misc_builtin_globals_write587,21527
+        def test_misc_builtin_globals_used(self):test_misc_builtin_globals_used600,22164
+        def test_misc_type_escape(self):test_misc_type_escape609,22631
+        def test_misc_recursive_fnc(self):test_misc_recursive_fnc622,23088
+
+servicelogger.py,0
+
+statusstorage.py,301
+myfile = filemyfile29,701
+statusfilenameprefix = Nonestatusfilenameprefix31,716
+statuslock = threading.Lock()statuslock34,824
+def init(sfnp):init36,855
+def write_status(status, mystatusfilenameprefix=None):write_status42,993
+def read_status(mystatusfilenameprefix=None):read_status81,2124
+
+textops.py,0
+
+tracebackrepy.py,439
+servicelog = Falseservicelog27,662
+logdirectory = Nonelogdirectory31,805
+TB_SKIP_MODULES = ["repy.py","safe.py","virtual_namespace.py","namespace.py","emulcomm.py",TB_SKIP_MODULES49,1238
+def initialize(useservlog=False, logdir = '.'):initialize55,1517
+def format_exception():format_exception62,1659
+def handle_exception():handle_exception174,5994
+def handle_internalerror(error_string, exitcode):handle_internalerror183,6205
+
+virtual_namespace.py,266
+safe_compile = compilesafe_compile21,373
+def createvirtualnamespace(code, name):createvirtualnamespace24,443
+class VirtualNamespace(object):VirtualNamespace28,567
+  def __init__(self, code, name):__init__36,838
+  def evaluate(self,context):evaluate79,2072
+
+win_cpu_nanny.py,24
+def main():main15,204
+
+windows_api.py,11463
+MobileCE = FalseMobileCE21,477
+  MobileCE = TrueMobileCE23,514
+  kerneldll = ctypes.cdll.coredllkerneldll31,683
+  toolhelp = ctypes.cdll.toolhelptoolhelp35,774
+  kerneldll = ctypes.windll.kernel32 kerneldll39,880
+  memdll = ctypes.windll.psapimemdll41,988
+DWORD = ctypes.c_ulong # Map Microsoft DWORD type to C longDWORD44,1028
+WORD = ctypes.c_ushort # Map microsoft WORD type to C ushortWORD45,1088
+HANDLE = ctypes.c_ulong # Map Microsoft HANDLE type to C longHANDLE46,1149
+LONG = ctypes.c_long # Map Microsoft LONG type to C longLONG47,1211
+SIZE_T = ctypes.c_ulong # Map Microsoft SIZE_T type to C longSIZE_T48,1268
+ULONG_PTR = ctypes.c_ulong # Map Microsoft ULONG_PTR to C longULONG_PTR49,1330
+LPTSTR = ctypes.c_char_p # Map Microsoft LPTSTR to a pointer to a stringLPTSTR50,1393
+LPCSTR = ctypes.c_char_p  # Map Microsoft LPCTSTR to a pointer to a stringLPCSTR51,1466
+ULARGE_INTEGER = ctypes.c_ulonglong # Map Microsoft ULARGE_INTEGER to 64 bit intULARGE_INTEGER52,1541
+LARGE_INTEGER = ctypes.c_longlong # Map Microsoft ULARGE_INTEGER to 64 bit intLARGE_INTEGER53,1622
+DWORDLONG = ctypes.c_ulonglong # Map Microsoft DWORDLONG to 64 bit intDWORDLONG54,1701
+ULONG_MAX = 4294967295 # Maximum value for an unsigned long, 2^32 -1ULONG_MAX57,1793
+TH32CS_SNAPTHREAD = ctypes.c_ulong(0x00000004) # Create a snapshot of all threadsTH32CS_SNAPTHREAD60,1885
+TH32CS_SNAPPROCESS = ctypes.c_ulong(0x00000002) # Create a snapshot of a processTH32CS_SNAPPROCESS61,1967
+TH32CS_SNAPHEAPLIST = ctypes.c_ulong(0x00000001) # Create a snapshot of a processes heapTH32CS_SNAPHEAPLIST62,2048
+INVALID_HANDLE_VALUE = -1INVALID_HANDLE_VALUE63,2137
+THREAD_QUERY_INFORMATION = 0x0040THREAD_QUERY_INFORMATION64,2163
+THREAD_SET_INFORMATION = 0x0020THREAD_SET_INFORMATION65,2197
+THREAD_SUSPEND_RESUME = 0x0002THREAD_SUSPEND_RESUME66,2229
+THREAD_HANDLE_RIGHTS = THREAD_SET_INFORMATION | THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATIONTHREAD_HANDLE_RIGHTS67,2260
+PROCESS_TERMINATE = 0x0001PROCESS_TERMINATE68,2357
+PROCESS_QUERY_INFORMATION = 0x0400PROCESS_QUERY_INFORMATION69,2384
+SYNCHRONIZE = 0x00100000LSYNCHRONIZE70,2419
+PROCESS_SET_INFORMATION = 0x0200PROCESS_SET_INFORMATION71,2445
+PROCESS_SET_QUERY_AND_TERMINATE = PROCESS_SET_INFORMATION | PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION | SYNCHRONIZEPROCESS_SET_QUERY_AND_TERMINATE72,2478
+ERROR_ALREADY_EXISTS = 183ERROR_ALREADY_EXISTS73,2598
+WAIT_FAILED = 0xFFFFFFFFWAIT_FAILED74,2625
+WAIT_OBJECT_0 = 0x00000000LWAIT_OBJECT_075,2650
+WAIT_ABANDONED = 0x00000080LWAIT_ABANDONED76,2678
+CE_FULL_PERMISSIONS = ctypes.c_ulong(0xFFFFFFFF)CE_FULL_PERMISSIONS77,2707
+NORMAL_PRIORITY_CLASS = ctypes.c_ulong(0x00000020)NORMAL_PRIORITY_CLASS78,2756
+HIGH_PRIORITY_CLASS = ctypes.c_ulong(0x00000080)HIGH_PRIORITY_CLASS79,2807
+INFINITE = 0xFFFFFFFFINFINITE80,2856
+THREAD_PRIORITY_HIGHEST = 2THREAD_PRIORITY_HIGHEST81,2878
+THREAD_PRIORITY_ABOVE_NORMAL = 1THREAD_PRIORITY_ABOVE_NORMAL82,2906
+THREAD_PRIORITY_NORMAL = 0THREAD_PRIORITY_NORMAL83,2939
+PROCESS_BELOW_NORMAL_PRIORITY_CLASS = 0x00004000PROCESS_BELOW_NORMAL_PRIORITY_CLASS84,2966
+PROCESS_NORMAL_PRIORITY_CLASS = 0x00000020PROCESS_NORMAL_PRIORITY_CLASS85,3015
+PROCESS_ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000PROCESS_ABOVE_NORMAL_PRIORITY_CLASS86,3058
+ATTEMPT_MAX = 10 ATTEMPT_MAX90,3203
+EXCLUDED_THREADS = []EXCLUDED_THREADS93,3266
+_suspend_thread_proto = ctypes.PYFUNCTYPE(DWORD)_suspend_thread_proto105,3868
+def _suspend_thread_err_check(result, func, args):_suspend_thread_err_check106,3917
+_suspend_thread_err = _suspend_thread_proto(("SuspendThread", kerneldll))_suspend_thread_err108,3984
+def _suspend_thread(handle):_suspend_thread111,4116
+_resume_thread = kerneldll.ResumeThread # Resumes Thread execution_resume_thread119,4259
+_open_process = kerneldll.OpenProcess # Returns Process Handle_open_process120,4326
+_create_process = kerneldll.CreateProcessW # Launches new process_create_process121,4389
+_set_thread_priority = kerneldll.SetThreadPriority # Sets a threads scheduling priority_set_thread_priority122,4455
+_thread_times = kerneldll.GetThreadTimes # Gets CPU time data for a thread_thread_times123,4543
+_process_exit_code = kerneldll.GetExitCodeProcess # Gets Process Exit code_process_exit_code125,4619
+_terminate_process = kerneldll.TerminateProcess # Kills a process_terminate_process126,4694
+_close_handle = kerneldll.CloseHandle # Closes any(?) handle object_close_handle127,4760
+_get_last_error = kerneldll.GetLastError # Gets last error number of last error_get_last_error128,4828
+_wait_for_single_object = kerneldll.WaitForSingleObject # Waits to acquire mutex_wait_for_single_object129,4908
+_create_mutex = kerneldll.CreateMutexW # Creates a Mutex, Unicode version_create_mutex130,4989
+_release_mutex = kerneldll.ReleaseMutex # Releases mutex_release_mutex131,5063
+  _get_tick_count = kerneldll.GetTickCount64 # Try to get the 64 bit variant_get_tick_count134,5126
+  _get_tick_count = kerneldll.GetTickCount # Use the 32bit version_get_tick_count136,5267
+_free_disk_space = kerneldll.GetDiskFreeSpaceExW # Determines free disk space_free_disk_space138,5335
+  _global_memory_status = kerneldll.GlobalMemoryStatus_global_memory_status143,5509
+  _create_snapshot = toolhelp.CreateToolhelp32Snapshot # Makes snapshot of threads _create_snapshot146,5593
+  _close_snapshot = toolhelp.CloseToolhelp32Snapshot # destroys a snapshot _close_snapshot147,5677
+  _first_thread = toolhelp.Thread32First # Reads from Thread from snapshot_first_thread148,5753
+  _next_thread = toolhelp.Thread32Next # Reads next Thread from snapshot_next_thread149,5828
+  _current_thread_id = None _current_thread_id162,6363
+  _heap_list_first = toolhelp.Heap32ListFirst # Initializes Heap List_heap_list_first165,6456
+  _heap_list_next = toolhelp.Heap32ListNext # Iterates through the heap list_heap_list_next166,6526
+  _heap_first = toolhelp.Heap32First # Initializes Heap Entry_heap_first167,6603
+  _heap_next = toolhelp.Heap32Next # Iterates through the Heaps_heap_next168,6665
+  _get_current_permissions = kerneldll.GetCurrentPermissions_get_current_permissions171,6769
+  _set_process_permissions = kerneldll.SetProcPermissions_set_process_permissions172,6830
+  _open_thread = kerneldll.OpenThread # Returns Thread Handle_open_thread176,6983
+  _create_snapshot = kerneldll.CreateToolhelp32Snapshot # Makes snapshot of threads _create_snapshot177,7045
+  _first_thread = kerneldll.Thread32First # Reads from Thread from snapshot_first_thread178,7130
+  _next_thread = kerneldll.Thread32Next # Reads next Thread from snapshot_next_thread179,7206
+  _global_memory_status = kerneldll.GlobalMemoryStatusEx # Gets global memory info_global_memory_status180,7280
+  _current_thread_id = kerneldll.GetCurrentThreadId # Returns the thread_id of the current thread_current_thread_id181,7363
+  _process_times = kerneldll.GetProcessTimes # Returns data about Process CPU use_process_times184,7535
+  _process_memory = memdll.GetProcessMemoryInfo # Returns data on Process mem use_process_memory185,7617
+  _set_process_priority = kerneldll.SetPriorityClass _set_process_priority188,7773
+class _THREADENTRY32(ctypes.Structure): _THREADENTRY32195,7958
+    _fields_ = [('dwSize', DWORD), _fields_196,7999
+class _THREADENTRY32CE(ctypes.Structure): _THREADENTRY32CE206,8356
+    _fields_ = [('dwSize', DWORD), _fields_207,8399
+class _FILETIME(ctypes.Structure): _FILETIME222,8924
+    _fields_ = [('dwLowDateTime', DWORD), _fields_223,8960
+class _PROCESS_MEMORY_COUNTERS(ctypes.Structure): _PROCESS_MEMORY_COUNTERS232,9210
+    _fields_ = [('cb', DWORD), _fields_233,9261
+class _HEAPENTRY32(ctypes.Structure): _HEAPENTRY32248,9889
+    _fields_ = [('dwSize', SIZE_T), _fields_249,9928
+class _HEAPLIST32(ctypes.Structure): _HEAPLIST32262,10463
+    _fields_ = [('dwSize', SIZE_T), _fields_263,10501
+class _PROCESS_INFORMATION(ctypes.Structure): _PROCESS_INFORMATION271,10830
+    _fields_ = [('hProcess', HANDLE), _fields_272,10877
+class _STARTUPINFO(ctypes.Structure): _STARTUPINFO282,11232
+    _fields_ = [('cb', DWORD), _fields_283,11271
+class _MEMORYSTATUSEX(ctypes.Structure): _MEMORYSTATUSEX306,12189
+    _fields_ = [('dwLength', DWORD), _fields_307,12231
+class _MEMORYSTATUS(ctypes.Structure): _MEMORYSTATUS321,12853
+   _fields_ = [('dwLength', DWORD), _fields_322,12893
+class DeadThread(Exception):DeadThread333,13277
+class DeadProcess(Exception):DeadProcess338,13372
+class FailedMutex(Exception):FailedMutex343,13529
+_mutex_lock_count = {}_mutex_lock_count351,13720
+_system_thread_count = 0_system_thread_count357,13899
+def get_process_threads(pid):get_process_threads360,13998
+def get_system_thread_count():get_system_thread_count421,15791
+def get_thread_handle(thread_id):get_thread_handle439,16195
+def close_thread_handle(thread_handle):close_thread_handle476,17341
+def suspend_thread(thread_id):suspend_thread497,17789
+def resume_thread(thread_id):resume_thread538,18770
+def suspend_process(pid):suspend_process573,19528
+def resume_process(pid):resume_process612,20489
+def timeout_process(pid, stime):timeout_process650,21384
+def set_current_thread_priority(priority=THREAD_PRIORITY_NORMAL,exclude=True):set_current_thread_priority690,22556
+def get_process_handle(pid):get_process_handle736,23770
+def launch_process(application,cmdline = None, priority = NORMAL_PRIORITY_CLASS):launch_process763,24429
+def launch_python_script(script, params=""):launch_python_script833,26302
+def set_current_process_priority(priority=PROCESS_NORMAL_PRIORITY_CLASS):set_current_process_priority865,27112
+def kill_process(pid):kill_process903,28004
+def get_process_cpu_time(pid):get_process_cpu_time950,29109
+def process_times(pid):process_times975,29625
+def get_current_thread_cpu_time():get_current_thread_cpu_time1022,31200
+def wait_for_process(pid):wait_for_process1067,32437
+def process_exit_code(pid):process_exit_code1093,33056
+def process_memory_info(pid):process_memory_info1126,33746
+def create_mutex(name):create_mutex1184,35901
+def acquire_mutex(handle, time):acquire_mutex1225,37104
+def release_mutex(handle):release_mutex1255,37802
+def exists_outgoing_network_socket(localip, localport, remoteip, remoteport):exists_outgoing_network_socket1295,38807
+def exists_listening_network_socket(ip, port, tcp):exists_listening_network_socket1357,41024
+def _fetch_ipconfig_infomation():_fetch_ipconfig_infomation1401,42306
+def get_available_interfaces():get_available_interfaces1470,43923
+def get_interface_ip_addresses(interfaceName):get_interface_ip_addresses1496,44561
+def _process_times_ce(pid):_process_times_ce1529,45428
+def _process_memory_info_ce(pid):_process_memory_info_ce1572,46954
+def _open_thread_ce(thread_id):_open_thread_ce1631,49104
+def _set_current_proc_permissions(permission):_set_current_proc_permissions1642,49406
+_original_permissions_ce = None_original_permissions_ce1646,49531
+def _get_process_permissions():_get_process_permissions1649,49618
+def _revert_permissions():_revert_permissions1653,49720
+def _current_thread_id_ce():_current_thread_id_ce1659,49921
+  _current_thread_id = _current_thread_id_ce_current_thread_id1667,50181
+def disk_util(directory):disk_util1674,50385
+def global_memory_info():global_memory_info1712,51630
+def _global_memory_info_ce():_global_memory_info_ce1755,53331

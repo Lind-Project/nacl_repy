@@ -1,0 +1,277 @@
+class ShimSocketWrapper:
+  """
+  Wrapper base class for the any socket-like object. Any call to this wrapped
+  object will be directed to the corresponding public method defined in the
+  shim. Not to be used directly.
+
+  """
+  def __init__(self, socket, shim_object):
+
+    # We are always wrapping around the original socket-like object provided by
+    # repy.
+    self._socket = socket
+
+    # We keep a reference to the caller shim so that we can invoke its internal
+    # methods.
+    self._shim_object = shim_object
+
+
+  def __str__(self):
+    return '(%s, shim: %s, socket: %s)' % (repr(self).replace(' instance at', ''), self._shim_object, self._socket)
+
+
+
+
+
+class ShimUDPServerSocket(ShimSocketWrapper):
+  """ Wraps around UDPServerSocket. """
+  def __init__(self, socket, shim_object):
+    if isinstance(socket, ShimUDPServerSocket):
+      real_socket = socket._socket
+    else:
+      real_socket = socket
+    ShimSocketWrapper.__init__(self, real_socket, shim_object) 
+
+  def getmessage(self):
+    return self._shim_object.udpserversocket_getmessage(self._socket)
+
+  def close(self):
+    return self._shim_object.udpserversocket_close(self._socket)
+
+
+
+
+
+class ShimTCPServerSocket(ShimSocketWrapper):
+  """ Wraps around TCPServerSocket. """
+  def __init__(self, socket, shim_object):
+    if isinstance(socket, ShimTCPServerSocket):
+      real_socket = socket._socket
+    else:
+      real_socket = socket
+    ShimSocketWrapper.__init__(self, real_socket, shim_object)
+
+  def getconnection(self):
+    return self._shim_object.tcpserversocket_getconnection(self._socket)
+
+  def close(self):
+    return self._shim_object.tcpserversocket_close(self._socket)
+
+
+
+
+
+class ShimSocket(ShimSocketWrapper):
+  """ Wraps around the repy socket object. """
+  def __init__(self, socket, shim_object):
+    if isinstance(socket, ShimSocket):
+      real_socket = socket._socket
+    else:
+      real_socket = socket
+    ShimSocketWrapper.__init__(self, real_socket, shim_object)
+
+  def close(self):
+    return self._shim_object.socket_close(self._socket)
+
+  def recv(self, bytes):
+    return self._shim_object.socket_recv(self._socket, bytes)
+
+  def send(self, message):
+    return self._shim_object.socket_send(self._socket, message)
+
+
+
+
+
+class RepyNetworkApiWrapper:
+  """
+  <Purpose>
+    Create an object that has all the original repy network
+    call definitions. We escape the shim stack and call on
+    the actual repy network api.
+  """
+
+  def __init__(self):
+    """
+    Empty constructor.
+    """
+    pass
+
+
+  def gethostbyname(self, name):
+    """
+    The original repy gethostbyname call.
+    """
+    return gethostbyname(name)
+
+
+  def getmyip(self):
+    """
+    The original repy getmyip call.
+    """
+    return getmyip()
+
+
+  def sendmessage(self, destip, destport, message, localip, localport):
+    """
+    The original repy sendmessage call.
+    """
+    # The destip can be a zenodotus name. We need to translate it to IP, because
+    # openconnection requires the destination IP address.
+    if destip.endswith('.zenodotus.cs.washington.edu'):
+      try:
+        destip = gethostbyname(destip)
+      except NetworkAddressError:
+        raise AddressBindingError('Unable to resolve ' + destip)
+    return sendmessage(destip, destport, message, localip, localport)
+
+
+  def listenformessage(self, localip, localport):
+    """
+    The original repy listenformessage call.
+    """
+    return listenformessage(localip, localport)
+
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+    """
+    The original repy openconnection call.
+    """
+    # The destip can be a zenodotus name. We need to translate it to IP, because
+    # openconnection requires the destination IP address.
+    if destip.endswith('.zenodotus.cs.washington.edu'):
+      try:
+        destip = gethostbyname(destip)
+      except NetworkAddressError:
+        raise ConnectionRefusedError('Unable to resolve ' + destip)
+    return openconnection(destip, destport, localip, localport, timeout)
+
+
+  def listenforconnection(self, localip, localport):
+    """
+    The original repy listenforconnection call.
+    """
+    return listenforconnection(localip, localport)
+
+
+  def socket_close(self, socket):
+    """
+    The close() call on the original socket object.
+    """
+    return socket.close()
+
+
+
+  def socket_send(self, socket, msg):
+    """
+    Send message by calling send() on the original socket.
+    """
+    return socket.send(msg)
+
+
+
+  def socket_recv(self, socket, bytes):
+    """
+    Receive message from the original socket.
+    """
+    return socket.recv(bytes)
+
+
+
+
+  def tcpserversocket_getconnection(self, tcpserversocket):
+    """
+    Call getconnection() on the original repy tcpserversocket.
+    """
+    return tcpserversocket.getconnection()
+
+
+
+  def tcpserversocket_close(self, tcpserversocket):
+    """
+    Close the original tcpserversocket.
+    """
+    return tcpserversocket.close()
+
+
+
+  def udpserversocket_getmessage(self, udpserversocket):
+    """
+    Call the getmessage() call on the original udpserversocket.
+    """
+    return udpserversocket.getmessage()
+
+
+
+  def udpserversocket_close(self, udpserversocket):
+    """
+    Close the original udpserversocket.
+    """
+    return udpserversocket.close()
+
+
+  def get_advertisement_string(self):
+    """
+    Returns the string used for advertisement of this shim.
+	"""
+    return ''
+
+  
+  def __str__(self):
+    return '(%s)' % repr(self).replace(' instance at', '')
+
+
+
+
+
+class shim_lock_wrapper:
+  """
+  <Purpose>
+    This function should be used as a locking mechanism for shims.
+    It is used to ensure that socket operations such as send(),
+    recv() and close() occur atomically without interference.
+    Most shims should use this as a decorator for their socket
+    operations. The decorator takes in an argument which is used
+    as the lock name. Each individual shim should use their own
+    lockname and share that lock among all its call (unless otherwise
+    necessary).
+
+    An example usage would be:
+      
+      i = 0   
+
+      @shim_lock_wrapper("hello_world")
+      def foo():
+        global i
+        print i
+        i += 1
+
+
+    If the function foo() is threaded, i should still increment properly 
+    without any contention.   
+  """
+
+  lock_dict = {}
+
+  # Initialize the lock, if it is a new lock.
+  def __init__(self, lockname):
+
+    if lockname not in self.lock_dict.keys():
+      self.lock_dict[lockname] = createlock()
+
+    self._lockname = lockname
+       
+
+  def __call__(self, target_func):
+    
+    # The wrapper function acquires the appropriate lock before
+    # calling the function.
+    def wrapper(*args, **kwargs):
+      self.lock_dict[self._lockname].acquire(True)
+
+      try:
+        target_func(*args, **kwargs)
+      finally:
+        self.lock_dict[self._lockname].release()
+
+    return wrapper    

@@ -147,7 +147,7 @@ NAT_LISTEN_PORTS = {}
 
 
 # a lock used for stopcomm and nat_persist
-NAT_STOP_LOCK = getlock()
+NAT_STOP_LOCK = createlock()
 
 #########################################################################
 
@@ -528,7 +528,7 @@ def nat_persist(localmac, localport, function, errdel):
   
   # WHILE STOPCOMM HAS NOT BEEN CALLED 
   while True:
-    NAT_STOP_LOCK.acquire()  #prevent race with stopcomm
+    NAT_STOP_LOCK.acquire(True)  #prevent race with stopcomm
     if not (localmac in NAT_LISTEN_PORTS and 
          localport in NAT_LISTEN_PORTS[localmac]):
       NAT_STOP_LOCK.release()
@@ -572,7 +572,7 @@ def nat_stopcomm(handle):
         Handle returned by nat_waitforconn.
   
   """
-  NAT_STOP_LOCK.acquire() # prevent a race with persist
+  NAT_STOP_LOCK.acquire(True) # prevent a race with persist
   
   # Get the mux
   mux = NAT_STATE_DATA["mux"]
@@ -660,7 +660,7 @@ def nat_check_bi_directional(localip,port,forwarderIP=None,forwarderCltPort=None
     try:
       rpcsocket = openconn(forwarderIP, int(forwarderCltPort))
     except Exception, e:
-      print str(e)
+      log(str(e), '\n')
       pass
     else:
       connected = True
@@ -773,7 +773,7 @@ def getmy_external_ip(forwarderIP=None,forwarderCltPort=None):
     try:
       rpcsocket = openconn(forwarderIP, int(forwarderCltPort))
     except Exception, e:
-      print str(e)
+      log(str(e), '\n')
       pass
     else:
       connected = True

@@ -40,6 +40,54 @@
 
 include math.repy
 
+CACHE = {'bytes': ''}
+
+def randomfloat():
+  """
+   <Purpose>
+     Return a random number in the range [0.0, 1.0) using the
+     randombytes() function.
+     
+   <Arguments>
+     None
+    
+   <Exceptions>
+     None
+
+   <Side Effects>
+     This function generally results in one or more calls to
+     randombytes which uses a OS source of random data which is
+     metered.
+
+   <Returns>
+     A string of num_bytes random bytes suitable for cryptographic use.
+  """
+  
+  cache = CACHE['bytes']
+  num_bytes = 7
+  
+  # Make sure the cache has enough bytes to give...
+  while len(cache) < num_bytes:
+    cache += randombytes()
+    
+  # ...then take what we want.
+  randombytes_result = cache[:num_bytes]
+  CACHE['bytes'] = cache[num_bytes:]
+  
+  # Create a random integer.
+  randomint = 0L
+  for i in range(0, 7):
+    randomint = (randomint << 8) 
+    randomint = randomint + ord(randombytes_result[i]) 
+
+  # Trim off the excess bits to get 53bits.
+  randomint = randomint >> 3
+  
+  # randomint is a number between 0 and 2**(53) - 1
+  return randomint * (2**(-53))
+
+
+
 def random_randombytes(num_bytes, random_float=None):
   """
    <Purpose>
@@ -104,8 +152,8 @@ def random_randombytes(num_bytes, random_float=None):
     randombytes += sixbytes
   
   return randombytes[6 - num_bytes % 6:]
-  
-  
+
+
   
 def _random_long_to_bytes(long_int):
   """

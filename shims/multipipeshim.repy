@@ -1,0 +1,268 @@
+"""
+<Author>
+  Steven Portzer
+
+<Started>
+  July 5, 2011
+
+<Purpose>
+  A shim that creates several shim stacks underneath it and sends and receives
+  UDP messages through all its shim stacks. When a message is sent, it will be
+  sent through all shim stacks in parallel in the hope that at least one copy
+  will be recieved. If multiple copies are recieved, all copies after the first
+  are discarded.
+"""
+
+dy_import_module_symbols("random")
+dy_import_module_symbols("shim_exceptions")
+
+
+
+class MultiShimUDPServerSocket():
+
+  def __init__(self, udpsocket_list, multipipe_context, localport):
+    self.udpsocket_list = udpsocket_list
+    self._udpsocket_open = True
+    self.multipipe_context = multipipe_context
+    self.localport = localport
+
+
+  def getmessage(self):
+    """
+    Try all udp sockets until we find one that has a message
+    """
+
+    if not self._udpsocket_open:
+      raise SocketClosedLocal("UDPServerSocket has been closed locally.")
+
+    for cur_udp_socket, portoffset in self.udpsocket_list:
+      try:
+        (srcip, srcport, message) = cur_udp_socket.getmessage()
+      except SocketWouldBlockError:
+        pass
+      else:
+        # Adjust the remote port number from the one actually used to the one
+        # the client MultiPipeShim was told to send on.
+        srcport -= portoffset
+
+        # Acquire lock to prevent concurrent access to shared state.
+        self.multipipe_context['recv_lock'].acquire(True)
+
+        # Make sure to release lock!
+        try:
+          msginfo = (srcip, self.localport)
+
+          if msginfo not in self.multipipe_context['received_msg_dict']:
+            self.multipipe_context['received_msg_dict'][msginfo] = set()
+
+          try:
+            messageid, messagebody = message.split(":", 1)
+          except Exception:
+            # If we have to discard this message, then we should try the
+            # remaining sockets since one of them may have received a message.
+            continue
+
+          if messageid in self.multipipe_context['received_msg_dict'][msginfo]:
+            # Duplicate message, so discard it.
+            continue
+          else:
+            self.multipipe_context['received_msg_dict'][msginfo].add(messageid)
+            return (srcip, srcport, messagebody)
+
+        finally:
+          self.multipipe_context['recv_lock'].release()
+
+    # No message was received on any listening port.
+    raise SocketWouldBlockError("No messages currently available!")
+
+
+  def close(self):
+    """
+    Closes all the udp socket objects that it has open.
+    """
+    # socket already closed
+    if not self._udpsocket_open:
+      return False
+
+    self._udpsocket_open = False
+
+    for cur_udp_socket, portoffset in self.udpsocket_list:      
+      cur_udp_socket.close()  
+
+    # Wipe out the udp socket list, so we can't do
+    # anything with it anymore.
+    self.udpsocket_list = []
+    return True
+
+
+
+class MultiPipeShim(BaseShim):
+
+  def __init__(self, shim_stack=ShimStack(), optional_args=None):
+    """
+    <Purpose>
+      Initialize the MultiPipeShim. Creates all the different
+      shimstacks that it needs to use.
+
+    <Arguments>
+      shim_stack - the shim stack that will be initially beneath
+          us. If optional_args is provided then it will be used
+          to create the shim stacks that will be used, but this
+          will be the default shim stack.
+
+      optional_args - If any optional args is provided, then it will
+          be used to create shim stacks.
+          
+    <Side Effects>
+      Multiple shim stack objects are created.
+      
+    <Exceptions>
+      ShimArgumentError will be raised if the arguments provided
+      is of not the right form or are incorrect.
+
+      Assertion error if optional args is not type of list.
+
+    <Return>
+      None
+    """
+
+    self.multipipe_context = {}
+    self.multipipe_context['received_msg_dict'] = {}
+    self.multipipe_context['recv_lock'] = createlock()
+
+    self.shim_str_list = optional_args
+
+    # If optional args was provided, make sure it was a list type.
+    if optional_args:
+      assert(isinstance(optional_args, list))
+
+
+    # Everything that is beneath the MultiPipeShim becomes the default
+    # shim stack, and becomes one of the paths.
+    self.shim_stack_list = [shim_stack]
+
+    # If any optional args are provided, we assume that they are different
+    # shims, and we will add them to the shim stack dict for the 
+    # MultiPipeShim.
+    if optional_args:
+      for shim_str in optional_args:
+        localhost = shim_stack.shim_stack_context['localhost']
+        cur_stack = ShimStack(shim_str, localhost)
+        self.shim_stack_list.append(cur_stack)
+
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+    # Make sure that all the stacks have at least one shim beneath it.
+    # If it does not then we will create and push a NoopShim on it.
+    for cur_shim in self.shim_stack_list:
+      try:
+        peek_copy = cur_shim.peek()
+      except ShimStackError:
+        find_and_register_shim('NoopShim')
+        shim_object = cur_shim.create_shim_object('NoopShim', [], ShimStack())
+        cur_shim.push(shim_object)
+
+
+  def listenformessage(self, localip, localport):
+    """
+    Listens for connections on all avaliable shim stacks. Each shim uses a port
+    number offset from localport by it's index in shim_stack_list. There's
+    probably a better way of doing this...
+    """
+
+    exception_list = []
+    udpsocket_list = []
+
+    portoffset = 0
+
+    for cur_shim in self.shim_stack_list:
+      try:
+        udpsocket = cur_shim.peek().listenformessage(localip, localport + portoffset)
+      except Exception, e:
+        exception_list.append(e)
+      else:
+        udpsocket_list.append((udpsocket, portoffset))
+
+      portoffset += 1
+    
+    # It doesn't matter so much if we failed to create one or more of the
+    # sockets, but if all the listenformessage invocations failed, then we
+    # should let the user know.
+    if udpsocket_list:
+      return MultiShimUDPServerSocket(udpsocket_list, self.multipipe_context, localport)
+    else:
+      raise exception_list[0]
+
+
+  def sendmessage(self, destip, destport, messagebody, localip, localport):
+    """
+    Sends the message across all available shim stacks. 
+    """
+
+    # Give each message a random message id so we can tell when multiple copies
+    # of a given message have been received.
+    message = str(randomfloat()) + ":" + messagebody
+
+    exception_list = []
+
+    portoffset = 0
+
+    for cur_shim in self.shim_stack_list:
+      try:
+        cur_shim.peek().sendmessage(destip, destport + portoffset, message, \
+                                    localip, localport + portoffset)
+      except Exception, e:
+        exception_list.append(e)
+
+      portoffset += 1
+
+    # It's ok if some of the sends failed, but if all of them failed then we
+    # should pass an exception on to the user.
+    if len(exception_list) == len(self.shim_stack_list):
+      raise exception_list[0]
+
+    # We're just assuming the entire message was sent. This may not be ideal
+    # behavior, but I'm not sure what a better approach would be.
+    return len(messagebody)
+
+
+  def udpserversocket_getmessage(self, udpserversocket):
+    return udpserversocket.getmessage()
+
+
+  def udpserversocket_close(self, udpserversocket):
+    return udpserversocket.close()
+
+
+
+  def copy(self):
+    """
+    Make and return a copy of self.
+    """
+
+    shim_stack_copy = self.shim_context['shim_stack'].copy()
+    optional_args_copy = self.shim_context['optional_args']
+
+    mycopy = MultiPipeShim(shim_stack_copy, optional_args_copy)
+    mycopy.multipipe_context = self.multipipe_context
+
+    return mycopy
+
+
+  def get_advertisement_string(self):
+    """
+    Return the advertisement string for this shim.
+    """
+    my_name = '(MultiPipeShim,%s)' % ','.join(self.shim_str_list)
+    next_layer_name = self.get_next_shim_layer().get_advertisement_string()
+
+    # If we have shims that are not advertising below us, for example
+    # just a logging shim. We want to append a NoopShim on the advertisement
+    # since we are still sending data through a socket.
+    if not next_layer_name:
+      next_layer_name = "(NoopShim)"
+
+    full_advertise_string = my_name + next_layer_name
+
+    return full_advertise_string
+

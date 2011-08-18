@@ -1,0 +1,631 @@
+"""
+<Program Name>
+  compressionshim.repy
+
+<Author>
+  Danny Y. Huang (yh1@cs.williams.edu)
+
+<Date Started>
+  March 23, 2011.
+
+<Purpose>
+  Compresses and decompresses TCP streams and UDP messages. Not to be deployed
+  on a real Seattle node because repy v2 does not support the "import"
+  statement.
+
+"""
+
+import zlib
+
+dy_import_module_symbols("shim_exceptions")
+
+
+_compression_shim_global_lock = createlock()
+
+def _compression_shim_atomic_operation(target_func):
+  """
+  Function decorator. The target function is invoked atomically.
+
+  """
+  def wrapper(*args, **kwargs):
+    try:
+      _compression_shim_global_lock.acquire(True)
+      return target_func(*args, **kwargs)
+    finally:
+      _compression_shim_global_lock.release()
+
+  return wrapper
+
+
+
+class CompressionShim(BaseShim):
+
+
+  def __init__(self, shim_stack, optional_args=None):
+    """
+    One can specify the size of the send/recv block in the optional
+    arguments. For a send/recv block size of 1024 bytes, the shim string would
+    be '(CompressionShim,1024)'. If it is not specified, the default block size
+    will be used.
+
+    """
+
+    # A dictionary that maps a socket to its send buffer, which stores any
+    # temporary data pending to be transmitted.
+    self._send_buf_dict = {}
+
+    # A dictionary that maps a socket to its receive buffer, which stores
+    # the compressed TCP stream.
+    self._recv_buf_dict = {}
+
+    # A dictionary that maps a socket to any exception it raises while we try to
+    # receive as much as possible.
+    self._recv_exception_dict = {}
+
+    # A dictionary that maps a socket to the stream of uncompressed data.
+    self._result_buf_dict = {}
+
+    # A set that stores all the active sockets used in socket_send. If a socket
+    # raises an exception other than SocketWouldBlockError, it is considered
+    # inactive and thus removed from the set.
+    self._active_recv_socket_set = set()
+
+
+    # If optional args is provided, use them as the block sizes.
+    # SEND_BLOCK_SIZE determines the size of each block into which the original 
+    # uncompressed stream is broken up into.
+    # The RECV_BLOCK_SIZE determines how many bytes we should receive per socket.recv()
+    if optional_args:
+      block_size = int(optional_args[0])
+      self._SEND_BLOCK_SIZE = block_size
+      self._RECV_BLOCK_SIZE = block_size
+    else:
+      self._SEND_BLOCK_SIZE = 2 ** 11
+      self._RECV_BLOCK_SIZE = 2 ** 11
+
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+
+
+  def copy(self):
+    return CompressionShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args'])
+
+
+  
+  def get_advertisement_string(self):
+
+    # If an optional argument is specified (i.e. block size), we advertise it.
+
+    optional_args = self.shim_context['optional_args']
+    shim_name = '(CompressionShim'
+
+    if optional_args:
+      shim_name += ',' + str(optional_args[0]) + ')'
+    else:
+      shim_name += ')'
+
+    return shim_name + self.get_next_shim_layer().get_advertisement_string()
+
+
+
+  # =========================================================
+  # Initializing the proper dicts during new socket creation.
+  # =========================================================
+
+
+  def tcpserversocket_getconnection(self, tcpserversocket):
+    # Call the next layer of tcpserver_getconnection()
+    (remote_ip, remote_port, repy_socket) = self.get_next_shim_layer().tcpserversocket_getconnection(tcpserversocket)
+
+    if isinstance(repy_socket, ShimSocket):
+      sockobj = repy_socket._socket
+    else:
+      sockobj = repy_socket
+
+    # Initialize all the necessary dictionaries and sets.
+    self._send_buf_dict[repr(sockobj)] = ''
+    self._recv_buf_dict[repr(sockobj)] = ''
+    self._recv_exception_dict[repr(sockobj)] = None
+    self._result_buf_dict[repr(sockobj)] = ''
+    self._active_recv_socket_set.add(repr(sockobj))
+
+    return (remote_ip, remote_port, ShimSocket(repy_socket, self))
+
+
+
+
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+    # Call the next layer of openconnection.
+    next_sockobj = self.get_next_shim_layer().openconnection(destip, destport, localip, localport, timeout)
+
+    if isinstance(next_sockobj, ShimSocket):
+      sockobj = next_sockobj._socket
+    else:
+      sockobj = next_sockobj
+
+    # Initialize all the necessary dictionaries and sets.
+    self._send_buf_dict[repr(sockobj)] = ''
+    self._recv_buf_dict[repr(sockobj)] = ''
+    self._recv_exception_dict[repr(sockobj)] = None
+    self._result_buf_dict[repr(sockobj)] = ''
+    self._active_recv_socket_set.add(repr(sockobj))
+
+    return ShimSocket(next_sockobj, self)
+
+
+
+
+
+
+
+  # ===================================================
+  # Compression and decompression of TCP streams
+  # ===================================================
+
+
+
+  def _send_pending_data(self, socket):
+    """
+    Helper method for socket_send(). Sends any pending data in the send buffer.
+
+    """
+
+    send_buf = self._send_buf_dict[repr(socket)]
+
+    # Send everything in the send buffer and remove it from the buffer.
+    while send_buf:
+      sent_bytes = self.get_next_shim_layer().socket_send(socket, send_buf)
+      send_buf = send_buf[sent_bytes : ]
+      self._send_buf_dict[repr(socket)] = send_buf
+
+
+
+  @_compression_shim_atomic_operation
+  def socket_send(self, socket, msg):
+    """ 
+    <Purpose>
+
+      Breaks up the original stream into blocks of _SEND_BLOCK_SIZE and
+      compresses individual blocks. Prepends the length to each block as the
+      header and sends these blocks sequentially. Thus, each block looks like
+      'n,dataB' where n == len(data + B), where B is a one-byte
+      boolean value ('T' or 'F') that indicates whether the block is 'good'.
+
+      The B value defaults to 'T' as we are to send a block, e.g. '6,pandaT'. If
+      the entire block is sent, the receiver is able to accept the block because
+      it terminates with 'T'. 
+
+      There are two scenarios in which a block may be sent partially before the
+      socket is interrupted by the SocketWouldBlockError:
+
+      (1) The exception can happen as the header is being sent. We append the
+      'F' right after the incomplete header, e.g. '2F'. The original block could
+      have been '21,HelloWorldPandaJingT' or '2,AT'.
+
+      (2) The exception can happen as the body is being sent. For a block of n
+      bytes, for instance, s bytes have been sent before the exception
+      occurs. We send (n-s-1) bytes of junk followed by 'F' to denote a bad
+      block. If '11,HelloWorldT' is interrupted, we could be sending
+      '11,HelloWxxxxF' instead, where 'x' is the padding character.
+
+      Under the following situations is a block partially sent:
+
+      (1) If SocketWouldBlockException occurs when the first block is being
+      sent, then we simply re-raise the exception.
+
+      (2) If, on the other hand, the exception occurs during the transmission of
+      the subsequent blocks, we ignore the exception and return the length of
+      the original data whose compressed blocks have been sent completely.
+
+    <Arguments>
+      Same as repy v2 socket API.
+
+    <Exceptions>
+      Same as repy v2 socket API.
+
+    <Side Effects>
+      Same as repy v2 socket API.
+
+    <Returns>
+      Same as repy v2 socket API.
+
+    """
+    # Transmit any residual data in the send buffer.
+    self._send_pending_data(socket)
+
+    # How much of the original uncompressed data has been sent successfully.
+    total_original_bytes_sent = 0
+
+    # Keep sending the supplied message until no more data to send.
+    while msg:
+
+      # Create a compressed block of data out of the original message.
+      uncompressed_block = msg[0 : self._SEND_BLOCK_SIZE]
+      msg = msg[len(uncompressed_block) : ]
+      block_body = zlib.compress(uncompressed_block)
+
+      # We assume that the block will be sent completely, so we set the boolean
+      # tag as 'T'.
+      block_body += 'T'
+
+      # Append header information to indicate the length of the block.
+      block_header = str(len(block_body)) + ','
+      block_data = block_header + block_body
+
+      # Number of bytes of this block that have been sent.
+      block_bytes_sent = 0
+
+      # Try to send this block entirely.
+      try:
+        while block_bytes_sent < len(block_data):
+          sent = self.get_next_shim_layer().socket_send(socket, block_data[block_bytes_sent : ])
+          block_bytes_sent += sent
+
+      # Looks like we've partially sent this block. The next time socket.send()
+      # is called, we will send a padding (if applicable) followed by an 'F' tag
+      # to indicate that this block is to be ignored.
+      except SocketWouldBlockError:
+        
+        # If the exception occurs before the header is completely transmitted,
+        # we put an 'F' right after the incomplete header. We write it to the
+        # send buffer so it will be sent the next time send() is invoked.
+        if block_bytes_sent < len(block_header):  
+          self._send_buf_dict[repr(socket)] = 'F'
+
+        # If the exception occurs in the body of the data, we pad it with junk
+        # data (all x's) such that the length of the block matches that
+        # indicated by the header.
+        else:
+          self._send_buf_dict[repr(socket)] = 'x' * (len(block_data) - block_bytes_sent - 1) + 'F'
+
+        break
+
+      # Otherwise, we have successfully sent the entire block. We move onto the
+      # next block, while keeping track of how much of the original data has
+      # been sent.
+      else:
+        total_original_bytes_sent += len(uncompressed_block)
+
+    # If we have not sent any data, the system's send buffer must be full.
+    if total_original_bytes_sent == 0 and len(msg) > 0:
+      raise SocketWouldBlockError
+
+    return total_original_bytes_sent
+        
+      
+
+
+
+
+  @_compression_shim_atomic_operation
+  def socket_recv(self, socket, bytes):
+    """ 
+    <Purpose>
+      Receives as much as possible into the receive buffer until the socket
+      blocks.
+
+      Then, from the receive buffer, we reconstruct all the completely received
+      blocks. A complete block is a string in the form of "n,msg", where msg is
+      the compressed message and n is its length.
+
+      For each complete block, we decompress the message and add it to the
+      result buffer, which stores the original TCP stream. We return up to the
+      requested number of bytes from the result buffer. If the result buffer is
+      empty, we raise the blocking exception.
+
+    <Arguments>
+      Same as repy v2 socket API.
+
+    <Exceptions>
+      Same as repy v2 socket API.
+
+    <Side Effects>
+      Same as repy v2 socket API.
+
+    <Returns>
+      Same as repy v2 socket API.
+
+    """
+
+    # Get the result buffer out of the dictionary.
+    result_buf = self._result_buf_dict[repr(socket)]
+
+    # If our buffer already has data, then we just return it.
+    if len(result_buf) > bytes:
+      requested_data = result_buf[0 : bytes]
+      self._result_buf_dict[repr(socket)] = result_buf[len(requested_data) : ]
+
+      return requested_data
+
+
+    # Receive as much as possible into the receive buffer, as long as the socket
+    # is active (i.e. not closed remotely or locally).
+    while repr(socket) in self._active_recv_socket_set:
+
+      try:
+        self._recv_buf_dict[repr(socket)] += self.get_next_shim_layer().socket_recv(socket, self._RECV_BLOCK_SIZE)
+
+	# If we have atleast lenght of bytes of compressed data, then most likely we
+	# already have bytes length uncompressed data. We do this so the application 
+	# doesn't have to wait for CompressionShim to block before returning data.
+	if len(self._recv_buf_dict[repr(socket)]) > bytes:
+          break
+      # No more data to read from socket.
+      except SocketWouldBlockError:
+        break
+
+      # If a different exception occur, we save it first. We will raise it later
+      # when we run out of data to return (i.e. empty result buffer). The socket
+      # is now considered inactive. We remove it from the active socket set.
+      except (SocketClosedLocal, SocketClosedRemote), err:
+        self._recv_exception_dict[repr(socket)] = err
+        self._active_recv_socket_set.remove(repr(socket))
+        break
+
+      # end-try
+
+    # end-while
+
+
+    # Reconstruct all the blocks of compressed messages from the raw TCP
+    # stream we received in the receive buffer. For each block, decompress
+    # it and add it to the result buffer.
+    while True:
+      compressed_block = self._reconstruct_blocks(socket)
+      if compressed_block is None:
+        break
+      elif len(compressed_block) > 0:
+        result_buf += zlib.decompress(compressed_block)
+
+    # If there is nothing in the result buffer, we have received all the data.
+    if result_buf == '':
+
+      # If we have saved exceptions, we raise them now, as these exceptions
+      # occurred at the end of the received stream.
+      if self._recv_exception_dict[repr(socket)]:
+        raise self._recv_exception_dict[repr(socket)]
+
+      # We simply run out of data without any other exceptions.
+      else:
+        raise SocketWouldBlockError
+
+    # Remove the portion requested by the application and return it.
+    requested_data = result_buf[0 : bytes]
+    self._result_buf_dict[repr(socket)] = result_buf[len(requested_data) : ]
+
+    return requested_data
+
+
+
+
+
+
+  def _reconstruct_blocks(self, socket):
+    """
+    Helper method for the socket_recv method. Reconstructs and returns the
+    leftmost complete block starting from the head of the receive buffer. If
+    there are no more blocks to reconstruct, returns None. Returns an empty
+    string if the block is to be discarded.
+
+    For instance, we may have received the following stream into the
+    receive buffer (the '>' sign denotes the beginning of the receive buffer):
+    
+    > 11,HelloWorldT6,pandaT7,googxxF10,micxxx
+
+    We start from the beginning and parse the header. We read 11 bytes. The last
+    byte is a 'T', so we know the block is complete. We have reconstructed
+    'HelloWorld' and we move on (because this method is probably used in a while
+    loop). Now the buffer becomes:
+
+    > 6,pandaT7,googxxF10,micxxx
+
+    Similarly, we are able to reconstruct the block 'panda'. The header
+    subsequently looks like:
+
+    > 7,googxxF10,micxxx
+
+    We can also reconstruct the new block as 'googxx', but since the tag is an
+    'F', we reject and discard the block. Now, the buffer becomes:
+
+    >10,micxxx
+
+    We expect that the block has 10 bytes of data, but the buffer ends before
+    that. We assume more data is coming in, so we leave the data on the buffer
+    and return all the good blocks we have read so far as 'HelloWorld' and
+    'panda'.
+
+    """
+    # Get the receive buffer. 
+    recv_buf = self._recv_buf_dict[repr(socket)]
+
+    # Base case: empty receive buffer. Return no blocks.
+    if recv_buf == '':
+      return None
+
+    # Stores the length of the block as a string.
+    block_length_str = ''
+
+    # Position in the receive buffer to be read.
+    cur_position = 0
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Parse the header
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+    while True:
+
+      # Attempt to read the header of the block. Read a character at a
+      # time until comma or 'F'.
+      try:
+        char = recv_buf[cur_position]
+
+      # We still haven't obtained the complete header despite reaching the end
+      # of the buffer. Hopefully, we will receive more data into the buffer to
+      # form a complete header. For now, there is nothing we can do. We keep all
+      # the data in the buffer and exit.
+      except IndexError:
+        return None
+
+      cur_position += 1
+
+      # The correct header should end with a comma. Now that we have
+      # successfully read the header, we parse the length.
+      if char == ',':
+        block_length = int(block_length_str)
+        break
+
+      # The header has an 'F', so a SocketWouldBlockError must have occurred as
+      # the header is being sent (e.g. '3F'). We discard this block and retry
+      # from a position after the 'F' tag.
+      elif char == 'F':
+        self._recv_buf_dict[repr(socket)] = recv_buf[cur_position : ]
+        return ''
+
+      # The character is neither a comma or 'F', so we must be still reading the
+      # integers in the header.
+      elif char.isdigit():
+        block_length_str += char
+
+      # There must have been a bug!
+      else:
+        err_str = 'CompressionShim: Invalid characer at position ' + str(cur_position) 
+        err_str += ' in recv buffer: ' + str(recv_buf)
+        raise ShimInternalError(err_str)
+    
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    # Reconstruct block
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    
+    # It is possible that the we are still in the middle of receiving the block,
+    # and that we only have a part of the block in the receive buffer.
+    # Hopefully, we will receive more data into the buffer to form a complete
+    # block. For now, there is nothing we can do. We keep all the data in the
+    # buffer and exit.
+    if cur_position + block_length > len(recv_buf):
+      return None
+
+    # At this point, we know that we have a complete block. Read block_length of
+    # bytes from the receive buffer to form a block and remove it from the
+    # buffer.
+    block_body = recv_buf[cur_position : cur_position + block_length]
+    cur_position += block_length
+
+    # If it is a bad block, we remove it from the buffer, ignore it and retry
+    # after the 'F' tag.
+    if block_body.endswith('F'):
+      self._recv_buf_dict[repr(socket)] = recv_buf[cur_position : ]
+      return ''
+
+    # It's a good block! Remove it from the buffer, return it (minus the 'T')
+    # and keep reading the other blocks recursively.
+    elif block_body.endswith('T'):
+      self._recv_buf_dict[repr(socket)] = recv_buf[cur_position : ]
+      return block_body[0 : len(block_body) - 1]
+
+    # The block should not end with anything else!
+    else:
+      err_str = 'CompressionShim: Invalid block "' + block_body + '" in buffer: ' + recv_buf
+      raise ShimInternalError(err_str)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # # ===================================================
+  # # Compression and decompression of UDP messages
+  # # ===================================================
+
+  # def sendmessage(self, destip, destport, message, localip, localport):
+  #   """ 
+  #   <Purpose>
+  #     Sends a compressed UDP message in its entirety.
+
+  #   <Arguments>
+  #     Same as repy v2 socket API.
+
+  #   <Exceptions>
+  #     Same as repy v2 socket API.
+
+  #   <Side Effects>
+  #     None.
+
+  #   <Returns>     
+  #     If the entire compressed message is sent, returns the length of the
+  #     original message; otherwise, returns zero.
+
+  #   """
+  #   short_msg = zlib.compress(message)
+  #   sent_length = self.get_next_shim_layer().sendmessage(destip, destport, short_msg, localip, localport)
+
+  #   # Return the length of the original message only if it is sent in its
+  #   # entirety.
+  #   if sent_length == len(short_msg):
+  #     return sent_length
+  #   else:
+  #     return 0
+
+
+
+
+
+  # def udpserversocket_getmessage(self, udpserversocket):
+  #   """ 
+  #   <Purpose>
+  #     Receives a UDP message and decompress it.
+
+  #   <Arguments>
+  #     Same as repy v2 socket API.
+
+  #   <Exceptions>
+  #     Same as repy v2 socket API.
+
+  #   <Side Effects>
+  #     None.
+
+  #   <Returns>     
+  #     Returns the decompressed message.
+
+  #   """
+  #   while True:
+
+  #     (remote_ip, remote_port, compressed_msg) = self.get_next_shim_layer().udpserversocket_getmessage(udpserversocket)
+
+  #     try:
+  #       return (remote_ip, remote_port, zlib.decompress(compressed_msg))
+
+  #     except zlib.error, err:
+
+  #       # Unable to decompress. Bad packet. 
+  #       logstr = 'CompressionShim: Cannot decompress message:'
+  #       logstr += ' remote_ip = ' + str(remote_ip)
+  #       logstr += ' remote_port = ' + str(remote_port)
+  #       logstr += ' compressed_msg = ' + str(compressed_msg)
+  #       self._log(logstr)
+
+  #       # Drop packet and retry
+  #       continue
+
+  
+
+

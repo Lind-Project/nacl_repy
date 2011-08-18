@@ -1,0 +1,175 @@
+"""
+<Program Name>
+  simple_echo_test.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+
+<Date Started>
+  May 6, 2011
+
+<Purpose> 
+  Client sends N bytes of random data to the server. The server echos the data
+  back. The client checks for the integrity of the data.
+
+"""
+
+USAGE = """
+  To start the server, run: "simple_echo_test.repy server 12345", where 12345 is
+  the port on which the server listens.
+
+  To start the client, run: "simple_echo_test.repy client 123.4.5.6 12345 N",
+  where 123.4.5.6 is the server's IP, and 12345 is the port number, and N is the
+  number of random bytes.  """
+
+dy_import_module_symbols('shimstackinterface')
+import random
+
+
+# The shim stack strings of the server and the client.
+SERVER_SHIM_STACK_STR = '(CoordinationShim)(StatShim)(MultiPathShim,(LogShim)(StatShim)(CompressionShim))(StatShim)'
+
+CLIENT_SHIM_STACK_STR = '(CoordinationShim)'
+
+# Buffer size.
+RECV_BLOCK_SIZE = 2**14
+SEND_BLOCK_SIZE = 2**14
+
+
+# How long do we sleep when the socket blocks
+BLOCKING_SLEEP_TIME = 0.001
+
+
+
+
+def client():
+  """
+  Sends random bytes to the server.
+
+  """
+  # Parse command line
+  try:
+    dest_host = callargs[1]
+    dest_port = int(callargs[2])
+    N = int(callargs[3])
+  except (IndexError, ValueError):
+    log(USAGE)
+    exitall()
+
+  log('Preparing the random numbers...\n')
+  # Prepares the send buffer.
+  random_bytes_str = ''
+  while len(random_bytes_str) < N:
+    random_bytes_str += randombytes()
+  random_bytes_str = random_bytes_str[0:N]
+
+  recv_buffer = ''
+  total_length = len(random_bytes_str)
+  total_sent = 0
+  total_checked = 0
+
+  log('Connecting...\n')
+
+  # Establish connection to server.
+  shim = ShimStackInterface(CLIENT_SHIM_STACK_STR)
+  sock = shim.openconnection(dest_host, dest_port, getmyip(), 61328, 15)
+
+  # Send everything in the buffer while verifying the echoed data.
+  while total_checked < total_length:
+
+    if total_sent < total_length:
+      try:
+        total_sent += sock.send(random_bytes_str[total_sent : total_sent+SEND_BLOCK_SIZE])
+      except SocketWouldBlockError:
+        sleep(BLOCKING_SLEEP_TIME)
+      else:
+        log(total_length - total_sent, 'bytes left to send..\n')
+
+    try:
+      recv_data = sock.recv(RECV_BLOCK_SIZE)
+    except SocketWouldBlockError:
+      sleep(BLOCKING_SLEEP_TIME)      
+    else:
+      recv_length = len(recv_data)
+      expected_data = random_bytes_str[total_checked : total_checked+recv_length]
+      if expected_data == recv_data:
+        total_checked += recv_length
+        log(total_length - total_checked, 'bytes left to verify.\n')
+      else:
+        log('Verification failed after', total_checked, 'bytes.\n')
+        exitall()
+
+  sock.close()
+
+
+
+
+
+
+def server():
+  """
+  Echoes data.
+
+  """
+  # Parse command line
+  try:
+    listen_port = int(callargs[1])
+  except (IndexError, ValueError):
+    log(USAGE)
+    exitall()
+
+  # Accept client.
+  shim = ShimStackInterface(SERVER_SHIM_STACK_STR, 'pandas.zenodotus.cs.washington.edu')
+  handle = shim.listenforconnection(shim.getmyip(), listen_port)
+  log('Listening...\n')
+
+  while True:
+    _, _, sock = block_call(handle.getconnection)
+
+    def handle_client():
+      # Echoes data.
+      while True:
+        try:
+          data_to_send = block_call(sock.recv, RECV_BLOCK_SIZE)
+          while data_to_send:
+            sent = block_call(sock.send, data_to_send)
+            data_to_send = data_to_send[sent:]
+        except SocketClosedRemote:
+          exitall()
+
+    createthread(handle_client)
+
+
+
+
+
+          
+
+
+def block_call(func, *p, **q):
+  """
+  Blocks the execution of the function until it exits without raising the
+  SocketWouldBlockError. Returns the result of the function.
+
+  """
+  while True:
+    try:
+      return func(*p, **q)
+    except SocketWouldBlockError:
+      sleep(BLOCKING_SLEEP_TIME)
+
+
+
+
+
+if callfunc == 'initialize':
+  try:
+    if callargs[0] == 'server': 
+      server()
+    elif callargs[0] == 'client':
+      client()
+
+  except (IndexError, ValueError):
+    log(USAGE)
+    exitall()
+      

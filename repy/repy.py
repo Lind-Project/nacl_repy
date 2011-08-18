@@ -44,9 +44,7 @@
 # Let's make sure the version of python is supported
 import checkpythonversion
 checkpythonversion.ensure_python_version_is_supported()
-import time
 import os
-print "RePy: %s" % time.ctime(os.path.getmtime(os.path.realpath(__file__)))
 import idhelper
 import safe
 import sys
@@ -62,6 +60,7 @@ import safebinary
 import emulcomm
 import namespace
 import nanny
+import time
 import threading
 import loggingrepy
 
@@ -438,4 +437,3 @@ def repy_main(argv=sys.argv):
 if __name__ == '__main__':
   repy_main()
 
-#  LocalWords:  recvive

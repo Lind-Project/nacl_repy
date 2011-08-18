@@ -343,8 +343,8 @@ class Multiplexer():
       self.socketInfo = {"localip":"127.0.0.1","localport":0,"remoteip":"127.0.0.1","remoteport":0}
 
       # Locks, this is to make sure only one thread is reading or writing at any time
-      self.readLock = getlock()
-      self.writeLock = getlock()
+      self.readLock = createlock()
+      self.writeLock = createlock()
 
       # Callback function that is passed a socket object
       # Maps a host (e.g. 127.0.0.1) to a dictionary of ports -> functions
@@ -360,7 +360,7 @@ class Multiplexer():
 
       # A dictionary that associates reference ID's to their MultiplexerSocket objects
       self.virtualSockets = {}
-      self.virtualSocketsLock = getlock()  
+      self.virtualSocketsLock = createlock()  
       
       # Inject or override socket info given to use
       for key, value in info.items():
@@ -420,7 +420,7 @@ class Multiplexer():
       # See below
       pass
     finally:
-      self.readLock.acquire()
+      self.readLock.acquire(True)
     
     try:
       self.writeLock.release()
@@ -428,7 +428,7 @@ class Multiplexer():
       # Exception is thrown if the lock is already unlocked
       pass
     finally:
-      self.writeLock.acquire()
+      self.writeLock.acquire(True)
     
     # The Mux is no longer initialized
     self.connectionInit = False
@@ -499,7 +499,7 @@ class Multiplexer():
     
     try:
       # Get the read lock
-      self.readLock.acquire()
+      self.readLock.acquire(True)
       
       # Construct frame, this blocks
       frame.initFromSocket(self.socket)
@@ -528,7 +528,7 @@ class Multiplexer():
     
     try:
       # Get the send lock
-      self.writeLock.acquire()
+      self.writeLock.acquire(True)
 
       # Send the frame!
       self.socket.send(frame.toString())
@@ -611,7 +611,7 @@ class Multiplexer():
     
     # Add this request to the pending sockets, add a bool to hold if this was successful, and a lock that we use for blocking
     # The third element is a timer handle, that is used for the timeout
-    self.pendingSockets[requestedID] = [False, getlock(), None]
+    self.pendingSockets[requestedID] = [False, createlock(), None]
     
     # Send the request
     self._sendFrame(frame)
@@ -622,8 +622,8 @@ class Multiplexer():
     self.pendingSockets[requestedID][2] = settimer(timeout, self._openconn_timeout, [requestedID])
     
     # Acquire the lock twice, and wait for it to be release
-    self.pendingSockets[requestedID][1].acquire()
-    self.pendingSockets[requestedID][1].acquire()
+    self.pendingSockets[requestedID][1].acquire(True)
+    self.pendingSockets[requestedID][1].acquire(True)
     
     # Were we successful?
     success = self.pendingSockets[requestedID][0]
@@ -643,10 +643,10 @@ class Multiplexer():
       socket = MultiplexerSocket(requestedID, self, self.defaultBufSize, info)
       
       # By default there is no data, so set the lock
-      socket.socketLocks["nodata"].acquire()
+      socket.socketLocks["nodata"].acquire(True)
       
       # Lock the virtual sockets dictionary
-      self.virtualSocketsLock.acquire()
+      self.virtualSocketsLock.acquire(True)
       
       # Create the entry for it, add the data to it
       self.virtualSockets[requestedID] = socket
@@ -735,7 +735,7 @@ class Multiplexer():
   # Increases the amount we can send out
   def _conn_buf_size(self,socket, num):
     # Acquire a lock for the socket
-    socket.socketLocks["send"].acquire()
+    socket.socketLocks["send"].acquire(True)
     
     # Increase the buffer size
     socket.bufferInfo["outgoing"] = num
@@ -777,7 +777,7 @@ class Multiplexer():
       return
     
     # Get the main dictionary lock
-    self.virtualSocketsLock.acquire()
+    self.virtualSocketsLock.acquire(True)
     
     # Create the socket
     socket = MultiplexerSocket(id, self, self.defaultBufSize, info)
@@ -794,7 +794,7 @@ class Multiplexer():
     self.virtualSockets[refID] = socket
     
     # By default there is no data, so set the lock
-    socket.socketLocks["nodata"].acquire()
+    socket.socketLocks["nodata"].acquire(True)
     
     # If the frame is a data frame, add the data
     if frame.mesgType == MULTIPLEXER_DATA_FORWARD:
@@ -814,7 +814,7 @@ class Multiplexer():
   # Handles incoming data for an existing client
   def _incoming_client_data(self, frame, socket):
     # Acquire a lock for the socket
-    socket.socketLocks["recv"].acquire()
+    socket.socketLocks["recv"].acquire(True)
     
     # Increase the buffer size
     socket.buffer += frame.content
@@ -861,7 +861,7 @@ class Multiplexer():
   # and if so returns their virtual socket
   def _virtualSock(self,refID):
     # Get the main dictionary lock
-    self.virtualSocketsLock.acquire()
+    self.virtualSocketsLock.acquire(True)
     
     if refID in self.virtualSockets:
       sock = self.virtualSockets[refID]
@@ -986,7 +986,7 @@ class MultiplexerSocket():
     self.bufferInfo = {"incoming":buf,"outgoing":buf}
 
     # Various locks used in the socket
-    self.socketLocks = {"recv":getlock(),"send":getlock(),"nodata":getlock(),"outgoing":getlock()}
+    self.socketLocks = {"recv":createlock(),"send":createlock(),"nodata":createlock(),"outgoing":createlock()}
     
     # Inject or override socket info given to use
     for key, value in info.items():
@@ -1012,7 +1012,7 @@ class MultiplexerSocket():
     
     # Remove from the list of virtual sockets
     if self.mux != None:
-      self.mux.virtualSocketsLock.acquire()
+      self.mux.virtualSocketsLock.acquire(True)
       del self.mux.virtualSockets[self.id]
       self.mux.virtualSocketsLock.release()
     
@@ -1076,7 +1076,7 @@ class MultiplexerSocket():
         
     # Block until there is data
     # This lock is released whenever new data arrives, or if there is data remaining to be read
-    self.socketLocks["nodata"].acquire()
+    self.socketLocks["nodata"].acquire(True)
     try:
       self.socketLocks["nodata"].release()
     except:
@@ -1087,7 +1087,7 @@ class MultiplexerSocket():
     self._handleClosed_recv()
             
     # Get our own lock
-    self.socketLocks["recv"].acquire()
+    self.socketLocks["recv"].acquire(True)
   
     # Read up to bytes
     data = self.buffer[:bytes] 
@@ -1119,7 +1119,7 @@ class MultiplexerSocket():
     
     # Set the no data lock if there is none
     if len(self.buffer) == 0:
-      self.socketLocks["nodata"].acquire()
+      self.socketLocks["nodata"].acquire(True)
       
     # Release the lock
     self.socketLocks["recv"].release() 
@@ -1165,7 +1165,7 @@ class MultiplexerSocket():
       self._handleClosed()
         
       # Make sure we have available outgoing bandwidth
-      self.socketLocks["outgoing"].acquire()
+      self.socketLocks["outgoing"].acquire(True)
       try:
         self.socketLocks["outgoing"].release()
       except:
@@ -1176,7 +1176,7 @@ class MultiplexerSocket():
       self._handleClosed()
         
       # Get our own lock
-      self.socketLocks["send"].acquire()
+      self.socketLocks["send"].acquire(True)
       
       # How much outgoing traffic is available?
       outgoingAvailable = self.bufferInfo["outgoing"]
@@ -1216,7 +1216,7 @@ class MultiplexerSocket():
         self.bufferInfo["outgoing"] = 0
 
         # Lock the outgoing lock, so that we block until we get a MULTIPLEXER_CONN_BUF_SIZE message
-        self.socketLocks["outgoing"].acquire()
+        self.socketLocks["outgoing"].acquire(True)
       
         # Trim data to only what isn't sent syet
         data = data[outgoingAvailable:]

@@ -20,7 +20,7 @@ openDHTadvertise_context = {}
 openDHTadvertise_context["proxylist"] = []
 openDHTadvertise_context["currentproxy"] = None
 openDHTadvertise_context["serverlist"] = []
-openDHTadvertise_context["serverlistlock"] = getlock()
+openDHTadvertise_context["serverlistlock"] = createlock()
 
 def openDHTadvertise_announce(key, value, ttlval, concurrentevents=5, proxiestocheck=5, timeout=None):
   """
@@ -191,7 +191,7 @@ def openDHTadvertise_checkserver(servername):
     s.close()
 
   # this list is the "return value".   Add ourselves if no problems...
-  openDHTadvertise_context["serverlistlock"].acquire()
+  openDHTadvertise_context["serverlistlock"].acquire(True)
   try:
     openDHTadvertise_context["serverlist"].append(servername)
   finally:

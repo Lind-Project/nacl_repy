@@ -126,10 +126,6 @@ pyDes_PAD_PKCS5 = 2
 # The base class shared by des and triple des.
 class _pyDes_baseDes(object):
   def __init__(self, mode=pyDes_ECB, IV=None, pad=None, padmode=pyDes_PAD_NORMAL):
-    if IV:
-      IV = self._guardAgainstUnicode(IV)
-    if pad:
-      pad = self._guardAgainstUnicode(pad)
     self.block_size = 8
     # Sanity checking of arguments.
     if pad and padmode == pyDes_PAD_PKCS5:
@@ -149,7 +145,6 @@ class _pyDes_baseDes(object):
 
   def setKey(self, key):
     """Will set the crypting key for this object."""
-    key = self._guardAgainstUnicode(key)
     self._key = key
 
   def getMode(self):
@@ -166,8 +161,6 @@ class _pyDes_baseDes(object):
 
   def setPadding(self, pad):
     """setPadding() -> bytes of length 1. Padding character."""
-    if pad is not None:
-      pad = self._guardAgainstUnicode(pad)
     self._padding = pad
 
   def getPadMode(self):
@@ -186,7 +179,6 @@ class _pyDes_baseDes(object):
     """Will set the Initial Value, used in conjunction with CBC mode"""
     if not IV or len(IV) != self.block_size:
       raise ValueError("Invalid Initial Value (IV), must be a multiple of " + str(self.block_size) + " bytes")
-    IV = self._guardAgainstUnicode(IV)
     self._iv = IV
 
   def _padData(self, data, pad, padmode):
@@ -243,28 +235,6 @@ class _pyDes_baseDes(object):
         pad_len = data[-1]
       data = data[:-pad_len]
 
-    return data
-
-  def _guardAgainstUnicode(self, data):
-    # Only accept byte strings or ascii unicode values, otherwise
-    # there is no way to correctly decode the data into bytes.
-    if _pyDes_pythonMajorVersion < 3:
-      # Anthony = had to change type checking to work in repy
-      if type(data) == type(u''):
-      #if isinstance(data, unicode):
-        raise ValueError("pyDes can only work with bytes, not Unicode strings.")
-    else:
-      # Anthony - had to change type checking to workin repy
-      #if isinstance(data, str):
-      if type(data) != type(''):
-        # Only accept ascii unicode values.
-        # Anthony - not able to encode in repy
-        return data
-        #try:
-        #  return data.encode('ascii')
-        #except UnicodeEncodeError:
-        #  pass
-        #raise ValueError("pyDes can only work with encoded strings, not Unicode.")
     return data
 
 #############################################################################
@@ -707,9 +677,6 @@ class pyDes_des(_pyDes_baseDes):
     the padmode is set to PAD_PKCS5, as bytes will then added to
     ensure the be padded data is a multiple of 8 bytes.
     """
-    data = self._guardAgainstUnicode(data)
-    if pad is not None:
-      pad = self._guardAgainstUnicode(pad)
     data = self._padData(data, pad, padmode)
     return self.crypt(data, pyDes_des.ENCRYPT)
 
@@ -728,9 +695,6 @@ class pyDes_des(_pyDes_baseDes):
     the data (last data block). In PAD_PKCS5 mode, the special
     padding end markers will be removed from the data after decrypting.
     """
-    data = self._guardAgainstUnicode(data)
-    if pad is not None:
-      pad = self._guardAgainstUnicode(pad)
     data = self.crypt(data, pyDes_des.DECRYPT)
     return self._unpadData(data, pad, padmode)
 
@@ -830,9 +794,6 @@ class pyDes_triple_des(_pyDes_baseDes):
     """
     ENCRYPT = pyDes_des.ENCRYPT
     DECRYPT = pyDes_des.DECRYPT
-    data = self._guardAgainstUnicode(data)
-    if pad is not None:
-      pad = self._guardAgainstUnicode(pad)
     # Pad the data accordingly.
     data = self._padData(data, pad, padmode)
     if self.getMode() == pyDes_CBC:
@@ -877,9 +838,6 @@ class pyDes_triple_des(_pyDes_baseDes):
     """
     ENCRYPT = pyDes_des.ENCRYPT
     DECRYPT = pyDes_des.DECRYPT
-    data = self._guardAgainstUnicode(data)
-    if pad is not None:
-      pad = self._guardAgainstUnicode(pad)
     if self.getMode() == pyDes_CBC:
       self._key1.setIV(self.getIV())
       self._key2.setIV(self.getIV())

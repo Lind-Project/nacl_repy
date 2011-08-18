@@ -159,6 +159,7 @@ def main():
   copy_to_target("portability/*", target_dir)
   copy_to_target("seattlelib/*", target_dir)
   copy_to_target("seash/*", target_dir)
+  copy_to_target("shims/*", target_dir)
   copy_to_target("softwareupdater/*", target_dir)
   copy_to_target("autograder/nm_remote_api.mix", target_dir)
   copy_to_target("keydaemon/*", target_dir)
@@ -176,12 +177,12 @@ def main():
     copy_to_target("seattlelib/tests/*", target_dir)
     #copy_to_target("keydaemon/tests/*", target_dir)
     copy_to_target("dist/update_crontab_entry.py", target_dir)
+    copy_to_target("shims/tests/*", target_dir)
 
     # The web server is used in the software updater tests
     #copy_to_target("assignments/webserver/*", target_dir)
     #copy_to_target("softwareupdater/test/*", target_dir)
-   # copy_to_target("repy/tests_naclrepy/*", target_dir)
-    #copy_to_target("repyc/tests/test.c",target_dir)
+
 
   #set working directory to the test folder
   os.chdir(target_dir)

@@ -1,0 +1,52 @@
+"""
+<Program Name>
+  asciishiftingshim.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+
+<Date Started>
+  April 16, 2011
+
+<Purpose>
+  A shim that shifts the ascii values of TCP streams by one. Used for testing
+  or encrypting simple data.
+
+"""
+
+class AsciiShiftingShim(BaseShim):
+
+
+
+  def _shift_ascii(self, data, shift):
+    """
+    Increases the ascii value of each byte by an integer 'shift'. Return the new
+    string.
+
+    """
+    output = ''
+    for char in data:
+      output += chr((ord(char) + shift) % 256)
+    return output
+
+
+
+  def socket_send(self, socket, data):
+    data = self._shift_ascii(data, 1)
+    return self.get_next_shim_layer().socket_send(socket, data)
+
+
+
+  def socket_recv(self, socket, bytes):
+    data = self.get_next_shim_layer().socket_recv(socket, bytes)
+    return self._shift_ascii(data, -1)
+
+
+
+  def copy(self):
+    return AsciiShiftingShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args'])
+
+
+  
+  def get_advertisement_string(self):
+    return '(AsciiShiftingShim)' + self.get_next_shim_layer().get_advertisement_string()

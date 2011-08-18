@@ -684,8 +684,8 @@ def rsa_privatekey_to_file(key,filename):
   if not rsa_is_valid_privatekey(key):
     raise ValueError, "Invalid private key"
 
-  fileobject = file(filename,"w")
-  fileobject.write(rsa_privatekey_to_string(key))
+  fileobject = openfile(filename, True)
+  fileobject.writeat(rsa_privatekey_to_string(key), 0)
   fileobject.close()
 
 
@@ -714,8 +714,8 @@ def rsa_file_to_privatekey(filename):
     {'d':1.., 'p':1.. 'q': 1..} with the keys 'd', 'p', and 'q'.
   
   """
-  fileobject = file(filename,'r')
-  privatekeystring = fileobject.read()
+  fileobject = openfile(filename, False)
+  privatekeystring = fileobject.readat(None, 0)
   fileobject.close()
 
   return rsa_string_to_privatekey(privatekeystring)
@@ -755,8 +755,8 @@ def rsa_publickey_to_file(publickey, filename):
   if not rsa_is_valid_publickey(publickey):
     raise ValueError, "Invalid public key"
 
-  fileobject = file(filename,"w")
-  fileobject.write(rsa_publickey_to_string(publickey))
+  fileobject = openfile(filename, True)
+  fileobject.writeat(rsa_publickey_to_string(publickey), 0)
   fileobject.close()
 
 
@@ -785,8 +785,8 @@ def rsa_file_to_publickey(filename):
     {'n': 1.., 'e': 6..} with the keys 'n' and 'e'.
   
   """
-  fileobject = file(filename,'r')
-  publickeystring = fileobject.read()
+  fileobject = openfile(filename, False)
+  publickeystring = fileobject.readat(None, 0)
   fileobject.close()
 
   return rsa_string_to_publickey(publickeystring)

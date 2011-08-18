@@ -249,7 +249,12 @@ def parallelize_initfunction(targetlist, callerfunc,concurrentevents=5, *extrafu
     # this is scheduled without having race conditions
     parallelize_info_dict[parallelizehandle]['runninglist'].append(workercount)
     try:
-      settimer(0.0, parallelize_execute_function, (parallelizehandle,workercount))
+      
+      def function_to_run():
+        parallelize_execute_function(parallelizehandle, workercount)
+        
+      createthread(function_to_run)
+      
     except:
       # If I'm out of resources, stop
       # remove this worker (they didn't start)
@@ -305,7 +310,7 @@ def parallelize_execute_function(handle, myid):
     return
 
   except Exception, e:
-    print 'Internal Error: Exception in parallelize_execute_function',e
+    log('Internal Error: Exception in parallelize_execute_function', e, '\n')
 
   finally:
     # remove my entry from the list of running worker threads...

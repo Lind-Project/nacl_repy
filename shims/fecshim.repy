@@ -1,0 +1,319 @@
+"""
+
+<Program Name>
+  fecshim.repy
+
+<Author>
+  Justin Cappos
+  Ported to repy v2 by:
+    Steven Portzer
+
+<Date Started>
+  13 Jan 2011
+
+<Purpose>
+  A forward error correction shim.
+
+"""
+
+dy_import_module_symbols("random")
+dy_import_module_symbols("shim_exceptions")
+
+
+
+# helper function to XOR two strings
+def _str_xor_helper(a,b):
+  if len(a) > len(b):
+    (a,b) = (b,a)
+  outstr = ''
+  for pos in range(len(a)):
+    outstr = outstr + chr( ord(a[pos]) ^ ord(b[pos]))
+  outstr = outstr + b[pos+1:]
+  return outstr
+
+
+# helper function to build a string that is the XOR of a list of strings
+def _xorstringlist(listofstrings):
+
+  try:  
+    returnedstring = listofstrings[0]
+  
+    for xorstring in listofstrings[1:]:
+      returnedstring = _str_xor_helper(returnedstring, xorstring)
+  except Exception, e:
+    #print listofstrings
+    raise ShimInternalError(str(e))
+  return returnedstring
+      
+
+
+
+# The basic idea is that I'm going to send a stream of packets to a destination
+# every N packets I send to a destination will include an error correcting
+# packet (using XOR).   
+#
+# We will assign each group of N packets a bundle ID to help track which XORs
+# are within a packet.
+#
+# The packets sent will be numbered 0, 1, ..., N-1, N
+# the packets 0 - N-1 are the original packet, and the packet N is the XOR
+# of all of the previous packets in this bundle
+#
+# The XOR packet has an additional header containing a list of the packet
+# lengths so that it can reconstruct the original packet.
+#
+# The sender will keep a dictionary of destination information -> {'bundleid':
+# bundleid, 'packetlist':[packetbody1, ...]}
+# 
+# The receiver will have a dictionary of source information ->
+# a dictionary that maps bundle id -> a dictionary packetid -> 
+# previouspacket
+
+
+# TODO: Expire bundles from the received bundle dictionary
+
+
+class FECShim(BaseShim):
+
+  # Return the next available bundleid without a race...
+  def _get_new_bundleid(self):
+    self.fec_context['bundleid_lock'].acquire(True)
+    
+    thisbundleid = self.fec_context['nextbundleid']
+    self.fec_context['nextbundleid'] = self.fec_context['nextbundleid'] + 1
+
+    self.fec_context['bundleid_lock'].release()
+    
+    return thisbundleid
+
+
+
+  def __init__(self, shim_stack, optional_args=None):
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+    # intialize all the internal variables
+    self.fec_context = {}
+    self.fec_context['send_lock'] = createlock()
+    self.fec_context['recv_lock'] = createlock()
+    self.fec_context['sending_bundle_dictionary'] = {}
+    self.fec_context['received_bundle_dictionary'] = {}
+
+    # let's pick some random value and increment from there to prevent restarts
+    # of this shim from getting confused.
+    self.fec_context['nextbundleid'] = random_nbit_int(10)
+    self.fec_context['bundleid_lock'] = createlock()
+
+    if optional_args:
+      self.fec_context['packets_per_bundle'] = int(optional_args[0])
+    else:
+      self.fec_context['packets_per_bundle'] = 2
+
+    # simple metrics
+    self.fec_context['datapacketcount'] = 0
+    self.fec_context['dupcount'] = 0
+    self.fec_context['xorcount'] = 0
+    self.fec_context['spuriousxorcount'] = 0
+    self.fec_context['insufficientxorcount'] = 0
+    self.fec_context['usefulxorcount'] = 0
+
+
+
+  def copy(self):
+    mycopy = FECShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args'])
+    mycopy.fec_context = self.fec_context
+    return mycopy
+
+
+  def get_advertisement_string(self):
+    return '(FECShim,' + str(self.fec_context['packets_per_bundle']) + ')' + self.get_next_shim_layer().get_advertisement_string()
+
+
+
+  def udpserversocket_getmessage(self, udpserversocket):
+    # collect packets, recovering lost ones if possible
+
+    srcip, srcport, packetstring = self.get_next_shim_layer().udpserversocket_getmessage(udpserversocket)
+
+    # grab a lock to prevent concurrent access to shared state
+    self.fec_context['recv_lock'].acquire(True)
+
+    # be sure to release this...
+    try:
+
+      # NOTE: I don't want to use the srcport because it may vary.   
+      #srcinfo = srchostname+':'+str(srcport)
+      srcinfo = srcip
+        
+      # These calls might raise an exception if there is bad / corrupted data...
+      try:
+        (bundleidstr, packetidstr, packetbody) = packetstring.split(':',2)
+       
+        packetnum = int(packetidstr)
+
+        bundleid = int(bundleidstr)
+
+      except Exception:
+        raise SocketWouldBlockError
+      
+      if packetnum < 0 or packetnum > self.fec_context['packets_per_bundle']:
+        # we recievied a bad packetnum
+        raise SocketWouldBlockError
+
+      # Okay, we're going to look into the received_bundle_dict to decide what
+      # to do.
+
+      if srcinfo not in self.fec_context['received_bundle_dictionary']:
+        # if missing this, add an empty entry...
+        self.fec_context['received_bundle_dictionary'][srcinfo] = {}
+
+      if bundleid not in self.fec_context['received_bundle_dictionary'][srcinfo]:
+        # if missing this, add an empty list of packet info
+        self.fec_context['received_bundle_dictionary'][srcinfo][bundleid] = {}
+
+      # Okay, I have initialized the structure, is this a dup?
+      if packetnum in self.fec_context['received_bundle_dictionary'][srcinfo][bundleid]:
+        # this looks like a DUP!
+        # let's check the contents are the same
+        if packetbody != self.fec_context['received_bundle_dictionary'][srcinfo][bundleid][packetnum]:
+          # received a DUP that has different contents!!!
+          raise SocketWouldBlockError
+        self.fec_context['dupcount'] = self.fec_context['dupcount'] + 1
+        raise SocketWouldBlockError("No messages currently available!")
+
+      # not a duplicate, let's add it.
+      self.fec_context['received_bundle_dictionary'][srcinfo][bundleid][packetnum] = packetbody
+
+      # if it's not an XOR packet, return and continue
+      if packetnum != self.fec_context['packets_per_bundle']:
+        self.fec_context['datapacketcount'] = self.fec_context['datapacketcount'] + 1
+        
+        return (srcip, srcport, packetbody)
+
+      # got an XOR packet...
+      self.fec_context['xorcount'] = self.fec_context['xorcount'] + 1
+
+
+      # is it spurious? (we got all data packets, so no need)
+      if len(self.fec_context['received_bundle_dictionary'][srcinfo][bundleid]) > self.fec_context['packets_per_bundle']:
+        self.fec_context['spuriousxorcount'] = self.fec_context['spuriousxorcount'] + 1
+        raise SocketWouldBlockError("No messages currently available!")
+
+      # did we get too few packets to reconstruct the missing ones?
+      if len(self.fec_context['received_bundle_dictionary'][srcinfo][bundleid]) < self.fec_context['packets_per_bundle']:
+        self.fec_context['insufficientxorcount'] = self.fec_context['insufficientxorcount'] + 1
+        raise SocketWouldBlockError("No messages currently available!")
+ 
+      # cool!   This is useful, let's reconstruct it and deliver!
+      self.fec_context['usefulxorcount'] = self.fec_context['usefulxorcount'] + 1
+
+
+      # strip off the length of packets list so that we know whether to 
+      # truncate
+      lengthheader, packetbody = packetbody.split(':',1)
+
+      packetlengthstrlist = lengthheader.split(',')
+
+      # let's take the previous data packets and add this packet body.
+      packetbodies_to_xor = self.fec_context['received_bundle_dictionary'][srcinfo][bundleid].values()[:-1] + [packetbody]
+
+      recovered_packetbody_with_extra_junk = _xorstringlist(packetbodies_to_xor)
+ 
+      # I should put this in the dict so that if the packet 
+      # arrives late, we don't deliver a duplicate
+
+      # first figure out which message is missing...
+      currentpacketnumset = set(self.fec_context['received_bundle_dictionary'][srcinfo][bundleid])
+      allpossiblepacketnumset = set(range(self.fec_context['packets_per_bundle']))
+
+      missingmessageset = allpossiblepacketnumset.difference(currentpacketnumset)
+      # should only be one missing...
+      if len(missingmessageset) != 1:
+        raise SocketWouldBlockError
+      missingpacketnum = missingmessageset.pop()
+ 
+      
+      # truncate the packet (if needed).   This is important if the packets
+      # in the bundle are different sizes
+      recovered_packetbody = recovered_packetbody_with_extra_junk[:int(packetlengthstrlist[missingpacketnum])]
+
+      # (also check that the extra junk is all 0s)
+      extrajunk = recovered_packetbody_with_extra_junk[int(packetlengthstrlist[missingpacketnum]):]
+      if extrajunk != '\x00'*len(extrajunk):
+        raise SocketWouldBlockError
+      
+      # then add it to prevent delivery of the original data packet...
+      self.fec_context['received_bundle_dictionary'][srcinfo][bundleid][missingpacketnum] = recovered_packetbody
+      
+      return (srcip, srcport, recovered_packetbody)
+ 
+    finally:
+      # always release the lock
+      self.fec_context['recv_lock'].release()
+
+
+
+  def sendmessage(self,destip,destport,packetbody,localip,localport):
+    # send an error correcting packet every N packets
+    # the packages to a server to be re-assembeled
+
+    destinfo = destip+':'+str(destport)
+    
+    self.fec_context['send_lock'].acquire(True)
+    
+    # always release the lock later...
+    try:
+      
+      # add a blank entry if there isn't already a bundle.  
+      if destinfo not in self.fec_context['sending_bundle_dictionary']:
+        self.fec_context['sending_bundle_dictionary'][destinfo] = {}
+        self.fec_context['sending_bundle_dictionary'][destinfo]['bundleid'] =self._get_new_bundleid()
+        self.fec_context['sending_bundle_dictionary'][destinfo]['packetlist'] = []
+
+      # Get information about this packet
+      packetnum = len(self.fec_context['sending_bundle_dictionary'][destinfo]['packetlist'])
+      bundleid = self.fec_context['sending_bundle_dictionary'][destinfo]['bundleid']
+
+      # add the header
+      newpacketdata = str(bundleid)+":"+str(packetnum)+":"+packetbody
+
+      # ... and send it out...
+      self.get_next_shim_layer().sendmessage(destip,destport,newpacketdata,localip,localport)
+
+      
+      # let's add this packet to the list...
+      self.fec_context['sending_bundle_dictionary'][destinfo]['packetlist'].append(packetbody)
+
+      # if more are needed before sending an XOR packet, then return
+      if len(self.fec_context['sending_bundle_dictionary'][destinfo]['packetlist']) < self.fec_context['packets_per_bundle']:
+        # BUG: I'm just assuming the whole thing was sent!
+        return len(packetbody)
+
+      # otherwise, let's send the XOR packet ...
+
+      xorpacketbody = _xorstringlist(self.fec_context['sending_bundle_dictionary'][destinfo]['packetlist'])
+
+      # make the XOR packet contain the length of the other packets
+      xorlengthlist = []
+      for packetbody in self.fec_context['sending_bundle_dictionary'][destinfo]['packetlist']:
+        xorlengthlist.append(str(len(packetbody)))
+
+      lengthheader = ','.join(xorlengthlist)
+ 
+      # create the complete xor packet,...
+      xorpacketdata = str(bundleid)+":"+str(packetnum+1)+":"+lengthheader+":"+xorpacketbody
+
+      # ... and send it out...
+      self.get_next_shim_layer().sendmessage(destip,destport,xorpacketdata,localip,localport)
+
+      # now, let's delete the sent data for this bundle since it's no longer 
+      # needed.
+      del self.fec_context['sending_bundle_dictionary'][destinfo]
+      
+      # BUG: I'm just assuming the whole thing was sent!
+      return len(packetbody)
+
+
+    finally:
+      self.fec_context['send_lock'].release()
+
+

@@ -24,7 +24,7 @@ safe._NODE_CLASS_OK.append("ExcepthandlerType")
 safe._NODE_CLASS_OK.append("Invert")
 
 # Armon: Repy V2, remove support for print()
-# Chris: editied for Lind developmentxs
+# Chris: editied for Lind development
 #safe._NODE_CLASS_OK.remove("Print")
 #safe._NODE_CLASS_OK.remove("Printnl")
 

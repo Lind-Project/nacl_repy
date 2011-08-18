@@ -1,0 +1,279 @@
+"""
+<Program Name>
+  mobilityshim.repy
+
+<Author>
+  Danny Y. Huang (yh1@cs.williams.edu)
+
+<Date Started>
+  May 2, 2011
+
+<Purpose>
+  Recovers from disconnection due to the change of the IP address. Works only if
+  the server changes the IP address.
+
+"""
+
+dy_import_module_symbols('shim_exceptions')
+dy_import_module_symbols('mobile_socket')
+
+
+
+
+
+
+class MobileTCPServerSocket:
+  """
+  Wrapper for ShimTCPServerSocket.
+
+  """
+
+  # How often (in seconds) we should check if IP has changed.
+  _CHECK_IP_INTERVAL = 2
+
+
+  def __init__(self, shimtcpserversocket, listen_ip, listen_port):
+    """
+    Constructor. Arguments:
+
+    shimtcpserversocket - the ShimTCPServerSocket to wrap around.
+    listen_ip - the IP address to which the listener was initially bound.
+    listen_port - the bound port.
+
+    """
+    # References to the internal state of the TCP server socket
+    self._socket = shimtcpserversocket._socket
+    self._shim_object = shimtcpserversocket._shim_object
+    self._next_shim = self._shim_object.get_next_shim_layer()
+
+    # IP and port on which the initial listener was created.
+    self._listen_ip = listen_ip
+    self._listen_port = listen_port
+
+    # Last time we check for IP change.
+    self._last_check_ip_time = 0
+
+    # Maps the client ID ("ip:port") to the corresponding MobileSocket
+    # object. Used to retrieve broken yet active connections.
+    self._mobile_sock_dict = {}
+
+
+
+  @_atomic_call
+  def getconnection(self):
+    """
+    Checks for IP changes. Calls getconnection() on the internal socket, which
+    could have been updated to a different object when the new listener started
+    if the IP changed.
+
+    """
+    # We check for IP changes every _CHECK_IP_INTERVAL seconds.
+    current_time = getruntime()
+    if current_time - self._last_check_ip_time > self._CHECK_IP_INTERVAL:
+      self._last_check_ip_time = current_time
+      self._check_ip_change()
+
+    # The internal _socket object may have been updated, if the IP changed and
+    # new listener started successfully.
+    ret_tuple = self._next_shim.tcpserversocket_getconnection(self._socket)
+    (remote_ip, remote_port, repy_socket) = ret_tuple
+    client_id = remote_ip + ':' + str(remote_port)
+
+    debug_log('\n\n\n', '*' * 80, '\n', show=True)
+    debug_log('zzzz getconnection: Got connection tutple:', ret_tuple, '\n', show=True)
+
+    mobile_sock = None
+
+    # If this comes from a client that we have seen, it must be trying to
+    # re-connect with us. Instead of creating a brand new socket, we retrieve
+    # the previous socket if it is still active. Since this is not a new
+    # connection, we don't return it to the application. We simply update its
+    # internal socket to reference the new repy socket.
+    if client_id in self._mobile_sock_dict.keys():
+      mobile_sock = self._mobile_sock_dict[client_id]
+
+      # Update the socket object reference if the mobile socket has not been
+      # closed yet. Finally, we pretend that we didn't receive a new connection.
+      if mobile_sock.sock_state['background_thread_active']:
+        _garbage_sockets.append(mobile_sock._socket)
+        mobile_sock._socket = repy_socket
+        mobile_sock.reset_pending_state()
+        debug_log('zzzz getconnection: old connection from', client_id, '\n', show=True)
+        raise SocketWouldBlockError
+
+      # It's a dead socket. We're going to create a new one for the application.
+      else:
+        mobile_sock = None
+
+    # If we have never seen this client before or even if we have, its previous
+    # mobile socket has been closed, then create a new mobile socket.
+    if mobile_sock is None:
+      shim_sock = ShimSocket(repy_socket, self._shim_object)
+      mobile_sock = MobileSocket(shim_sock)
+      self._mobile_sock_dict[client_id] = mobile_sock
+
+    debug_log('zzzz getconnection: new connection from', client_id, '\n', show=True)
+    return (remote_ip, remote_port, mobile_sock)
+
+
+
+
+  def _check_ip_change(self):
+    """
+    Helper method for getconnection(). Checks if IP has changed. If it has,
+    starts a new listener and updates the the original TCP server socket to
+    reference the new one.
+
+    """
+    # Get the latest IP from a global cache updated by the coordination shim. It
+    # is set to None of the coordination shim detects no network
+    # connectivity. For detials, see the documentation within the coordination
+    # shim.
+    try:
+      current_ip = mycontext['coordination_shim_getmyip_cache']
+
+    # If the variable is not available (e.g. coordination shim not running), we
+    # obtain the IP from getmyip().
+    except KeyError:
+      try:
+        current_ip = getmyip()
+      except InternetConnectivityError:
+        current_ip = None
+
+    # Network is down or no IP change. We don't do anything and exit.
+    if current_ip is None or current_ip == self._listen_ip:
+      return
+
+    # At this point, the IP has changed. Update the IP address to the current
+    # one.
+    self._listen_ip = current_ip
+
+    # Start listening on the new IP, ignore network errors because connectivity
+    # may have not been re-established yet.
+    try:
+      new_tcpserversocket = self._next_shim.listenforconnection(self._listen_ip, self._listen_port)
+    except AddressBindingError:
+      return
+
+    # Update the socket reference.
+    self._socket = new_tcpserversocket
+
+    debug_log('\n\n\n', '*' * 80, '\n', show=True)
+    debug_log('zzzz new listener on', self._listen_ip, ':', self._listen_port, '\n', show=True)
+
+
+
+  def close(self):
+    return self._next_shim.tcpserversocket_close(self._socket)
+
+
+
+
+
+
+
+
+class MobilityShim(BaseShim):
+
+
+  # =============================================
+  # Handling IP changes
+  # =============================================
+
+
+
+  def listenforconnection(self, localip, localport):
+
+    next_layer_socket = self.get_next_shim_layer().listenforconnection(localip, localport)
+    shim_sock = ShimTCPServerSocket(next_layer_socket, self)
+    return MobileTCPServerSocket(shim_sock, getmyip(), localport)
+
+
+
+
+  def tcpserversocket_getconnection(self, mobiletcpserversocket):
+    return mobiletcpserversocket.getconnection()
+
+
+
+
+  def tcpserversocket_close(self, mobiletcpserversocket):
+    return mobiletcpserversocket.close()
+
+
+
+
+  def openconnection(self, destip, destport, localip, localport, original_timeout):
+    """
+    Keeps trying to openconnection until we timeout, ignoring
+    ConnectionRefusedError and InternetConnectivityError. Raises all other
+    errors during this period. At the end of the timeout, raises all errors.
+
+    """
+    timeout = original_timeout
+
+    while True:
+      start_time = getruntime()
+
+      try:
+        next_sockobj = self.get_next_shim_layer().openconnection(destip, destport, localip, localport, timeout)
+      except (ConnectionRefusedError, InternetConnectivityError), err:
+        if timeout <= 0:
+          raise err
+      except Exception, err:
+        raise err
+      else:
+        shim_sock = ShimSocket(next_sockobj, self)
+        debug_log('zzzz Openconn created new shim_sock', repr(shim_sock), shim_sock, '\n')
+        return MobileSocket(shim_sock, [destip, destport, localip, localport, original_timeout])
+
+      timeout = timeout - (getruntime() - start_time)
+      debug_log('zzzz Retrying openconnection. timeout:', timeout, 'err:', repr(err), str(err), '\n')
+
+
+
+  
+
+
+  # =============================================
+  # Resuming data transfer
+  # =============================================
+
+
+
+  def socket_close(self, mobile_socket):
+    return mobile_socket.close()
+
+
+
+  def socket_send(self, mobile_socket, msg):
+    return mobile_socket.send(msg)
+
+
+
+  def socket_recv(self, mobile_socket, bytes):
+    return mobile_socket.recv(bytes)
+
+
+
+
+
+
+
+
+
+
+
+  # =============================================
+  # Required shim functions
+  # =============================================
+
+
+  def copy(self):
+    return MobilityShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args'])
+
+
+  
+  def get_advertisement_string(self):
+    shim_name = '(MobilityShim)'
+    return shim_name + self.get_next_shim_layer().get_advertisement_string()

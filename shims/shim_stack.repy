@@ -1,0 +1,622 @@
+"""
+<Program Name>
+  shim_stack.repy
+
+<Author>
+  Monzur Muhammad, monzum@cs.washington.edu
+
+<Date Started>
+  March 2011
+
+<Purpose>
+  This module creates and maintains a stack of shims which
+  can be used to alter network calls in various ways.
+
+  The user creates a shim stack object by providing a string
+  which contains the list of shims in order that they should be
+  used with all their arguments.
+
+  The stack holds the shims in order and each of the shims in the
+  stack also has a reference to where it is in the stack. This way
+  each of the shim is able to know all the shims that are below it
+  in the stack. An example shim stack will look like:
+
+              Shim Stack
+          -----------------
+          |  ===========  |
+          |  =  ShimA  =  |
+          |  ===========  |
+          |       |       |
+          |       V       |
+          |  ===========  |
+          |  =  ShimB  =  |
+          |  ===========  |
+          |       |       |
+          |       V       |
+          |  ===========  |
+          |  =  ShimC  =  |
+          |  ===========  |
+          -----------------
+                  |
+                  V
+       -----------------------
+       Original Repy API calls
+       -----------------------
+
+
+  In this case ShimA is able to see both ShimB and ShimC. ShimB is 
+  able to see only ShimC, and ShimC is not able to see any of the shim. 
+
+  When writing a new shim, it must inherit from BaseShim (baseshim.repy)
+  and the file name must be all lowercase with no space or symbole in 
+  file name. For example ShimA must have a filename shima.repy This 
+  particular naming convention is used so that ShimStack can dynamically 
+  import all the shim files that are necessary without the user explicitly
+  importing the shim files.
+
+<History>
+  03-07-2011: Renewed implementation of ShimStack.repy
+"""
+
+
+# Import the shim exceptions.
+dy_import_module_symbols("shim_exceptions")
+
+# A dictionary that holds all the shim objects that have been
+# registered. This dictionary is shared globally by all ShimStacks
+# because we need to register each shim only once.
+SHIM_CLASS_DICT = {}
+
+
+# We have this function outside so each shim gets registed only once
+# globaly. Otherwise we might run into some import error.
+def find_and_register_shim(shim_name):
+  """
+  <Purpose>
+    Given a shim, this function imports the shim file
+    if it exists and then registers the shim class.
+    Note that the expected naming convention of the shim
+    files is that it will be all lower-case with no space
+    or symbols in the name. 
+
+    Example:
+        If we have a shim called ExampleShim then the file
+        name is expected to be exampleshim.repy
+
+        ExampleShim.repy, example_shim.repy or any other 
+        forms are unaccepted.
+
+  <Arguments>
+    shim_name - The name of the shim that must be imported 
+        and registered.
+
+  <Side Effects>
+    Repy library file is imported.
+
+  <Exceptions>
+    ShimNotFoundError - raised if the requested shim_name does
+        not exist or is not in the current directory.
+
+    AssertionError - raised if arguments provided is of an 
+        unexpected type or value.
+  <Return>
+    None
+  """
+
+  assert(isinstance(shim_name, str)), "Bad arg type. shim_name must be a string."
+
+  # If the shim class has already been registered, then we don't
+  # need to do anything.
+  if shim_name in SHIM_CLASS_DICT.keys():
+    return
+
+  # We have to do the import in a while loop in case we get the 
+  # FileInUseError. This error occurs when multiple shim stacks
+  # may be trying to load the shim.
+  while True:
+    # Try to import the shim file. We convert the name to 
+    # lower case before importing.
+    try:
+      if shim_name not in _context.keys():
+        dy_import_module_symbols(shim_name.lower())
+    except FileInUseError, err:
+      sleep(0.01)
+    
+    except Exception, err:
+      err_str = "Unable to import the shim: %s. %s" % (shim_name, str(err))
+      raise ShimNotFoundError(err_str)
+    else:
+      break
+
+  # Register the shim.
+  SHIM_CLASS_DICT[shim_name] = _context.copy()[shim_name]    
+          
+
+
+
+# Register the base shim class before doing anything.
+# The base shim is used by all other shims.
+find_and_register_shim('BaseShim')    
+
+
+
+
+
+# ======================================================================================================
+# ShimStack Class - The main ShimStack class that is used.
+# ======================================================================================================
+
+
+
+class ShimStack:
+
+
+  def __init__(self, shim_stack_str='', localhost=None):
+    """
+    <Purpose>
+      Initialize the stack of shims. Parse the shim stack string
+      and create the stack from it.
+  
+    <Arguments>
+      shim_stack_str - A string that contains all the shims that
+          are going to be used, and the order that they will be
+          used in.
+
+      localhost - Its the ip/hostname that this machine will be 
+          known by. It should be a string.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      ShimArgumentError - raised if the arguments provided is not
+          the expected value or type.
+
+      ShimConfigError - raised if unable to parse shim string.
+
+    <Return>
+      None
+    """
+
+    # This is the context that will keep track of the state of this
+    # shim stack. 
+    self.shim_stack_context = {}
+    self.shim_stack_context['localhost'] = 'localhost'
+    self.shim_stack_context['top_shim'] = None
+    self.shim_stack_context['shim_str'] = '' 
+    self.shim_stack_context['shim_class'] = {}
+  
+
+    
+    # Ensure that if the localhost was provided then it is in
+    # the string form.
+    if localhost and not isinstance(localhost, str):
+      raise ShimArgumentError("The 'localhost' provided must be a string.")
+
+
+    self.shim_stack_context['localhost'] = localhost
+    self.shim_stack_context['shim_str'] = shim_stack_str
+
+    self.make_shim_stack(shim_stack_str, self.shim_stack_context['top_shim'])
+
+
+
+
+# ==================================================================================
+# Public Methods - Used by developers to manipulate shim stack.
+# ==================================================================================
+
+  def push(self, shim_object):
+    """
+    <Purpose>
+      Add the shim_object to the top of the stack.
+
+    <Arguments>
+      shim_object - the shim that needs to be added to the stack.
+
+    <Side Effects>
+      The stack of the current top shim gets modified
+
+    <Exceptions>
+      ShimStackError - raised if unable to add shim_object to stack.
+    
+    <Return>
+      None
+    """
+    
+    # Monzur: The shim objects are of different class types. They all inherit from
+    # BaseShim but is there a way to check if its a proper shim object?
+
+    # Get the top shim of this stack.
+    cur_top_shim = self.shim_stack_context['top_shim']
+
+    # If this is the first layer of shim and nothing has been 
+    # added to the stack yet.
+    if cur_top_shim: 
+      # If the current stack is not empty, we push the top shim to
+      # the new shim objects stack, and then make the new shim object
+      # the new top shim.
+      shim_object.shim_context['shim_stack'].push(cur_top_shim)
+
+    self.shim_stack_context['top_shim'] = shim_object
+
+
+      
+
+
+
+  def pop(self):
+    """
+    <Purpose>
+      Remove and return the very top shim layer from the shim stack.
+      If stack is empty, it raises an error
+
+    <Arguments>
+      None
+
+    <Side Effects>
+      Stack gets modified.
+
+    <Exception>
+      ShimStackError - raised if the shim stack is empty.
+
+    <Return>
+      The top layer shim object.
+    """
+
+    # This function is equivalent to:
+    #     old_root = root
+    #     root = old_root.next
+    #     return old_root
+   
+    top_shim = self.shim_stack_context['top_shim']
+    
+    if not top_shim:
+      raise ShimStackError("Shim stack is empty. Cannot pop() from stack.")
+
+    # Equivalent to top_shim = top_shim.next_shim()
+    self.shim_stack_context['top_shim'] = top_shim.shim_context['shim_stack'].shim_stack_context['top_shim']
+
+    # Monzur - Before we return the top_shim, should we point top_shims shim stack to None?
+    # User may be able to modify the current shim stack because the top_shim that is returned
+    # has reference to the rest of the stack. Or perhaps we should return a copy() of the top 
+    # shim?
+
+    return top_shim
+
+
+
+
+
+  def peek(self):
+    """
+    <Purpose>
+      Return a copy of the top shim.
+
+    <Arguments>
+      None
+
+    <Side Effects>
+      None
+
+    <Exception>
+      ShimStackError - raised if shim stack is empty.
+
+    <Return>
+      A copy of the top shim.
+    """
+
+    if not self.shim_stack_context['top_shim']:
+      raise ShimStackError("Shim stack is empty. Cannot peek() from stack.")
+
+    # Note that this copy method is the copy() method that exists in 
+    # each individual shim and is not the copy method of the shim stack.
+
+    # Monzur - Should we return a copy here or should we return the original
+    # shim object? Right now I am returning a copy so peek() cannot be used
+    # to modify anything below this shim.    
+    copy_top_shim = self.shim_stack_context['top_shim'].copy()
+
+    return copy_top_shim
+
+
+
+
+
+  def copy(self):
+    """
+    <Purpose>
+      Does a hard copy of self and returns it.
+
+    <Arguments>
+      None
+
+    <Side Effects>
+      None
+
+    <Exception>
+      None
+
+    <Return>
+      A ShimStack object. Its a copy of self.
+    """
+
+    new_stack = ShimStack('', self.shim_stack_context['localhost'])
+
+    # If shim stack is not empty then we want to copy over
+    # the top shim to the new ShimStack we just created.
+
+    if self.shim_stack_context['top_shim']:
+      # Copy over the top shim. Note that peek() is supposed
+      # to return a copy of the object and not a reference
+      # to it.
+      new_stack.push(self.peek())
+
+    return new_stack
+
+
+
+
+# =========================== End of Public Methods ================================
+
+
+
+  def make_shim_stack(self, shim_str, stack_object):
+    """
+    <Purpose>
+      Recursively build up a shim stack from a shim string.
+
+    <Arguments>
+      shim_str - a shim string used to build shim stack.
+      stack_object - the current shim stack.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      ShimNotFoundError - Raised if one of the shims in the 
+          shim_str is not a valid shim or the shim file could
+          not be found.
+ 
+      ShimConfigError - raised if shim string is not in the right
+          format.
+
+      AssersionError - may be raised if one of the arguments provided
+          is an unexpected type or value.
+
+    <Return>
+      A shim stack list or none if shim_str is empty.
+    """
+
+
+    # Some sanity checks.
+    assert(isinstance(shim_str, str)), "Bad arg type. shim_str must be a string."
+    
+    # We are going to work our way up from the bottom. So we 
+    # recursively go to the bottom of the stack and then
+    # start constructiong the shims and then add them to the
+    # stack. That way the first item in the shim_str will be
+    # at the top of the stack. 
+
+    # Base case.
+    if not shim_str:
+      self.shim_stack_context['top_shim'] = None
+      return
+
+    # Build stack recursively. Any exceptions raised will just
+    # percolate up. This may raise a ShimConfigError
+    top_shim_name, shim_args, leftover_shim_str = self.parse_shim_string(shim_str)
+
+    # Create a shim stack for the rest of the shims below us, 
+    # make that our current shim stack. After we create the shim 
+    # stack with the leftover shim_str we are going to copy over
+    # the new ShimStack objects stack_object to our own stack_object.
+    # After we have copied it, we can now push on the top shim on top
+    # of it.
+    new_stack_object = ShimStack(leftover_shim_str, self.shim_stack_context['localhost'])
+
+    # Ensure the first argument is a legit string. If it is, we are going to load
+    # the shim file if we find it.
+    assert(isinstance(top_shim_name, str)), "Bad arg type. First arg in shim tuple must be string."
+    find_and_register_shim(top_shim_name)
+
+
+    # Create the new shim object.
+    # The new stack will have a copy of the shimstack before this 
+    # layer is added. So if this is the first layer, then the 
+    # Underlying stack beneath it would be None.
+    top_shim = self.create_shim_object(top_shim_name, shim_args, new_stack_object)
+
+
+    # Link the top shim to the shim stack object. This makes top_shim
+    # the root/head of the shim stack. Even though it is called a shim
+    # stack, the internals of the stack will work like a linked list.
+    self.push(top_shim)
+
+    # Return the top shim. Do we need to return anything? I am returning for convenience.
+    # If this is the first layer then our peek may be empty.
+    try:
+      return_layer = self.peek()
+    except ShimStackError:
+      return_layer = None
+    return return_layer
+    
+
+
+
+  
+
+  def create_shim_object(self, shim_name, shim_args, shim_stack_object):
+    """
+    <Purpose>
+      Create a shim object given a shim name and its arguments.
+
+    <Arguments>
+      shim_name - a string that defines the name of the shim.
+
+      shim_args - the arguments to use to create the shim.
+
+      shim_stack_object - the shim stack that will be below the new shim
+          object that we are creating.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      ShimNotFoundError - raised if the shim has not been 
+          registered yet.
+
+      AssertionError - raised if the arguments provided is 
+          of an unexpected type or value. 
+
+    <Return>
+      A shim object.    
+    """
+
+    # Sanity check.
+    assert(isinstance(shim_name, str)), "Bad arg type. shim_name must be a string."
+    assert(isinstance(shim_args, list)), "Bad arg type. shim_args must be a list."
+    assert(isinstance(shim_stack_object, ShimStack)), "Bad arg type. shim_stack_object must be a ShimStack."
+
+    if shim_name not in SHIM_CLASS_DICT.keys():
+      raise ShimNotFoundError("Shim '%s' has not been registered yet." % shim_name)
+
+    # Create a new shim object from the name and arguments provided.
+    shim_object_class = SHIM_CLASS_DICT[shim_name]
+
+    new_shim_object = shim_object_class(shim_stack_object, shim_args)
+
+    return new_shim_object
+
+
+  
+
+
+  def parse_shim_string(self, shim_str):
+    """
+    <Purpose>
+      Makes sure that the shim string provided is in the
+      right format. Basically ensure that the parentheses 
+      all match up.
+
+    <Arguments>
+      shim_str - a string that has the list of shims and their
+          arguments. A shim should be of the format:
+         
+            (ShimName,arg1,arg2,...)
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      ShimConfigError - raised if unable to parse shim string properly.
+
+    <Return>
+      A tuple that contains the first shim name, its arguments
+      and the rest of the shim string.
+      Example:
+          ("ShimA", [argA1, argA2, argA3], "(ShimB)(ShimC,argC1)") 
+    """
+
+    # Sanity check.
+    assert(shim_str)
+    assert(isinstance(shim_str, str)), "Bad arg type. shim_str must be string."
+
+    open_paren_count = 0
+    cur_shim_config = ""
+    
+    while shim_str:
+      # Extract the first character of shim string.
+      chr = shim_str[0]
+      shim_str = shim_str[1:]
+
+      if chr == '(':
+        # The case where one of the arguments for the shim includes
+	# parentheses..
+        if open_paren_count != 0:
+	  cur_shim_config += chr
+        open_paren_count += 1
+        
+
+      elif chr == ')':
+        open_paren_count -= 1
+
+	# If there is a closed parentheses as part of the argument.
+	if open_paren_count > 0:
+	  cur_shim_config += chr
+
+        # If we have uncovered a full shim config.
+        elif open_paren_count == 0:
+	  break
+
+        # For the case of an extra close parentheses.
+        if open_paren_count < 0:
+          raise ShimConfigError("Incorrect shim string format. " +
+              "Mismatched parentheses.")
+
+      else:
+        # Make sure that we have an open parentheses.
+        if open_paren_count > 0:
+          cur_shim_config += chr
+
+        # This is the case where there is a character outside the
+        # parentheses. An example would be:
+        # '(ShimA, arg_a)foo(ShimB)', where 'foo' is not in the
+        # shim config.
+        else:
+	  err = "Incorrect shim string format."
+	  err += " Shim string provided: " + shim_str
+          raise ShimConfigError(err)
+
+
+    # The case where we have finished parsing the shim string and 
+    # There was a mismatch of parentheses.
+    if open_paren_count > 0:
+      raise ShimConfigError("Incorrect shim string format. " +
+          "Mismatched parentheses.")
+
+
+    # Split the name and the arguments.
+    shim_name = ''
+    shim_arg_list = []
+    paren_count = 0
+    
+    # Get the name out.
+    while cur_shim_config:
+      chr = cur_shim_config[0]
+      cur_shim_config = cur_shim_config[1:]
+    
+      if chr != ',':
+        shim_name += chr
+      else:
+        break
+
+    # Split the arguments. Cant use the split command.
+    cur_argument = ''
+    while cur_shim_config:
+      chr = cur_shim_config[0]
+      cur_shim_config = cur_shim_config[1:]
+
+      if chr == '(':
+        paren_count += 1
+      elif chr == ')':
+        paren_count -= 1
+      elif chr == ',':
+        # If we are outside a shim.
+        if paren_count == 0:
+          # We have uncovered an argument. Add it to the
+	  # list and clear the current argument.
+          shim_arg_list.append(cur_argument)     
+          cur_argument = ''
+          continue
+
+      # Add the character to the current argument string.
+      cur_argument += chr
+
+    # If there was a leftover last argument.
+    if cur_argument:
+      shim_arg_list.append(cur_argument)
+      
+
+    # Return format is: (shim_name, shim_args_list, rest_of_shim_string)
+    return (shim_name, shim_arg_list, shim_str)

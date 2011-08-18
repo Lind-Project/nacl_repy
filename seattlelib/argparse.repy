@@ -103,11 +103,11 @@ def argparse_scan_str(args_array, flag_name, default_value = False):
         return_value = str(callargs[i + 1])
       except IndexError, e:
         # This means we're expecting a value and there isn't one..
-        print e
+        log(e,'\n')
         raise Exception("Expected value for argument '"+callargs[i]+"'")
       except Exception, e:
         # Some other type of error
-        print e
+        log(e,'\n')
         raise Exception("Invalid value ("+str(callargs[i + 1])+") specified"+ \
           " for parameter "+flag_name)
       else:
@@ -159,12 +159,12 @@ def argparse_scan_int(args_array, flag_name, default_value = False):
         return_value = int(callargs[i + 1])
       except IndexError, e:
         # Expected value, but there are no more values left in args_array
-        print e
+        log(e,'\n')
         raise Exception("Expected value for argument '"+callargs[i]+"'")
       except Exception, e:
         # If we get here, it typically means the value is not castable to int
         # as we expect, and so we error out.
-        print e
+        log(e,'\n')
         raise Exception("Invalid value ("+str(callargs[i + 1])+") specified"+ \
           " for parameter "+flag_name)
       else:

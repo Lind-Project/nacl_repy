@@ -11,7 +11,7 @@ include uniqueid.repy
 
 
 # this dictionary stores private data about the semaphores.   The format of an
-# entry is: {'semcount' = 0, 'blockedlist' = [], 'semlock'=getlock()}.
+# entry is: {'semcount' = 0, 'blockedlist' = [], 'semlock'=createlock()}.
 # semcount is the number of nodes that can do a down before it blocks.   
 # blockedlist is the set of nodes that are already blocked.   
 # it will never be true that 'semcount' > 0  AND 'blockedlist' != []
@@ -35,7 +35,7 @@ def semaphore_create():
       The semaphore handle 
   """
   thissemhandle = uniqueid_getid()
-  newlock = getlock()
+  newlock = createlock()
   semaphore_handle_dict[thissemhandle] = {'semcount':0, 'blockedlist':[], 
         'semlock':newlock}
 
@@ -70,7 +70,7 @@ def semaphore_destroy(semaphorehandle):
     # I intentionally index both of these so that if the handle is removed by
     # another call to semaphore_destroy in the mean time.   All calls that
     # acquire the lock need to do this.
-    semaphore_handle_dict[semaphorehandle]['semlock'].acquire()
+    semaphore_handle_dict[semaphorehandle]['semlock'].acquire(True)
   except (IndexError, KeyError):
     return False
 
@@ -113,7 +113,7 @@ def semaphore_up(semaphorehandle):
     # I intentionally index both of these so that if the handle is removed by
     # another call to semaphore_destroy in the mean time.   All calls that
     # acquire the lock need to do this.
-    semaphore_handle_dict[semaphorehandle]['semlock'].acquire()
+    semaphore_handle_dict[semaphorehandle]['semlock'].acquire(True)
   except (IndexError, KeyError):
     raise ValueError("Invalid or destroyed semaphore handle")
 
@@ -157,7 +157,7 @@ def semaphore_down(semaphorehandle):
     # I intentionally index both of these so that if the handle is removed by
     # another call to semaphore_destroy in the mean time.   All calls that
     # acquire the lock need to do this.
-    semaphore_handle_dict[semaphorehandle]['semlock'].acquire()
+    semaphore_handle_dict[semaphorehandle]['semlock'].acquire(True)
   except (IndexError, KeyError):
     raise ValueError("Invalid or destroyed semaphore handle")
 
@@ -166,8 +166,8 @@ def semaphore_down(semaphorehandle):
   if semaphore_handle_dict[semaphorehandle]['semcount'] == 0:
 
     # get a lock for us and do an acquire so that the next acquire will block.
-    mylock = getlock()
-    mylock.acquire()
+    mylock = createlock()
+    mylock.acquire(True)
 
     semaphore_handle_dict[semaphorehandle]['blockedlist'].append(mylock)
 
@@ -175,7 +175,7 @@ def semaphore_down(semaphorehandle):
     semaphore_handle_dict[semaphorehandle]['semlock'].release()
     
     # acquire my lock...   (someone who does an up or destroy will release us)
-    mylock.acquire()
+    mylock.acquire(True)
 
   else:
     # Since the count is > 0, we should decrement

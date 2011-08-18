@@ -1,0 +1,353 @@
+#!python
+"""
+<Purpose>
+  The RateLimitShim restricts the upload and download throughput of a connection.
+  Given a parameter, it will block on send and recv if at any point it seems
+  like the throughput will exceed the given parameter.
+
+<Author>
+  Monzur Muhammad
+  monzum@cs.washington.edu
+
+<Date Started>
+  May 19th, 2011
+"""
+
+
+class RateLimitShim(BaseShim):
+
+
+  def __init__(self, shim_stack = ShimStack(), optional_args = None):
+    """
+    <Purpose>
+      Initialize the Rate Limit Shim.
+
+    <Arguments>
+      shim_stack - the shim stack that will be below the RateLimitShim
+
+      optional_args - The arguments if provided will determine the upload
+        and download rate of the shim in bytes/sec.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      ShimInternalError raised if the optional args provided is not of the 
+      proper format.
+
+    <Return>
+      None
+    """
+
+    # This is the dictionary that keeps track of the resource that has been
+    # consumed as well as that which 
+    # We need to use locks to ensure that we send and receive one msg at
+    # a time, so we don't accidentally go over the upload/download limit.
+    self.net_resources = {'netsend' : {'resource_limit' : 1024 * 1024 * 64, # 64MB/s
+                                       'update_time' : 0.0,
+                                       'consumption' : 1024 * 1024 * 64 * 1.0,
+                                       'lock' : createlock()},
+                          'netrecv' : {'resource_limit' : 1024 * 1024 * 64, # 64MB/s
+                                       'update_time' : 0.0,
+                                       'consumption' : 1024 * 1024 * 64 * 1.0,
+                                       'lock' : createlock()}
+                          }
+
+
+    if optional_args:
+      # Ensure that both the arguments that are provided are of the right 
+      # format.
+      assert(isinstance(optional_args, list))
+      assert(len(optional_args) == 2), "Bad optional args. Optional args must contain 2 values (upload_rate/download_rate)"
+
+      # Set the upload rate.
+      try:
+        self.net_resources['netsend']['resource_limit'] = int(optional_args[0])
+      except ValueError:
+        raise ShimInternalError("Upload rate provided is not of type int.")
+
+      # Set the download rate
+      try:
+        self.net_resources['netrecv']['resource_limit'] = int(optional_args[1])
+      except ValueError:
+        raise ShimInternalError("Download rate provided is not of type int.")
+
+      # We set the consumption to the limit in order to avoid a burst of data at the beginning.
+      # Here is an example scenario that we want to avoid:
+      #
+      # Scenario:
+      # * Actual bandwidth is 10MB/s download
+      # * We set the limit to 5MB/s
+      # * We download 4MB of data, which takes 0.4s to download.
+      # * We don't sleep since we did not download more then 5MB.
+      # * We return to application layer.
+      # * Thus the application perceives a download rate of 10MB/s 
+      #   rather then 5MB/s
+
+      self.net_resources['netsend']['consumption'] = 1.0 * self.net_resources['netsend']['resource_limit']
+      self.net_resources['netrecv']['consumption'] = 1.0 * self.net_resources['netrecv']['resource_limit']
+
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+
+
+
+
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+    """
+    <Purpose>
+      Calls on the next level of shim to do openconnection. This operation
+      consumes 64*2 bytes of netsend (SYN, ACK) and 64 bytes of netrecv
+      (SYN/ACK)
+    """
+
+    self.consume_resource('netsend', 0)
+    self.consume_resource('netrecv', 0)
+
+    sockobj = self.get_next_shim_layer().openconnection(destip, destport, localip, localport, timeout)
+
+    self.consume_resource('netsend', 128)
+    self.consume_resource('netrecv', 64)
+
+    return ShimSocket(sockobj, self)
+    
+
+
+
+  def tcpserversocket_getconnection(self, tcpserversocket):
+    """
+    <Purpose>
+      Calls on the next level of shim for getconnection. This operation consumes 128
+      bytes (SYN and ACK) of netrecv and 64 bytes of netsend (ACK packet)
+    """
+
+    self.consume_resource('netsend', 0)
+    self.consume_resource('netrecv', 0)
+
+    (remote_ip, remote_port, repy_socket) = self.get_next_shim_layer().tcpserversocket_getconnection(tcpserversocket)
+
+    self.consume_resource('netsend', 64)
+    self.consume_resource('netrecv', 128)
+
+    return (remote_ip, remote_port, ShimSocket(repy_socket, self))
+
+
+
+  def socket_send(self, socket, msg):
+    """
+    <Purpose>
+      Send the msg through the next shim layer. Consumes netsend of amount
+      of data sent + 64. Consumes netrecv of 64.
+    """
+
+    self.consume_resource('netsend', 0)
+    self.consume_resource('netrecv', 0)
+
+    data_sent = self.get_next_shim_layer().socket_send(socket, msg)
+
+    # Consume amount of netsend equal to the amount of data sent
+    # plus 64.
+    self.consume_resource('netsend', data_sent + 64)
+    self.consume_resource('netrecv', 64)
+
+    return data_sent
+
+
+
+
+  def socket_recv(self, socket, bytes):
+    """
+    <Purpose>
+      Recv data of length bytes or less. Consumes netrecv of amount of data
+      received + 64. Consumes netsend of 64.
+    """
+
+    self.consume_resource('netsend', 0)
+    self.consume_resource('netrecv', 0)
+
+    data_recv = self.get_next_shim_layer().socket_recv(socket, bytes)
+
+    # Consume the amount of netrecv equal to the amount of data received
+    # plus 64.
+    self.consume_resource('netsend', 64)
+    self.consume_resource('netrecv', len(data_recv) + 64)
+
+    return data_recv
+
+
+  
+  def socket_close(self, socket):
+    """
+    <Purpose>
+      Closes the socket. Consumes 64 bytes of netrecv and 128 bytes of
+      netsend.
+    """
+    
+    self.consume_resource('netsend', 0)
+    self.consume_resource('netrecv', 0)
+
+    return_val = self.get_next_shim_layer().socket_close(socket)
+
+    self.consume_resource('netsend', 128)
+    self.consume_resource('netrecv', 64)
+
+    return return_val
+
+
+
+
+  def consume_resource(self, resource, quantity):
+    """
+    <Purpose>
+      Consume resources of the provided quantity. If the resource consumption
+      is over the limit, then we might wait to drain the resources.
+
+    <Arguments>
+      resource - the type of resource (netsend/netrecv)
+
+      quantity - the amount of resource that will be consumed.
+
+    <Side Effects>
+      We might sleep to drain the resources.
+
+    <Exceptions>
+      ShimInternalError - if the quantity is below 0.
+      SocketWouldBlockError - will be raised if unable to acquire the lock.
+
+    <Return>
+      None
+    """
+
+    if quantity < 0:
+      raise ShimInternalError("Attempting to consume a negative quantity of resource.")
+
+    if resource not in self.net_resources.keys():
+      raise ShimInternalError("Resource '%s' not a valid resource." % resource)
+
+    if not self.net_resources[resource]['lock'].acquire(False):
+      raise SocketWouldBlockError
+
+    try:
+      # Update the resource consumption as some time has passed since last
+      # consumption of resource.
+      self.update_resource_consumption(resource)
+
+      # Consume the resource.
+      self.net_resources[resource]['consumption'] += quantity
+      
+      # Drain the resource if we are over the limit.
+      self.sleep_and_drain(resource)
+    finally:
+      self.net_resources[resource]['lock'].release()
+
+
+
+
+
+  def sleep_and_drain(self, resource):
+    """
+    <Purpose>
+      Until the resource consumed drains below the upper limit, we
+      will sleep and drain.
+
+    <Arguments>
+      resource - which resource we should drain on.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      ShimInternalError - raised if the limit of the resource is 0.
+
+    <Return>
+      None
+    """
+
+    # Make sure that the upper limit for the resource is not 0. Otherwise
+    # the resource will never drain.
+    if self.net_resources[resource]['resource_limit'] == 0:
+      raise ShimInternalError("The limit for resource '%s' is 0." % resource)
+
+
+    while self.net_resources[resource]['consumption'] > self.net_resources[resource]['resource_limit']:
+        
+      consumed = self.net_resources[resource]['consumption']
+      limit = self.net_resources[resource]['resource_limit']
+      # Sleep for the amount of time that we expect we need to sleep for.
+      sleeptime = 1.0 * (consumed - limit) / limit
+
+      sleep(sleeptime)
+
+      self.update_resource_consumption(resource)
+    
+
+    
+
+
+
+  def update_resource_consumption(self, resource):
+    """
+    <Purpose>
+      Figure out how much time has elapsed and decreased consumed resource
+      accordingly. For example if the upload limit was set to 1KB per second, and
+      we have spent 5 second since last upload, we can upload 5KB more now.
+
+    <Arguments>
+      resource - which resource we are updating on.
+
+    <Side Effects> 
+      None
+
+    <Exceptions>
+      None
+
+    <Return>
+      None
+    """
+
+    curtime = getruntime()
+    # Update the resource time, and find out how much time has elapsed 
+    # since last update.
+    elapsedtime = curtime - self.net_resources[resource]['update_time']
+    self.net_resources[resource]['update_time'] = curtime
+    
+    if elapsedtime < 0:
+      return
+
+
+    resource_reduction = elapsedtime * self.net_resources[resource]['resource_limit']
+
+    if resource_reduction > self.net_resources[resource]['consumption']:
+      self.net_resources[resource]['consumption'] = 0.0
+
+    else:
+      self.net_resources[resource]['consumption'] = self.net_resources[resource]['consumption'] - resource_reduction
+
+    if self.net_resources[resource]['consumption'] < 0:
+      raise ShimInternalError("Resource consumed has gone below 0 for '%s'" % resource)
+      
+
+
+
+
+  def copy(self):
+    """
+    Make a copy of self.
+    """
+
+    shim_stack_copy = self.shim_context['shim_stack'].copy()
+    optional_args_copy = self.shim_context['optional_args']
+
+    my_copy = RateLimitShim(shim_stack_copy, optional_args_copy)
+    return my_copy
+
+
+
+
+  def get_advertisement_string(self):
+    """
+    The RateLimitShim is an one sided shim, which means it
+    doesn't need to advertise itself.
+    """
+    return get_next_layer().get_advertisement_string()

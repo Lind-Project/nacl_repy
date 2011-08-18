@@ -114,7 +114,7 @@ class xmlrpc_server_SimpleXMLRPCServer:
 
     self._listen_comm = None
     self._serverstopped = True
-    self._stoplock = getlock()
+    self._stoplock = createlock()
 
 
   def register_function(self, function, name):
@@ -164,11 +164,11 @@ class xmlrpc_server_SimpleXMLRPCServer:
     self._listen_comm = waitforconn(self._listen_ip, self._listen_port, \
         self._connect)
 
-    self._stoplock.acquire()
+    self._stoplock.acquire(True)
     self._stopped = False
 
     # Wait until shutdown() releases the lock.
-    self._stoplock.acquire()
+    self._stoplock.acquire(True)
     self._stoplock.release()
 
 
@@ -196,7 +196,7 @@ class xmlrpc_server_SimpleXMLRPCServer:
 
     # Acquire the lock so we don't try to listen in more than one server
     # thread. Also, shutdown() excepts to release the lock.
-    self._stoplock.acquire()
+    self._stoplock.acquire(True)
     self._stopped = False
 
 

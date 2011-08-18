@@ -1,0 +1,776 @@
+#!python
+"""
+<Purpose>
+  A shim that creates several shimstacks underneath it
+  and sends and receives data through all its shimstacks.
+  It is essentially a multipath shim, which is used in 
+  hopes of reducing congestion on a particular shimstack.
+
+<Author>
+  Monzur Muhammad
+  monzum@cs.washington.edu
+
+<Started>
+  April 18th, 2011
+
+<History>
+  04-18-11: Initial implementation.
+"""
+
+#dy_import_module_symbols("shim_stack")
+while True:
+  try:
+    dy_import_module_symbols("msg_chunk_lib")
+  except FileInUseError, err:
+    sleep(0.001)
+  except:
+    raise ShimInternalError("Unable to import msg_chunk_lib for MultiPathShim." + str(err))
+  else:
+    break
+
+DATA_CHUNK_SEND_SIZE = 2**15
+DATA_CHUNK_RECV_SIZE = 2**15
+
+
+
+class MultiShimSocket():
+
+  def __init__(self, connection_dict):
+
+    # Store the connection dict and create a 
+    # new chunk object that will help us send
+    # and receive all the data through all the 
+    # connections.
+    self._connection_dict = connection_dict 
+    self._chunk_object = ChunkMessage(DATA_CHUNK_SEND_SIZE, DATA_CHUNK_RECV_SIZE)
+    self._sockets_open = True
+
+    self._sock_to_shim_dict = {}
+
+
+  def get_stats(self):
+    """
+    Return the dictionary that has a stat of how much data
+    was sent through each of the sockets.
+    """
+
+    distribution_dict = {}
+    data_distribution_send = self._chunk_object.get_data_sent_distribution()
+    data_distribution_recv = self._chunk_object.get_data_recv_distribution()
+
+    # Convert the data distibution from the chunk object to a dictionary that
+    # has the shim stack name instead of the socket instance name.
+    for sock_key in data_distribution_send.keys():
+      if self._sock_to_shim_dict[sock_key] not in distribution_dict.keys():
+        distribution_dict[self._sock_to_shim_dict[sock_key]] = {}
+
+      distribution_dict[self._sock_to_shim_dict[sock_key]]['send'] = data_distribution_send[sock_key]
+                        
+    for sock_key in data_distribution_recv.keys():
+      if self._sock_to_shim_dict[sock_key] not in distribution_dict.keys():
+        distribution_dict[self._sock_to_shim_dict[sock_key]] = {}
+
+      distribution_dict[self._sock_to_shim_dict[sock_key]]['recv'] = data_distribution_recv[sock_key]
+
+                        
+    return distribution_dict
+
+
+
+  def send(self, msg):
+    """
+    <Purpose>
+      Split the message up into chunks, and send parts of it
+      across all the shim stacks.
+   
+    <Arguments>
+      msg - The message to send.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      SocketWouldBlock raised if all sockets raise it.
+
+      SocketClosedRemote or SocketClosedLocal raised if we 
+      get socket closed error.
+
+    <Return>
+      The amount of data sent.
+    """
+
+    # If the close() function has already been called.
+    if not self._sockets_open:
+      raise SocketClosedLocal("All sockets closed locally.")
+
+    # Retrieve a list of socket objects that has already been 
+    # added to the chunk object. Note that these are the string
+    # form of the sockets.
+    chunk_object_socket_list = self._chunk_object.get_socket_list()
+
+    # If any of the sockets have not been added to the chunk object
+    # yet, we do it now. We also make a copy of the connection dict
+    # in case new connections get added during iteration.
+    connection_dict_copy = self._connection_dict.copy()
+    for cur_shim in connection_dict_copy:
+      # It is possible that the current connection is being made,
+      # which means there is a very brief moment when sockobj may
+      # not have been inserted in the connection dict for the 
+      # current shim.
+      if 'sockobj' not in connection_dict_copy[cur_shim].keys():
+        continue
+
+      sockobj = connection_dict_copy[cur_shim]['sockobj']
+
+      if sockobj:
+        # Add the socket to the chunk object if not there already.
+        if repr(sockobj) not in chunk_object_socket_list:
+          self._chunk_object.add_socket(sockobj)
+        # Add the socket to shim translation to the dict if not
+        # there already.
+        if repr(sockobj) not in self._sock_to_shim_dict.keys():
+          self._sock_to_shim_dict[repr(sockobj)] = cur_shim
+
+
+    # Send the data.
+    try:
+      data_sent = self._chunk_object.senddata(msg)
+    except (SocketClosedLocal, SocketClosedRemote):
+      # If the sockets are closed we want to clear
+      # the connection dictionary.
+      self._connection_dict.clear()
+      raise
+
+    # Return the amount of data sent.
+    return data_sent
+
+
+
+
+  def recv(self, bytes):
+    """
+    <Purpose>
+      Return a message of the requested byte size.
+
+    <Arguments>
+      bytes - The amount of data to return.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      SocketWouldBlock raised if all sockets raise it.
+
+      SocketClosedRemote or SocketClosedLocal raised if we
+      get socket closed error.
+
+    <Return>
+      A message of size byte or less.
+    """
+
+    # If the close() function has already been called.
+    if not self._sockets_open:
+      raise SocketClosedLocal("All sockets closed locally.")
+
+    # Retrieve a list of socket objects that has already been
+    # added to the chunk object. Note that these are the string
+    # form of the sockets.
+    chunk_object_socket_list = self._chunk_object.get_socket_list()
+
+    # If any of the sockets have not been added to the chunk object
+    # yet, we do it now. We also make a copy of the connection dict
+    # in case the connection dict changes during iteration.
+    connection_dict_copy = self._connection_dict.copy()
+    for cur_shim in connection_dict_copy:
+      sockobj = connection_dict_copy[cur_shim]['sockobj']
+
+      if sockobj:
+        # Add the socket to the chunk object if not there already.
+        if repr(sockobj) not in chunk_object_socket_list:
+          self._chunk_object.add_socket(sockobj)
+        # Add the socket to shim translation to the dict if not
+        # there already.
+        if repr(sockobj) not in self._sock_to_shim_dict.keys():
+          self._sock_to_shim_dict[repr(sockobj)] = cur_shim
+
+    # Receive the data that the user requested for.
+    try:
+      data_recv = self._chunk_object.recvdata(bytes)
+    except (SocketClosedLocal, SocketClosedRemote):
+      # If the sockets are closed we want to clear
+      # the connection dictionary.
+      self._connection_dict.clear()
+      raise
+
+    return data_recv
+    
+
+
+
+
+
+  def close(self):
+    """
+    <Purpose>
+      Close all the sockets that are open for each of the 
+      shimstacks. Before we close all the sockets, we add
+      all the sockets to the chunk object. This if for the
+      case if a new sockobj has been established in 
+      _connection_dict since the last call to recv or send.
+
+    <Arguments>
+      None
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      None
+
+    <Return>
+      True if this is the first close call to this socket, False otherwise.
+    """
+
+    return_value = self._sockets_open
+
+    # Mark the sockets as being closed.
+    self._sockets_open = False
+
+    # Retrieve a list of socket objects that has already been
+    # added to the chunk object. Note that these are the string
+    # form of the sockets.
+    chunk_object_socket_list = self._chunk_object.get_socket_list()
+
+    # If any of the sockets have not been added to the chunk object
+    # yet, we do it now.
+    for cur_shim in self._connection_dict:
+      sockobj = self._connection_dict[cur_shim]['sockobj']
+      if repr(sockobj) not in chunk_object_socket_list:
+        self._chunk_object.add_socket(sockobj)
+
+    self._connection_dict.clear()
+    
+    # Close all the sockets.
+    self._chunk_object.close()
+
+    return return_value
+    
+
+
+
+
+
+
+class MultiShimTCPSocket():
+
+  def __init__(self, tcpsocket_dict):
+    self.tcpsocket_dict = tcpsocket_dict
+    self._tcpsocket_open = True
+
+
+
+  def getconnection(self):
+    if not self._tcpsocket_open:
+      raise SoccketClosedLocal("TCPServerSocket has been closed locally.")
+
+    connection_dict = {}
+    exception_list = []
+
+    # Default remotehost and port
+    remoteip = '127.0.0.1' 
+    remoteport = 80
+
+    # We want to do at least one pass to try and see if we can make
+    # any connection.
+    # We keep track of which port we are making a connection on. When
+    # we return a remoteport, we have to return the port that would
+    # have been for the very first connection (the very first shim).
+    cur_port_spread = 0
+
+    # We want to take the tcp socket keys and sort them. This way
+    # we are guaranteed that the getconnection() from the server
+    # side and the openconnection() of the client side will have 
+    # the same sorted keys, since both should have the same tcpsocket
+    # dicts. This way we can match up the port numbers.
+    # NOTE: Possibility of a bug??
+    tcpsocket_keys = self.tcpsocket_dict.keys()
+    tcpsocket_keys.sort()
+    
+    last_port_spread = 0
+
+    for cur_tcp_socket in tcpsocket_keys:
+      cur_port_spread += 1
+      connection_dict[cur_tcp_socket] = {}
+      connection_dict[cur_tcp_socket]['sockobj'] = None
+      try:
+        # Call getconnection() on this tcp socket object
+        (remoteip, remoteport, sockobj) = self.tcpsocket_dict[cur_tcp_socket]['tcpsockobj'].getconnection()
+      except Exception, err:
+        exception_list.append(err)
+        pass
+      else:
+        last_port_spread = cur_port_spread
+        # Once connection has been made, add the socket object to connection_dict
+        connection_dict[cur_tcp_socket]['sockobj'] = sockobj
+
+    # Find out how many connections were successfully made.
+    success_conn = 0
+    for cur_tcp_socket in tcpsocket_keys:
+      if connection_dict[cur_tcp_socket]['sockobj']:
+        success_conn += 1
+
+    # If atleast one connection was established then retrieve the multiple
+    # getconnection thread and launch it with the connection dict.
+    if success_conn > 0:
+      createthread(self.multiple_getconnection_thread(connection_dict))
+      remoteport = remoteport - (last_port_spread - 1)
+      return (remoteip, remoteport, MultiShimSocket(connection_dict))
+
+    # If no connection was made and there was an error in the list of
+    # exceptions, then raise the first one.
+    elif len(exception_list) > 0:
+      raise exception_list[0]
+
+    else:
+      raise ShimInternalError("Internal error in MultiShimTCPSocket.getconnection()")
+
+
+
+
+
+  def multiple_getconnection_thread(self, connection_dict):
+    """
+    Keep trying to do getconnection on all the tcp socket objects.
+    """
+
+    def _getconnection_helper():
+      all_connected = False
+
+      while not all_connected:
+        all_connected = True
+
+        for cur_tcp_socket in self.tcpsocket_dict.keys():
+          # If a new connection was made after this thread was launched
+          # then we have to add the new connection to the connection dict.
+          if cur_tcp_socket not in connection_dict.keys():
+            connection_dict[cur_tcp_socket] = {}
+            connection_dict[cur_tcp_socket]['sockobj'] = None
+
+          # Check to see if we are already connected.
+          if connection_dict[cur_tcp_socket]['sockobj']:
+            continue
+
+          try:
+            # Try to connect to this tcp socket
+            (remoteip, remoteport, sockobj) = self.tcpsocket_dict[cur_tcp_socket]['tcpsockobj'].getconnection()
+          except (SocketWouldBlockError, ResourceExhaustedError):
+            # If there is any exception we don't raise it because we have already made
+            # one successful connection.
+            # If we have gotten an exception then there is atleast one tcp socket that
+            # we haven't been able to connect to.
+            all_connected = False
+          except SocketClosedLocal, err:
+            tcpsocket_dict.pop(cur_tcp_socket)
+          else:
+            # This is the first time we have connecte to this tcp socket.
+            connection_dict[cur_tcp_socket] = {}
+            connection_dict[cur_tcp_socket]['sockobj'] = sockobj
+
+    return _getconnection_helper
+
+
+  
+
+  def close(self):
+    """
+    Closes all the tcp socket objects that it has open.
+    """
+
+    return_value = self._tcpsocket_open
+
+    self._tcpsocket_open = False
+
+    for cur_tcp_socket in self.tcpsocket_dict.keys():      
+      self.tcpsocket_dict[cur_tcp_socket]['tcpsockobj'].close()  
+
+    # Wipe out the tcp socket dictionary, so we can't do
+    # anything with it anymore.
+    self.tcpsocket_dict.clear()
+
+    return return_value
+
+
+
+
+
+
+class MultiPathShim(BaseShim):
+
+
+  def __init__(self, shim_stack=ShimStack(), optional_args=None):
+    """
+    <Purpose>
+      Initialize the MultiPathShim. Creates all the different
+      shimstacks that it needs to use.
+
+    <Arguments>
+      shim_stack - the shim stack that will be initially beneath
+          us. If optional_args is provided then it will be used
+          to create the shim stacks that will be used, but this
+          will be the default shim stack.
+
+      optional_args - If any optional args is provided, then it will
+          be used to create shim stacks.
+          
+    <Side Effects>
+      Multiple shim stack objects are created.
+      
+    <Exceptions>
+      ShimArgumentError will be raised if the arguments provided
+      is of not the right form or are incorrect.
+
+      Assertion error if optional args is not type of list.
+
+    <Return>
+      None
+    """
+
+    self.shim_str_list = optional_args
+    self.shim_stack_dict = {}
+
+    # If optional args was provided, make sure it was a list type.
+    if optional_args:
+      assert(isinstance(optional_args, list))
+
+
+    # Everything that is beneath the MultiPathShim becomes the default
+    # shim stack, and becomes one of the path 
+    self.shim_stack_dict['default'] = shim_stack
+
+    # If any optional args are provided, we assume that they are different
+    # shims, and we will add them to the shim stack dict for the 
+    # MultiPathShim.
+    if optional_args:
+      for shim_str in optional_args:
+        localhost = shim_stack.shim_stack_context['localhost']
+        cur_stack = ShimStack(shim_str, localhost)
+        self.shim_stack_dict[shim_str] = cur_stack
+
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+    # Make sure that all the stacks have at least one shim beneath it.
+    # If it does not then we will create and push a NoopShim on it.
+    for cur_shim in self.shim_stack_dict.keys():
+      try:
+        peek_copy = self.shim_stack_dict[cur_shim].peek()
+      except ShimStackError:
+        find_and_register_shim('NoopShim')
+        shim_object = self.shim_stack_dict[cur_shim].create_shim_object('NoopShim', [], ShimStack())
+        self.shim_stack_dict[cur_shim].push(shim_object)
+    
+        
+
+
+
+
+
+
+
+  # ========================= TCP Connection ==================================
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+    """
+    <Purpose>
+      Opens a connection using all the shimstacks that is beneath us.
+
+    <Arguments>
+      destip - the destination ip address.
+      destport - the destination port number.
+      localip - the local ip address.
+      localport - the localport number.
+      timeout - time before we should timeout.
+
+    <Side Effects>
+      Multiple connections are opened.
+
+    <Exceptions>
+      AddressBindingError - if the localip can't be bound to.
+
+      DuplicateTupleError - if the args provided are already being
+          used. Also if OS prevents the local IP/port from being used.
+
+      AlreadyListeningError - raised if local IP/port is already listening
+          a TCP socket.
+
+      ConnectionRefusedError - If connection cannot be made because the
+          destination port isn't being listened on.
+
+      InternetConnectivityError - if network is down.
+ 
+    <Return>
+      A MultiShimSocket object.
+    """
+
+    self._destip = destip
+    self._localip = localip
+    self._timeout = timeout
+
+    # A dictionary that holds all the connections.
+    connection_dict = {}
+
+    
+    exception_list = []
+
+
+    # We want to take the shim stack keys and sort them. This way when
+    # the server side calls getconnection, the shimstacks they call getconnection
+    # on will be in the same order that this shim stack is in. This way the port
+    # values will match up.
+    # NOTE: Possibility of a bug??
+    shim_stack_keys = self.shim_stack_dict.keys()
+    shim_stack_keys.sort()
+
+    # We want to do at least one pass to try and see if we can make
+    # any connection.
+    for cur_shim_stack in shim_stack_keys:
+      connection_dict[cur_shim_stack] = {}
+      connection_dict[cur_shim_stack]['destport'] = destport
+      connection_dict[cur_shim_stack]['localport'] = localport
+      connection_dict[cur_shim_stack]['sockobj'] = None
+      try:
+        # Call openconnection on the top shim of this particular shimstack.
+        sockobj = self.shim_stack_dict[cur_shim_stack].peek().openconnection(destip, destport, 
+                                                                             localip, localport, timeout)
+      except (CleanupInProgressError, TimeoutError, InternetConnectivityError, ConnectionRefusedError), err:
+        exception_list.append(err)
+        pass
+      else:
+        # Once connection has been made, add the socket object to connection_dict
+        connection_dict[cur_shim_stack]['sockobj'] = sockobj
+
+      # Because we are opening up multiple connections. We are going to 
+      # use different port number for each.
+      # Increate the port number by the appropriate value.
+      # BUG: This is a bad way to do it as if the application layer
+      # uses one of the ports that we are trying to use, it will collide.
+      # A more elegant way might be to have random port numbers, and 
+      # advertise or have a way for the server and client to communicate/
+      # agree on which ports to use.
+      destport += 1
+      localport += 1
+
+    # Figure out how many connections were made.
+    successful_conn = 0
+    for cur_shim_stack in shim_stack_keys:
+      if connection_dict[cur_shim_stack]['sockobj']:
+        successful_conn += 1
+
+    if successful_conn > 0:
+
+      # Retrieve the multiple openconn thread and launch a thread 
+      # that attemps to connect to the rest of the sockobjs
+      createthread(self.multiple_openconn_thread(connection_dict))
+      return MultiShimSocket(connection_dict)  
+
+    elif len(exception_list) > 0:
+      raise exception_list[0]
+
+    else:
+      raise ShimInternalError("Internal error in openconnection.")
+
+
+
+
+
+  def multiple_openconn_thread(self, connection_dict):
+    """
+    Keep trying to do openconnection on all the shimstacks.
+    """
+
+    def _openconn_thread_helper():
+      all_connected = False
+
+      while not all_connected:
+        all_connected = True      
+
+        for cur_shim_stack in self.shim_stack_dict.keys():
+          # Check to see if we are already connected.
+          if connection_dict[cur_shim_stack]['sockobj']:
+            continue
+          try:
+            sockobj = self.shim_stack_dict[cur_shim_stack].peek().openconnection(self._destip,
+                          connection_dict[cur_shim_stack]['destport'], self._localip,
+                          connection_dict[cur_shim_stack]['localport'], self._timeout)
+      
+          except (CleanupInProgressError, TimeoutError, InternetConnectivityError, ConnectionRefusedError), err:
+            # If there is any exception we don't raise it because we have already made
+            # one successful connection.
+            # If we have gotten an exception then there is atleast one shimstack that
+            # we haven't been able to connect to.
+            all_connected = False
+          else:
+            connection_dict[cur_shim_stack]['sockobj'] = sockobj
+            
+
+    return _openconn_thread_helper
+
+
+
+
+  def listenforconnection(self, localip, localport):
+    """
+    <Purpose>
+      Listens for a connection on all shimstacks.
+
+    <Arguments>
+      localip - our local IP address.
+      localport - the lolcal port to listen on.
+
+    <Side Effects>
+      We have multiple TCPServerSockets created to listen on.
+
+    <Exceptions>
+      AddressBindingError - if the localip can't be bound to.
+
+      DuplicateTupleError - if the args provided are already being
+          used. Also if OS prevents the local IP/port from being used.
+
+      AlreadyListeningError - raised if local IP/port is already listening
+          a TCP socket.
+
+    <Return>
+      MultiShimTCPSocket object.
+    """
+
+    self._localip = localip
+
+    exception_list = []
+    tcpsocket_dict = {}
+
+    # We are going to sort the shim stack keys in order, so the ports
+    # for all the shimstacks match up.
+    shim_stack_keys = self.shim_stack_dict.keys()
+    shim_stack_keys.sort()
+
+    for cur_shim_stack in shim_stack_keys:
+      try:
+        # Call listenforconnection on the top shim of this particular shimstack.
+        tcpsockobj = self.shim_stack_dict[cur_shim_stack].peek().listenforconnection(localip, localport)
+      except (AlreadyListeningError, DuplicateTupleError, RepyArgumentError, AddressBindingError, ResourceForbiddenError), err:
+        exception_list.append(err)
+        pass
+      else:
+        if cur_shim_stack not in tcpsocket_dict.keys():
+          tcpsocket_dict[cur_shim_stack] = {}
+
+        tcpsocket_dict[cur_shim_stack]['localport'] = localport
+        tcpsocket_dict[cur_shim_stack]['tcpsockobj'] = None
+
+        # Once connection has been made, add the tcpsocket object to connection_dict
+        tcpsocket_dict[cur_shim_stack]['tcpsockobj'] = tcpsockobj
+      
+      # Increate the port number by the appropriate value.
+      # BUG: This is a bad way to do it as if the application layer
+      # uses one of the ports that we are trying to use, it will collide.
+      # A more elegant way might be to have random port numbers, and
+      # advertise or have a way for the server and client to communicate/
+      # agree on which ports to use.
+      localport += 1
+      
+
+
+    if len(tcpsocket_dict.keys()) > 0:
+      # Create a thread that attemps to connect to the rest of the tcpsocket dicts.
+      createthread(self.multiple_listenforconnection_thread(tcpsocket_dict))
+      return MultiShimTCPSocket(tcpsocket_dict)
+
+    else:
+      raise exception_list[0]
+    pass
+
+
+
+
+
+  def multiple_listenforconnection_thread(self, tcpsocket_dict):
+    """
+    Keep trying to do openconnection on all the shimstacks.
+    """
+
+    def _listenforconnection_helper():
+      all_connected = False
+
+      # While everything is not connected, keep trying to connect.
+      # Note that once close() is called on the tcpsocket object,
+      # tcpsocket_dict will become empty, which will cause this loop
+      # to end and thus terminate this thread as its supposed to.
+      while not all_connected:
+        all_connected = True  
+
+        for cur_shim_stack in self.shim_stack_dict.keys():
+          if cur_shim_stack not in tcpsocket_dict.keys():
+            tcpsocket_dict[cur_shim_stack] = {}
+            tcpsocket_dict[cur_shim_stack]['tcpsockobj'] = None
+            tcpsocket_dict[cur_shim_stack]['localport'] = 0
+
+          # Check to see if we are already connected.
+          if tcpsocket_dict[cur_shim_stack]['tcpsockobj']:
+            continue
+
+          try:
+            tcpsockobj = self.shim_stack_dict[cur_shim_stack].peek().listenforconnection(self._localip,
+                             tcpsocket_dict[cur_shim_stack]['localport'])
+
+          except (AlreadyListeningError, DuplicateTupleError):
+            # If there is any exception we don't raise it because we have already made
+            # one successful connection.
+            # If we have gotten an exception then there is atleast one shimstack that
+            # we haven't been able to connect to.
+            all_connected = False
+          else:
+            tcpsocket_dict[cur_shim_stack]['tcpsockobj'] = tcpsockobj
+
+
+    return _listenforconnection_helper 
+
+
+
+
+  # ============= Required Public Methods =========================
+  def copy(self):
+    """
+    Make and return a copy of self.
+    """
+
+    shim_stack_copy = self.shim_context['shim_stack'].copy()
+    optional_args_copy = self.shim_context['optional_args']
+
+    mycopy = MultiPathShim(shim_stack_copy, optional_args_copy)
+
+    return mycopy
+
+
+
+
+  def get_advertisement_string(self):
+    """
+    Return the advertisement string for this shim.
+    """
+    my_name = '(MultiPathShim,%s)' % ','.join(self.shim_str_list)
+    next_layer_name = self.get_next_shim_layer().get_advertisement_string()
+
+    # If we have shims that are not advertising below us, for example
+    # just a logging shim. We want to append a NoopShim on the advertisement
+    # since we are still sending data through a socket.
+    if not next_layer_name:
+      next_layer_name = "(NoopShim)"
+
+    full_advertise_string = my_name + next_layer_name
+
+    return full_advertise_string
+
+
+
+  
+  
+    

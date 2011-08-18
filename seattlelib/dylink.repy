@@ -50,7 +50,7 @@ if callfunc == "initialize":
 
   # This is the maximum number of bytes we will try to read in for a file.
   # Anything larger and we abort
-  MAX_FILE_SIZE = 100000
+  MAX_FILE_SIZE = 200000
 
 #### Code Pre-processor ####
 

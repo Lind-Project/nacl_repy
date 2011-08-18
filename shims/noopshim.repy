@@ -1,0 +1,14 @@
+
+class NoopShim(BaseShim):
+  """
+  A shim that does nothing (no-operation). For debug purpose only.
+
+  """
+
+  def copy(self):
+    return NoopShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args'])
+
+
+  
+  def get_advertisement_string(self):
+    return '(NoopShim)' + self.get_next_shim_layer().get_advertisement_string()

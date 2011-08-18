@@ -27,7 +27,7 @@ nodemanager_announce_context = {}
 for service in _advertise_all_services:
   nodemanager_announce_context["skip" + service] = 0
   nodemanager_announce_context["previous" + service + "skip"] = 1
-nodemanager_announce_context_lock = getlock()
+nodemanager_announce_context_lock = createlock()
 
 
 # an exception to indicate an error occured while advertising
@@ -55,14 +55,14 @@ def _try_advertise_announce(args):
 
     finishedref[0] = True     # Signal that at least one service has finished.
     
-    nodemanager_announce_context_lock.acquire()
+    nodemanager_announce_context_lock.acquire(True)
     try:
       nodemanager_announce_context["previous" + which_service + "skip"] = 1
     finally:
       nodemanager_announce_context_lock.release()
 
   except Exception, e:
-    nodemanager_announce_context_lock.acquire()
+    nodemanager_announce_context_lock.acquire(True)
     try:
       exceptions[0] += 'announce error (type: ' + which_service + '): ' + str(e)
       nodemanager_announce_context["skip" + which_service] = \
@@ -128,7 +128,7 @@ def advertise_announce(key, value, ttlval, concurrentevents=2, \
           exceptions, onefinished))
 
     else:
-      nodemanager_announce_context_lock.acquire()
+      nodemanager_announce_context_lock.acquire(True)
       try:
         nodemanager_announce_context["skip" + service_type] = \
             nodemanager_announce_context["skip" + service_type] - 1

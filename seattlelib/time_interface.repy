@@ -157,7 +157,7 @@ def time_gettime():
   """
 
   if time_query_times == []:
-    raise TimeError
+    raise TimeError("Error from time_gettime(): time has not been set yet!")
 
   # otherwise use the most recent data...
   latest_update = time_query_times[-1]

@@ -1,0 +1,320 @@
+"""
+<Program Name>
+  logshim.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+
+<Date Started>
+  April 11, 2011
+
+<Purpose> Logs all data being passed through the shim. Helps debugging. As a
+  function enters, we log all the parameters. Before it returns, we log the
+  return value in a line that starts with " > ". Each log entry contains the
+  epoch time and the string representation of the shim stack below.
+
+"""
+
+logshim_locks = {}
+
+
+class LogShim(BaseShim):
+
+  
+  def __init__(self, shim_stack = ShimStack(), optional_args = None):
+    """
+    Define the log file name if defined.
+    """
+
+    self._LOG_FILE_NAME = 'debug.log'
+
+      		         
+    if optional_args:
+      # If option is provided, use it as the log name.
+      assert(isinstance(optional_args[0], str)), "Optional arg provided must be string"
+
+      self._LOG_FILE_NAME = optional_args[0]
+
+    # Prevents current write.
+    if self._LOG_FILE_NAME not in logshim_locks.keys():
+      logshim_locks[self._LOG_FILE_NAME] = createlock()
+
+
+    BaseShim.__init__(self, shim_stack, optional_args)    
+
+
+
+  def _log(self, logstr):
+    """ 
+    Writes logstr to the log file. First line states the total elapsed time and
+    the contents of the shim stack. The second line contains the log data.
+
+    """
+    logshim_locks[self._LOG_FILE_NAME].acquire(True)	
+    try:
+      file_obj = openfile(self._LOG_FILE_NAME, True)
+
+      # Record the epoch time, accurate up to two decimal places, in seconds.
+      time_str = 't = %.2f, shim stack = "' % getruntime()
+      
+      # Write data into the log file
+      data_to_write = time_str + self.get_advertisement_string() + '"\n' + str(logstr) + '\n\n'
+      file_obj.writeat(data_to_write, self._find_file_location(file_obj))        
+      
+
+      file_obj.close()
+
+    finally:
+      logshim_locks[self._LOG_FILE_NAME].release()
+
+
+
+
+  def _find_file_location(self, file_obj):
+    """
+    Find out where to write in a file. Returns the offset of the file.
+    """
+
+    min = 0
+    max = 10 * 1024 * 1024 * 1024 # Assume that the max file size is 1 GB
+
+    while min <= max :
+      mid = (min + max) / 2
+      try:
+        file_obj.readat(1, mid)
+      except SeekPastEndOfFileError:
+        # If we got an error that means we are seeking past file size,
+	# so the file size is smaller then mid.
+        max = mid - 1
+      else:
+        # If we did not get an error, then the file is bigger then size mid.
+        min = mid + 1
+
+    # We may get out of the loop in two different cases, and we have to check
+    # if we found the right mid, or just one over.
+    try:
+      file_obj.readat(1, mid)
+    except SeekPastEndOfFileError:
+      return mid - 1
+    else:
+      return mid
+
+
+
+
+
+
+  def _abbrev(self, input_str):
+    """
+    Abbreviates the input string. Returns the first 100 bytes, followed by
+    elipses, and then the last 100 bytes.
+
+    """
+    # TODO abbreviation disabled.
+    #return input_str
+
+    length = len(input_str)
+    if length < 100:
+      return input_str
+    else:
+      return input_str[0:50] + ' ... (' + str(length - 100) + ' bytes omitted) ... ' + input_str[length-500 : ]
+
+
+
+  def sendmessage(self, destip, destport, message, localip, localport):
+
+    log_info = ('sendmessage, destip = %s, destport = %s, localip = %s, localport = %s, message = %s' 
+                % (destip, destport, localip, localport, message))
+    self._log(log_info)
+
+    try:
+      sent = self.get_next_shim_layer().sendmessage(destip, destport, message, localip, localport)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, sent))
+    return sent
+
+
+
+  def listenformessage(self, localip, localport):
+
+    log_info = ('listenformessage, localip = %s, localport = %s' % (localip, localport))
+    self._log(log_info)
+
+    try:
+      next_layer_socket = self.get_next_shim_layer.listenformessage(localip, localport)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, next_layer_socket))    
+    sock = ShimUDPServerSocket(next_layer_socket, self)
+
+    return sock
+
+
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+
+    log_info = ('openconnection, destip = %s, destport = %s, localip = %s, localport = %s, timeout = %s'
+                % (destip, destport, localip, localport, timeout))
+    self._log(log_info)
+
+    try:
+      next_sockobj = self.get_next_shim_layer().openconnection(destip, destport, localip, localport, timeout)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, next_sockobj))        
+    sock = ShimSocket(next_sockobj, self)
+
+    return sock
+
+
+
+  def listenforconnection(self, localip, localport):
+
+    log_info = 'listenforconnection, localip = %s, localport = %s' % (localip, localport)
+    self._log(log_info)
+
+    try:
+      next_layer_socket = self.get_next_shim_layer().listenforconnection(localip, localport)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, next_layer_socket))        
+    sock = ShimTCPServerSocket(next_layer_socket, self)
+
+    return sock
+
+
+
+  def socket_close(self, socket):
+
+    log_info = 'socket_close, socket = %s' % socket
+    self._log(log_info)
+
+    try:
+      value = self.get_next_shim_layer().socket_close(socket)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, value))        
+    return value
+
+
+
+  def socket_send(self, socket, msg):
+
+    log_info = 'socket_send, socket = %s, msg = %s' % (socket, self._abbrev(msg))
+    self._log(log_info)
+
+    try:
+      sent = self.get_next_shim_layer().socket_send(socket, msg)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, sent))
+    return sent
+
+
+
+  def socket_recv(self, socket, bytes):
+
+    log_info = 'socket_recv, socket = %s, bytes = %s' % (socket, bytes)
+    self._log(log_info)
+
+    try:
+      data = self.get_next_shim_layer().socket_recv(socket, bytes)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, self._abbrev(data)))
+    return data
+
+
+
+  def tcpserversocket_getconnection(self, tcpserversocket):
+
+    log_info = 'tcpserversocket_getconnection, tcpserversocket = %s' % tcpserversocket
+
+    try:
+      (remote_ip, remote_port, repy_socket) = self.get_next_shim_layer().tcpserversocket_getconnection(tcpserversocket)
+    except Exception, err:
+      #self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log(log_info)
+    self._log('%s\n > return = %s' % (log_info, (remote_ip, remote_port, repy_socket)))
+    value = (remote_ip, remote_port, ShimSocket(repy_socket, self))
+
+    return value
+
+
+
+  def tcpserversocket_close(self, tcpserversocket):
+
+    log_info = 'tcpserversocket_close, tcpserversocket = %s' % tcpserversocket
+    self._log(log_info)
+
+    try:
+      value = self.get_next_shim_layer().tcpserversocket_close(tcpserversocket)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, value))    
+    return value
+
+
+
+  def udpserversocket_getmessage(self, udpserversocket):
+
+    log_info = 'udpserversocket_getmessage, udpserversocket = %s' % udpserversocket
+    self._log(log_info)
+
+    try:
+      value = self.get_next_shim_layer().udpserversocket_getmessage(udpserversocket)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, value))    
+    return value
+
+
+
+  def udpserversocket_close(self, udpserversocket):
+
+    log_info = 'udpserversocket_close, udpserversocket = %s' % udpserversocket
+    self._log(log_info)
+
+    try:
+      value = self.get_next_shim_layer().udpserversocket_close(udpserversocket)
+    except Exception, err:
+      self._log('%s\n > Exception = %s, %s\n' % (log_info, repr(err), str(err)))
+      raise err
+
+    self._log('%s\n > return = %s' % (log_info, value))    
+    return value
+
+
+
+
+
+    
+
+  def copy(self):
+    return LogShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args'])
+
+
+  
+  def get_advertisement_string(self):
+    return '(LogShim)' + self.get_next_shim_layer().get_advertisement_string()

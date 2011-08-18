@@ -29,6 +29,11 @@ import repy_constants
 # Import all the exceptions
 from exception_hierarchy import *
 
+# Fix for ticket #983. By retaining a reference to unicode, we prevent
+# os.path.abspath from failing in some versions of python when the unicode
+# builtin is overwritten.
+os.path.unicode = unicode
+
 # Store a reference to open, so that we retain access
 # after the builtin's are disabled
 safe_open = open
@@ -80,6 +85,7 @@ def listfiles():
 
   # Get the list of files from the current directory
   files = os.listdir(repy_constants.REPY_CURRENT_DIR)
+
 
 
   # Return the files

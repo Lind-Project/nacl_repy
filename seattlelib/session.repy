@@ -75,9 +75,16 @@ def session_sendhelper(socketobj,data):
 # send the message 
 def session_sendmessage(socketobj,data):
   header = str(len(data)) + '\n'
-  session_sendhelper(socketobj,header)
 
-  session_sendhelper(socketobj,data)
+  fulldata = header + data
+
+  session_sendhelper(socketobj, fulldata)
+
+  # This was used before. For some reason, it causes a "Bad Message Size"
+  # failure on most queries sent over a network with realistic latency. (>5ms)
+  # session_sendhelper(socketobj,header)
+
+  # session_sendhelper(socketobj,data)
 
 
 

@@ -7,4 +7,4 @@ if callfunc == "initialize":
   vals = advertise_lookup("some_really_super_random_value?")
 
   if not "valuehere" in vals:
-    print "This shouldn't happen!"
+    log("This shouldn't happen!\n")

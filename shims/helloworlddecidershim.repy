@@ -1,0 +1,132 @@
+"""
+<Purpose>
+  This is a Hello World Decider Shim. It is an example shim 
+  decider that can be used as an example to make decider 
+  shims. In this decider shim, the shim adds a new 
+  HelloWorldShim in its stack when it calls on a getconnection()
+  or openconnection(). That way when the socket object is used
+  to send() or recv() it has an extra layer of HelloWorldShim 
+  beneath it.
+
+<Author>
+  Monzur Muhammad
+  monzum@cs.washington.edu
+
+<Date Started>
+  April 1st, 2011
+"""
+
+
+					
+class HelloWorldDeciderShim(BaseShim):
+
+  def __init__(self, shim_stack=ShimStack(), optional_args=None):
+    """
+    <Purpose>
+      Initialize the Hello World Decider Shim. Calls on the init 
+      function of the base shim.
+    
+    <Arguments>
+      shim_stack - A shim stack that will be used as the stack
+          beneath us. By default an empty shim stack is created.
+
+      optional_args - Any optional args that this shim or any of
+          the shims below us might use.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      None
+    """
+
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+
+
+  def tcpserversocket_getconnection(self, tcpserversocket):
+    """
+    <Purpose>
+      This modifies the getconnection() method of this particular
+      shim layer. It adds in a new HelloWorldShim on its stack.
+
+    <Argumetns>
+      Same as the base shims tcpserversocket_getconnection()
+
+    <Side Effect>
+      Modifies the stack beneath it.
+
+    <Exceptions>
+      Raised if one of the lower shims raise an exception.
+
+    <Return>
+      (remote_ip, remote_port, socket_object)
+    """
+
+    # Create a new HelloWorldShim
+    new_shim = HelloWorldShim(ShimStack(), ['2'])
+
+    this_shim_copy = self.copy()
+
+    # Push the new HelloWorldShim on to the stack of the copied shim.
+    this_shim_copy.shim_context['shim_stack'].push(new_shim)
+    (remote_ip, remote_port, repy_socket) = this_shim_copy.get_next_shim_layer().tcpserversocket_getconnection(tcpserversocket)
+
+    return (remote_ip, remote_port, ShimSocket(repy_socket, this_shim_copy))
+
+
+
+
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+    """
+    <Purpose>
+      This modifies the openconnection() method of this particular
+      shim layer. It adds in a new HelloWorldShim on its stack.
+
+    <Argumetns>
+      Same as the base shims openconnection()
+
+    <Side Effect>
+      Modifies the stack beneath it.
+
+    <Exceptions>
+      Raised if one of the lower shims raise an exception.
+
+    <Return>
+      A ShimSocket object.
+    """
+    # Create a new HelloWorldShim
+    new_shim = HelloWorldShim(ShimStack(), ['2'])
+
+    this_shim_copy = self.copy()
+
+    # Push the new HelloWorldShim on to the stack of the copied shim.
+    this_shim_copy.shim_context['shim_stack'].push(new_shim)
+    next_sockobj = self.get_next_shim_layer().openconnection(destip, destport, localip, localport, timeout)
+
+    return ShimSocket(next_sockobj, this_shim_copy)
+
+
+
+
+
+  def copy(self):
+    """
+    The copy function is implemented.
+    """
+    shim_stack_copy = self.shim_context['shim_stack'].copy()
+    optional_args_copy = self.shim_context['optional_args']
+
+    my_copy = HelloWorldDeciderShim(shim_stack_copy, optional_args_copy)
+    
+    return my_copy
+
+
+
+
+  def get_advertisement_string(self):
+    """
+    The get_advertisement_string is implemented.
+    """
+    return '(HelloWorldDeciderShim)' + self.get_next_shim_layer().get_advertisement_string()

@@ -1,0 +1,233 @@
+#!python
+"""
+<Purpose>
+  The DataLimitShim, restricts how much data can be uploaded and how much data
+  can be downloaded in a given period of time. If no limit is specified, then 
+  by default this shim allows a maximum of 256MB upload and 256MB download per
+  hour.
+
+<Author>
+  Monzur Muhammad
+  monzum@cs.washington.edu
+
+<Date Started>
+  May 16th, 2011
+"""
+
+
+
+class DataLimitShim(BaseShim):
+
+  def __init__(self, shim_stack = ShimStack(), optional_args = None):
+    """
+    <Purpose>
+      Initialize the DataLimitShim.
+
+    <Arguments>
+      shim_stack - the shim stack underneath us.
+
+      optional_args - The optional args (if provided) will determine
+        the upload and download rate as well as the time for the rate.
+
+    <Side Effects> 
+      None
+
+    <Exceptions>
+      None
+
+    <Return>
+      None
+    """
+
+    self.data_limit_context = {'data_uploaded' : 0,
+                               'data_downloaded' : 0,
+                               'upload_limit' : 1024 * 1024 * 256, # 128MB
+                               'download_limit' : 1024 * 1024 * 256, # 128MB
+                               'time_limit' : 3600, # 1 hour
+                               'data_transfer_start_up' : 0, # Keeps track of when the first data was uploaded
+                               'data_transfer_start_down' : 0 # Keeps track of when the first data was downloaded.
+                               }
+
+    # We need to use locks to avoid contention.
+    self.send_lock = createlock()
+    self.recv_lock = createlock()
+
+
+    if optional_args:
+      # Make sure that all three optional args are provided, if any are provided, and it
+      # follows the pattern of upload limit, download limit, and time limit.
+      assert(isinstance(optional_args, list))
+      assert(len(optional_args) == 3), "Bad optional args. Optional args must contain 3 values (upload/download/per_time)"
+
+      try:
+        self.data_limit_context['upload_limit'] = int(optional_args[0])
+      except ValueError:
+        raise ShimInternalError("Upload limit provided is not of type int")
+
+      try:
+        self.data_limit_context['download_limit'] = int(optional_args[1])
+      except ValueError:
+        raise ShimInternalError("Download limit provided is not of type int")
+
+      try:
+        self.data_limit_context['time_limit'] = int(optional_args[2])
+      except ValueError:
+        raise ShimInternalError("Time limit provided is not of type int")
+      
+
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+
+
+  def socket_send(self, socket, msg):
+    """
+    <Purpose>
+      Checks to see how much data we can currently send. Then sends
+      the appropriate amount.
+
+    <Arguments>
+      socket - the socket that can be used to send the msg.
+      msg - the message to send across.
+
+    <Side Effects>
+      The amount of data that is send may be restricted.
+
+    <Exceptions>
+      RepyV2 api exceptions for socket.send()
+
+    <Return>
+      An int of how much data we sent.
+    """      
+    if not self.send_lock.acquire(False):
+      raise SocketWouldBlockError
+
+    # Keeps track of the total amount of data sent.
+    data_sent = 0
+
+    try:
+      cur_time = getruntime()
+
+      # Check to see if the time limit has passed. If it has, then we start a fresh start time.
+      # We also clear the total data uploaded value.
+      if (cur_time - self.data_limit_context['data_transfer_start_up']) > self.data_limit_context['time_limit']:
+        self.data_limit_context['data_uploaded'] = 0
+
+      # If we haven't exceeded our limit yet.
+      if self.data_limit_context['data_uploaded'] < self.data_limit_context['upload_limit']:
+        data_length_to_send = self.data_limit_context['upload_limit'] - self.data_limit_context['data_uploaded']
+
+        # Resize the msg to the appropriate length.
+        msg = msg[ : data_length_to_send]
+       
+        # If this is the first message we are uploading in the new time slot, then 
+        # reset the upload start time.
+        if self.data_limit_context['data_uploaded'] == 0: 
+          self.data_limit_context['data_transfer_start_up'] = cur_time
+
+        # Send the message.
+        data_sent = self.get_next_shim_layer().socket_send(socket, msg)
+        
+        self.data_limit_context['data_uploaded'] += data_sent
+        
+        
+      # If we have alerady exceeded the upload limit, then we just raise a 
+      # SocketWouldBlockError.
+      else:
+        raise SocketWouldBlockError("Reached maximum data upload limit")
+    finally:
+      self.send_lock.release()
+        
+    return data_sent
+
+
+
+
+  def socket_recv(self, socket, bytes):
+    """
+    <Purpose>
+      Checks to see how much data we can currently recv. Then recv
+      the appropriate amount.
+
+    <Arguments>
+      socket - the socket that can be used to send the msg.
+      bytes - the amount of bytes to receive
+
+    <Side Effects>
+      The amount of data that is received may be less then requested.
+
+    <Exceptions>
+      RepyV2 api exceptions for socket.recv()
+
+    <Return>
+      A message of length bytes or less.
+    """
+
+    if not self.recv_lock.acquire(False):
+      raise SocketWouldBlockError
+
+    msg_received = ''
+
+    try:
+      cur_time = getruntime()
+ 
+      # Check to see if the time limit has passed. If it has, then we start a fresh start time.
+      # We also clear the total data downloaded value.
+      if (cur_time - self.data_limit_context['data_transfer_start_down']) > self.data_limit_context['time_limit']:
+        self.data_limit_context['data_downloaded'] = 0
+
+      # If we haven't exceeded our limit yet.
+      if self.data_limit_context['data_downloaded'] < self.data_limit_context['download_limit']:
+        download_max_limit = self.data_limit_context['download_limit'] - self.data_limit_context['data_downloaded']
+        
+        sys.stdout.flush()
+        # Set the download bytes appropriately.
+        if download_max_limit < bytes:
+          bytes = download_max_limit
+
+        # If this is the first message we are downloading in the new time slot, then 
+        # reset the download start time.
+        if self.data_limit_context['data_downloaded'] == 0:
+          self.data_limit_context['data_transfer_start_down'] = cur_time
+
+        # Receive the message.
+        msg_received = self.get_next_shim_layer().socket_recv(socket, bytes)
+        
+        self.data_limit_context['data_downloaded'] += len(msg_received)
+
+      # If we have alerady exceeded the download limit, then we just raise a
+      # SocketWouldBlockError.
+      else:
+        raise SocketWouldBlockError("Reached maximum data download limit")
+    finally:
+      self.recv_lock.release()
+
+    if len(msg_received) == 0:
+      raise ShimInternalError("Socket_recv() in DataLimitShim has msg length of 0. This should not have happened!")
+
+
+    return msg_received
+    
+
+    
+    
+
+  def copy(self):
+    """
+    Make a copy of self.
+    """
+
+    shim_stack_copy = self.shim_context['shim_stack'].copy()
+    optional_args_copy = self.shim_context['optional_args']
+
+    my_copy = DataLimitShim(shim_stack_copy, optional_args_copy)
+    return my_copy
+
+
+
+
+  def get_advertisement_string(self):
+    """
+    The DataLimitShim is an one sided shim, which means it
+    doesn't need to advertise itself.
+    """
+    return self.get_next_shim_layer().get_advertisement_string()

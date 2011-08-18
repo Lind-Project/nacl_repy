@@ -1,0 +1,190 @@
+"""
+<Program Name>
+  simple_net_transfer.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+
+<Date Started>
+  May 5, 2011
+
+<Purpose>
+  Client sends numbers 0, 1, 2, ..., N to server. Server checks if the numbers
+  received are continuous and reports the last number received. If the shims are
+  implemented correctly, the server should get continuous numbers and report N
+  in the end.
+
+"""
+
+USAGE = """
+  To start the server, run: "simple_net_transfer.repy server 12345", where 12345 is
+  the port on which the server listens.
+
+  To start the client, run: "simple_net_transfer.repy client 123.4.5.6 12345 N",
+  where 123.4.5.6 is the server's IP, 12345 is the port number, and N is the
+  largest number in the sequence to send.
+
+  """
+
+dy_import_module_symbols('shimstackinterface')
+
+
+# The shim stack strings of the server and the client.
+SERVER_SHIM_STACK_STR = '(CoordinationShim)(StatShim)(MultiPathShim,(StatShim)(CompressionShim))(StatShim)'
+CLIENT_SHIM_STACK_STR = '(CoordinationShim)'
+
+# Buffer size.
+RECV_BLOCK_SIZE = 2**14
+SEND_BLOCK_SIZE = 2**14
+
+
+# How long do we sleep when the socket blocks
+BLOCKING_SLEEP_TIME = 0.010
+
+
+
+
+def client():
+  """
+  Sends numbers 0, 1, 2, ..., N to the server.
+
+  """
+  # Parse command line
+  try:
+    dest_host = callargs[1]
+    dest_port = int(callargs[2])
+    N = int(callargs[3])
+  except (IndexError, ValueError):
+    log(USAGE)
+    exitall()
+
+  log('Preparing the sequence of numbers...\n')
+  # Prepares the send buffer.
+  send_buffer = ''
+  for number in range(N+1):
+    send_buffer += str(number) + ','
+
+  log('Connecting...\n')
+
+  # Establish connection to server.
+  shim = ShimStackInterface(CLIENT_SHIM_STACK_STR)
+  sock = shim.openconnection(dest_host, dest_port, getmyip(), 61328, 15)
+
+  log('To send', len(send_buffer), 'bytes.\n')
+
+  # Send everything in the buffer.
+  while send_buffer:
+    sent = block_call(sock.send, send_buffer[0:SEND_BLOCK_SIZE])
+    send_buffer = send_buffer[sent:]
+    log(len(send_buffer), 'bytes left.\n')
+
+  sock.close()
+
+
+
+
+
+
+def server():
+  """
+  Receives a sequence of integers. Aborts if they are not continuous. Returns
+  the last integer received.
+
+  """
+  # Parse command line
+  try:
+    listen_port = int(callargs[1])
+  except (IndexError, ValueError):
+    log(USAGE)
+    exitall()
+
+  # Accept client.
+  shim = ShimStackInterface(SERVER_SHIM_STACK_STR, 'pandas.zenodotus.cs.washington.edu')
+  handle = shim.listenforconnection(shim.getmyip(), listen_port)
+  log('Listening...\n')
+
+  while True:
+    _, _, sock = block_call(handle.getconnection)
+    handle_client_thread(sock)
+
+
+
+
+def handle_client_thread(sock):
+
+  def handle_client():
+
+    recv_buffer = ''
+    last_number = -1
+
+    # Save the received stream into a buffer and parse individual numbers.
+    while True:
+
+      try:
+        recv_buffer += block_call(sock.recv, RECV_BLOCK_SIZE)
+        #log('STATS:', sock._socket.get_stats(), '\n')
+      except SocketClosedRemote,err:
+        log('Socket closed:', repr(err), err, '\n')
+        exitall()
+
+      # Parse individual numbers from the buffer and check if they're continuous.
+      while recv_buffer:
+
+        # Extract the first number from the left of the buffer.
+        comma_pos = recv_buffer.find(',')
+
+        # Got a number. Check for continuity.
+        if comma_pos > 0:
+          number_str = recv_buffer[0 : comma_pos]
+          try:
+            number = int(number_str)
+          except ValueError:
+            log('ERROR: Bad number:', number_str, 'from recv_buffer', recv_buffer, '\n')
+          if number == last_number + 1:
+            last_number = number
+            recv_buffer = recv_buffer[comma_pos + 1 : ]
+          else:
+            log('ERROR: Got number', number, 'but the previous number is', last_number, '\n')
+            sock.close()
+            exitall()
+
+        # No numbers found; probably it's incomplete.
+        else:
+          break
+
+      log('Last number so far:', last_number, '\n')
+
+    log('Server done.\n')
+    exitall()
+
+  createthread(handle_client)
+          
+
+
+def block_call(func, *p, **q):
+  """
+  Blocks the execution of the function until it exits without raising the
+  SocketWouldBlockError. Returns the result of the function.
+
+  """
+  while True:
+    try:
+      return func(*p, **q)
+    except SocketWouldBlockError:
+      sleep(BLOCKING_SLEEP_TIME)
+
+
+
+
+
+if callfunc == 'initialize':
+  try:
+    if callargs[0] == 'server': 
+      server()
+    elif callargs[0] == 'client':
+      client()
+
+  except (IndexError, ValueError):
+    log(USAGE)
+    exitall()
+      

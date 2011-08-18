@@ -67,7 +67,7 @@ nmclient_handledict = {}
 
 # BUG: How do I do this and have it be portable across repy <-> python?
 # needed when assigning new handles to prevent race conditions...
-nmclient_handledictlock = getlock()
+nmclient_handledictlock = createlock()
 
 
 
@@ -209,7 +209,7 @@ def nmclient_signedcommunicate(nmhandle, *args):
 def nmclient_safelygethandle():
   # I lock to prevent a race when adding handles to the dictionary.   I don't
   # need a lock when removing because a race is benign (it prevents reuse)
-  nmclient_handledictlock.acquire()
+  nmclient_handledictlock.acquire(True)
   try:
     potentialhandle = randomfloat()
     while potentialhandle in nmclient_handledict:

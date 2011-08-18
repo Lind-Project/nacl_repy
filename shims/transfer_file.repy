@@ -1,0 +1,310 @@
+"""
+<Program Name>
+  t_file.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+
+<Date Started>
+  April 16, 2011
+
+<Purpose>
+  A simple file-transfer program that consists of the server and client, all in
+  one module. The server listens and receives the file. The client makes the
+  connection and sends the file.
+
+  To send a file, the client first calculates the 16-byte checksum of the file,
+  sends the checksum and finally the contents of the file. TODO It may take
+  a long time to calculate the checksum.
+
+  The server receives the checksum and the file until the socket is closed
+  remotely. Then it verifies the received content against the checksum.
+
+  This simple program tests for correctness of shims (by using MD5 checksums)
+  and the efficiency (e.g. one can insert a StatShim to collect various
+  statistics.).
+
+"""
+
+USAGE = """
+  To start the server, run: "transfer_file.repy server 12345", where 12345 is
+  the port on which the server listens.
+
+  To send a file, run: "transfer_file.repy client 123.4.5.6 12345 file.txt",
+  where 123.4.5.6 is the server's IP, 12345 is the port number and file.txt is
+  the file the client sends."""
+
+
+
+dy_import_module_symbols('shimstackinterface')
+dy_import_module_symbols('md5py')
+dy_import_module_symbols('random')
+
+
+
+# Server and client shim stacks.
+#SERVER_SHIM_STACK_STR = '(CoordinationShim)(StatShim)(MultiPathShim,(CompressionShim,8192),(CompressionShim,512),(NoopShim))'
+#SERVER_SHIM_STACK_STR = '(CoordinationShim)(MultiPathShim,(AsciiShiftingShim)(AsciiShiftingShim),(AsciiShiftingShim),(NoopShim))'
+#SERVER_SHIM_STACK_STR = '(CoordinationShim)(LogShim)(MobilityShim)(LogShim)'
+SERVER_SHIM_STACK_STR = '(CoordinationShim)(StatShim)(MultiPathShim,(StatShim)(CompressionShim,8192),(StatShim)(CompressionShim,512),(StatShim)(NoopShim))'
+CLIENT_SHIM_STACK_STR = '(CoordinationShim)'
+
+# Buffer size.
+RECV_BLOCK_SIZE = 2**15
+SEND_BLOCK_SIZE = 2**15
+
+# How long do we sleep when the socket blocks
+BLOCKING_SLEEP_TIME = 0.001
+
+# Whether to check md5.
+CHECK_MD5 = False
+
+
+
+class BadCheckSum(Exception):
+  pass
+
+
+
+class HandleClient:
+  """
+  A server-side thread that handles individual client connections.
+
+  """
+  def __init__(self, client_ip, client_port, sock):
+
+    self._client_ip = client_ip
+    self._client_port = client_port
+    self._sock = sock
+
+    log('Got client ', client_ip, ':', client_port, '.\n.')
+
+
+
+  def _handle_client(self):
+    """ 
+    Read the first 16 bytes of MD5 checksum, and read the contents of the file
+    until the socket is closed.
+
+    """
+    # Get the 16 bytes of checksum.
+    recv_checksum = ''
+    while len(recv_checksum) < 16:
+      recv_checksum += block_call(self._sock.recv, 16 - len(recv_checksum))
+
+    log('Got checksum.\n')
+
+    hashobj = md5py_MD5()
+
+    # Get the rest of the file block by block to avoid running over the
+    # memory. Update the checksum object incrementally.
+    length = 0
+    while True:
+      try:
+        data = block_call(self._sock.recv, RECV_BLOCK_SIZE)
+      except SocketClosedRemote:
+        break
+      hashobj.update(data)
+      length += len(data)
+      log('Got bytes', length, '\n')
+
+    # Compare checksum. 
+    if CHECK_MD5 and recv_checksum != hashobj.digest():
+      raise BadCheckSum('Bad checksum for received string of length ' + str(length))
+    else:
+      log('Received %s bytes from %s:%s.\n' % (str(length), self._client_ip, self._client_port))
+
+
+
+  def _handle_client_wrapper(self):
+    """ 
+    Wrapper to _handle_client to deal with unexpected exceptions.
+
+    """
+
+    self._handle_client()
+
+    # except Exception, err:
+    #   info = 'Exceptions in %s:%s %s: ' % (self._client_ip, self._client_port, self._sock)
+    #   info += repr(err) + ',' + str(err) + '\n'
+    #   log(info)
+
+
+
+  def start(self):
+    """ Start the thread. """
+    createthread(self._handle_client_wrapper)
+
+
+
+
+def server_mode(server_port):
+  """
+  Starts the main listening loop.
+  
+  """
+  shim = ShimStackInterface(SERVER_SHIM_STACK_STR, 'pandas.zenodotus.cs.washington.edu')
+  server_ip = shim.getmyip()
+
+  log('Listening on', server_ip, ':', server_port, '...\n')
+  tcpsock = shim.listenforconnection(server_ip, server_port)
+
+  # Accept connections in new threads, until the user presses Control + C.
+  while True:
+    
+    log('Waiting for connections using', str(tcpsock), '\n')
+
+    try:
+      (rip, rport, sock) = block_call(tcpsock.getconnection)
+    except KeyboardInterrupt:
+      break
+
+    client = HandleClient(rip, rport, sock)
+    client.start()
+
+  tcpsock.close()
+  log('Server exits.\n')
+
+
+
+
+def client_mode(server_ip, server_port, filename):
+  """
+  Calculates checksum of file and sends it to the server.
+
+  """
+  fileobj = openfile(filename, False)
+
+  # Read file incrementally to calcuate checksum first
+  hashobj = md5py_MD5()
+  offset = 0
+
+  if CHECK_MD5:
+
+    log('Computing md5.\n')
+
+    while True:
+      data = fileobj.readat(128, offset)
+      if data:
+        hashobj.update(data)
+        offset += len(data)
+      else:
+        break
+
+    checksum = hashobj.digest()
+
+  # Do not compute checksum. Send a dummy value of 16 bytes.
+  else:
+    checksum = '0' * 16 
+
+  log('Connecting to server.\n')
+
+  # Connect to server using a random local port.
+  shim = ShimStackInterface(CLIENT_SHIM_STACK_STR)
+  sock = shim.openconnection(server_ip, server_port, shim.getmyip(), int(random_randint(10000, 65535)), 30)
+
+  log('Sending checksum.\n')
+  while checksum:
+    sent = block_call(sock.send, checksum)
+    checksum = checksum[sent:]
+
+  # Start from the beginning of the file and start sending the file
+  # incrementally.
+  offset = 0
+  send_buffer = ''
+  reached_EOF = False
+
+  while True:
+
+    # Read file contents into a temporary send buffer.
+    if not reached_EOF:
+      data = fileobj.readat(SEND_BLOCK_SIZE, offset)
+      if data:
+        offset += len(data)
+        send_buffer += data
+      else:
+        reached_EOF = True
+        fileobj.close()
+
+    # Terminate when there's nothing left to send.
+    if len(send_buffer) == 0:
+      break
+
+    # Try to send SEND_BLOCK_SIZE bytes of data from the send buffer.
+    sent = block_call(sock.send, send_buffer[0 : SEND_BLOCK_SIZE])
+    send_buffer = send_buffer[sent:]
+    log('Sent', sent, 'bytes.\n')
+
+  sock.close()
+
+
+
+
+
+def block_call(func, *p, **q):
+  """
+  Blocks the execution of the function until it exits without raising the
+  SocketWouldBlockError. Returns the result of the function.
+
+  """
+  while True:
+    try:
+      return func(*p, **q)
+    except SocketWouldBlockError:
+      sleep(BLOCKING_SLEEP_TIME)
+
+
+
+
+
+class WrongCommandLineArguments(Exception):
+  """ 
+  Raised when this module is passed the incorrect command line arguments.
+
+  """
+  pass
+
+
+
+def main():
+  """
+  Parses command line arguments and starts the appropriate mode.
+
+  """
+  try:
+    service_mode = callargs[0]
+  except IndexError:
+    raise WrongCommandLineArguments('Invalid service.')
+
+  if service_mode == 'server':
+    try:
+      server_port = int(callargs[1])
+    except (ValueError, IndexError):
+      raise WrongCommandLineArguments('Invalid server port.')
+    else:
+      server_mode(server_port)
+
+  elif service_mode == 'client':
+    try:
+      server_ip = callargs[1]
+      server_port = int(callargs[2])
+      filename = callargs[3]
+    except (ValueError, IndexError):
+      raise WrongCommandLineArguments('Invalid server IP, port or file name.')
+    else:
+      client_mode(server_ip, server_port, filename)
+
+  else:
+    raise WrongCommandLineArguments('Invalid mode.')
+
+
+
+
+
+if callfunc == 'initialize':
+  try:
+    main()
+  except WrongCommandLineArguments, err:
+    log('Wrong command-line arguments: ' + str(err))
+    log(USAGE)
+

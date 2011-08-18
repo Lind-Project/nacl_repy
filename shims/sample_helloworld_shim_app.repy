@@ -1,0 +1,68 @@
+"""
+<Purpose>
+  Simple TCP server/client, where server waits for a connection,
+  client makes a connection, server sends a message back to client
+  that made the connection, client receives the message and closes
+  the connection.
+
+<Author>
+  Monzur Muhammad
+  monzum@cs.washington.edu
+
+<Started>
+  March 30th, 2011
+"""
+
+dy_import_module_symbols("shimstackinterface")
+
+
+
+def main():
+  createthread(exit_thread)
+  createthread(server_thread)
+
+  shim_object = ShimStackInterface("(CoordinationShim)", "my_local_ip")
+  # Sleep a while as it takes time for the server to advertise its shim stack.
+  sleep(8)
+  sockobj = shim_object.openconnection(getmyip(), 12345, getmyip(), 12346, 10)
+
+  while True:
+    try:
+      msg = sockobj.recv(1024)
+    except SocketWouldBlockError:
+      sleep(0.5)
+    else:
+      log("\nClient: Received message '%s'" % msg)
+      sockobj.close()
+      break
+  
+
+
+def server_thread():
+  
+  msg="Server says Hello!"
+
+  shim_object = ShimStackInterface("(CoordinationShim)(HelloWorldShim,3)(HelloWorldDeciderShim)(HelloWorldShim,1)", "my_local_ip")
+  tcp_server_sock = shim_object.listenforconnection(getmyip(), 12345)
+
+  while True:
+    try:
+      (remoteip, remoteport, sockobj) = tcp_server_sock.getconnection()
+    except SocketWouldBlockError:
+      sleep(0.1)
+    else:
+      log("\nServer: Received conn from (%s, %s)" % (remoteip, str(remoteport)))
+      log("\nServer: Sending message '%s'" % msg)
+      sockobj.send(msg)
+
+
+
+
+def exit_thread():
+  sleep(10)
+  exitall()
+
+      
+
+if callfunc == 'initialize':
+  main()

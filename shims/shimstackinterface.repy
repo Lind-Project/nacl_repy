@@ -1,0 +1,73 @@
+"""
+<Program Name>
+  ShimStackInterface.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+  Monzur Muhammad, monzum@cs.washington.edu
+
+<Date Started>
+  June 2010, refactored in Feb 2011.
+
+<Purpose> 
+  Main entry point for all applications that use shim. Provides a wrapper for
+  the shim stack object for easy instantiation. Also catches any exceptions that
+  are not consistant with the API semantics. Provides logging capabilities.
+
+"""
+
+dy_import_module_symbols("shim_stack")
+
+
+
+class ShimStackInterface:
+
+
+  def __init__(self, stack_str="", localhost=""):
+
+    # If no shims are supplied, we need to plug in the NoopShim.
+    if stack_str == "":
+      stack_str = "(NoopShim)"
+
+    if localhost == '':
+      localhost = getmyip()
+
+    # Set the instance variables
+    self._stack_str = stack_str
+    self._localhost = localhost
+
+    self._shim_stack = ShimStack(self._stack_str, self._localhost)
+
+    
+    
+
+  def getmyip(self):
+    """
+    Return the hostname that is associated with the localmachine. It could be
+    some random key or server name, that was defined at initialization.
+    """
+    return self._localhost
+
+
+
+  # ...........................................................................
+  # Public methods that interface with the application. 
+  # ...........................................................................
+
+  def sendmessage(self, destip, destport, message, localip, localport):
+    return self._shim_stack.peek().sendmessage(destip, destport, message, localip, localport)
+
+
+
+  def openconnection(self, destip, destport, localip, localport, timeout):
+    return self._shim_stack.peek().openconnection(destip, destport, localip, localport, timeout)
+
+
+
+  def listenformessage(self, localip, localport):
+    return self._shim_stack.peek().listenformessage(localip, localport)
+
+
+
+  def listenforconnection(self, localip, localport):
+    return self._shim_stack.peek().listenforconnection(localip, localport)

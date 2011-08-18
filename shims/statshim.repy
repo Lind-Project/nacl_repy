@@ -1,0 +1,114 @@
+"""
+<Program Name>
+  statshim.repy
+
+<Author>
+  Danny Y. Huang, yh1@cs.williams.edu
+
+<Date Started>
+  April 18, 2011
+
+<Purpose>
+  A shim logs how much TCP data is sent/received and time in the space-separated
+  form: epoch time in seconds, bytes sent, and bytes received.
+
+"""
+
+# We need to obtain the absolute time to extract the relevant statistics.
+import time
+
+class StatShim(BaseShim):
+
+
+  # File to save the statistics.
+  _STAT_FILE = 'stat.log'
+
+  # Prevents concurrent modification of log file and the stat dictionary.
+  _lock = createlock()
+
+  # Saves global statistics, as well as how many bytes have been written to
+  # file. Keyed by the string representation of the stack below me. Value is in
+  # the form: {'sent': 0, 'received': 0}. Following shows a special key-value
+  # pair.
+  _stat_dict = {'bytes_written' : 0}
+
+
+  def _write_stat_to_log(self):
+    """
+    Writes the current sent/recv info to file. Not thread safe.
+
+    """
+    log_info = ''
+    
+    # Collect statistics for each shim stack.
+    for shim_stack_str in self._stat_dict.keys():
+
+      if shim_stack_str == 'bytes_written': 
+        continue
+
+      stat_dict = self._stat_dict[shim_stack_str]
+
+      # Record time to two decimal places.
+      log_info += '%.2f ' % time.time()
+
+      # Record how many bytes have been sent and received so far.
+      log_info += '%d %d %s\n' % (stat_dict['sent'], stat_dict['received'], shim_stack_str)
+
+    # Write the info to file
+    fileobj = openfile(self._STAT_FILE, True)
+    fileobj.writeat(log_info, self._stat_dict['bytes_written'])
+    fileobj.close()
+
+    self._stat_dict['bytes_written'] += len(log_info)
+
+
+
+
+  def socket_send(self, socket, data):
+
+    sent = self.get_next_shim_layer().socket_send(socket, data)
+
+    shim_stack_str = self.get_next_shim_layer().get_advertisement_string()
+    if shim_stack_str not in self._stat_dict.keys():
+      self._stat_dict[shim_stack_str] = {'sent': 0, 'received': 0}
+    stat_dict = self._stat_dict[shim_stack_str]
+      
+    try:
+      self._lock.acquire(True)
+      stat_dict['sent'] += sent
+      self._write_stat_to_log()
+    finally:
+      self._lock.release()
+
+    return sent
+
+
+
+
+  def socket_recv(self, socket, bytes):
+
+    data = self.get_next_shim_layer().socket_recv(socket, bytes)
+
+    shim_stack_str = self.get_next_shim_layer().get_advertisement_string()
+    if shim_stack_str not in self._stat_dict.keys():
+      self._stat_dict[shim_stack_str] = {'sent': 0, 'received': 0}
+    stat_dict = self._stat_dict[shim_stack_str]
+      
+    try:
+      self._lock.acquire(True)
+      stat_dict['received'] += len(data)
+      self._write_stat_to_log()
+    finally:
+      self._lock.release()
+
+    return data
+
+
+
+  def copy(self):
+    return StatShim(self.shim_context['shim_stack'].copy(), self.shim_context['optional_args'])
+
+
+  
+  def get_advertisement_string(self):
+    return '(StatShim)' + self.get_next_shim_layer().get_advertisement_string()

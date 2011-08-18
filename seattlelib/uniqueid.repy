@@ -16,7 +16,7 @@ same ID.
 
 # This is a list to prevent using part of the user's mycontext dict
 uniqueid_idlist = [0]
-uniqueid_idlock = getlock()
+uniqueid_idlock = createlock()
 
 def uniqueid_getid():
   """
@@ -36,7 +36,7 @@ def uniqueid_getid():
       The ID (an integer)
   """
 
-  uniqueid_idlock.acquire()
+  uniqueid_idlock.acquire(True)
 
   # I'm using a list because I need a global, but don't want to use the 
   # programmer's dict

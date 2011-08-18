@@ -1,0 +1,110 @@
+"""
+<Purpose>
+  This is a Hello World Shim. It is an example shim 
+  that can be used as an example on creating shims.
+  This shim just modifies the socket.send() and
+  socket.recv() methods. 
+
+<Author>
+  Monzur Muhammad
+  monzum@cs.washington.edu
+
+<Date Started>
+  March 30th, 2011
+"""
+
+# Import base shim.
+
+					
+class HelloWorldShim(BaseShim):
+
+  def __init__(self, shim_stack=ShimStack(), optional_args=None):
+    """
+    <Purpose>
+      Initialize the Hello World Shim. Calls on the init 
+      function of the base shim.
+    
+    <Arguments>
+      shim_stack - A shim stack that will be used as the stack
+          beneath us. By default an empty shim stack is created.
+
+      optional_args - Any optional args that this shim or any of
+          the shims below us might use.
+
+    <Side Effects>
+      None
+
+    <Exceptions>
+      None
+    """
+    self.recv_buffer = ""
+
+    if optional_args:
+      self.private_num = optional_args[0]
+    else:
+      self.private_num = None
+
+    BaseShim.__init__(self, shim_stack, optional_args)
+
+
+
+
+
+  def socket_send(self, socket, msg):
+    """
+    <Purpose>
+      Adds in a little hello world send to the message that
+      we send in this layer.
+    """
+    
+    if self.private_num:
+      msg = "HelloWorldSendTAG:::%s@" % self.private_num + msg 
+    else:
+      msg = "HelloWorldSendTAG@" + msg
+    next_layer = self.get_next_shim_layer()
+
+    return next_layer.socket_send(socket, msg)
+
+
+
+  def socket_recv(self, socket, bytes):
+    """
+    Calls the next layer of socket.recv()
+    """
+    # Increase the length by the expected added message
+    bytes = bytes + len("HelloWorldSendTAG@")
+
+    if len(self.recv_buffer) < bytes:
+      self.recv_buffer += self.get_next_shim_layer().socket_recv(socket, bytes)
+
+
+    # The receive also tags on a little message.
+    if self.private_num:
+      return_msg = "HelloWorldRecvTAG:::%s@" % self.private_num + self.recv_buffer[:bytes]
+    else:
+      return_msg = "HelloWorldRecvTAG@" + self.recv_buffer[:bytes]
+
+    self.recv_buffer = self.recv_buffer[bytes:]
+
+    return return_msg
+    
+
+  def copy(self):
+    """
+    Make a deepcopy of self.
+    """
+    shim_stack_copy = self.shim_context['shim_stack'].copy()
+    optional_args_copy = self.shim_context['optional_args']
+
+    my_copy = HelloWorldShim(shim_stack_copy, optional_args_copy)
+    return my_copy
+
+
+
+  def get_advertisement_string(self):
+    """ Advertises the shim's name and its private number, if any., so that the HelloWorldShim on the client gets the same information. """
+    if self.private_num:
+      shim_name = '(HelloWorldShim,' + str(self.private_num) + ')'
+    else:
+      shim_name = '(HelloWorldShim)'
+    return shim_name + self.get_next_shim_layer().get_advertisement_string()
