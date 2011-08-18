@@ -44,7 +44,7 @@ safe_open = open
 MAX_FILENAME_LENGTH = 120
 
 # This is the set of characters which are allowed in a file name
-ALLOWED_FILENAME_CHAR_SET = set('abcdefghijklmnopqrstuvwxyz0123456789._-')
+ALLOWED_FILENAME_CHAR_SET = set('abcdefghijklmnopqrstuvwxyz0123456789._-+')
 
 # This is the set of filenames which are forbidden.
 ILLEGAL_FILENAMES = set(["", ".", ".."])
