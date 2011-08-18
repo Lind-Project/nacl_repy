@@ -5,7 +5,7 @@ Chris Matthews
 2011
 
 """
-
+import exceptions
 import repy_constants
 import lind_launcher
 
@@ -36,13 +36,15 @@ class NaClRuntime:
     """  
     return self._proc.poll() == None
 
-  def send(self, message):
+  def send(self, message, desc):
     """Send a message string to the Native Client instance.
 
     TODO: test this... 
     """
-    
-    self._send.imc_sendmsg(message)
+    try:
+      return self._send.imc_sendmsg(message,tuple(desc))
+    except exceptions.Exception:
+      return 0
   
   def recv(self, size):
     """

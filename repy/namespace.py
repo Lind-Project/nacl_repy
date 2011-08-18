@@ -781,8 +781,8 @@ BINARY_OBJECT_WRAPPER_INFO = {
 
   'send' :
       {'func' : 'send',
-       'args' : [Str()],
-       'return' : None},
+       'args' : [Str(),Str()],
+       'return' : Int()},
   
   'recv' :
       {'func' : 'recv',
