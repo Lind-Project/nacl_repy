@@ -14,6 +14,48 @@ include struct.repy
 SYSCALL="syscall"
 FILES="FILES"
 
+class Response:
+  message = "No error message set"
+  data = ""
+
+  def __init__(self, response_type,  is_error, return_code):
+    assert isinstance(response_type, str), "response type is not a string"
+    self.response_type = response_type
+    assert isinstance(is_error, bool), "is error is not a boolean"
+    self.is_error = is_error
+    
+    if isinstance(return_code, str):
+      self.return_code =  mycontext["errno.h"][return_code]
+    else:
+      self.return_code = return_code
+    assert isinstance(self.return_code, int), "return code is not a int, or a stirng which mapped to an int"
+  def make_struct(self):
+    reply = None
+    if self.is_error:
+      reply = struct_pack("<i<i" + str(len(self.message))+"s", 1, self.return_code, self.message)
+    else:
+      reply = struct_pack("<i<i" + str(len(self.data)) + "s", 0, self.return_code, self.data)
+    return reply
+
+  def __str__(self):
+    if self.is_error:
+      type_str = "Error"
+    else:
+      type_str = "Success"
+    return type_str + " in " + self.response_type + " with code " + str(self.return_code)
+
+def ErrorResponseBuilder(who ,code, message):
+  r = Response(who, True, code)
+  r.message = message
+  return r
+
+def SuccessResponseBuilder(who, code, data=None):
+  r =  Response(who, False, code)
+  if data!=None:
+    r.data = data
+  return r
+
+
 def lind_fs_access(args):
   """
   NAME
@@ -77,18 +119,10 @@ def lind_fs_access(args):
 
        ETXTBSY
               Write access was requested to an executable which is being executed.
-
-
   """
   log("Calling Access")
   #TODO(cmatthew): implement basic checking
   return -3
-
-def return_error(name):
-  return -1*(mycontext["errno.h"][name])
-
-
-
 
 
 def lind_fs_open(args):
@@ -107,13 +141,14 @@ def lind_fs_open(args):
     f = openfile(file_name, False)
     mycontext[FILES].append((file_name,f))
   except FileNotFoundError,e:
-    log("Could not find file: " + file_name +"\n" +str(e) )
-    return return_error("ENOENT")
-  return mycontext[FILES].index((file_name, f))
-
+    message = "Could not find file: " + file_name +"\n" +str(e) 
+    log( message )
+    return ErrorResponseBuilder("fs_open", "ENOENT", message )
+  file_handle = mycontext[FILES].index((file_name, f))
+  return SuccessResponseBuilder("fs_open", file_handle)
 
 def lind_err_enosys(args):
-  return return_error("ENOSYS")
+  return  ErrorResponseBuilder("ENOSYS", "This system call is not implemented yet or disabled in Lind.")
 
 
 def lind_sys_getpid(args):
@@ -122,20 +157,24 @@ def lind_sys_getpid(args):
   # maybe this could be a lind specific counter in the future?
   # what is the impact of doing this?
   DEFAULT_PID = 1000
-  return DEFAULT_PID
+  return SuccessResponseBuilder("sys_getpid", DEFAULT_PID)
 
 
 def lind_debug_trace(args):
   print "[info][Trace] " + str(args[0])
-  return 0
+  return SuccessResponseBuilder("debug_trace", 0)
 
 
 def dispatch_syscall(call, args):
   try:
-    return mycontext[SYSCALL][call](args)
+    syscall_response = mycontext[SYSCALL][call](args)
   except KeyError,e:
     log("[ERROR][dispatch] Failed to look up " + str(call) + str(e) + "\n")
-    return return_error("ENOSYS")
+    syscall_response =  ErrorResponseBuilder("ENOSYS", "The system call is not in the system call table. Call="+str(call))
+  
+  assert isinstance(syscall_response, Response)
+  
+  return syscall_response
 
 
 def NaclRPCServer(nacl_instance):
@@ -175,12 +214,12 @@ def NaclRPCServer(nacl_instance):
       # print "message format: ", message_format
       args = struct_unpack(message_format, args_string[:-1])
 
-    return_code = dispatch_syscall(call, args)
-    if return_code == None:
-      return_code = (2)
-    else:
-      return_code = (return_code)
-    retcode_buffer = struct_pack("<i<i", return_code, 99)
+    response = dispatch_syscall(call, args)
+    if response == None:
+      raise Exception()
+    print response
+    retcode_buffer = response.make_struct()
+    print retcode_buffer
     try:
       got = nacl_instance.send(retcode_buffer,"")
     except:
@@ -279,7 +318,7 @@ def main():
 
 
 def setup_testing():
-""" Setup things for the test enviroment.  Remove from prouction version! """
+  """ Setup things for the test enviroment.  Remove from prouction version! """
   #check_file_io looks for foo.txt and reads it, so we must create it here.
   f = openfile("foo.txt", True)
   f.writeat("Hello World", 0)
