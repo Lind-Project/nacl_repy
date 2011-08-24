@@ -6,8 +6,10 @@ The Lind OS Server.  This module services system calls coming from glibc
   Dececmber 2010
 """
 
-include struct.repy             # if you comment this out the line numbersare
-                                # correct for syntax errors.
+include struct.repy             
+
+# if you comment this out the line numbersare
+# correct for syntax errors.
  
 
 SYSCALL="syscall"               # shortcut to syscall dict items
@@ -515,5 +517,6 @@ def lind_factory():
   setup_testing()
 
 if callfunc == "initialize":
+  print "Welcome to Lind"
   lind_factory()
   main()
