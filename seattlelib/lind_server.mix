@@ -6,15 +6,30 @@ The Lind OS Server.  This module services system calls coming from glibc
   Dececmber 2010
 """
 
-
-
-include struct.repy
+include struct.repy             # if you comment this out the line numbersare
+                                # correct for syntax errors.
  
 
-SYSCALL="syscall"
-FILES="FILES"
+SYSCALL="syscall"               # shortcut to syscall dict items
+FILES="FILES"                   # these also make a typo more specific
+                                # than a dict lookup error
 
 class Response:
+  """ An Response to a RPC request.
+
+  <Purpose>
+
+  This object is responsible sending responses to specific system calls.  It is
+  loaded with data, then can build a reply struct which can then be sent back to
+  NaCl through an IMC channel.
+
+  The Response can be in one of two states, an Error response (for calls that
+  have failed somehow), or a success response. An error response has an error
+  code and a message for perror to display. A success has a return code and
+  optionally a data string.
+
+  TODO: error message is not yet displayed by perror.
+  """
   message = "No error message set"
   data = ""
 
@@ -29,15 +44,34 @@ class Response:
     else:
       self.return_code = return_code
     assert isinstance(self.return_code, int), "return code is not a int, or a stirng which mapped to an int"
+
   def make_struct(self):
+    """
+    <Purpose>
+
+    Get the representation of this Response in struct format.  A struct is a
+    string, which when sent to C can be cast as a struct and used nativly.
+    The struct format is iiii123s, wich is:
+    struct {
+        int message_len;
+        int magic_number;
+        int is_in_error;
+        int return_or_error_code;
+        char data_or_message[];
+    };
+
+    """
     reply = None
     if self.is_error:
-      reply = struct_pack("<i<i" + str(len(self.message))+"s", 1, self.return_code, self.message)
+      # message format <is_error, code, message>
+      reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", len(self.message) + 12, 101010, 1, self.return_code, self.message)
     else:
-      reply = struct_pack("<i<i" + str(len(self.data)) + "s", 0, self.return_code, self.data)
+      # message format <is_error, code, data>
+      reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", len(self.data) + 12, 101010, 0, self.return_code, self.data)
     return reply
 
   def __str__(self):
+    """Human readable format for debugging"""
     if self.is_error:
       type_str = "Error"
     else:
@@ -45,11 +79,25 @@ class Response:
     return type_str + " in " + self.response_type + " with code " + str(self.return_code)
 
 def ErrorResponseBuilder(who ,code, message):
+  """ Build an error response object.
+
+  <Arguments>
+   who: Which portion of the system or system call is making this reply.
+   code: Positive error code to return, or string from errno.h to resolve to a number.
+   message: A detailed message about the error.
+   """
   r = Response(who, True, code)
   r.message = message
   return r
 
 def SuccessResponseBuilder(who, code, data=None):
+  """Build an success response object.
+
+  <Arugments>
+     who: Which portion of the system or system call is making this reply.
+     code: the integer return code to return.
+     data: the data this call returns (as a string), if any.
+  """
   r =  Response(who, False, code)
   if data!=None:
     r.data = data
@@ -70,15 +118,15 @@ def lind_fs_access(args):
        access() checks whether the calling process can access the file pathname.
        If pathname is a symbolic link, it is dereferenced.
 
-       The  mode specifies the accessibility check(s) to be performed, and is
+       The mode specifies the accessibility check(s) to be performed, and is
        either the value F_OK, or a mask consisting of the bitwise OR of one or
-       file exists and grants read, write, and execute permissions, respectively.
+       file exists and grants read, write, and execute permissions,
+       respectively.
 
        The check is done using the calling process's real UID and GID, rather
        than the effective IDs as is done when actually attempting an operation
        (e.g., open(2)) on the file.  This allows set-user-ID programs to easily
-       determine the invoking user's  author‐
-       ity.
+       determine the invoking user's author‐ ity.
 
        If the calling process is privileged (i.e., its real UID is zero), then
        an X_OK check is successful for a regular file if execute permission is
@@ -86,8 +134,9 @@ def lind_fs_access(args):
 
   RETURN VALUE
        On success (all requested permissions granted), zero is returned.  On
-       error (at least one bit in mode asked for a permission that is denied,
-       or some other error occurred), -1 is returned, and errno is set appropriately.
+       error (at least one bit in mode asked for a permission that is denied, or
+       some other error occurred), -1 is returned, and errno is set
+       appropriately.
 
   ERRORS
        access() shall fail if:
@@ -102,10 +151,11 @@ def lind_fs_access(args):
 
        ENOENT A component of pathname does not exist or is a dangling symbolic link.
 
-       ENOTDIR
-              A component used as a directory in pathname is not, in fact, a directory.
+       ENOTDIR A component used as a directory in pathname is not, in fact, a
+              directory.
 
-       EROFS  Write permission was requested for a file on a read-only file system.
+       EROFS Write permission was requested for a file on a read-only file
+       system.
 
        access() may fail if:
 
@@ -117,8 +167,8 @@ def lind_fs_access(args):
 
        ENOMEM Insufficient kernel memory was available.
 
-       ETXTBSY
-              Write access was requested to an executable which is being executed.
+       ETXTBSY Write access was requested to an executable which is being
+              executed.
   """
   log("Calling Access")
   #TODO(cmatthew): implement basic checking
@@ -126,6 +176,129 @@ def lind_fs_access(args):
 
 
 def lind_fs_open(args):
+  """int open(const char *pathname, int flags);
+  int open(const char *pathname, int flags, mode_t mode);
+  int creat(const char *pathname, mode_t mode);
+
+  Description
+
+  Given a pathname for a file, open() returns a file descriptor, a small,
+  non-negative integer for use in subsequent system calls (read(2), write(2),
+  lseek(2), fcntl(2), etc.). The file descriptor returned by a successful call
+  will be the lowest-numbered file descriptor not currently open for the
+  process.  The new file descriptor is set to remain open across an execve(2)
+  (i.e., the FD_CLOEXEC file descriptor flag described in fcntl(2) is initially
+  disabled). The file offset is set to the beginning of the file (see lseek(2)).
+
+  A call to open() creates a new open file description, an entry in the
+  system-wide table of open files. This entry records the file offset and the
+  file status flags (modifiable via the fcntl() F_SETFL operation). A file
+  descriptor is a reference to one of these entries; this reference is
+  unaffected if pathname is subsequently removed or modified to refer to a
+  different file. The new open file description is initially not shared with any
+  other process, but sharing may arise via fork(2).
+
+  The parameter flags must include one of the following access modes: O_RDONLY,
+  O_WRONLY, or O_RDWR. These request opening the file read-only, write-only, or
+  read/write, respectively.
+
+  In addition, zero or more file creation flags and file status flags can be
+  bitwise-or'd in flags. The file creation flags are O_CREAT, O_EXCL, O_NOCTTY,
+  and O_TRUNC. The file status flags are all of the remaining flags listed
+  below. The distinction between these two groups of flags is that the file
+  status flags can be retrieved and (in some cases) modified using fcntl(2). The
+  full list of file creation flags and file status flags is as follows:
+
+  O_APPEND The file is opened in append mode. Before each write(), the file
+  offset is positioned at the end of the file, as if with lseek(). O_APPEND may
+  lead to corrupted files on NFS file systems if more than one process appends
+  data to a file at once. This is because NFS does not support appending to a
+  file, so the client kernel has to simulate it, which can't be done without a
+  race condition.  O_ASYNC Enable signal-driven I/O: generate a signal (SIGIO by
+  default, but this can be changed via fcntl(2)) when input or output becomes
+  possible on this file descriptor. This feature is only available for
+  terminals, pseudo-terminals, sockets, and (since Linux 2.6) pipes and
+  FIFOs. See fcntl(2) for further details.  O_CREAT If the file does not exist
+  it will be created. The owner (user ID) of the file is set to the effective
+  user ID of the process. The group ownership (group ID) is set either to the
+  effective group ID of the process or to the group ID of the parent directory
+  (depending on filesystem type and mount options, and the mode of the parent
+  directory, see, e.g., the mount options bsdgroups and sysvgroups of the ext2
+  filesystem, as described in mount(8)).  O_DIRECT Try to minimize cache effects
+  of the I/O to and from this file. In general this will degrade performance,
+  but it is useful in special situations, such as when applications do their own
+  caching. File I/O is done directly to/from user space buffers. The I/O is
+  synchronous, i.e., at the completion of a read(2) or write(2), data is
+  guaranteed to have been transferred. Under Linux 2.4 transfer sizes, and the
+  alignment of user buffer and file offset must all be multiples of the logical
+  block size of the file system. Under Linux 2.6 alignment to 512-byte
+  boundaries suffices.  A semantically similar (but deprecated) interface for
+  block devices is described in raw(8).
+
+  O_DIRECTORY If pathname is not a directory, cause the open to fail. This flag
+  is Linux-specific, and was added in kernel version 2.1.126, to avoid
+  denial-of-service problems if opendir(3) is called on a FIFO or tape device,
+  but should not be used outside of the implementation of opendir.  O_EXCL When
+  used with O_CREAT, if the file already exists it is an error and the open()
+  will fail. In this context, a symbolic link exists, regardless of where it
+  points to. O_EXCL is broken on NFS file systems; programs which rely on it for
+  performing locking tasks will contain a race condition. The solution for
+  performing atomic file locking using a lockfile is to create a unique file on
+  the same file system (e.g., incorporating hostname and pid), use link(2) to
+  make a link to the lockfile. If link() returns 0, the lock is
+  successful. Otherwise, use stat(2) on the unique file to check if its link
+  count has increased to 2, in which case the lock is also successful.
+  O_LARGEFILE (LFS) Allow files whose sizes cannot be represented in an off_t
+  (but can be represented in an off64_t) to be opened.  O_NOATIME (Since Linux
+  2.6.8) Do not update the file last access time (st_atime in the inode) when
+  the file is read(2). This flag is intended for use by indexing or backup
+  programs, where its use can significantly reduce the amount of disk
+  activity. This flag may not be effective on all filesystems. One example is
+  NFS, where the server maintains the access time.  O_NOCTTY If pathname refers
+  to a terminal device -- see tty(4) -- it will not become the process's
+  controlling terminal even if the process does not have one.  O_NOFOLLOW If
+  pathname is a symbolic link, then the open fails. This is a FreeBSD extension,
+  which was added to Linux in version 2.1.126. Symbolic links in earlier
+  components of the pathname will still be followed.  O_NONBLOCK or O_NDELAY
+  When possible, the file is opened in non-blocking mode. Neither the open() nor
+  any subsequent operations on the file descriptor which is returned will cause
+  the calling process to wait. For the handling of FIFOs (named pipes), see also
+  fifo(7). For a discussion of the effect of O_NONBLOCK in conjunction with
+  mandatory file locks and with file leases, see fcntl(2).  O_SYNC The file is
+  opened for synchronous I/O. Any write()s on the resulting file descriptor will
+  block the calling process until the data has been physically written to the
+  underlying hardware. But see RESTRICTIONS below.  O_TRUNC If the file already
+  exists and is a regular file and the open mode allows writing (i.e., is O_RDWR
+  or O_WRONLY) it will be truncated to length 0. If the file is a FIFO or
+  terminal device file, the O_TRUNC flag is ignored. Otherwise the effect of
+  O_TRUNC is unspecified.  Some of these optional flags can be altered using
+  fcntl() after the file has been opened.
+
+  The argument mode specifies the permissions to use in case a new file is
+  created. It is modified by the process's umask in the usual way: the
+  permissions of the created file are (mode & ~umask). Note that this mode only
+  applies to future accesses of the newly created file; the open() call that
+  creates a read-only file may well return a read/write file descriptor.
+
+  The following symbolic constants are provided for mode:
+
+  S_IRWXU 00700 user (file owner) has read, write and execute permission S_IRUSR
+  00400 user has read permission S_IWUSR 00200 user has write permission S_IXUSR
+  00100 user has execute permission S_IRWXG 00070 group has read, write and
+  execute permission S_IRGRP 00040 group has read permission S_IWGRP 00020 group
+  has write permission S_IXGRP 00010 group has execute permission S_IRWXO 00007
+  others have read, write and execute permission S_IROTH 00004 others have read
+  permission S_IWOTH 00002 others have write permission S_IXOTH 00001 others
+  have execute permission mode must be specified when O_CREAT is in the flags,
+  and is ignored otherwise.
+
+  creat() is equivalent to open() with flags equal to O_CREAT|O_WRONLY|O_TRUNC.
+
+  Return Value
+
+  open() and creat() return the new file descriptor, or -1 if an error occurred
+  (in which case, errno is set appropriately).
+  """
 
   file_name_length = args[2]
   file_name = args[3][0:file_name_length]
@@ -146,6 +319,7 @@ def lind_fs_open(args):
     return ErrorResponseBuilder("fs_open", "ENOENT", message )
   file_handle = mycontext[FILES].index((file_name, f))
   return SuccessResponseBuilder("fs_open", file_handle)
+
 
 def lind_err_enosys(args):
   return  ErrorResponseBuilder("ENOSYS", "This system call is not implemented yet or disabled in Lind.")
@@ -172,7 +346,7 @@ def dispatch_syscall(call, args):
     log("[ERROR][dispatch] Failed to look up " + str(call) + str(e) + "\n")
     syscall_response =  ErrorResponseBuilder("ENOSYS", "The system call is not in the system call table. Call="+str(call))
   
-  assert isinstance(syscall_response, Response)
+  assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls!"
   
   return syscall_response
 
