@@ -6,9 +6,9 @@ The Lind OS Server.  This module services system calls coming from glibc
   Dececmber 2010
 """
 
-include struct.repy             
+include struct.repy           
 
-# if you comment this out the line numbersare
+# if you comment this include out the line numbers are
 # correct for syntax errors.
  
 
@@ -174,7 +174,7 @@ def lind_fs_access(args):
   """
   log("Calling Access")
   #TODO(cmatthew): implement basic checking
-  return -3
+  return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
 
 
 def lind_fs_open(args):
@@ -308,7 +308,7 @@ def lind_fs_open(args):
   # check old handles, if there, just return that one
   for (name, f) in mycontext[FILES]:
     if name == file_name:
-      return mycontext[FILES].index((name,f))
+      return SuccessResponseBuilder("fs_open", mycontext[FILES].index((name,f)) )
   try:
     file_name = file_name.split("/")[-1]
 
@@ -348,7 +348,7 @@ def dispatch_syscall(call, args):
     log("[ERROR][dispatch] Failed to look up " + str(call) + str(e) + "\n")
     syscall_response =  ErrorResponseBuilder("ENOSYS", "The system call is not in the system call table. Call="+str(call))
   
-  assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls!"
+  assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
   
   return syscall_response
 
@@ -395,7 +395,7 @@ def NaclRPCServer(nacl_instance):
       raise Exception()
     print response
     retcode_buffer = response.make_struct()
-    print retcode_buffer
+    # print retcode_buffer
     try:
       got = nacl_instance.send(retcode_buffer,"")
     except:
@@ -505,7 +505,8 @@ def setup_testing():
 def lind_factory():
   # map a systemcall number to a particular function
   mycontext[SYSCALL] = {1:lind_debug_trace, 
-                        10:lind_fs_open, 
+                        10:lind_fs_open,
+                        12:lind_fs_read,
                         3:lind_err_enosys, 
                         31:lind_sys_getpid}
   
@@ -514,6 +515,13 @@ def lind_factory():
 
   #table of file handles
   mycontext["FILES"] = []
+
+  handle_offset = 10            # The amount by which we offset fileandles (so we
+                                # dont clobber stdin out err and system file handles
+
+  for i in range(0, handle_offset):
+    mycontext["FILES"].append(("",0))
+
   setup_testing()
 
 if callfunc == "initialize":
