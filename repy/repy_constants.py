@@ -56,5 +56,5 @@ NACL_PLUGIN_ASYNC_FROM_CHILD_FD = 6
 NACL_PLUGIN_ASYNC_TO_CHILD_FD = 7
 
 
-NACL_PATH = "/home/cmatthew/lind/native_client"
+NACL_PATH = "/home/lind/tmp/repy/lind/"
 NACL_ENV = None

@@ -42,9 +42,14 @@ class Response:
     self.is_error = is_error
     
     if isinstance(return_code, str):
-      self.return_code =  mycontext["errno.h"][return_code]
-    else:
+      try:
+        self.return_code =  mycontext["errno.h"][return_code]
+      except KeyError:
+        raise Exception("Return code is not a valid error number.")
+    elif isinstance(return_code, int):
       self.return_code = return_code
+    else:
+      raise Exception("Invalid return code.")
     assert isinstance(self.return_code, int), "return code is not a int, or a stirng which mapped to an int"
 
   def make_struct(self):
@@ -78,7 +83,7 @@ class Response:
       type_str = "Error"
     else:
       type_str = "Success"
-    return type_str + " in " + self.response_type + " with code " + str(self.return_code)
+    return type_str + " in " + self.response_type + " with code " + str(self.return_code) + " with data of size " + str(len(self.data)) + " with data " + str(self.data)
 
 def ErrorResponseBuilder(who ,code, message):
   """ Build an error response object.
@@ -176,6 +181,38 @@ def lind_fs_access(args):
   #TODO(cmatthew): implement basic checking
   return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
 
+class File:
+  def __init__(self, name, fobj):
+    self.name = name
+    self.handle = -1
+    self.fobj = fobj
+    self.location = 0
+
+class FileList:
+  def __init__(self):
+    self.list = []
+
+  def insert(self, file_obj):
+    assert isinstance(file_obj, File)
+    self.list.append(file_obj)
+    file_handle = self.list.index(file_obj)
+    file_obj.handle = file_handle
+    return file_handle
+
+  def insertFile(self, file_name, fobj):
+     f = File(file_name, fobj)
+     return self.insert(f)
+
+
+  def lookup(self, handle):
+    return self.list[handle]
+
+  def lookupName(self, name):
+    for fobjs in self.list:
+      if fobjs.name == name:
+        return fobjs.handle
+    return 0
+
 
 def lind_fs_open(args):
   """int open(const char *pathname, int flags);
@@ -191,140 +228,60 @@ def lind_fs_open(args):
   process.  The new file descriptor is set to remain open across an execve(2)
   (i.e., the FD_CLOEXEC file descriptor flag described in fcntl(2) is initially
   disabled). The file offset is set to the beginning of the file (see lseek(2)).
-
-  A call to open() creates a new open file description, an entry in the
-  system-wide table of open files. This entry records the file offset and the
-  file status flags (modifiable via the fcntl() F_SETFL operation). A file
-  descriptor is a reference to one of these entries; this reference is
-  unaffected if pathname is subsequently removed or modified to refer to a
-  different file. The new open file description is initially not shared with any
-  other process, but sharing may arise via fork(2).
-
-  The parameter flags must include one of the following access modes: O_RDONLY,
-  O_WRONLY, or O_RDWR. These request opening the file read-only, write-only, or
-  read/write, respectively.
-
-  In addition, zero or more file creation flags and file status flags can be
-  bitwise-or'd in flags. The file creation flags are O_CREAT, O_EXCL, O_NOCTTY,
-  and O_TRUNC. The file status flags are all of the remaining flags listed
-  below. The distinction between these two groups of flags is that the file
-  status flags can be retrieved and (in some cases) modified using fcntl(2). The
-  full list of file creation flags and file status flags is as follows:
-
-  O_APPEND The file is opened in append mode. Before each write(), the file
-  offset is positioned at the end of the file, as if with lseek(). O_APPEND may
-  lead to corrupted files on NFS file systems if more than one process appends
-  data to a file at once. This is because NFS does not support appending to a
-  file, so the client kernel has to simulate it, which can't be done without a
-  race condition.  O_ASYNC Enable signal-driven I/O: generate a signal (SIGIO by
-  default, but this can be changed via fcntl(2)) when input or output becomes
-  possible on this file descriptor. This feature is only available for
-  terminals, pseudo-terminals, sockets, and (since Linux 2.6) pipes and
-  FIFOs. See fcntl(2) for further details.  O_CREAT If the file does not exist
-  it will be created. The owner (user ID) of the file is set to the effective
-  user ID of the process. The group ownership (group ID) is set either to the
-  effective group ID of the process or to the group ID of the parent directory
-  (depending on filesystem type and mount options, and the mode of the parent
-  directory, see, e.g., the mount options bsdgroups and sysvgroups of the ext2
-  filesystem, as described in mount(8)).  O_DIRECT Try to minimize cache effects
-  of the I/O to and from this file. In general this will degrade performance,
-  but it is useful in special situations, such as when applications do their own
-  caching. File I/O is done directly to/from user space buffers. The I/O is
-  synchronous, i.e., at the completion of a read(2) or write(2), data is
-  guaranteed to have been transferred. Under Linux 2.4 transfer sizes, and the
-  alignment of user buffer and file offset must all be multiples of the logical
-  block size of the file system. Under Linux 2.6 alignment to 512-byte
-  boundaries suffices.  A semantically similar (but deprecated) interface for
-  block devices is described in raw(8).
-
-  O_DIRECTORY If pathname is not a directory, cause the open to fail. This flag
-  is Linux-specific, and was added in kernel version 2.1.126, to avoid
-  denial-of-service problems if opendir(3) is called on a FIFO or tape device,
-  but should not be used outside of the implementation of opendir.  O_EXCL When
-  used with O_CREAT, if the file already exists it is an error and the open()
-  will fail. In this context, a symbolic link exists, regardless of where it
-  points to. O_EXCL is broken on NFS file systems; programs which rely on it for
-  performing locking tasks will contain a race condition. The solution for
-  performing atomic file locking using a lockfile is to create a unique file on
-  the same file system (e.g., incorporating hostname and pid), use link(2) to
-  make a link to the lockfile. If link() returns 0, the lock is
-  successful. Otherwise, use stat(2) on the unique file to check if its link
-  count has increased to 2, in which case the lock is also successful.
-  O_LARGEFILE (LFS) Allow files whose sizes cannot be represented in an off_t
-  (but can be represented in an off64_t) to be opened.  O_NOATIME (Since Linux
-  2.6.8) Do not update the file last access time (st_atime in the inode) when
-  the file is read(2). This flag is intended for use by indexing or backup
-  programs, where its use can significantly reduce the amount of disk
-  activity. This flag may not be effective on all filesystems. One example is
-  NFS, where the server maintains the access time.  O_NOCTTY If pathname refers
-  to a terminal device -- see tty(4) -- it will not become the process's
-  controlling terminal even if the process does not have one.  O_NOFOLLOW If
-  pathname is a symbolic link, then the open fails. This is a FreeBSD extension,
-  which was added to Linux in version 2.1.126. Symbolic links in earlier
-  components of the pathname will still be followed.  O_NONBLOCK or O_NDELAY
-  When possible, the file is opened in non-blocking mode. Neither the open() nor
-  any subsequent operations on the file descriptor which is returned will cause
-  the calling process to wait. For the handling of FIFOs (named pipes), see also
-  fifo(7). For a discussion of the effect of O_NONBLOCK in conjunction with
-  mandatory file locks and with file leases, see fcntl(2).  O_SYNC The file is
-  opened for synchronous I/O. Any write()s on the resulting file descriptor will
-  block the calling process until the data has been physically written to the
-  underlying hardware. But see RESTRICTIONS below.  O_TRUNC If the file already
-  exists and is a regular file and the open mode allows writing (i.e., is O_RDWR
-  or O_WRONLY) it will be truncated to length 0. If the file is a FIFO or
-  terminal device file, the O_TRUNC flag is ignored. Otherwise the effect of
-  O_TRUNC is unspecified.  Some of these optional flags can be altered using
-  fcntl() after the file has been opened.
-
-  The argument mode specifies the permissions to use in case a new file is
-  created. It is modified by the process's umask in the usual way: the
-  permissions of the created file are (mode & ~umask). Note that this mode only
-  applies to future accesses of the newly created file; the open() call that
-  creates a read-only file may well return a read/write file descriptor.
-
-  The following symbolic constants are provided for mode:
-
-  S_IRWXU 00700 user (file owner) has read, write and execute permission S_IRUSR
-  00400 user has read permission S_IWUSR 00200 user has write permission S_IXUSR
-  00100 user has execute permission S_IRWXG 00070 group has read, write and
-  execute permission S_IRGRP 00040 group has read permission S_IWGRP 00020 group
-  has write permission S_IXGRP 00010 group has execute permission S_IRWXO 00007
-  others have read, write and execute permission S_IROTH 00004 others have read
-  permission S_IWOTH 00002 others have write permission S_IXOTH 00001 others
-  have execute permission mode must be specified when O_CREAT is in the flags,
-  and is ignored otherwise.
-
-  creat() is equivalent to open() with flags equal to O_CREAT|O_WRONLY|O_TRUNC.
-
-  Return Value
-
-  open() and creat() return the new file descriptor, or -1 if an error occurred
-  (in which case, errno is set appropriately).
   """
 
   file_name_length = args[2]
   file_name = args[3][0:file_name_length]
 
+  if "repy/lind" in file_name:
+    return ErrorResponseBuilder("fs_open", "ENOENT", "not allowed to open system files" )
+
   # check old handles, if there, just return that one
-  for (name, f) in mycontext[FILES]:
-    if name == file_name:
-      return SuccessResponseBuilder("fs_open", mycontext[FILES].index((name,f)) )
+  already_there = mycontext[FILES].lookupName(file_name)
+  if already_there != 0:
+    return SuccessResponseBuilder("fs_open", already_there )
+
   try:
     file_name = file_name.split("/")[-1]
 
     log("[info][syscall] Calling Open: " + file_name + "\n")
     f = openfile(file_name, False)
-    mycontext[FILES].append((file_name,f))
+    file_handle = mycontext[FILES].insertFile(file_name, f)
+        
   except FileNotFoundError,e:
     message = "Could not find file: " + file_name +"\n" +str(e) 
     log( message )
     return ErrorResponseBuilder("fs_open", "ENOENT", message )
-  file_handle = mycontext[FILES].index((file_name, f))
+  
   return SuccessResponseBuilder("fs_open", file_handle)
 
+def lind_fs_read(args):
+  try:
+    log("[info][syscall] Lind FS Read was called.\n")
+    handle = args[0]
+    size = args[1]
+    log("reading handle " + str(handle) + " of size " + str(size) + "\n")
+    file_obj = mycontext[FILES].lookup(handle)
+    fd = file_obj.fobj
+    head = file_obj.location
+    result = fd.readat(size, head)
+    size_read = len(result)
+    file_obj.location += size_read
+    if size_read==0:
+      #we are at EOF
+      return SuccessResponseBuilder("fs_read", 0)
+    
+
+    log("[info][syscall] Lind FS Read Finished with: " + result + "\n")
+  except:
+    print "oh no!"
+  try:
+    return SuccessResponseBuilder("fs_read", size_read, result)
+  except:
+    print "ohno2!"
 
 def lind_err_enosys(args):
-  return  ErrorResponseBuilder("ENOSYS", "This system call is not implemented yet or disabled in Lind.")
+  return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
 
 
 def lind_sys_getpid(args):
@@ -388,8 +345,17 @@ def NaclRPCServer(nacl_instance):
       args_string = message[16+frmt_len:]
       message_format = message[16:16+frmt_len]
       # print "message format: ", message_format
-      args = struct_unpack(message_format, args_string[:-1])
-
+      try: 
+        trimmed_string = args_string[:-1]
+        args = struct_unpack(message_format, trimmed_string)
+      except ValueError as e:
+        log("Unpacking Error: " + str(e) + "\n")
+        log("Message was: " + message_format + "\n")
+        log("Args len=" + str(len(trimmed_string)) + "\n")
+        log("Args full=" + str(args_string) + "\n")
+        log("Args String=" + trimmed_string + "\n")
+        call = 3 # continue on with eno_sys
+        
     response = dispatch_syscall(call, args)
     if response == None:
       raise Exception()
@@ -407,7 +373,7 @@ def NaclRPCServer(nacl_instance):
   print "Lind Server Shutting Down."
 
 def main():
-  code_loc = "/home/cmatthew/lind/native_client/scons-out/nacl-x86-64-glibc/staging/glibc_test.nexe"
+  code_loc = "/home/lind/lind/native_client/scons-out/nacl-x86-64-glibc/staging/glibc_test.nexe"
   nacl = safelyexecutenativecode(code_loc, ["1","2"])
 
 
@@ -514,13 +480,13 @@ def lind_factory():
   mycontext["errno.h"] = {'ENOENT':2,  'ENOSYS':38 }
 
   #table of file handles
-  mycontext["FILES"] = []
+  mycontext["FILES"] = FileList()
 
   handle_offset = 10            # The amount by which we offset fileandles (so we
                                 # dont clobber stdin out err and system file handles
 
   for i in range(0, handle_offset):
-    mycontext["FILES"].append(("",0))
+    mycontext["FILES"].insertFile("",None)
 
   setup_testing()
 

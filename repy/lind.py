@@ -18,7 +18,7 @@ def setup_nacl_path(nacl_base):
   nacl_enviroment["NACL_BASE"] = nacl_base
   
 
-  bin_str = "scons-out/dbg-linux-x86-64/staging"
+  bin_str = "bin"
   nacl_bin = os.path.join(nacl_base, bin_str)
   if not os.path.exists(nacl_bin):
     raise IOError("NaCl Linux Debug bin directory does not exist: %s"
@@ -46,31 +46,28 @@ def setup_nacl_path(nacl_base):
     raise importerror
 
   # Where should nacl get its runtime libs from
-  runnableld_str = "out/install/glibc_64/nacl64/lib/runnable-ld.so"
+  runnableld_str = "glibc/runnable-ld.so"
   runnableld = os.path.join(nacl_base, runnableld_str)
   if not os.path.exists(runnableld):
-    raise IOError("NaCl glibc is missing?: %s"%(runnableld))
+    raise IOError("NaCl glibc runnable-ld.so is missing?: %s"%(runnableld))
  
   nacl_enviroment["NACL_DYN_LOADER"] = runnableld
 
-  libs_str = "out/install/full-gcc-glibc/nacl64/lib64/"
+  libs_str = "libs/"
   libs = os.path.join(nacl_base, libs_str)
   if not os.path.exists(libs):
-    raise IOError("NaCl gcc libs is missing?: %s"%(libs))
+     raise IOError("NaCl gcc libs is missing?: %s"%(libs))
+  print libs
+  # libs = os.path.join(nacl_base, "out/install/glibc_64/nacl64/lib/")
+  # if not os.path.exists(libs):
+  #    raise IOError("NaCl libs glibc_64 is missing?: %s"%(libs))
 
-  libs = os.path.join(nacl_base, "out/install/glibc_64/nacl64/lib/")
-  if not os.path.exists(libs):
-    raise IOError("NaCl libs is missing?: %s"%(libs))
-
-  libs = os.path.join(nacl_base, "out/install/nacl_libs_glibc_64/nacl64/lib/")
-  if not os.path.exists(libs):
-    raise IOError("NaCl libsi is missing?: %s"%(libs))
+  # libs = os.path.join(nacl_base, "out/install/nacl_libs_glibc_64/nacl64/lib/")
+  # if not os.path.exists(libs):
+  #    raise IOError("NaCl libs nacl_glibc_64  is missing?: %s"%(libs))
   
-  nacl_enviroment["NACL_LIBRARY_DIR"] = \
-                        ("%s/out/install/full-gcc-glibc/nacl64/lib64/:%s" + 
-                         "/out/install/glibc_64/nacl64/lib/:%s" + 
-                         "/out/install/nacl_libs_glibc_64/nacl64/lib/") \
-                         %(nacl_base,nacl_base,nacl_base)
+  nacl_enviroment["NACL_LIBRARY_DIR"] = libs
+                
 
   return nacl_enviroment
 
