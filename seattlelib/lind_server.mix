@@ -255,6 +255,7 @@ def lind_fs_open(args):
   
   return SuccessResponseBuilder("fs_open", file_handle)
 
+
 def lind_fs_read(args):
   try:
     log("[info][syscall] Lind FS Read was called.\n")
@@ -279,6 +280,36 @@ def lind_fs_read(args):
     return SuccessResponseBuilder("fs_read", size_read, result)
   except:
     print "ohno2!"
+
+
+def lind_fs_fstat(args):
+  """
+    struct stat {
+               dev_t     st_dev;     /* ID of device containing file */
+               ino_t     st_ino;     /* inode number */
+               mode_t    st_mode;    /* protection */
+               nlink_t   st_nlink;   /* number of hard links */
+               uid_t     st_uid;     /* user ID of owner */
+               gid_t     st_gid;     /* group ID of owner */
+               dev_t     st_rdev;    /* device ID (if special file) */
+               off_t     st_size;    /* total size, in bytes */
+               blksize_t st_blksize; /* blocksize for file system I/O */
+               blkcnt_t  st_blocks;  /* number of 512B blocks allocated */
+               time_t    st_atime;   /* time of last access */
+               time_t    st_mtime;   /* time of last modification */
+               time_t    st_ctime;   /* time of last status change */
+           };
+
+           This is 144 bytes long
+
+
+  """
+  
+  fd = args[0]
+  print "handle=",fd
+  result = "\0"*144   # a 144 byte empty string
+  return SuccessResponseBuilder("fs_fstat", 0, result)
+
 
 def lind_err_enosys(args):
   return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
@@ -359,7 +390,7 @@ def NaclRPCServer(nacl_instance):
     response = dispatch_syscall(call, args)
     if response == None:
       raise Exception()
-    print response
+    # print response
     retcode_buffer = response.make_struct()
     # print retcode_buffer
     try:
@@ -474,7 +505,8 @@ def lind_factory():
                         10:lind_fs_open,
                         12:lind_fs_read,
                         3:lind_err_enosys, 
-                        31:lind_sys_getpid}
+                        31:lind_sys_getpid,
+                        17:lind_fs_fstat}
   
   #setup error codes
   mycontext["errno.h"] = {'ENOENT':2,  'ENOSYS':38 }
