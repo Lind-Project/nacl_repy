@@ -291,7 +291,7 @@ def struct_unpack(formatstring, packedstring):
     if repeatcount == 0 and typetounpack == 's':
       retlist.append('')
 
-    # let's go through this for each thing to pack and add it!
+    # let's go through this for each thing to unpack
     for thisitem in range(repeatcount):
 
       # it's a string!   Must not have endianness!!!
@@ -302,7 +302,7 @@ def struct_unpack(formatstring, packedstring):
 
         # strings should be reconstructed as a string, not a list of bytes...
         retlist.append(currentpackedstring[:repeatcount])
-        currentpackedstring = currentpackedstring[repeatcount:]
+        currentpackedstring = currentpackedstring[repeatcount+1:]
      
         # ... so exit!
         break
@@ -428,6 +428,9 @@ def struct_calcsize(formatstring):
 
       # add the size of a char + the number of chars
       currentlength += 1 * repeatcount
+      #account for null terminator
+      currentlength += 1 
+      position = position + 1
 
     # it's a signed or unsigned integer (4 byte)!   Must have endianness!!!
     elif typetounpack == 'i' or typetounpack == 'I':
