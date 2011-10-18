@@ -15,6 +15,7 @@ include struct.repy
 SYSCALL="syscall"               # shortcut to syscall dict items
 FILES="FILES"                   # these also make a typo more specific
                                 # than a dict lookup error
+SUCCESS=0
 
 class Response:
   """ An Response to a RPC request.
@@ -309,7 +310,17 @@ def lind_fs_fstat(args):
   result = "\0"*144   # a 144 byte empty string
   return SuccessResponseBuilder("fs_fstat", 0, result)
 
+def lind_fs_close(args):
+  handle = args[0]
+  try:
+    file_obj = mycontext[FILES].lookup(handle)
+    fd = file_obj.fobj
+    fd.close()
+  except:
+    return  ErrorResponseBuilder("err_badf", "EBADF", "Bad file handle.")
+  return SuccessResponseBuilder("fs_close", SUCCESS)
 
+  
 def lind_err_enosys(args):
   return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
 
@@ -504,6 +515,7 @@ def lind_factory():
   # map a systemcall number to a particular function
   mycontext[SYSCALL] = {1:lind_debug_trace, 
                         10:lind_fs_open,
+                        11:lind_fs_close,
                         12:lind_fs_read,
                         3:lind_err_enosys, 
                         31:lind_sys_getpid,
