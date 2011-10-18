@@ -232,7 +232,6 @@ def lind_fs_open(args):
 
   file_name_length = args[2]
   file_name = args[3][0:file_name_length]
-
   if "repy/lind" in file_name:
     return ErrorResponseBuilder("fs_open", "ENOENT", "not allowed to open system files" )
 
@@ -373,12 +372,14 @@ def NaclRPCServer(nacl_instance):
     if frmt_len == 0:
       args = []
     else:
-      args_string = message[16+frmt_len:]
+      args_string = message[16+frmt_len+1:]
       message_format = message[16:16+frmt_len]
       # print "message format: ", message_format
       try: 
-        trimmed_string = args_string[:-1]
+        trimmed_string = args_string
+        # print "Args: ",trimmed_string
         args = struct_unpack(message_format, trimmed_string)
+        # print "Parsed Args", args
       except ValueError as e:
         log("Unpacking Error: " + str(e) + "\n")
         log("Message was: " + message_format + "\n")
