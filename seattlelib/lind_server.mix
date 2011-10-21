@@ -338,6 +338,12 @@ def lind_debug_trace(args):
   print "[info][Trace] " + str(args[0])
   return SuccessResponseBuilder("debug_trace", 0)
 
+def lind_fs_write(args):
+  #TODO implement write
+  print "Write was called!"
+  size = args[1]
+  return SuccessResponseBuilder("fs_write", size)
+
 
 def dispatch_syscall(call, args):
   try:
@@ -506,8 +512,10 @@ def setup_testing():
   """ Setup things for the test enviroment.  Remove from prouction version! """
   #check_file_io looks for foo.txt and reads it, so we must create it here.
   f = openfile("foo.txt", True)
+  f2 = openfile("foo2.txt", True)
   f.writeat("Hello World", 0)
   f.close()
+  f2.close()
 
 
 
@@ -517,6 +525,7 @@ def lind_factory():
                         10:lind_fs_open,
                         11:lind_fs_close,
                         12:lind_fs_read,
+                        13:lind_fs_write,
                         3:lind_err_enosys, 
                         31:lind_sys_getpid,
                         17:lind_fs_fstat}
