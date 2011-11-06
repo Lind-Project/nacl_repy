@@ -320,6 +320,12 @@ def lind_fs_close(args):
     return  ErrorResponseBuilder("err_badf", "EBADF", "Bad file handle.")
   return SuccessResponseBuilder("fs_close", SUCCESS)
 
+
+def lind_fs_lseek(args):
+  print "LSeek was called with,", args
+  return SuccessResponseBuilder("fs_lseek", SUCCESS)
+
+
   
 def lind_err_enosys(args):
   return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
@@ -526,6 +532,7 @@ def lind_factory():
                         11:lind_fs_close,
                         12:lind_fs_read,
                         13:lind_fs_write,
+                        14:lind_fs_lseek,
                         3:lind_err_enosys, 
                         31:lind_sys_getpid,
                         17:lind_fs_fstat}
