@@ -17,6 +17,21 @@ FILES="FILES"                   # these also make a typo more specific
                                 # than a dict lookup error
 SUCCESS=0
 
+
+PRODUCTION=False
+
+def unimplemented(who):
+  """what to do when we come across some code that needs to be finished.
+  For now, lets just keep running, but really this should not happen
+  so we should exit.  """
+  message =  "a unimplemented function has been called " + str(who)
+  if PRODUCTION:
+    print "error: ", message
+    exitall()
+  else:
+    print "warning: ", message
+
+
 class Response:
   """ An Response to a RPC request.
 
@@ -180,6 +195,7 @@ def lind_fs_access(args):
   """
   log("Calling Access")
   #TODO(cmatthew): implement basic checking
+  unimplemented("access")
   return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
 
 class File:
@@ -275,11 +291,12 @@ def lind_fs_read(args):
 
     log("[info][syscall] Lind FS Read Finished with: " + result + "\n")
   except:
-    print "oh no!"
+    unimplemented("read failure")
   try:
     return SuccessResponseBuilder("fs_read", size_read, result)
   except:
-    print "ohno2!"
+    print "problem build return values"
+    exitall()
 
 
 def lind_fs_fstat(args):
@@ -308,6 +325,7 @@ def lind_fs_fstat(args):
   fd = args[0]
   print "handle=",fd
   result = "\0"*144   # a 144 byte empty string
+  unimplemented("fstat")
   return SuccessResponseBuilder("fs_fstat", 0, result)
 
 def lind_fs_close(args):
@@ -323,8 +341,14 @@ def lind_fs_close(args):
 
 def lind_fs_lseek(args):
   print "LSeek was called with,", args
+  unimplemented("lseek")
   return SuccessResponseBuilder("fs_lseek", SUCCESS)
 
+
+def lind_fs_ioctl(args):
+  print "IOCTL was called with,", args
+  unimplemented("ioctl")
+  return SuccessResponseBuilder("fs_ioctl", SUCCESS)
 
   
 def lind_err_enosys(args):
@@ -528,14 +552,16 @@ def setup_testing():
 def lind_factory():
   # map a systemcall number to a particular function
   mycontext[SYSCALL] = {1:lind_debug_trace, 
+                        3:lind_err_enosys, 
                         10:lind_fs_open,
                         11:lind_fs_close,
                         12:lind_fs_read,
                         13:lind_fs_write,
                         14:lind_fs_lseek,
-                        3:lind_err_enosys, 
-                        31:lind_sys_getpid,
-                        17:lind_fs_fstat}
+                        15:lind_fs_ioctl,
+                        17:lind_fs_fstat,
+                        31:lind_sys_getpid}
+                        
   
   #setup error codes
   mycontext["errno.h"] = {'ENOENT':2,  'ENOSYS':38 }
