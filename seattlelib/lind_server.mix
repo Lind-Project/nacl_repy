@@ -350,6 +350,12 @@ def lind_fs_ioctl(args):
   unimplemented("ioctl")
   return SuccessResponseBuilder("fs_ioctl", SUCCESS)
 
+
+def lind_fs_access(args):
+  print "ACCESS was called with,", args
+  unimplemented("access")
+  return SuccessResponseBuilder("fs_access", SUCCESS)
+
   
 def lind_err_enosys(args):
   return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
@@ -452,8 +458,8 @@ def NaclRPCServer(nacl_instance):
   print "Lind Server Shutting Down."
 
 def main():
-  code_loc = "/home/lind/lind/native_client/scons-out/nacl-x86-64-glibc/staging/glibc_test.nexe"
-  nacl = safelyexecutenativecode(code_loc, ["1","2"])
+  code_loc = mycontext["program"]
+  nacl = safelyexecutenativecode(code_loc, mycontext["commandline_args"])
 
 
   if nacl != None:
@@ -551,7 +557,8 @@ def setup_testing():
 
 def lind_factory():
   # map a systemcall number to a particular function
-  mycontext[SYSCALL] = {1:lind_debug_trace, 
+  mycontext[SYSCALL] = {1:lind_debug_trace,
+                        2:lind_fs_access,
                         3:lind_err_enosys, 
                         10:lind_fs_open,
                         11:lind_fs_close,
@@ -577,7 +584,11 @@ def lind_factory():
 
   setup_testing()
 
+def parse_commandline():
+  mycontext["program"] = callargs[0]
+  mycontext["commandline_args"] = callargs[1:]
+
 if callfunc == "initialize":
-  print "Welcome to Lind"
+  parse_commandline()
   lind_factory()
   main()
