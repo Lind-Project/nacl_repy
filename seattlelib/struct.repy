@@ -430,6 +430,7 @@ def struct_calcsize(formatstring):
       #account for null terminator
       currentlength += 1
       print "null+",str(1)
+      position = position + 1
 
     # it's a signed or unsigned integer (4 byte)!   Must have endianness!!!
     elif typetounpack == 'i' or typetounpack == 'I':
