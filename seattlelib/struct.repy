@@ -426,11 +426,8 @@ def struct_calcsize(formatstring):
       
       # add the size of a char + the number of chars
       currentlength += 1 * repeatcount
-      print "string+",repeatcount
       #account for null terminator
       currentlength += 1
-      print "null+",str(1)
-      position = position + 1
 
     # it's a signed or unsigned integer (4 byte)!   Must have endianness!!!
     elif typetounpack == 'i' or typetounpack == 'I':
@@ -441,10 +438,8 @@ def struct_calcsize(formatstring):
 
       # add the size of an integer + the number of integers
       currentlength += 4 * repeatcount
-      print "int+",str(4)
     else:
       raise TypeError("Unknown format type '"+typetounpack+"' at (position "+str(position)+" of '"+formatstring+"')")
-    print formatstring, " currentlength=", currentlength, " pos=", position
   return currentlength
 
 
