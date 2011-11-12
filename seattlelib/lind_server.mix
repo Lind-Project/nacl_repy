@@ -356,6 +356,24 @@ def lind_fs_access(args):
   unimplemented("access")
   return SuccessResponseBuilder("fs_access", SUCCESS)
 
+
+def lind_fs_unlink(args):
+  print "UNLINK was called with,", args
+  unimplemented("unlink")
+  return ErrorResponseBuilder("fs_unlink", "ENOSYS", "unimplemented" )
+
+
+def lind_fs_link(args):
+  print "LINK was called with,", args
+  unimplemented("link")
+  return ErrorResponseBuilder("fs_link", "ENOSYS", "unimplemented" )
+
+
+def lind_fs_chdir(args):
+  print "CHDIR was called with,", args
+  unimplemented("chdir")
+  return ErrorResponseBuilder("fs_chdir", "ENOSYS", "unimplemented" )
+
   
 def lind_err_enosys(args):
   return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
@@ -559,6 +577,9 @@ def lind_factory():
   # map a systemcall number to a particular function
   mycontext[SYSCALL] = {1:lind_debug_trace,
                         2:lind_fs_access,
+                        4:lind_fs_unlink,
+                        5:lind_fs_link,
+                        6:lind_fs_chdir,
                         3:lind_err_enosys, 
                         10:lind_fs_open,
                         11:lind_fs_close,
