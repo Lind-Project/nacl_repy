@@ -6,7 +6,7 @@ The Lind OS Server.  This module services system calls coming from glibc
   Dececmber 2010
 """
 
-include struct.repy           
+include struct.repy
 
 # if you comment this include out the line numbers are
 # correct for syntax errors.
@@ -422,11 +422,25 @@ def dispatch_syscall(call, args):
   return syscall_response
 
 
+def print_times(times):
+  print "\nSummary of System Call Execution Times:"
+  for eachtime in times:
+    call = eachtime[0]
+    # using the call number, pull the string name out of the function object
+    function_name = str(mycontext[SYSCALL][call]).split(" ")[1]
+    exec_time = eachtime[1]
+    call_args = eachtime[2]
+    print function_name, ",\t", exec_time, ",\t\"", call_args, "\""
+
 def NaclRPCServer(nacl_instance):
+  times = []
   while True:
     format = "<i<I<I<i"
+    start = 0
+    stop = 0
     try:
       message = nacl_instance.recv(1024)
+      start = getruntime()
     except exceptions.Exception:
       log("[ERROR][RPC] " + "Exception on receive\n")
       break
@@ -478,14 +492,15 @@ def NaclRPCServer(nacl_instance):
     # print retcode_buffer
     try:
       got = nacl_instance.send(retcode_buffer,"")
+      stop = getruntime()
     except:
       log("[info][RPC] " + "Exception on Send. Stopping\n")
       break
     if got == 0:
       log("[ERROR][RPC] " + "failed to send\n")
-
+    times.append((call, stop-start, args))
   print "Lind Server Shutting Down."
-
+  print_times(times)
 def main():
   code_loc = mycontext["program"]
   nacl = safelyexecutenativecode(code_loc, mycontext["commandline_args"])
@@ -506,7 +521,6 @@ def setup_testing():
   f.writeat("Hello World", 0)
   f.close()
   f2.close()
-
 
 
 def lind_factory():
