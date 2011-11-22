@@ -403,6 +403,12 @@ def lind_debug_trace(args):
   print "[info][Trace] " + str(args[0])
   return SuccessResponseBuilder("debug_trace", 0)
 
+
+def lind_debug_noop(args):
+  return SuccessResponseBuilder("debug_noop", 0)
+
+
+
 def lind_fs_write(args):
   #TODO implement write
   print "Write was called!"
@@ -424,15 +430,17 @@ def dispatch_syscall(call, args):
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
+  prefix = ">> "  # prefix which the shell scripts can use to pull out these numbers
   for eachtime in times:
     call = eachtime[0]
     # using the call number, pull the string name out of the function object
     function_name = str(mycontext[SYSCALL][call]).split(" ")[1]
     exec_time = eachtime[1]
     call_args = eachtime[2]
-    print function_name, ",\t", exec_time, ",\t\"", call_args, "\""
+    print prefix, function_name, ",\t", exec_time, ",\t\"", call_args, "\""
 
 def NaclRPCServer(nacl_instance):
+  timer =  mycontext["wallclocktime"]
   times = []
   while True:
     format = "<i<I<I<i"
@@ -440,7 +448,7 @@ def NaclRPCServer(nacl_instance):
     stop = 0
     try:
       message = nacl_instance.recv(1024)
-      start = getruntime()
+      start =  timer()
     except exceptions.Exception:
       log("[ERROR][RPC] " + "Exception on receive\n")
       break
@@ -492,7 +500,7 @@ def NaclRPCServer(nacl_instance):
     # print retcode_buffer
     try:
       got = nacl_instance.send(retcode_buffer,"")
-      stop = getruntime()
+      stop = timer()
     except:
       log("[info][RPC] " + "Exception on Send. Stopping\n")
       break
@@ -525,22 +533,24 @@ def setup_testing():
 
 def lind_factory():
   # map a systemcall number to a particular function
-  mycontext[SYSCALL] = {1:lind_debug_trace,
-                        2:lind_fs_access,
-                        3:lind_err_enosys, 
-                        4:lind_fs_unlink,
-                        5:lind_fs_link,
-                        6:lind_fs_chdir,
-                        7:lind_fs_mkdir,
-                        8:lind_fs_rmdir,                      
-                        10:lind_fs_open,
-                        11:lind_fs_close,
-                        12:lind_fs_read,
-                        13:lind_fs_write,
-                        14:lind_fs_lseek,
-                        15:lind_fs_ioctl,
-                        17:lind_fs_fstat,
-                        31:lind_sys_getpid}
+  mycontext[SYSCALL] = {
+    1:lind_debug_noop,
+    3:lind_debug_trace,
+    2:lind_fs_access,
+    3:lind_err_enosys, 
+    4:lind_fs_unlink,
+    5:lind_fs_link,
+    6:lind_fs_chdir,
+    7:lind_fs_mkdir,
+    8:lind_fs_rmdir,                      
+    10:lind_fs_open,
+    11:lind_fs_close,
+    12:lind_fs_read,
+    13:lind_fs_write,
+    14:lind_fs_lseek,
+    15:lind_fs_ioctl,
+    17:lind_fs_fstat,
+    31:lind_sys_getpid}
                         
   
   #setup error codes
