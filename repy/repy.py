@@ -174,6 +174,7 @@ def main(resourcefn, program, args):
 
   # BAD:REMOVE all API imports
   usercontext["getresources"] = nonportable.get_resources
+  usercontext["mycontext"]["wallclocktime"] = time.time
   #usercontext["openfile"] = emulfile.emulated_open
   #usercontext["listfiles"] = emulfile.listfiles
   #usercontext["removefile"] = emulfile.removefile
