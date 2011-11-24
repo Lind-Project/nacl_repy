@@ -448,8 +448,12 @@ def print_times(times):
     each += 1
     exec_stop = eachtime[each] 
     each += 1
+    exec_before = eachtime[each] 
+    each += 1
+    exec_after = eachtime[each] 
+    each += 1
     call_args = eachtime[each]
-    print prefix, function_name + ", "+ "%f"%(exec_pre) + ", " + "%f"%(exec_start) + ", " + "%f"%(exec_post) + ", " + "%f"%(exec_stop) + ", \"" + str(call_args) + "\""
+    print prefix, function_name + ", "+ "%f"%(exec_pre) + ", " + "%f"%(exec_start) + ", " + "%f"%(exec_post) + ", " + "%f"%(exec_stop) + ", " + "%f"%(exec_before) + ", " + "%f"%(exec_after) + ", \"" + str(call_args) + "\""
 
 def NaclRPCServer(nacl_instance):
   timer =  mycontext["wallclocktime"]
@@ -504,8 +508,9 @@ def NaclRPCServer(nacl_instance):
         log("Args full=" + str(args_string) + "\n")
         log("Args String=" + trimmed_string + "\n")
         call = 3 # continue on with eno_sys
-        
+    before_call = timer()
     response = dispatch_syscall(call, args)
+    after_call = timer()
     if response == None:
       raise Exception()
     # print response
@@ -520,9 +525,11 @@ def NaclRPCServer(nacl_instance):
       break
     if got == 0:
       log("[ERROR][RPC] " + "failed to send\n")
-    times.append((call, pre ,start, post, stop, args))
+    times.append((call, pre ,start, post, stop, before_call, after_call, args))
   print "Lind Server Shutting Down."
   print_times(times)
+
+
 def main():
   code_loc = mycontext["program"]
   nacl = safelyexecutenativecode(code_loc, mycontext["commandline_args"])
