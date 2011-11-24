@@ -248,7 +248,7 @@ def lind_fs_open(args):
   """
 
   file_name_length = args[2]
-  file_name = args[3][0:file_name_length]
+  file_name = args[3]
   if "repy/lind" in file_name:
     return ErrorResponseBuilder("fs_open", "ENOENT", "not allowed to open system files" )
 
@@ -259,6 +259,8 @@ def lind_fs_open(args):
 
   try:
     file_name = file_name.split("/")[-1]
+    if file_name in mycontext["program"]:
+      return ErrorResponseBuilder("fs_open", "ENOENT", "won't allow open of program file" )
 
     log("[info][syscall] Calling Open: " + file_name + "\n")
     f = openfile(file_name, False)
@@ -326,7 +328,8 @@ def lind_fs_fstat(args):
   print "handle=",fd
   result = "\0"*144   # a 144 byte empty string
   unimplemented("fstat")
-  return SuccessResponseBuilder("fs_fstat", 0, result)
+  #return SuccessResponseBuilder("fs_fstat", 0, result)
+  return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
 
 def lind_fs_close(args):
   handle = args[0]
@@ -432,12 +435,21 @@ def print_times(times):
   print "\nSummary of System Call Execution Times:"
   prefix = ">> "  # prefix which the shell scripts can use to pull out these numbers
   for eachtime in times:
-    call = eachtime[0]
+    each = 0
+    call = eachtime[each]
+    each += 1
     # using the call number, pull the string name out of the function object
     function_name = str(mycontext[SYSCALL][call]).split(" ")[1]
-    exec_time = eachtime[1]
-    call_args = eachtime[2]
-    print prefix, function_name, ",\t", exec_time, ",\t\"", call_args, "\""
+    exec_pre = eachtime[each]
+    each += 1
+    exec_start = eachtime[each]
+    each += 1
+    exec_post = eachtime[each] 
+    each += 1
+    exec_stop = eachtime[each] 
+    each += 1
+    call_args = eachtime[each]
+    print prefix, function_name + ", "+ "%f"%(exec_pre) + ", " + "%f"%(exec_start) + ", " + "%f"%(exec_post) + ", " + "%f"%(exec_stop) + ", \"" + str(call_args) + "\""
 
 def NaclRPCServer(nacl_instance):
   timer =  mycontext["wallclocktime"]
@@ -447,8 +459,9 @@ def NaclRPCServer(nacl_instance):
     start = 0
     stop = 0
     try:
+      pre = timer()
       message = nacl_instance.recv(1024)
-      start =  timer()
+      start = timer()
     except exceptions.Exception:
       log("[ERROR][RPC] " + "Exception on receive\n")
       break
@@ -499,6 +512,7 @@ def NaclRPCServer(nacl_instance):
     retcode_buffer = response.make_struct()
     # print retcode_buffer
     try:
+      post = timer()
       got = nacl_instance.send(retcode_buffer,"")
       stop = timer()
     except:
@@ -506,7 +520,7 @@ def NaclRPCServer(nacl_instance):
       break
     if got == 0:
       log("[ERROR][RPC] " + "failed to send\n")
-    times.append((call, stop-start, args))
+    times.append((call, pre ,start, post, stop, args))
   print "Lind Server Shutting Down."
   print_times(times)
 def main():
@@ -524,6 +538,7 @@ def main():
 def setup_testing():
   """ Setup things for the test enviroment.  Remove from prouction version! """
   #check_file_io looks for foo.txt and reads it, so we must create it here.
+  print "Warning: adding files for testing."
   f = openfile("foo.txt", True)
   f2 = openfile("foo2.txt", True)
   f.writeat("Hello World", 0)
@@ -551,7 +566,6 @@ def lind_factory():
     15:lind_fs_ioctl,
     17:lind_fs_fstat,
     31:lind_sys_getpid}
-                        
   
   #setup error codes
   mycontext["errno.h"] = {'ENOENT':2,  'ENOSYS':38 }
@@ -565,7 +579,10 @@ def lind_factory():
   for i in range(0, handle_offset):
     mycontext["FILES"].insertFile("",None)
 
-  setup_testing()
+  # are we running the C test program? if so make testing files
+  if "glibc_test" in mycontext["program"]:
+    setup_testing()
+
 
 def parse_commandline():
   mycontext["program"] = callargs[0]
