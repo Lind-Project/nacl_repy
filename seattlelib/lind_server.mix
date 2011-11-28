@@ -17,8 +17,13 @@ FILES="FILES"                   # these also make a typo more specific
                                 # than a dict lookup error
 SUCCESS=0
 
-
 PRODUCTION=False
+
+
+def log(arg):
+  """Turn off logging"""
+  pass
+
 
 def unimplemented(who):
   """what to do when we come across some code that needs to be finished.
@@ -26,10 +31,10 @@ def unimplemented(who):
   so we should exit.  """
   message =  "a unimplemented function has been called " + str(who)
   if PRODUCTION:
-    print "error: ", message
+    log("error: " + message)
     exitall()
   else:
-    print "warning: ", message
+    log("warning: " + message)
 
 
 class Response:
@@ -112,6 +117,7 @@ def ErrorResponseBuilder(who ,code, message):
   r = Response(who, True, code)
   r.message = message
   return r
+
 
 def SuccessResponseBuilder(who, code, data=None):
   """Build an success response object.
@@ -198,6 +204,7 @@ def lind_fs_access(args):
   unimplemented("access")
   return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
 
+
 class File:
   def __init__(self, name, fobj):
     self.name = name
@@ -205,9 +212,11 @@ class File:
     self.fobj = fobj
     self.location = 0
 
+
 class FileList:
   def __init__(self):
     self.list = []
+
 
   def insert(self, file_obj):
     assert isinstance(file_obj, File)
@@ -216,6 +225,7 @@ class FileList:
     file_obj.handle = file_handle
     return file_handle
 
+
   def insertFile(self, file_name, fobj):
      f = File(file_name, fobj)
      return self.insert(f)
@@ -223,6 +233,7 @@ class FileList:
 
   def lookup(self, handle):
     return self.list[handle]
+
 
   def lookupName(self, name):
     for fobjs in self.list:
@@ -323,13 +334,11 @@ def lind_fs_fstat(args):
 
 
   """
-  
   fd = args[0]
-  print "handle=",fd
-  result = "\0"*144   # a 144 byte empty string
   unimplemented("fstat")
   #return SuccessResponseBuilder("fs_fstat", 0, result)
   return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
+
 
 def lind_fs_close(args):
   handle = args[0]
@@ -343,50 +352,57 @@ def lind_fs_close(args):
 
 
 def lind_fs_lseek(args):
-  print "LSeek was called with,", args
+  log("LSeek was called with," + str(args))
   unimplemented("lseek")
   return SuccessResponseBuilder("fs_lseek", SUCCESS)
 
 
 def lind_fs_ioctl(args):
-  print "IOCTL was called with,", args
+  log("IOCTL was called with,"+ str(args))
   unimplemented("ioctl")
   return SuccessResponseBuilder("fs_ioctl", SUCCESS)
 
 
 def lind_fs_access(args):
-  print "ACCESS was called with,", args
+  log("ACCESS was called with," + str(args))
   unimplemented("access")
   return SuccessResponseBuilder("fs_access", SUCCESS)
 
 
 def lind_fs_unlink(args):
-  print "UNLINK was called with,", args
+  log("UNLINK was called with," + str(args))
   unimplemented("unlink")
   return ErrorResponseBuilder("fs_unlink", "ENOSYS", "unimplemented" )
 
 
 def lind_fs_link(args):
-  print "LINK was called with,", args
+  log("LINK was called with,"+ str(args))
   unimplemented("link")
   return ErrorResponseBuilder("fs_link", "ENOSYS", "unimplemented" )
 
 
 def lind_fs_chdir(args):
-  print "CHDIR was called with,", args
+  log("CHDIR was called with,"+ str(args))
   unimplemented("chdir")
   return ErrorResponseBuilder("fs_chdir", "ENOSYS", "unimplemented" )
 
 
 def lind_fs_mkdir(args):
-  print "MKDIR was called with,", args
+  log("MKDIR was called with," + str(args))
   unimplemented("mkdir")
   return ErrorResponseBuilder("fs_mkdir", "ENOSYS", "unimplemented" )
 
+
 def lind_fs_rmdir(args):
-  print "RMDIR was called with,", args
+  log("RMDIR was called with," + str(args))
   unimplemented("rmdir")
   return ErrorResponseBuilder("fs_rmdir", "ENOSYS", "unimplemented" )
+
+
+def lind_fs_xstat(args):
+  log("XSTAT was called with," + str(args))
+  unimplemented("xstat")
+  return ErrorResponseBuilder("fs_xstat", "ENOSYS", "unimplemented" )
 
   
 def lind_err_enosys(args):
@@ -403,7 +419,7 @@ def lind_sys_getpid(args):
 
 
 def lind_debug_trace(args):
-  print "[info][Trace] " + str(args[0])
+  log("[info][Trace] " + str(args[0]))
   return SuccessResponseBuilder("debug_trace", 0)
 
 
@@ -411,10 +427,9 @@ def lind_debug_noop(args):
   return SuccessResponseBuilder("debug_noop", 0)
 
 
-
 def lind_fs_write(args):
   #TODO implement write
-  print "Write was called!"
+  log("[info][syscall]Write was called!")
   size = args[1]
   return SuccessResponseBuilder("fs_write", size)
 
@@ -456,16 +471,16 @@ def print_times(times):
     print prefix, function_name + ", "+ "%f"%(exec_pre) + ", " + "%f"%(exec_start) + ", " + "%f"%(exec_post) + ", " + "%f"%(exec_stop) + ", " + "%f"%(exec_before) + ", " + "%f"%(exec_after) + ", \"" + str(call_args) + "\""
 
 def NaclRPCServer(nacl_instance):
-  timer =  mycontext["wallclocktime"]
-  times = []
+  #timer =  mycontext["wallclocktime"]
+  #times = []
   while True:
     format = "<i<I<I<i"
     start = 0
     stop = 0
     try:
-      pre = timer()
+     # pre = timer()
       message = nacl_instance.recv(1024)
-      start = timer()
+     # start = timer()
     except exceptions.Exception:
       log("[ERROR][RPC] " + "Exception on receive\n")
       break
@@ -508,38 +523,36 @@ def NaclRPCServer(nacl_instance):
         log("Args full=" + str(args_string) + "\n")
         log("Args String=" + trimmed_string + "\n")
         call = 3 # continue on with eno_sys
-    before_call = timer()
+    # before_call = timer()
     response = dispatch_syscall(call, args)
-    after_call = timer()
+    # after_call = timer()
     if response == None:
       raise Exception()
     # print response
     retcode_buffer = response.make_struct()
     # print retcode_buffer
     try:
-      post = timer()
+      # post = timer()
       got = nacl_instance.send(retcode_buffer,"")
-      stop = timer()
+      # stop = timer()
     except:
       log("[info][RPC] " + "Exception on Send. Stopping\n")
       break
     if got == 0:
       log("[ERROR][RPC] " + "failed to send\n")
-    times.append((call, pre ,start, post, stop, before_call, after_call, args))
+    # times.append((call, pre ,start, post, stop, before_call, after_call, args))
   print "Lind Server Shutting Down."
-  print_times(times)
+  # print_times(times)
 
 
 def main():
   code_loc = mycontext["program"]
   nacl = safelyexecutenativecode(code_loc, mycontext["commandline_args"])
 
-
   if nacl != None:
     NaclRPCServer(nacl)
   else:
     print "Safe Binary mode must be switched on for this program to work."
-
 
 
 def setup_testing():
@@ -565,6 +578,7 @@ def lind_factory():
     6:lind_fs_chdir,
     7:lind_fs_mkdir,
     8:lind_fs_rmdir,                      
+    9:lind_fs_xstat,                      
     10:lind_fs_open,
     11:lind_fs_close,
     12:lind_fs_read,
