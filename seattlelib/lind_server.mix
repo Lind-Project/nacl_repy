@@ -20,10 +20,12 @@ SUCCESS=0
 PRODUCTION=False
 
 
-def log(arg):
-  """Turn off logging"""
-  pass
+# def log(arg):
+#   """Turn off logging"""
+#   pass
 
+def curr_comp():
+  return mycontext[mycontext["comp"]]
 
 def unimplemented(who):
   """what to do when we come across some code that needs to be finished.
@@ -64,7 +66,7 @@ class Response:
     
     if isinstance(return_code, str):
       try:
-        self.return_code =  mycontext["errno.h"][return_code]
+        self.return_code =  curr_comp()["errno.h"][return_code]
       except KeyError:
         raise Exception("Return code is not a valid error number.")
     elif isinstance(return_code, int):
@@ -264,21 +266,26 @@ def lind_fs_open(args):
     return ErrorResponseBuilder("fs_open", "ENOENT", "not allowed to open system files" )
 
   # check old handles, if there, just return that one
-  already_there = mycontext[FILES].lookupName(file_name)
+  already_there = curr_comp()[FILES].lookupName(file_name)
   if already_there != 0:
     return SuccessResponseBuilder("fs_open", already_there )
-
+  if file_name == "lind://component-manager":
+    COMP_MANAGER_FD = 9
+    return SuccessResponseBuilder("fs_open", COMP_MANAGER_FD )
+  else:
+    print "not found"
+    
   try:
     file_name = file_name.split("/")[-1]
-    if file_name in mycontext["program"]:
+    if file_name in curr_comp()["program"]:
       return ErrorResponseBuilder("fs_open", "ENOENT", "won't allow open of program file" )
 
     log("[info][syscall] Calling Open: " + file_name + "\n")
     f = openfile(file_name, False)
-    file_handle = mycontext[FILES].insertFile(file_name, f)
+    file_handle = curr_comp()[FILES].insertFile(file_name, f)
         
   except FileNotFoundError,e:
-    message = "Could not find file: " + file_name +"\n" +str(e) 
+    message = "Could not find file: " + file_name +"\n" + str(e) + "\n" 
     log( message )
     return ErrorResponseBuilder("fs_open", "ENOENT", message )
   
@@ -291,7 +298,7 @@ def lind_fs_read(args):
     handle = args[0]
     size = args[1]
     log("reading handle " + str(handle) + " of size " + str(size) + "\n")
-    file_obj = mycontext[FILES].lookup(handle)
+    file_obj = curr_comp()[FILES].lookup(handle)
     fd = file_obj.fobj
     head = file_obj.location
     result = fd.readat(size, head)
@@ -343,7 +350,7 @@ def lind_fs_fstat(args):
 def lind_fs_close(args):
   handle = args[0]
   try:
-    file_obj = mycontext[FILES].lookup(handle)
+    file_obj = curr_comp()[FILES].lookup(handle)
     fd = file_obj.fobj
     fd.close()
   except:
@@ -419,7 +426,7 @@ def lind_sys_getpid(args):
 
 
 def lind_debug_trace(args):
-  log("[info][Trace] " + str(args[0]))
+  log("[info][Trace] " + str(args[0]) + "\n")
   return SuccessResponseBuilder("debug_trace", 0)
 
 
@@ -434,9 +441,40 @@ def lind_fs_write(args):
   return SuccessResponseBuilder("fs_write", size)
 
 
+def lind_comp_cia(args):
+  """Component Interface Attach"""
+  log("[info][syscall]Component Interface Attach Called with" + str(args))
+  
+  return SuccessResponseBuilder("comp_cia", 0)
+
+
+def lind_comp_call(args):
+  """Component Call"""
+  log("[info][syscall]Component Call Called with" + str(args))
+  
+  return SuccessResponseBuilder("comp_call", 0)
+
+
+def lind_comp_accept(args):
+  """Component Accept"""
+  log("[info][syscall]Component Accept Called with" + str(args))
+  
+  return SuccessResponseBuilder("comp_accpet", 0)
+
+
+def lind_comp_recv(args):
+  """Component Recv"""
+  log("[info][syscall]Component Recv called with " + str(args))
+  
+  return SuccessResponseBuilder("comp_recv", 0)
+
+
+
 def dispatch_syscall(call, args):
   try:
-    syscall_response = mycontext[SYSCALL][call](args)
+    syscall_response = curr_comp()[SYSCALL][call](args)
+    
+
   except KeyError,e:
     log("[ERROR][dispatch] Failed to look up " + str(call) + str(e) + "\n")
     syscall_response =  ErrorResponseBuilder("ENOSYS", "The system call is not in the system call table. Call="+str(call))
@@ -454,7 +492,7 @@ def print_times(times):
     call = eachtime[each]
     each += 1
     # using the call number, pull the string name out of the function object
-    function_name = str(mycontext[SYSCALL][call]).split(" ")[1]
+    function_name = str(curr_comp()[SYSCALL][call]).split(" ")[1]
     exec_pre = eachtime[each]
     each += 1
     exec_start = eachtime[each]
@@ -546,8 +584,8 @@ def NaclRPCServer(nacl_instance):
 
 
 def main():
-  code_loc = mycontext["program"]
-  nacl = safelyexecutenativecode(code_loc, mycontext["commandline_args"])
+  code_loc = curr_comp()["program"]
+  nacl = safelyexecutenativecode(code_loc, curr_comp()["commandline_args"])
 
   if nacl != None:
     NaclRPCServer(nacl)
@@ -568,11 +606,10 @@ def setup_testing():
 
 def lind_factory():
   # map a systemcall number to a particular function
-  mycontext[SYSCALL] = {
+  curr_comp()[SYSCALL] = {
     1:lind_debug_noop,
-    3:lind_debug_trace,
     2:lind_fs_access,
-    3:lind_err_enosys, 
+    3:lind_debug_trace,
     4:lind_fs_unlink,
     5:lind_fs_link,
     6:lind_fs_chdir,
@@ -586,28 +623,35 @@ def lind_factory():
     14:lind_fs_lseek,
     15:lind_fs_ioctl,
     17:lind_fs_fstat,
-    31:lind_sys_getpid}
+    31:lind_sys_getpid,
+    105:lind_comp_cia,
+    106:lind_comp_call,
+    107:lind_comp_accept,
+    108:lind_comp_recv
+    }
   
   #setup error codes
-  mycontext["errno.h"] = {'ENOENT':2,  'ENOSYS':38 }
+  curr_comp()["errno.h"] = {'ENOENT':2,  'ENOSYS':38 }
 
   #table of file handles
-  mycontext["FILES"] = FileList()
+  curr_comp()["FILES"] = FileList()
 
   handle_offset = 10            # The amount by which we offset fileandles (so we
                                 # dont clobber stdin out err and system file handles
 
   for i in range(0, handle_offset):
-    mycontext["FILES"].insertFile("",None)
+    curr_comp()["FILES"].insertFile("",None)
 
   # are we running the C test program? if so make testing files
-  if "glibc_test" in mycontext["program"]:
+  if "glibc_test" in curr_comp()["program"]:
     setup_testing()
 
 
 def parse_commandline():
-  mycontext["program"] = callargs[0]
-  mycontext["commandline_args"] = callargs[1:]
+  mycontext["comp"] = 1
+  mycontext[1] = {}
+  curr_comp()["program"] = callargs[0]
+  curr_comp()["commandline_args"] = callargs[1:]
 
 if callfunc == "initialize":
   parse_commandline()
