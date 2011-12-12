@@ -15,6 +15,11 @@ include struct.repy
 SYSCALL="syscall"               # shortcut to syscall dict items
 FILES="FILES"                   # these also make a typo more specific
 COMP="comp"                                # than a dict lookup error
+ERRNO="errno.h"
+MBOX="mbox"
+LOCK="lock"
+PROGRAM="program"
+CMD_LINE="command_line_args"
 SUCCESS=0
 
 PRODUCTION=False
@@ -69,7 +74,7 @@ class Response:
     
     if isinstance(return_code, str):
       try:
-        self.return_code =  curr_comp()["errno.h"][return_code]
+        self.return_code =  curr_comp()[ERRNO][return_code]
       except KeyError:
         raise Exception("Return code is not a valid error number.")
     elif isinstance(return_code, int):
@@ -278,7 +283,7 @@ def lind_fs_open(args):
     
   try:
     file_name = file_name.split("/")[-1]
-    if file_name in curr_comp()["program"]:
+    if file_name in curr_comp()[PROGRAM]:
       return ErrorResponseBuilder("fs_open", "ENOENT", "won't allow open of program file" )
 
     log("[info][syscall] Calling Open: " + file_name + "\n")
@@ -528,7 +533,7 @@ def lind_comp_call(args):
   log("[info][syscall]Component Call Called with" + str(args),"\n")
   message = args[3]
   target_comp = args[0]
-  comp(target_comp)["mbox"].append(message)
+  comp(target_comp)[MBOX].append(message)
   return SuccessResponseBuilder("comp_call", 0)
 
 
@@ -536,7 +541,7 @@ def lind_comp_accept(args):
   """Component Accept"""
   log("[info][syscall]Component Accept Called with", args, "\n")
   try:
-    mesg = curr_comp()["mbox"].pop(0)
+    mesg = curr_comp()[MBOX].pop(0)
   except IndexError:
     return SuccessResponseBuilder("comp_accpet", 0)
   return SuccessResponseBuilder("comp_accpet", len(mesg), mesg)
@@ -646,10 +651,10 @@ def NaclRPCServer(nacl_instance, comp_num):
         log("Args String=" + trimmed_string + "\n")
         call = NOOP_CALL_NUM # continue on with eno_sys
     # before_call = timer()
-    mycontext["lock"].acquire(True)
+    mycontext[LOCK].acquire(True)
     mycontext[COMP] = comp_num
     response = dispatch_syscall(call, args)
-    mycontext["lock"].release()
+    mycontext[LOCK].release()
     # after_call = timer()
     if response == None:
       raise Exception()
@@ -667,13 +672,13 @@ def NaclRPCServer(nacl_instance, comp_num):
       log("[ERROR][RPC] " + "failed to send\n")
     # times.append((call, pre ,start, post, stop, before_call, after_call, args))
     
-  print "Lind Server ", mycontext[comp_num]["program"], " Shutting Down."
+  print "Lind Server ", mycontext[comp_num][PROGRAM], " Shutting Down."
   # print_times(times)
 
 
 def main():
-  code_loc = curr_comp()["program"]
-  nacl = safelyexecutenativecode(code_loc, curr_comp()["commandline_args"])
+  code_loc = curr_comp()[PROGRAM]
+  nacl = safelyexecutenativecode(code_loc, curr_comp()[CMD_LINE])
 
   if nacl != None:
     NaclRPCServer(nacl, 1)
@@ -701,8 +706,8 @@ def new_compoent():
   """add a new compoent to the system"""
   mycontext[2]={}
   code_loc = "liblind/com2.nexe"
-  mycontext[2]["program"] = code_loc
-  mycontext[2]["commandline_args"] = []
+  mycontext[2][PROGRAM] = code_loc
+  mycontext[2][CMD_LINE] = []
   setup_dispatcher(2)
   setup_filetable(2)
   setup_component_communication(2)
@@ -742,22 +747,22 @@ def setup_dispatcher(comp_num):
     }
   
   #setup error codes
-  comp(comp_num)["errno.h"] = {'ENOENT':2,  'ENOSYS':38 }
+  comp(comp_num)[ERRNO] = {'ENOENT':2,  'ENOSYS':38 }
 
 
 def setup_filetable(comp_num):
   #table of file handles
-  comp(comp_num)["FILES"] = FileList()
+  comp(comp_num)[FILES] = FileList()
 
   handle_offset = 10            # The amount by which we offset fileandles (so we
                                 # dont clobber stdin out err and system file handles
 
   for i in range(0, handle_offset):
-    comp(comp_num)["FILES"].insertFile("",None)
+    comp(comp_num)[FILES].insertFile("",None)
 
 
 def setup_component_communication(comp_num):
-    comp(comp_num)["mbox"] = []
+    comp(comp_num)[MBOX] = []
 
  
 def lind_factory():
@@ -765,14 +770,14 @@ def lind_factory():
   setup_dispatcher(1)
   setup_filetable(1)
   setup_component_communication(1)
-  mycontext["lock"] = createlock()
+  mycontext[LOCK] = createlock()
   # are we running the C test program? if so make testing files
-  if "glibc_test" in curr_comp()["program"]:
+  if "glibc_test" in curr_comp()[PROGRAM]:
     setup_testing()
 
   #if we are running a compoent, launch another one as a test.  
-  if "com1" in curr_comp()["program"]:
-    print "starting multi-component test mode"
+  if "com1" in curr_comp()[PROGRAM]:
+    log("starting multi-component test mode")
     mycontext[COMP_MODE] = True
     new_compoent()
   else:
@@ -782,12 +787,12 @@ def lind_factory():
 def parse_commandline():
   mycontext[COMP] = 1
   mycontext[1] = {}
-  curr_comp()["program"] = callargs[0]
-  print curr_comp()["program"]
-  curr_comp()["commandline_args"] = callargs[1:]
+  curr_comp()[PROGRAM] = callargs[0]
+  print curr_comp()[PROGRAM]
+  curr_comp()[CMD_LINE] = callargs[1:]
 
 if callfunc == "initialize":
   parse_commandline()
   lind_factory()
   main()
-  print "Exiting Lind"
+  log("Exiting Lind")
