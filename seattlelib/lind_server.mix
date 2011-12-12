@@ -25,12 +25,16 @@ SUCCESS=0
 PRODUCTION=False
 COMP_MODE="component_mode"
 
+
+
+
 # def log(arg):
 #   """Turn off logging"""
 #   pass
 
 def curr_comp():
   return mycontext[mycontext[COMP]]
+
 
 def comp(num):
   return mycontext[num]
@@ -142,6 +146,10 @@ def SuccessResponseBuilder(who, code, data=None):
     r.data = data
   return r
 
+include fs_open.mix
+
+
+
 
 def lind_fs_access(args):
   """
@@ -250,52 +258,6 @@ class FileList:
       if fobjs.name == name:
         return fobjs.handle
     return 0
-
-
-def lind_fs_open(args):
-  """int open(const char *pathname, int flags);
-  int open(const char *pathname, int flags, mode_t mode);
-  int creat(const char *pathname, mode_t mode);
-
-  Description
-
-  Given a pathname for a file, open() returns a file descriptor, a small,
-  non-negative integer for use in subsequent system calls (read(2), write(2),
-  lseek(2), fcntl(2), etc.). The file descriptor returned by a successful call
-  will be the lowest-numbered file descriptor not currently open for the
-  process.  The new file descriptor is set to remain open across an execve(2)
-  (i.e., the FD_CLOEXEC file descriptor flag described in fcntl(2) is initially
-  disabled). The file offset is set to the beginning of the file (see lseek(2)).
-  """
-
-  file_name_length = args[2]
-  file_name = args[3]
-  if "repy/lind" in file_name:
-    return ErrorResponseBuilder("fs_open", "ENOENT", "not allowed to open system files" )
-
-  # check old handles, if there, just return that one
-  already_there = curr_comp()[FILES].lookupName(file_name)
-  if already_there != 0:
-    return SuccessResponseBuilder("fs_open", already_there )
-  if file_name == "lind://component-manager":
-    COMP_MANAGER_FD = 9
-    return SuccessResponseBuilder("fs_open", COMP_MANAGER_FD )
-    
-  try:
-    file_name = file_name.split("/")[-1]
-    if file_name in curr_comp()[PROGRAM]:
-      return ErrorResponseBuilder("fs_open", "ENOENT", "won't allow open of program file" )
-
-    log("[info][syscall] Calling Open: " + file_name + "\n")
-    f = openfile(file_name, False)
-    file_handle = curr_comp()[FILES].insertFile(file_name, f)
-        
-  except FileNotFoundError,e:
-    message = "Could not find file: " + file_name +"\n" + str(e) + "\n" 
-    log( message )
-    return ErrorResponseBuilder("fs_open", "ENOENT", message )
-  
-  return SuccessResponseBuilder("fs_open", file_handle)
 
 
 def lind_fs_read(args):
@@ -592,6 +554,7 @@ def print_times(times):
     call_args = eachtime[each]
     print prefix, function_name + ", "+ "%f"%(exec_pre) + ", " + "%f"%(exec_start) + ", " + "%f"%(exec_post) + ", " + "%f"%(exec_stop) + ", " + "%f"%(exec_before) + ", " + "%f"%(exec_after) + ", \"" + str(call_args) + "\""
 
+
 NOOP_CALL_NUM=1
 
 
@@ -719,10 +682,37 @@ def new_compoent():
   else:
     print "Safe Binary mode must be switched on for this program to work."
 
+MODE="safe"
 
 def setup_dispatcher(comp_num):
   # map a systemcall number to a particular function
-  comp(comp_num)[SYSCALL] = {
+  if MODE == "safe":
+    comp(comp_num)[SYSCALL] = {
+    1:lind_debug_noop,
+    2:lind_fs_access,
+    3:lind_debug_trace,
+    4:lind_fs_unlink,
+    5:lind_fs_link,
+    6:lind_fs_chdir,
+    7:lind_fs_mkdir,
+    8:lind_fs_rmdir,                      
+    9:lind_fs_xstat,                      
+    10:lind_safe_fs_open,
+    11:lind_fs_close,
+    12:lind_fs_read,
+    13:lind_fs_write,
+    14:lind_fs_lseek,
+    15:lind_fs_ioctl,
+    17:lind_fs_fstat,
+    31:lind_sys_getpid,
+    105:lind_comp_cia,
+    106:lind_comp_call,
+    107:lind_comp_accept,
+    108:lind_comp_recv
+    }
+  else:
+   
+    comp(comp_num)[SYSCALL] = {
     1:lind_debug_noop,
     2:lind_fs_access,
     3:lind_debug_trace,
