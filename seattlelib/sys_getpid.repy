@@ -1,0 +1,7 @@
+def lind_sys_getpid(args):
+  log("[info][syscall]",mycontext[COMP] ," Calling GetPID\n")
+  # For now we dont want processes to know they are different than each other
+  # maybe this could be a lind specific counter in the future?
+  # what is the impact of doing this?
+  DEFAULT_PID = 1000
+  return SuccessResponseBuilder("sys_getpid", DEFAULT_PID)

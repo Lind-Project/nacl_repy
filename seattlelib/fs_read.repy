@@ -1,0 +1,30 @@
+
+
+def lind_fs_read(args):
+  try:
+    log("[info][syscall] Lind FS Read was called.\n")
+    handle = args[0]
+    size = args[1]
+    log("reading handle " + str(handle) + " of size " + str(size) + "\n")
+    file_obj = curr_comp()[FILES].lookup(handle)
+    fd = file_obj.fobj
+    head = file_obj.location
+    result = fd.readat(size, head)
+    size_read = len(result)
+    file_obj.location += size_read
+    if size_read==0:
+      #we are at EOF
+      return SuccessResponseBuilder("fs_read", 0)
+    
+
+    log("[info][syscall] Lind FS Read Finished with: " + result + "\n")
+  except:
+    unimplemented("read failure")
+  try:
+    return SuccessResponseBuilder("fs_read", size_read, result)
+  except:
+    print "problem build return values"
+    exitall()
+
+
+

@@ -146,82 +146,6 @@ def SuccessResponseBuilder(who, code, data=None):
     r.data = data
   return r
 
-include fs_open.mix
-
-
-
-
-def lind_fs_access(args):
-  """
-  NAME
-       access - check real user's permissions for a file
-
-  SYNOPSIS
-       #include <unistd.h>
-
-       int access(const char *pathname, int mode);
-
-   DESCRIPTION
-       access() checks whether the calling process can access the file pathname.
-       If pathname is a symbolic link, it is dereferenced.
-
-       The mode specifies the accessibility check(s) to be performed, and is
-       either the value F_OK, or a mask consisting of the bitwise OR of one or
-       file exists and grants read, write, and execute permissions,
-       respectively.
-
-       The check is done using the calling process's real UID and GID, rather
-       than the effective IDs as is done when actually attempting an operation
-       (e.g., open(2)) on the file.  This allows set-user-ID programs to easily
-       determine the invoking user's author‐ ity.
-
-       If the calling process is privileged (i.e., its real UID is zero), then
-       an X_OK check is successful for a regular file if execute permission is
-       enabled for any of the file owner, group, or other.
-
-  RETURN VALUE
-       On success (all requested permissions granted), zero is returned.  On
-       error (at least one bit in mode asked for a permission that is denied, or
-       some other error occurred), -1 is returned, and errno is set
-       appropriately.
-
-  ERRORS
-       access() shall fail if:
-
-       EACCES The requested access would be denied to the file, or search
-       permission is denied for one of the directories in the path prefix of
-       pathname.  (See also path_resolution(7).)
-
-       ELOOP  Too many symbolic links were encountered in resolving pathname.
-
-       ENAMETOOLONG pathname is too long.
-
-       ENOENT A component of pathname does not exist or is a dangling symbolic link.
-
-       ENOTDIR A component used as a directory in pathname is not, in fact, a
-              directory.
-
-       EROFS Write permission was requested for a file on a read-only file
-       system.
-
-       access() may fail if:
-
-       EFAULT pathname points outside your accessible address space.
-
-       EINVAL mode was incorrectly specified.
-
-       EIO    An I/O error occurred.
-
-       ENOMEM Insufficient kernel memory was available.
-
-       ETXTBSY Write access was requested to an executable which is being
-              executed.
-  """
-  log("Calling Access")
-  #TODO(cmatthew): implement basic checking
-  unimplemented("access")
-  return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
-
 
 class File:
   def __init__(self, name, fobj):
@@ -260,275 +184,25 @@ class FileList:
     return 0
 
 
-def lind_fs_read(args):
-  try:
-    log("[info][syscall] Lind FS Read was called.\n")
-    handle = args[0]
-    size = args[1]
-    log("reading handle " + str(handle) + " of size " + str(size) + "\n")
-    file_obj = curr_comp()[FILES].lookup(handle)
-    fd = file_obj.fobj
-    head = file_obj.location
-    result = fd.readat(size, head)
-    size_read = len(result)
-    file_obj.location += size_read
-    if size_read==0:
-      #we are at EOF
-      return SuccessResponseBuilder("fs_read", 0)
-    
+include fs_open.repy
 
-    log("[info][syscall] Lind FS Read Finished with: " + result + "\n")
-  except:
-    unimplemented("read failure")
-  try:
-    return SuccessResponseBuilder("fs_read", size_read, result)
-  except:
-    print "problem build return values"
-    exitall()
+include comp.repy
 
+include fs_access.repy
 
+include fs_read.repy
 
+include fs_fstat.repy
 
+include fs_close.repy
 
-# JAC: I think this should call the lind_fs_stat call and do the below
-# work there...
-def lind_fs_fstat(args):
-  """
-    struct stat {
- 8             dev_t      st_dev;     /* ID of device containing file */
- 8             ino64_t    st_ino;     /* inode number */
- 4             mode_t     st_mode;    /* protection */
- 4             nlink_t    st_nlink;   /* number of hard links */
- 4             uid_t      st_uid;     /* user ID of owner */
- 4             gid_t      st_gid;     /* group ID of owner */
- 8             dev_t      st_rdev;    /* device ID (if special file) */
- 8             off64_t    st_size;    /* total size, in bytes */
- 8             blksize_t  st_blksize; /* blocksize for file system I/O */
- 8             blkcnt64_t st_blocks;  /* number of 512B blocks allocated */
- 16            struct timespec   st_atime;   /* time of last access */
- 16            struct timespec   st_mtime;   /* time of last modification */
- 16            struct timespec   st_ctime;   /* time of last status change */
-           };
+include sys_getpid.repy
 
-    struct timespec
-    {
- 8             time_t   tv_sec;
- 8             long int   tv_nsec;
-    };
+include debug.repy
 
-           This is 112 bytes long
+include unimplemented_syscalls.repy
 
-  """
-
-  assert(len(args)==1)
-  assert(type(args[0]) is int or type(args[0]) is long)
-  assert(0 <= args[0] <=1024)
-
-
-  filedes = args[0]
-  
-
-  # My general philisophy is to make the arguments return reasonable modes
-  # whenever possible.   For directories, I'll return the mode string: 
-  # 16877 -> 0100000111101101 which corresponds to drwxr-xr-x.  The 16384 bit
-  # is 'directory'.  For files, I'll do 33261 -> 01000000111101101 which is 
-  # -rwxr-x-r-x.   The 32768 bit is 'regular file'.  I'm skipping other items
-  # for now.
-  # (some information from: http://docs.python.org/library/stat.html)
-
-  # A directory should not be opened, so let's choose the file perms...
-  my_st_mode = 33261
-  # BUG: This may not work with other file perm actions
-
-  # uid / gid can correspond to the default user
-  my_st_uid = my_st_gid = 1000
-
-  # number of links, let's set to 1 for now...
-  my_st_nlink = 1
-
-  # the device containing the item...   Let's use 2049 since this is what is
-  # seen on the lind VM
-  my_st_dev = 2049
-  
-  # for now, let me assume that we can just use the same inode for everything.
-  # I chose a random file's inode.
-  my_st_ino = 840940
-  
-  #  Python's stat command on linux does not have the following fields:
-  #     st_rdev, st_blksize, st_blocks.   I will ignore those.
-  my_st_rdev = my_st_blksize = my_st_blocks = 0
-  
-  # I will set the access, modification and creation times to all be the same
-  # value for now.   I chose a time when I was writing this: 1323630836
-  my_st_atime = my_st_ctime = my_st_mtime = 1323630836
-
-  # TODO: This will not work for make, etc.
-  
-  # need to compute the size...
-  fileobj = curr_comp()[FILES].lookup(filedes)
-  # BUG: This is very inefficient for large files!!!
-  my_st_size = len(fileobj.fobj.readat(None,0))
-  
-
-  # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
-  # followed by 2Q for each timestamp.   The ns field is set to 0.
-  result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
-      my_st_dev,my_st_ino,my_st_mode,my_st_nlink,my_st_uid,my_st_gid,
-      my_st_rdev,my_st_size,my_st_blksize,my_st_blocks,
-      my_st_atime,0,my_st_mtime,0,my_st_ctime,0)
-
-  return SuccessResponseBuilder("fs_fstat", 0, result)
-
-
-
-
-def lind_fs_close(args):
-  handle = args[0]
-  try:
-    file_obj = curr_comp()[FILES].lookup(handle)
-    fd = file_obj.fobj
-    fd.close()
-  except:
-    return  ErrorResponseBuilder("err_badf", "EBADF", "Bad file handle.")
-  return SuccessResponseBuilder("fs_close", SUCCESS)
-
-
-def lind_fs_lseek(args):
-  log("LSeek was called with," + str(args))
-  unimplemented("lseek")
-  return SuccessResponseBuilder("fs_lseek", SUCCESS)
-
-
-def lind_fs_ioctl(args):
-  log("IOCTL was called with,"+ str(args))
-  unimplemented("ioctl")
-  return SuccessResponseBuilder("fs_ioctl", SUCCESS)
-
-
-def lind_fs_access(args):
-  log("ACCESS was called with," + str(args))
-  unimplemented("access")
-  return SuccessResponseBuilder("fs_access", SUCCESS)
-
-
-def lind_fs_unlink(args):
-  log("UNLINK was called with," + str(args))
-  unimplemented("unlink")
-  return ErrorResponseBuilder("fs_unlink", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_link(args):
-  log("LINK was called with,"+ str(args))
-  unimplemented("link")
-  return ErrorResponseBuilder("fs_link", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_chdir(args):
-  log("CHDIR was called with,"+ str(args))
-  unimplemented("chdir")
-  return ErrorResponseBuilder("fs_chdir", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_mkdir(args):
-  log("MKDIR was called with," + str(args))
-  unimplemented("mkdir")
-  return ErrorResponseBuilder("fs_mkdir", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_rmdir(args):
-  log("RMDIR was called with," + str(args))
-  unimplemented("rmdir")
-  return ErrorResponseBuilder("fs_rmdir", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_xstat(args):
-  log("XSTAT was called with," + str(args))
-  unimplemented("xstat")
-  return ErrorResponseBuilder("fs_xstat", "ENOSYS", "unimplemented" )
-
-  
-def lind_err_enosys(args):
-  return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
-
-
-def lind_sys_getpid(args):
-  log("[info][syscall]",mycontext[COMP] ," Calling GetPID\n")
-  # For now we dont want processes to know they are different than each other
-  # maybe this could be a lind specific counter in the future?
-  # what is the impact of doing this?
-  DEFAULT_PID = 1000
-  return SuccessResponseBuilder("sys_getpid", DEFAULT_PID)
-
-
-def lind_debug_trace(args):
-  log("[info][Trace]["+ str(mycontext[COMP])+"] ", args[0],"\n")
-  return SuccessResponseBuilder("debug_trace", 0)
-
-
-def lind_debug_noop(args):
-  return SuccessResponseBuilder("debug_noop", 0)
-
-
-def lind_fs_write(args):
-  #TODO implement write
-  log("[info][syscall]Write was called!")
-  size = args[1]
-  return SuccessResponseBuilder("fs_write", size)
-
-
-def lind_comp_cia(args):
-  """Component Interface Attach"""
-  log("[info][syscall]Component Interface Attach Called with", args, "\n")
-
-  # for now, just return the other compoent
-  target = 0
-  if mycontext[COMP] == 1:
-    target = 2
-  else:
-    target = 1
-
-  return SuccessResponseBuilder("comp_cia", target)
-
-
-def lind_comp_call(args):
-  """Component Call"""
-  log("[info][syscall]Component Call Called with" + str(args),"\n")
-  message = args[3]
-  target_comp = args[0]
-  comp(target_comp)[MBOX].append(message)
-  return SuccessResponseBuilder("comp_call", 0)
-
-
-def lind_comp_accept(args):
-  """Component Accept"""
-  log("[info][syscall]Component Accept Called with", args, "\n")
-  try:
-    mesg = curr_comp()[MBOX].pop(0)
-  except IndexError:
-    return SuccessResponseBuilder("comp_accpet", 0)
-  return SuccessResponseBuilder("comp_accpet", len(mesg), mesg)
-
-
-def lind_comp_recv(args):
-  """Component Recv"""
-  log("[info][syscall]Component Recv called with ", args, "\n")
-  
-  return SuccessResponseBuilder("comp_recv", 0)
-
-
-def dispatch_syscall(call, args):
-  try:
-    syscall_response = curr_comp()[SYSCALL][call](args)
-    
-
-  except KeyError,e:
-    log("[ERROR][dispatch] Failed to look up " + str(call) + str(e) + "\n")
-    syscall_response =  ErrorResponseBuilder("ENOSYS", "The system call is not in the system call table. Call="+str(call))
-  
-  assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
-  
-  return syscall_response
-
+include dispatcher.repy
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
@@ -553,9 +227,6 @@ def print_times(times):
     each += 1
     call_args = eachtime[each]
     print prefix, function_name + ", "+ "%f"%(exec_pre) + ", " + "%f"%(exec_start) + ", " + "%f"%(exec_post) + ", " + "%f"%(exec_stop) + ", " + "%f"%(exec_before) + ", " + "%f"%(exec_after) + ", \"" + str(call_args) + "\""
-
-
-NOOP_CALL_NUM=1
 
 
 
@@ -681,64 +352,6 @@ def new_compoent():
     launch_helper(nacl, 2)
   else:
     print "Safe Binary mode must be switched on for this program to work."
-
-MODE="safe"
-
-def setup_dispatcher(comp_num):
-  # map a systemcall number to a particular function
-  if MODE == "safe":
-    comp(comp_num)[SYSCALL] = {
-    1:lind_debug_noop,
-    2:lind_fs_access,
-    3:lind_debug_trace,
-    4:lind_fs_unlink,
-    5:lind_fs_link,
-    6:lind_fs_chdir,
-    7:lind_fs_mkdir,
-    8:lind_fs_rmdir,                      
-    9:lind_fs_xstat,                      
-    10:lind_safe_fs_open,
-    11:lind_fs_close,
-    12:lind_fs_read,
-    13:lind_fs_write,
-    14:lind_fs_lseek,
-    15:lind_fs_ioctl,
-    17:lind_fs_fstat,
-    31:lind_sys_getpid,
-    105:lind_comp_cia,
-    106:lind_comp_call,
-    107:lind_comp_accept,
-    108:lind_comp_recv
-    }
-  else:
-   
-    comp(comp_num)[SYSCALL] = {
-    1:lind_debug_noop,
-    2:lind_fs_access,
-    3:lind_debug_trace,
-    4:lind_fs_unlink,
-    5:lind_fs_link,
-    6:lind_fs_chdir,
-    7:lind_fs_mkdir,
-    8:lind_fs_rmdir,                      
-    9:lind_fs_xstat,                      
-    10:lind_fs_open,
-    11:lind_fs_close,
-    12:lind_fs_read,
-    13:lind_fs_write,
-    14:lind_fs_lseek,
-    15:lind_fs_ioctl,
-    17:lind_fs_fstat,
-    31:lind_sys_getpid,
-    105:lind_comp_cia,
-    106:lind_comp_call,
-    107:lind_comp_accept,
-    108:lind_comp_recv
-    }
-  
-  #setup error codes
-  comp(comp_num)[ERRNO] = {'ENOENT':2,  'ENOSYS':38 }
-
 
 def setup_filetable(comp_num):
   #table of file handles

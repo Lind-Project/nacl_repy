@@ -1,0 +1,39 @@
+def lind_comp_cia(args):
+  """Component Interface Attach"""
+  log("[info][syscall]Component Interface Attach Called with", args, "\n")
+
+  # for now, just return the other compoent
+  target = 0
+  if mycontext[COMP] == 1:
+    target = 2
+  else:
+    target = 1
+
+  return SuccessResponseBuilder("comp_cia", target)
+
+
+def lind_comp_call(args):
+  """Component Call"""
+  log("[info][syscall]Component Call Called with" + str(args),"\n")
+  message = args[3]
+  target_comp = args[0]
+  comp(target_comp)[MBOX].append(message)
+  return SuccessResponseBuilder("comp_call", 0)
+
+
+def lind_comp_accept(args):
+  """Component Accept"""
+  log("[info][syscall]Component Accept Called with", args, "\n")
+  try:
+    mesg = curr_comp()[MBOX].pop(0)
+  except IndexError:
+    return SuccessResponseBuilder("comp_accpet", 0)
+  return SuccessResponseBuilder("comp_accpet", len(mesg), mesg)
+
+
+def lind_comp_recv(args):
+  """Component Recv"""
+  log("[info][syscall]Component Recv called with ", args, "\n")
+  
+  return SuccessResponseBuilder("comp_recv", 0)
+
