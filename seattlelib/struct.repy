@@ -180,6 +180,37 @@ def struct_pack(formatstring, *args):
         # and append it.
         retstring += thisargstring
         
+      # it's a signed or unsigned integer (8 byte)!   Must have endianness!!!
+      elif typetopack == 'q' or typetopack == 'Q':
+        if endianness == "none":
+          raise TypeError("Long long must have endianness")
+
+        if type(thisarg) != int and type(thisarg) != long:
+          raise TypeError("8-byte int format argument not a long or int")
+  
+        # let's check the ranges
+        if typetopack == 'q':
+          if not (thisarg >= -(2**63) and thisarg < 2**63):
+            raise ValueError("Integer "+str(thisarg)+" out of range for type 'i'")
+        else:
+          if not (thisarg >= 0 and thisarg < 2**64):
+            raise ValueError("Integer "+str(thisarg)+" out of range for type 'I'")
+
+        if typetopack == 'q' and thisarg < 0:
+          # if signed let's do a conversion to an unsigned!
+          # Magic code!   Add ULONGLONG_MAX + 1!
+          thisarg = thisarg + 2**64
+
+        # okay, so now we have the big-endian description...
+        thisargstring = _convert_number_to_big_endian_string(thisarg,8)
+ 
+        # if it's little-endian, let's reverse it!
+        if endianness == "little":
+          thisargstring = thisargstring[::-1]
+          
+        # and append it.
+        retstring += thisargstring
+
 
       else:
         raise TypeError("Unknown format type '"+typetopack+"'")
@@ -333,6 +364,32 @@ def struct_unpack(formatstring, packedstring):
         retlist.append(thisnumber)
         
 
+      # it's a signed or unsigned integer (8 byte)!   Must have endianness!!!
+      elif typetounpack == 'q' or typetounpack == 'Q':
+        # shouldn't happen because we checked above
+        assert(endianness != "none")
+        assert(len(currentpackedstring) >= 8)
+  
+        # flip the endianness to big (if applicable)
+        thisnumberstring = currentpackedstring[:8]
+        if endianness == "little":
+          thisnumberstring = thisnumberstring[::-1]
+
+        currentpackedstring = currentpackedstring[8:]
+
+        # okay, so now we have the big-endian description...
+        thisnumber = _convert_big_endian_string_to_number(thisnumberstring)
+ 
+
+        if typetounpack == 'q' and thisnumber >= 2**63:
+          # if signed let's do a conversion to an unsigned!
+          # Magic code!   Subtract ULONGLONG_MAX - 1!
+          thisnumber = thisnumber - 2**64
+
+        # and append it.
+        retlist.append(thisnumber)
+        
+
       else:
         raise TypeError("Unknown format type '"+typetounpack+"'")
     
@@ -438,6 +495,18 @@ def struct_calcsize(formatstring):
 
       # add the size of an integer + the number of integers
       currentlength += 4 * repeatcount
+
+    # it's a signed or unsigned long long (8 byte)!   Must have endianness!!!
+    elif typetounpack == 'q' or typetounpack == 'Q':
+
+      if not specifiesendianness:
+        raise ValueError("An integer must have endianness specified! (position "+str(position)+" of '"+formatstring+"')")
+
+
+      # add the size of an integer + the number of integers
+      currentlength += 8 * repeatcount
+
+
     else:
       raise TypeError("Unknown format type '"+typetounpack+"' at (position "+str(position)+" of '"+formatstring+"')")
   return currentlength

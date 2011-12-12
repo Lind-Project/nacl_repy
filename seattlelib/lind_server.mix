@@ -319,32 +319,99 @@ def lind_fs_read(args):
     exitall()
 
 
+
+
+
+# JAC: I think this should call the lind_fs_stat call and do the below
+# work there...
 def lind_fs_fstat(args):
   """
     struct stat {
-               dev_t     st_dev;     /* ID of device containing file */
-               ino_t     st_ino;     /* inode number */
-               mode_t    st_mode;    /* protection */
-               nlink_t   st_nlink;   /* number of hard links */
-               uid_t     st_uid;     /* user ID of owner */
-               gid_t     st_gid;     /* group ID of owner */
-               dev_t     st_rdev;    /* device ID (if special file) */
-               off_t     st_size;    /* total size, in bytes */
-               blksize_t st_blksize; /* blocksize for file system I/O */
-               blkcnt_t  st_blocks;  /* number of 512B blocks allocated */
-               time_t    st_atime;   /* time of last access */
-               time_t    st_mtime;   /* time of last modification */
-               time_t    st_ctime;   /* time of last status change */
+ 8             dev_t      st_dev;     /* ID of device containing file */
+ 8             ino64_t    st_ino;     /* inode number */
+ 4             mode_t     st_mode;    /* protection */
+ 4             nlink_t    st_nlink;   /* number of hard links */
+ 4             uid_t      st_uid;     /* user ID of owner */
+ 4             gid_t      st_gid;     /* group ID of owner */
+ 8             dev_t      st_rdev;    /* device ID (if special file) */
+ 8             off64_t    st_size;    /* total size, in bytes */
+ 8             blksize_t  st_blksize; /* blocksize for file system I/O */
+ 8             blkcnt64_t st_blocks;  /* number of 512B blocks allocated */
+ 16            struct timespec   st_atime;   /* time of last access */
+ 16            struct timespec   st_mtime;   /* time of last modification */
+ 16            struct timespec   st_ctime;   /* time of last status change */
            };
 
-           This is 144 bytes long
+    struct timespec
+    {
+ 8             time_t   tv_sec;
+ 8             long int   tv_nsec;
+    };
 
+           This is 112 bytes long
 
   """
-  fd = args[0]
-  unimplemented("fstat")
-  #return SuccessResponseBuilder("fs_fstat", 0, result)
-  return ErrorResponseBuilder("fs_access", "ENOSYS", "access system call is not implemented." )
+
+  assert(len(args)==1)
+  assert(type(args[0]) is int or type(args[0]) is long)
+  assert(0 <= args[0] <=1024)
+
+
+  filedes = args[0]
+  
+
+  # My general philisophy is to make the arguments return reasonable modes
+  # whenever possible.   For directories, I'll return the mode string: 
+  # 16877 -> 0100000111101101 which corresponds to drwxr-xr-x.  The 16384 bit
+  # is 'directory'.  For files, I'll do 33261 -> 01000000111101101 which is 
+  # -rwxr-x-r-x.   The 32768 bit is 'regular file'.  I'm skipping other items
+  # for now.
+  # (some information from: http://docs.python.org/library/stat.html)
+
+  # A directory should not be opened, so let's choose the file perms...
+  my_st_mode = 33261
+  # BUG: This may not work with other file perm actions
+
+  # uid / gid can correspond to the default user
+  my_st_uid = my_st_gid = 1000
+
+  # number of links, let's set to 1 for now...
+  my_st_nlink = 1
+
+  # the device containing the item...   Let's use 2049 since this is what is
+  # seen on the lind VM
+  my_st_dev = 2049
+  
+  # for now, let me assume that we can just use the same inode for everything.
+  # I chose a random file's inode.
+  my_st_ino = 840940
+  
+  #  Python's stat command on linux does not have the following fields:
+  #     st_rdev, st_blksize, st_blocks.   I will ignore those.
+  my_st_rdev = my_st_blksize = my_st_blocks = 0
+  
+  # I will set the access, modification and creation times to all be the same
+  # value for now.   I chose a time when I was writing this: 1323630836
+  my_st_atime = my_st_ctime = my_st_mtime = 1323630836
+
+  # TODO: This will not work for make, etc.
+  
+  # need to compute the size...
+  fileobj = curr_comp()[FILES].lookup(filedes)
+  # BUG: This is very inefficient for large files!!!
+  my_st_size = len(fileobj.fobj.readat(None,0))
+  
+
+  # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
+  # followed by 2Q for each timestamp.   The ns field is set to 0.
+  result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
+      my_st_dev,my_st_ino,my_st_mode,my_st_nlink,my_st_uid,my_st_gid,
+      my_st_rdev,my_st_size,my_st_blksize,my_st_blocks,
+      my_st_atime,0,my_st_mtime,0,my_st_ctime,0)
+
+  return SuccessResponseBuilder("fs_fstat", 0, result)
+
+
 
 
 def lind_fs_close(args):
