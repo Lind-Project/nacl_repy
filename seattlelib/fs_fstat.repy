@@ -76,8 +76,12 @@ def lind_fs_fstat(args):
   # need to compute the size...
   fileobj = curr_comp()[FILES].lookup(filedes)
   # BUG: This is very inefficient for large files!!!
-  my_st_size = len(fileobj.fobj.readat(None,0))
-  
+  try:
+    my_st_size = len(fileobj.fobj.readat(None,0))
+  except FileClosedError:
+    return ErrorResponseBuilder("fs_fstat", "EBADF", "file is already closed." )
+
+    
 
   # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
   # followed by 2Q for each timestamp.   The ns field is set to 0.
@@ -88,3 +92,11 @@ def lind_fs_fstat(args):
 
   return SuccessResponseBuilder("fs_fstat", 0, result)
 
+
+def lind_safe_fs_fstat(args):
+  assert(len(args)==1), "fsstat should always have one argument"
+  assert(type(args[0]) is int or type(args[0]) is long), "argument should be an int or long"
+  check_valid_fd_handle(args[0])
+  result = lind_fs_fstat(args)
+  assert len(result.data)==112, "result must be exactly the size of struct stat"
+  return result

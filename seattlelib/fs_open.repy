@@ -1,4 +1,5 @@
 #constants pulled from standard lib
+MASK=3
 O_RDONLY=00
 O_WRONLY=01
 O_RDWR=02
@@ -51,6 +52,10 @@ def lind_fs_open(args):
   # check old handles, if there, just return that one
   already_there = curr_comp()[FILES].lookupName(file_name)
   if already_there != 0:
+    file_obj = curr_comp()[FILES].lookup(already_there)
+    if(file_obj.closed):
+      file_obj.fobj = openfile(file_name, False)
+      file_obj.closed = False
     return SuccessResponseBuilder("fs_open", already_there )
   if file_name == "lind://component-manager":
     COMP_MANAGER_FD = 9
@@ -82,15 +87,17 @@ def lind_safe_fs_open(args):
     assert isinstance(flags, int), "the flags should be an int" 
     assert isinstance(mode, int), "the mode should be an int"
     assert isinstance(file_name_length, int), "file length should be an int"
-    assert mode == 0, "we do not handle mode bits yet"
-    assert flags == 0, "we do not handle flags yet"
+    if mode != 0:
+      print "Warning: we do not handle mode bits yet"
+    if flags != 0:
+      print "Warning: we do not handle flags bits yet"
     assert isinstance(file_name, str), "filename should be a string"
     assert file_name_length == len(file_name), "name length should match passed length"
-    assert (flags==O_RDONLY or flags==O_WRONLY or flags==O_RDWR), "the flags to not seem to be one of the expected."
+    assert ((flags&MASK)==O_RDONLY or (flags&MASK)==O_WRONLY or (flags&MASK)==O_RDWR), "the flags to not seem to be one of the expected. %o"%(flags)
 
     result = lind_fs_open(args)
 
     assert isinstance(result, Response), "wrong return type"
-    assert result.return_code > -1 and result.return_code < MAX_FD 
+    assert -1 <= result.return_code <= MAX_FD 
 
     return result

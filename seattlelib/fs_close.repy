@@ -5,7 +5,14 @@ def lind_fs_close(args):
     file_obj = curr_comp()[FILES].lookup(handle)
     fd = file_obj.fobj
     fd.close()
+    file_obj.closed = True
   except:
     return  ErrorResponseBuilder("err_badf", "EBADF", "Bad file handle.")
   return SuccessResponseBuilder("fs_close", SUCCESS)
 
+def lind_safe_fs_close(args):
+  handle = args[0]
+  check_valid_fd_handle(handle)
+
+  return lind_fs_close(args)
+  

@@ -149,11 +149,11 @@ def SuccessResponseBuilder(who, code, data=None):
 
 class File:
   def __init__(self, name, fobj):
-    self.name = name
-    self.handle = -1
-    self.fobj = fobj
-    self.location = 0
-
+    self.name = name # the name of the file (path)
+    self.handle = -1 # the file descriptor number we use for this file
+    self.fobj = fobj # the repy file object
+    self.location = 0 # the file cursor position
+    self.closed = False #is this file closed?
 
 class FileList:
   def __init__(self):
@@ -182,6 +182,11 @@ class FileList:
       if fobjs.name == name:
         return fobjs.handle
     return 0
+
+
+def check_valid_fd_handle(num):
+  assert isinstance(num, int)
+  assert (10 <= num <= MAX_FD), "invalid handle"
 
 
 include fs_open.repy

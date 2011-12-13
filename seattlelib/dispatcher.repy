@@ -18,12 +18,12 @@ def setup_dispatcher(comp_num):
     8:lind_fs_rmdir,                      
     9:lind_fs_xstat,                      
     10:lind_safe_fs_open,
-    11:lind_fs_close,
-    12:lind_fs_read,
+    11:lind_safe_fs_close,
+    12:lind_safe_fs_read,
     13:lind_fs_write,
     14:lind_fs_lseek,
     15:lind_fs_ioctl,
-    17:lind_fs_fstat,
+    17:lind_safe_fs_fstat,
     31:lind_sys_getpid,
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -31,7 +31,6 @@ def setup_dispatcher(comp_num):
     108:lind_comp_recv
     }
   else:
-   
     comp(comp_num)[SYSCALL] = {
     1:lind_debug_noop,
     2:lind_fs_access,
@@ -57,7 +56,7 @@ def setup_dispatcher(comp_num):
     }
   
   #setup error codes
-  comp(comp_num)[ERRNO] = {'ENOENT':2,  'ENOSYS':38 }
+  curr_comp()[ERRNO] = {'ENOENT':2, 'EBADF':9,  'ENOSYS':38 }
 
 
 def dispatch_syscall(call, args):
