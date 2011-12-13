@@ -105,11 +105,11 @@ class Response:
     """
     reply = None
     if self.is_error:
-      # message format <is_error, code, message>
-      reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", len(self.message) + 12, 101010, 1, self.return_code, self.message)
+      # message format <size, magic, is_error, code, message>
+      reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", len(self.message) + 16, 101010, 1, self.return_code, self.message)
     else:
-      # message format <is_error, code, data>
-      reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", len(self.data) + 12, 101010, 0, self.return_code, self.data)
+      # message format <size, magic, is_error, code, data>
+      reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", len(self.data) + 16, 101010, 0, self.return_code, self.data)
     return reply
 
   def __str__(self):
