@@ -98,6 +98,7 @@ def lind_safe_fs_open(args):
     result = lind_fs_open(args)
 
     assert isinstance(result, Response), "wrong return type"
-    assert -1 <= result.return_code <= MAX_FD 
+    if not result.is_error:
+      assert (-1 <= result.return_code <= MAX_FD), "Must return a valid FD." 
 
     return result
