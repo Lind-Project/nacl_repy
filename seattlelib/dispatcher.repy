@@ -56,7 +56,7 @@ def setup_dispatcher(comp_num):
     }
   
   #setup error codes
-  curr_comp()[ERRNO] = {'ENOENT':2, 'EBADF':9,  'ENOSYS':38 }
+  comp(comp_num)[ERRNO] = {'ENOENT':2, 'EBADF':9,  'ENOSYS':38 }
 
 
 def dispatch_syscall(call, args):
