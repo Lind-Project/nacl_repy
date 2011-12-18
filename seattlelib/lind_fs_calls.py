@@ -78,7 +78,7 @@ nanny.tattle_remove_item = do_nothing
 #      a dictionary with file object, position, flags, a lock, and inode keys.
 #      The inode values are used to update / check the file size after writeat 
 #      calls and for calls like fstat.
-#   6) A file's data is mapped the filename 'linddata.'+str(inode)
+#   6) A file's data is mapped the filename FILEDATAPREFIX+str(inode)
 #
 # BUG: I created a table which allows one to look up an "inode"
 #      given a filename.   It will break certain things in certain weird corner
@@ -146,6 +146,8 @@ nanny.tattle_remove_item = do_nothing
 
 # Store all of the information about the file system in a dict...
 ROOTDIRECTORYINODE = 0
+
+FILEDATAPREFIX = 'linddata.'
 
 filesystemmetadata = {}
 
@@ -548,7 +550,6 @@ def rmdir_syscall(path):
 
   finally:
     filesystemmetadatalock.release()
-  pass
 
 
 
@@ -859,7 +860,7 @@ def open_syscall(path, flags, mode):
       fastinodelookuptable[truepath] = newinode
 
       # this file must not exist or it's an internal error!!!
-      openfile('linddata.'+str(newinode),True).close()
+      openfile(FILEDATAPREFIX+str(newinode),True).close()
 
     # if the file did exist, were we told to create with exclusion?
     else:
@@ -878,7 +879,7 @@ def open_syscall(path, flags, mode):
     inode = fastinodelookuptable[truepath]
 
     # TODO: I should check O_TRUNC, etc.
-    thisfo = openfile('linddata.'+str(inode),False)
+    thisfo = openfile(FILEDATAPREFIX+str(inode),False)
 
     # BUG: (?) I'm going to assume that if you use O_APPEND I only need to 
     # start the pointer in the right place.
