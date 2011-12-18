@@ -147,6 +147,8 @@ nanny.tattle_remove_item = do_nothing
 # Store all of the information about the file system in a dict...
 ROOTDIRECTORYINODE = 0
 
+METADATAFILENAME = 'lind.metadata'
+
 FILEDATAPREFIX = 'linddata.'
 
 filesystemmetadata = {}
@@ -381,6 +383,7 @@ def access_syscall(path, amode):
     raise SyscallError("access_syscall","EACESS","The requested access is denied.")
 
   finally:
+    persist_metadata(METADATAFILENAME)
     # release the lock
     filesystemmetadatalock.release()
 
@@ -484,6 +487,7 @@ def mkdir_syscall(path, mode):
     return 0
 
   finally:
+    persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
@@ -549,6 +553,7 @@ def rmdir_syscall(path):
     return 0
 
   finally:
+    persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
@@ -625,6 +630,7 @@ def link_syscall(oldpath, newpath):
     return 0
 
   finally:
+    persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
@@ -692,6 +698,7 @@ def unlink_syscall(path):
     return 0
 
   finally:
+    persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
@@ -723,6 +730,7 @@ def stat_syscall(path):
     return _istat_helper(thisinode)
 
   finally:
+    persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
@@ -900,6 +908,7 @@ def open_syscall(path, flags, mode):
     return thisfd
 
   finally:
+    persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
