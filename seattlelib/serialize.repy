@@ -26,7 +26,7 @@ I can add support or detection of this if desired.
 
 
 
-def serialize_serializedata(data):
+def serializedata(data):
   """
    <Purpose>
       Convert a data item of any type into a string such that we can 
@@ -100,7 +100,7 @@ def serialize_serializedata(data):
       raise Exception("InternalError: not a known type after checking")
 
     for item in data:
-      thisitem = serialize_serializedata(item)
+      thisitem = serializedata(item)
       # Append the length of the item, plus ':', plus the item.   1 -> '2:I1'
       mystr = mystr + str(len(thisitem))+":"+thisitem
 
@@ -113,12 +113,12 @@ def serialize_serializedata(data):
   elif type(data) is dict:
     mystr = 'D'
 
-    keysstr = serialize_serializedata(data.keys())
+    keysstr = serializedata(data.keys())
     # Append the length of the list, plus ':', plus the list.  
     mystr = mystr + str(len(keysstr))+":"+keysstr
     
     # just plop the values on the end.
-    valuestr = serialize_serializedata(data.values())
+    valuestr = serializedata(data.values())
     mystr = mystr + valuestr
 
     return mystr
@@ -130,7 +130,7 @@ def serialize_serializedata(data):
 
 
 
-def serialize_deserializedata(datastr):
+def deserializedata(datastr):
   """
    <Purpose>
       Convert a serialized data string back into its original types.
@@ -213,7 +213,7 @@ def serialize_deserializedata(datastr):
 
       # get this item, convert to a string, append to the list.
       thisitemdata = restofdata[:length]
-      thisitem = serialize_deserializedata(thisitemdata)
+      thisitem = deserializedata(thisitemdata)
       thislist.append(thisitem)
 
       # Now toss away the part we parsed.
@@ -238,10 +238,10 @@ def serialize_deserializedata(datastr):
 
     # get this item, convert to a string, append to the list.
     keysdata = restofdata[:length]
-    keys = serialize_deserializedata(keysdata)
+    keys = deserializedata(keysdata)
 
     # The rest should be the values list.
-    values = serialize_deserializedata(restofdata[length:])
+    values = deserializedata(restofdata[length:])
 
     if type(keys) != list or type(values) != list or len(keys) != len(values):
       raise ValueError("Malformed Dict string '"+restofstring+"'")
