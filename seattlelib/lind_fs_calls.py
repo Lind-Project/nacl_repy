@@ -872,7 +872,7 @@ def open_syscall(path, flags, mode):
 
     # if the file did exist, were we told to create with exclusion?
     else:
-      # did they use O_CREAT?
+      # did they use O_CREAT and O_EXCL?
       if O_CREAT & flags and O_EXCL & flags:
         raise SyscallError("open_syscall","EEXIST","The file exists.")
 
@@ -886,8 +886,19 @@ def open_syscall(path, flags, mode):
     # Let's open it!
     inode = fastinodelookuptable[truepath]
 
-    # TODO: I should check O_TRUNC, etc.
-    thisfo = openfile(FILEDATAPREFIX+str(inode),False)
+    # Note, directories can be opened (to do getdents, etc.).   We shouldn't
+    # actually open something in this case...
+    # Is it anything other than a regular file?
+    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+      # this should raise an (internal) error if we try to use it.   We
+      # should be checking in each call to make sure we are accessing the
+      # right type.
+      thisfo = None
+
+    else:
+      # this is a regular file.  Let's open it! 
+      # TODO: I should check O_TRUNC, etc.
+      thisfo = openfile(FILEDATAPREFIX+str(inode),False)
 
     # BUG: (?) I'm going to assume that if you use O_APPEND I only need to 
     # start the pointer in the right place.
@@ -931,8 +942,13 @@ def lseek_syscall(fd, offset, whence):
 
   # ... but always release it...
   try:
-    # we will need the file size in a moment
+    # we will need the file size in a moment, but also need to check the type
     inode = filedescriptortable[fd]['inode']
+
+    # Is it anything other than a regular file?
+    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+      raise SyscallError("lseek_syscall","EINVAL","File descriptor does not refer to a regular file.")
+      
     filesize = filesystemmetadata['inodetable'][inode]['size']
 
     # Figure out where we will seek to and check it...
@@ -992,6 +1008,14 @@ def read_syscall(fd, count):
   # ... but always release it...
   try:
 
+    # get the inode so I can and check the mode (type)
+    inode = filedescriptortable[fd]['inode']
+
+    # Is it anything other than a regular file?
+    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+      raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
+      
+
     # let's do a readat!
     position = filedescriptortable[fd]['position']
 
@@ -1034,14 +1058,20 @@ def write_syscall(fd, data):
   if filedescriptortable[fd]['flags'] & O_RDONLY: 
     raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
 
+
   # Acquire the fd lock...
   filedescriptortable[fd]['lock'].acquire(True)
 
   # ... but always release it...
   try:
 
-    # get the inode so I can update the size (if needed)
+    # get the inode so I can update the size (if needed) and check the type
     inode = filedescriptortable[fd]['inode']
+
+    # Is it anything other than a regular file?
+    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+      raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
+      
 
     # let's do a writeat!
     position = filedescriptortable[fd]['position']
@@ -1093,9 +1123,10 @@ def close_syscall(fd):
     # BUG: If I implement dup, dup2, etc. I should only close here if it's 
     # the last reference to the file.
     # BUG: Also, what happens if we call open multiple times on a file?
-
-    # writeat never writes less than desired in Repy V2.
-    filedescriptortable[fd]['fo'].close()
+  
+    # If this is not closable, the fileobject will be None.
+    if filedescriptortable[fd]['fo'] != None:
+      filedescriptortable[fd]['fo'].close()
 
     # BUG: This is likely where I actually need to clean up an unlinked file.
 
@@ -1104,5 +1135,57 @@ def close_syscall(fd):
     filedescriptortable[fd]['lock'].release()
     del filedescriptortable[fd]
 
+
+
+
+
+
+
+
+##### GETDENTS  #####
+
+
+
+def getdents_syscall(fd,quantity):
+  """ 
+    http://linux.die.net/man/2/getdents
+  """
+
+  # BUG: I probably need a filedescriptortable lock to prevent race conditions
+
+  # BUG BUG BUG: Do I really understand this spec!?!?!?!
+
+  # check the fd
+  if fd not in filedescriptortable:
+    raise SyscallError("getdents_syscall","EBADF","Invalid file descriptor.")
+
+  # Acquire the fd lock...
+  filedescriptortable[fd]['lock'].acquire(True)
+
+  # ... but always release it...
+  try:
+
+    # get the inode so I can read the directory entries
+    inode = filedescriptortable[fd]['inode']
+
+    # Is it a directory?
+    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFDIR:
+      print filesystemmetadata['inodetable'][inode]['mode'], inode
+      raise SyscallError("getdents_syscall","EINVAL","File descriptor does not refer to a directory.")
+      
+    returninodefntuplelist = []
+    currentquantity = 0
+    # return tuple with inode, name tuples...
+    for entryname,entryinode in filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems():
+      if currentquantity >= quantity:
+        break
+      returninodefntuplelist.append((entryinode,entryname))
+      currentquantity=currentquantity + 1
+
+    return returninodefntuplelist
+
+  finally:
+    # ... release the lock
+    filedescriptortable[fd]['lock'].release()
 
 
