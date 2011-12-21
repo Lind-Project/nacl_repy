@@ -1,5 +1,4 @@
-import lind_fs_calls
-
+import wrapped_lind_fs_calls as lind_fs_calls
 from lind_fs_constants import *
 
 # Let's add a few directories to the system and see if it works...
