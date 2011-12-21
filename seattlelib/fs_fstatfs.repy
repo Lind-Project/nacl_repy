@@ -1,0 +1,20 @@
+
+# JAC: I think this should call the lind_fs_stat call and do the below
+# work there...
+def lind_fs_fstatfs(args):
+
+  filedes = args[0]
+  return ErrorResponseBuilder("fs_fstatfs", "ENOSYS", "fstatfs is unimplemented")
+
+
+def lind_safe_fs_fstatfs(args):
+  assert(len(args)==1), "fsstat should always have one argument"
+  assert(type(args[0]) is int or type(args[0]) is long), "argument should be an int or long"
+  check_valid_fd_handle(args[0])
+  result = lind_fs_fstatfs(args)
+
+  assert isinstance(result, Response), "wrong return type %s"%(str(type(result)))
+  if not result.is_error:
+      assert len(result.data)==88, "result must be exactly the size of struct statfs"
+
+  return result

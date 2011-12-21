@@ -189,7 +189,20 @@ def check_valid_fd_handle(num):
   assert (10 <= num <= MAX_FD), "invalid handle"
 
 
+
+
+
+
+
+include lind_fs_constants.py
+
+include serialize.repy
+
+include lind_fs_calls.py
+
 include fs_open.repy
+
+include fs_fstatfs.repy
 
 include comp.repy
 
@@ -368,6 +381,7 @@ def setup_filetable(comp_num):
   for i in range(0, handle_offset):
     comp(comp_num)[FILES].insertFile("",None)
 
+  _blank_fs_init()
 
 def setup_component_communication(comp_num):
     comp(comp_num)[MBOX] = []
