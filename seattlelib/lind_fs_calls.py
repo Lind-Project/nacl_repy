@@ -48,6 +48,7 @@ from emulmisc import createlock
 
 from emulfile import emulated_open as openfile 
 
+
 import nanny
 
 def do_nothing(*args):
@@ -344,6 +345,128 @@ def _get_absolute_parent_path(path):
 
 
 #################### The actual system calls...   #############################
+
+
+
+
+##### FSTATFS  #####
+
+
+# return statfs data for fstatfs and statfs
+def _istatfs_helper(inode):
+  """
+  I should return something like:
+
+  struct statfs {
+    __SWORD_TYPE f_type; /* type of file system (see below) */
+    __SWORD_TYPE f_bsize; /* optimal transfer block size */
+    fsblkcnt_t f_blocks; /* total data blocks in file system */
+    fsblkcnt_t f_bfree; /* free blocks in fs */
+    fsblkcnt_t f_bavail; /* free blocks available to unprivileged user */
+    fsfilcnt_t f_files; /* total file nodes in file system */
+    fsfilcnt_t f_ffree; /* free file nodes in fs */
+    fsid_t f_fsid; /* file system id */
+    __SWORD_TYPE f_namelen; /* maximum length of filenames */
+    __SWORD_TYPE f_frsize; /* fragment size (since Linux 2.6) */
+    __SWORD_TYPE f_spare[5];
+  };
+
+  I'll return a dict with these elements
+  """
+
+  # I need to compute the amount of disk available / used
+  limits, usage, stoptimes = getresources()
+
+  # I'm going to fake large parts of this.   
+  myfsdata = {}
+
+  myfsdata['f_type'] = 0xBEEFC0DE   # unassigned.   New to us...
+
+  myfsdata['f_bsize'] = 4096        # Match the repy V2 block size
+
+  myfsdata['f_blocks'] = limits['diskused'] / 4096   
+
+  myfsdata['f_bfree'] = (limits['diskused']-usage['diskused']) / 4096  
+  # same as above...
+  myfsdata['f_bavail'] = (limits['diskused']-usage['diskused']) / 4096  
+
+  # file nodes...   I think this is infinite...
+  myfsdata['f_files'] = 1024*1024*1024
+
+  # free file nodes...   I think this is also infinite...
+  myfsdata['f_files'] = 1024*1024*512
+
+  myfsdata['f_fsid'] = filesystemmetadata['dev_id']
+
+  # we don't really have a limit, but let's say 254
+  myfsdata['f_namelen'] = 254
+
+  # same as blocksize...
+  myfsdata['f_frsize'] = 4096 
+  
+  # it's supposed to be 5 bytes...   Let's try null characters...
+  myfsdata['f_spare'] = '\0'*5
+
+
+  return myfsdata
+
+
+def fstatfs_syscall(fd):
+  """ 
+    http://linux.die.net/man/2/fstatfs
+  """
+
+  # is the file descriptor valid?
+  if fd not in filedescriptortable:
+    raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+
+  
+  # if so, return the information...
+  return _istatfs_helper(filedescriptortable[fd]['inode'])
+
+
+
+
+
+
+
+
+
+
+
+
+##### STATFS  #####
+
+
+def statfs_syscall(path):
+  """ 
+    http://linux.die.net/man/2/statfs
+  """
+  # in an abundance of caution, I'll grab a lock...
+  filesystemmetadatalock.acquire(True)
+
+  # ... but always release it...
+  try:
+    truepath = _get_absolute_path(path)
+
+    # is the path there?
+    if truepath not in fastinodelookuptable:
+      raise SyscallError("statfs_syscall","ENOENT","The path does not exist.")
+
+    thisinode = fastinodelookuptable[truepath]
+      
+    return _istatfs_helper(thisinode)
+
+  finally:
+    filesystemmetadatalock.release()
+
+
+
+
+
+
+
+    
 
 
 
