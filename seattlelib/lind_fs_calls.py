@@ -802,6 +802,13 @@ def _get_next_fd():
   raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
   
 
+# private helper.   Get the fd for an inode (or None)
+def _lookup_fd_by_inode(inode):
+  for fd in filedescriptortable:
+    if filedescriptortable[fd]['inode'] == inode:
+      return fd
+  return None
+
 def open_syscall(path, flags, mode):
   """ 
     http://linux.die.net/man/2/open
@@ -879,12 +886,22 @@ def open_syscall(path, flags, mode):
     # TODO: I should check permissions...
 
     # At this point, the file will exist... 
+
+    # Let's find the inode
+    inode = fastinodelookuptable[truepath]
+
+    # If I already have it open, return the current fd.   
+    # JAC: According to Chris, this is the correct behavior
+    existingfd = _lookup_fd_by_inode(inode)
+
+    # if it exists, return it!   We're done.
+    # BUG: Do I need to make sure the mode / flags are identical?
+    if existingfd != None:
+      return existingfd
     
-    # let's find the next fd...
+    # get the next fd so we can use it...
     thisfd = _get_next_fd()
   
-    # Let's open it!
-    inode = fastinodelookuptable[truepath]
 
     # Note, directories can be opened (to do getdents, etc.).   We shouldn't
     # actually open something in this case...
