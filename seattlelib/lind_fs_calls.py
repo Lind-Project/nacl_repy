@@ -958,8 +958,6 @@ def open_syscall(path, flags, mode):
       if not O_CREAT & flags:
         raise SyscallError("open_syscall","ENOENT","The file does not exist.")
 
-      ##### CREAT #####
-
       # okay, it doesn't exist (great!).   Does it's parent exist and is it a 
       # dir?
       trueparentpath = _get_absolute_parent_path(path)
@@ -1011,6 +1009,16 @@ def open_syscall(path, flags, mode):
       # did they use O_CREAT and O_EXCL?
       if O_CREAT & flags and O_EXCL & flags:
         raise SyscallError("open_syscall","EEXIST","The file exists.")
+
+      # This file should be removed.   If O_RDONLY is set, the behavior
+      # is undefined, so this is okay, I guess...
+      if O_TRUNC & flags:
+        inode = fastinodelookuptable[truepath]
+
+        # this file must exist or it's an internal error!!!
+        removefile(FILEDATAPREFIX+str(inode))
+        openfile(FILEDATAPREFIX+str(inode),True).close()
+
 
     # TODO: I should check permissions...
 
@@ -1067,6 +1075,32 @@ def open_syscall(path, flags, mode):
   finally:
     persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
+
+
+
+
+
+
+
+##### CREAT  #####
+
+def creat_syscall(pathname, mode):
+  """ 
+    http://linux.die.net/man/2/creat
+  """
+
+  try:
+
+    return open_syscall(pathname, O_CREAT | O_TRUNC | O_WRONLY, mode)
+  
+  except SyscallError, e:
+    # If it's a system call error, return our call name instead.
+    assert(e[0]=='open_syscall')
+    
+    raise SyscallError('creat_syscall',e[1],e[2])
+  
+
+
 
 
 
