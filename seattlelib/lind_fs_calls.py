@@ -175,6 +175,12 @@ class SyscallError(Exception):
   """A system call had an error"""
 
 
+# This is raised if part of a call is not implemented
+class UnimplementedError(Exception):
+  """A call was called with arguments that are not fully implemented"""
+
+
+
 # To have a simple, blank file system, simply run this block of code.
 # 
 
@@ -1274,6 +1280,82 @@ def close_syscall(fd):
     # ... release the lock
     filedescriptortable[fd]['lock'].release()
     del filedescriptortable[fd]
+
+
+
+
+##### FCNTL  #####
+
+
+
+
+def fcntl_syscall(fd, cmd, *args):
+  """ 
+    http://linux.die.net/man/2/fcntl
+  """
+  # this call is totally crazy!   I'll just implement the basics and add more
+  # as is needed.
+
+  # BUG: I probably need a filedescriptortable lock to prevent race conditions
+
+  # check the fd
+  if fd not in filedescriptortable:
+    raise SyscallError("fcntl_syscall","EBADF","Invalid file descriptor.")
+
+  # Acquire the fd lock...
+  filedescriptortable[fd]['lock'].acquire(True)
+
+  # ... but always release it...
+  try:
+
+    # if we're getting the flags, return them... (but this is just CLO_EXEC, 
+    # so ignore)
+    if cmd == F_GETFD:
+      assert(len(args) == 0)
+      return 0
+
+    # set the flags... (but this is just CLO_EXEC, so ignore...)
+    elif cmd == F_SETFD:
+      assert(len(args) == 1)
+      assert(type(args[0]) == int or type(args[0]) == long)
+      return
+
+    # if we're getting the flags, return them...
+    elif cmd == F_GETFL:
+      assert(len(args) == 0)
+      return filedescriptortable[fd]['flags']
+
+    # set the flags...
+    elif cmd == F_SETFL:
+      assert(len(args) == 1)
+      assert(type(args[0]) == int or type(args[0]) == long)
+      filedescriptortable[fd]['flags'] = args[0]
+
+    # This is saying we'll get signals for this.   Let's punt this...
+    elif cmd == F_GETOWN:
+      assert(len(args) == 0)
+      # Saying traditional SIGIO behavior...
+      return 0
+
+    # indicate that we want to receive signals for this FD...
+    elif cmd == F_SETOWN:
+      assert(len(args) == 1)
+      assert(type(args[0]) == int or type(args[0]) == long)
+      # this would almost certainly say our PID (if positive) or our process
+      # group (if negative).   Either way, we do nothing and return success.
+      return 0
+
+
+    else:
+      # This is either unimplemented or malformed.   Let's raise
+      # an exception.
+      raise UnimplementedError('FCNTL with command '+str(cmd)+' is not yet implemented.')
+
+  finally:
+    # ... release the lock
+    filedescriptortable[fd]['lock'].release()
+    del filedescriptortable[fd]
+
 
 
 
