@@ -20,47 +20,6 @@
 
 """
   
-
-# TODO: I really should use the persist module (or similar) to read and write 
-# the metadata file.
-
-
-# Including constants like O_CREAT, S_IWOTH, SEEK_END, etc.
-#dy_import_module_symbols("lind_fs_constants.repy")
-
-# uncomment the above and comment this line for repy V2
-from lind_fs_constants import *
-
-
-# we need this to persist metadata and restore it...
-#dy_import_module("serialize.repy")
-
-# TODO: As a workaround, you need to rename serialize.
-import serialize
-
-
-
-# TODO BUG JAC: Quick workaround...
-
-# this is in lieu of: "from repyportability import *"
-
-from emulmisc import createlock
-
-from emulfile import emulated_open as openfile 
-
-
-import nanny
-
-def do_nothing(*args):
-  pass
-
-nanny.tattle_quantity = do_nothing
-
-nanny.tattle_add_item = do_nothing
-nanny.tattle_remove_item = do_nothing
-
-
-
 # At a conceptual level, the system works like this:
 #   1) Files are written and managed by my program.   The actual name on disk
 #      will not correspond in any way with the filename.   The name on disk
@@ -205,7 +164,7 @@ def _blank_fs_init():
 # These are used to initialize and stop the system
 def persist_metadata(metadatafilename):
 
-  metadatastring = serialize.serializedata(filesystemmetadata)
+  metadatastring = serializedata(filesystemmetadata)
 
   # open the file (clobber) and write out the information...
   metadatafo = openfile(metadatafilename,True)
@@ -224,7 +183,7 @@ def restore_metadata(metadatafilename):
   metadatafo.close()
 
   # get the dict we want
-  desiredmetadata = serialize.deserializedata(metadatastring)
+  desiredmetadata = deserializedata(metadatastring)
 
   # I need to put things in the dict, but it's not a global...   so instead
   # add them one at a time.   It should be empty to start with
@@ -361,23 +320,6 @@ def _get_absolute_parent_path(path):
 # return statfs data for fstatfs and statfs
 def _istatfs_helper(inode):
   """
-  I should return something like:
-
-  struct statfs {
-    __SWORD_TYPE f_type; /* type of file system (see below) */
-    __SWORD_TYPE f_bsize; /* optimal transfer block size */
-    fsblkcnt_t f_blocks; /* total data blocks in file system */
-    fsblkcnt_t f_bfree; /* free blocks in fs */
-    fsblkcnt_t f_bavail; /* free blocks available to unprivileged user */
-    fsfilcnt_t f_files; /* total file nodes in file system */
-    fsfilcnt_t f_ffree; /* free file nodes in fs */
-    fsid_t f_fsid; /* file system id */
-    __SWORD_TYPE f_namelen; /* maximum length of filenames */
-    __SWORD_TYPE f_frsize; /* fragment size (since Linux 2.6) */
-    __SWORD_TYPE f_spare[5];
-  };
-
-  I'll return a dict with these elements
   """
 
   # I need to compute the amount of disk available / used
@@ -957,7 +899,7 @@ def open_syscall(path, flags, mode):
       # did they use O_CREAT?
       if not O_CREAT & flags:
         raise SyscallError("open_syscall","ENOENT","The file does not exist.")
-
+      
       # okay, it doesn't exist (great!).   Does it's parent exist and is it a 
       # dir?
       trueparentpath = _get_absolute_parent_path(path)
@@ -1307,7 +1249,7 @@ def close_syscall(fd):
     # If this is not closable, the fileobject will be None.
     if filedescriptortable[fd]['fo'] != None:
       filedescriptortable[fd]['fo'].close()
-
+    return 0
     # BUG: This is likely where I actually need to clean up an unlinked file.
 
   finally:
