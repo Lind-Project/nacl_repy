@@ -123,6 +123,8 @@ fastinodelookuptable = {}
 # contains open file descriptor information...
 filedescriptortable = {}
 
+# I use this so that I can assign to a global string (currentworkingdirectory)
+# without using global, which is blocked by RepyV2
 fs_calls_context = {}
 
 # Where we currently are at...
