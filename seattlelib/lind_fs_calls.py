@@ -1088,8 +1088,8 @@ def lseek_syscall(fd, offset, whence):
       raise SyscallError("lseek_syscall","EINVAL","Seek before position 0 in file.")
 
     # did we fall off the back?
-    if eventualpos > filesize:
-      raise SyscallError("lseek_syscall","EINVAL","Seek past end of file.")
+    # if so, we'll handle this when we do a write.   The correct behavior is
+    # to write '\0' bytes between here and that pos.
 
     # do the seek and return success (the position)!
     filedescriptortable[fd]['position'] = eventualpos
@@ -1195,8 +1195,17 @@ def write_syscall(fd, data):
       raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
       
 
-    # let's do a writeat!
+    # let's get the position...
     position = filedescriptortable[fd]['position']
+
+    # if the position is past the end of the file, write '\0' bytes to fill
+    # up the gap...
+    blankbytecount = filesystemmetadata['inodetable'][inode]['size'] - position
+
+    if blankbytecount > 0:
+      # let's write the blank part at the end of the file...
+      filedescriptortable[fd]['fo'].writeat('\0'*blankbytecount,filesystemmetadta['inodetable'][inode]['size'])
+      
 
     # writeat never writes less than desired in Repy V2.
     filedescriptortable[fd]['fo'].writeat(data,position)
@@ -1208,7 +1217,9 @@ def write_syscall(fd, data):
     if filedescriptortable[fd]['position'] > filesystemmetadata['inodetable'][inode]['size']:
       filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
       
-    # we always write it all, so just return the length of what we were passed
+    # we always write it all, so just return the length of what we were passed.
+    # We do not mention whether we write blank data (if position is after the 
+    # end)
     return len(data)
 
   finally:
