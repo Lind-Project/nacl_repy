@@ -1,4 +1,4 @@
-import lind_fs_calls
+import wrapped_lind_fs_calls as lind_fs_calls
 
 from lind_fs_constants import *
 
@@ -16,8 +16,8 @@ fd = lind_fs_calls.open_syscall('/bar/bam',O_CREAT,0)
 lind_fs_calls.close_syscall(fd)
 
 rootfd = lind_fs_calls.open_syscall('/',0,0)
-print lind_fs_calls.getdents_syscall(rootfd, 10)
+assert(lind_fs_calls.getdents_syscall(rootfd, 10)==[(1, 'bar'), (0, '..'), (0, '.')])
 
 barfd = lind_fs_calls.open_syscall('/bar',0,0)
-print lind_fs_calls.getdents_syscall(barfd,10)
-print lind_fs_calls.getdents_syscall(barfd,1)
+assert(lind_fs_calls.getdents_syscall(barfd,10)==[(4, 'bam'), (2, 'baz'), (3, 'bap'), (0, '..'), (1, '.')])
+assert(lind_fs_calls.getdents_syscall(barfd,1) == [(4, 'bam')])
