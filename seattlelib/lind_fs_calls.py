@@ -1197,14 +1197,17 @@ def write_syscall(fd, data):
 
     # let's get the position...
     position = filedescriptortable[fd]['position']
+    
+    # and the file size...
+    filesize = filesystemmetadata['inodetable'][inode]['size']
 
     # if the position is past the end of the file, write '\0' bytes to fill
     # up the gap...
-    blankbytecount = filesystemmetadata['inodetable'][inode]['size'] - position
+    blankbytecount = position - filesize
 
     if blankbytecount > 0:
       # let's write the blank part at the end of the file...
-      filedescriptortable[fd]['fo'].writeat('\0'*blankbytecount,filesystemmetadta['inodetable'][inode]['size'])
+      filedescriptortable[fd]['fo'].writeat('\0'*blankbytecount,filesize)
       
 
     # writeat never writes less than desired in Repy V2.
@@ -1214,7 +1217,7 @@ def write_syscall(fd, data):
     filedescriptortable[fd]['position'] += len(data)
 
     # update the file size if we've extended it
-    if filedescriptortable[fd]['position'] > filesystemmetadata['inodetable'][inode]['size']:
+    if filedescriptortable[fd]['position'] > filesize:
       filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
       
     # we always write it all, so just return the length of what we were passed.
