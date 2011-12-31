@@ -11,14 +11,19 @@ myfd2 = lind_fs_calls.open_syscall('/foo',O_RDWR,S_IRWXA)
 
 assert(myfd!= myfd2)
 
-flags = 577
-mode = 438
+flags = 577  # O_TRUNC | O_CREAT | O_WRONLY
+mode = 438   # 0666
 name = 'double_open_file'
 
 #print "CM: failing double open here:"
 myfd3 = lind_fs_calls.open_syscall(name, flags, mode)
-lind_fs_calls.write_syscall(myfd3,'hi there')
+assert(lind_fs_calls.write_syscall(myfd3,'hi')==2)
 
 myfd4 = lind_fs_calls.open_syscall(name, flags, mode)
 
-assert(myfd3!=myfd4)
+# should still work
+assert(lind_fs_calls.write_syscall(myfd3,'boo')==3)
+
+# reading data should get \0\0boo
+assert(lind_fs_calls.read_syscall(myfd4,10)=='\0\0boo')
+

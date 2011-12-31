@@ -35,10 +35,13 @@
 #      They are generated sequentially.
 #   5) Every open file has an entry in the filedescriptortable.   This 
 #      is a dictionary that is keyed by fd, with the values consisting of
-#      a dictionary with file object, position, flags, a lock, and inode keys.
+#      a dictionary with the position, flags, a lock, and inode keys.
 #      The inode values are used to update / check the file size after writeat 
 #      calls and for calls like fstat.
 #   6) A file's data is mapped the filename FILEDATAPREFIX+str(inode)
+#   7) Open file objects are kept in a separate table, the fileobjecttable that
+#      is keyed by inode.  This makes it easier to support multiple open file 
+#      descriptors that point to the same file. 
 #
 # BUG: I created a table which allows one to look up an "inode"
 #      given a filename.   It will break certain things in certain weird corner
@@ -120,8 +123,11 @@ filesystemmetadatalock = createlock()
 # fast lookup table...   (Should I deprecate this?)
 fastinodelookuptable = {}
 
-# contains open file descriptor information...
+# contains open file descriptor information... (keyed by fd)
 filedescriptortable = {}
+
+# contains file objects... (keyed by inode)
+fileobjecttable = {}
 
 # I use this so that I can assign to a global string (currentworkingdirectory)
 # without using global, which is blocked by RepyV2
@@ -875,13 +881,6 @@ def _get_next_fd():
   raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
   
 
-# private helper.   Get the fd for an inode (or None)
-def _lookup_fd_by_inode(inode):
-  for fd in filedescriptortable:
-    if filedescriptortable[fd]['inode'] == inode:
-      return fd
-  return None
-
 def open_syscall(path, flags, mode):
   """ 
     http://linux.die.net/man/2/open
@@ -959,9 +958,17 @@ def open_syscall(path, flags, mode):
       if O_TRUNC & flags:
         inode = fastinodelookuptable[truepath]
 
-        # this file must exist or it's an internal error!!!
+        # if it exists, close the existing file object so I can remove it...
+        if inode in fileobjecttable:
+          fileobjecttable[inode].close()
+          # reset the size to 0
+          filesystemmetadata['inodetable'][inode]['size'] = 0
+
+        # remove the file...
         removefile(FILEDATAPREFIX+str(inode))
-        openfile(FILEDATAPREFIX+str(inode),True).close()
+
+        # always open the file.
+        fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
 
 
     # TODO: I should check permissions...
@@ -971,14 +978,6 @@ def open_syscall(path, flags, mode):
     # Let's find the inode
     inode = fastinodelookuptable[truepath]
 
-    # If I already have it open, return the current fd.   
-    # JAC: According to Chris, this is the correct behavior
-    existingfd = _lookup_fd_by_inode(inode)
-
-    # if it exists, return it!   We're done.
-    # BUG: Do I need to make sure the mode / flags are identical?
-    if existingfd != None:
-      return existingfd
     
     # get the next fd so we can use it...
     thisfd = _get_next_fd()
@@ -986,19 +985,14 @@ def open_syscall(path, flags, mode):
 
     # Note, directories can be opened (to do getdents, etc.).   We shouldn't
     # actually open something in this case...
-    # Is it anything other than a regular file?
-    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
-      # this should raise an (internal) error if we try to use it.   We
-      # should be checking in each call to make sure we are accessing the
-      # right type.
-      thisfo = None
+    # Is it a regular file?
+    if filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+      # this is a regular file.  If it's not open, let's open it! 
+      if inode not in fileobjecttable:
+        thisfo = openfile(FILEDATAPREFIX+str(inode),False)
+        fileobjecttable[inode] = thisfo
 
-    else:
-      # this is a regular file.  Let's open it! 
-      # TODO: I should check O_TRUNC, etc.
-      thisfo = openfile(FILEDATAPREFIX+str(inode),False)
-
-    # BUG: (?) I'm going to assume that if you use O_APPEND I only need to 
+    # I'm going to assume that if you use O_APPEND I only need to 
     # start the pointer in the right place.
     if O_APPEND & flags:
       position = filesystemmetadata['inodetable'][inode]['size']
@@ -1011,7 +1005,7 @@ def open_syscall(path, flags, mode):
 
     # Add the entry to the table!
 
-    filedescriptortable[thisfd] = {'fo':thisfo, 'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWR}
+    filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWR}
 
     # Done!   Let's return the file descriptor.
     return thisfd
@@ -1143,7 +1137,7 @@ def read_syscall(fd, count):
     # let's do a readat!
     position = filedescriptortable[fd]['position']
 
-    data = filedescriptortable[fd]['fo'].readat(count,position)
+    data = fileobjecttable[inode].readat(count,position)
 
     # and update the position
     filedescriptortable[fd]['position'] += len(data)
@@ -1209,11 +1203,11 @@ def write_syscall(fd, data):
 
     if blankbytecount > 0:
       # let's write the blank part at the end of the file...
-      filedescriptortable[fd]['fo'].writeat('\0'*blankbytecount,filesize)
+      fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
       
 
     # writeat never writes less than desired in Repy V2.
-    filedescriptortable[fd]['fo'].writeat(data,position)
+    fileobjecttable[inode].writeat(data,position)
 
     # and update the position
     filedescriptortable[fd]['position'] += len(data)
@@ -1239,6 +1233,14 @@ def write_syscall(fd, data):
 
 ##### CLOSE  #####
 
+# private helper.   Get the fds for an inode (or [] if none)
+def _lookup_fds_by_inode(inode):
+  returnedfdlist = []
+  for fd in filedescriptortable:
+    if filedescriptortable[fd]['inode'] == inode:
+      returnedfdlist.append(fd)
+  return returnedfdlist
+
 
 
 def close_syscall(fd):
@@ -1258,15 +1260,40 @@ def close_syscall(fd):
   # ... but always release it...
   try:
 
-    # BUG: If I implement dup, dup2, etc. I should only close here if it's 
-    # the last reference to the file.
-    # BUG: Also, what happens if we call open multiple times on a file?
+    # get the inode for the filedescriptor
+    inode = filedescriptortable[fd]['inode']
+
+    # If it's not a regular file, we have nothing to close...
+    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+
+      # double check that this isn't in the fileobjecttable
+      if inode in fileobjecttable:
+        raise Exception("Internal Error: non-regular file in fileobjecttable")
+   
+      # and return success
+      return 0
+
+    # so it's a regular file.
+
+    # get the list of file descriptors for the inode
+    fdsforinode = _lookup_fds_by_inode(inode)
+
+    # I should be in there!
+    assert(fd in fdsforinode)
+
+    # I should only close here if it's the last use of the file.   This can
+    # happen due to dup, multiple opens, etc.
+    if len(fdsforinode) > 1:
+      # Is there more than one descriptor open?   If so, return success
+      return 0
   
-    # If this is not closable, the fileobject will be None.
-    if filedescriptortable[fd]['fo'] != None:
-      filedescriptortable[fd]['fo'].close()
+    # now let's close it and remove it from the table
+    fileobjecttable[inode].close()
+
+    del fileobjecttable[inode]
+
+    # success!
     return 0
-    # BUG: This is likely where I actually need to clean up an unlinked file.
 
   finally:
     # ... release the lock
