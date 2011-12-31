@@ -1315,6 +1315,37 @@ def close_syscall(fd):
 
 ##### DUP2  #####
 
+
+# private helper that allows this to be used by dup
+def _dup2_helper(oldfd,newfd):
+
+  # if the new file descriptor is too low or too high
+  if newfd >= MAXFD or newfd < STARTINGFD:
+    # BUG: the STARTINGFD isn't really too low.   It's just lower than we
+    # support
+    raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
+
+  # if they are equal, return them
+  if newfd == oldfd:
+    return newfd
+
+  # okay, they are different.   If the new fd exists, close it.
+  if newfd in filedescriptortable:
+    # should not result in an error.   This only occurs on a bad fd 
+    _close_helper(newfd)
+
+
+  # Okay, we need the new and old to point to the same thing.
+  # NOTE: I am not making a copy here!!!   They intentionally both
+  # refer to the same instance because manipulating the position, etc.
+  # impacts both.
+  filedescriptortable[newfd] = filedescriptortable[oldfd]
+
+  return newfd
+
+
+
+
 def dup2_syscall(oldfd,newfd):
   """ 
     http://linux.die.net/man/2/dup2
@@ -1330,35 +1361,48 @@ def dup2_syscall(oldfd,newfd):
 
   # ... but always release it...
   try:
-
-    # if the new file descriptor is too low or too high
-    if newfd >= MAXFD or newfd < STARTINGFD:
-      # BUG: the STARTINGFD isn't really too low.   It's just lower than we
-      # support
-      raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
-
-    # if they are equal, return them
-    if newfd == oldfd:
-      return newfd
-
-    # okay, they are different.   If the new fd exists, close it.
-    if newfd in filedescriptortable:
-      # should not result in an error.   This only occurs on a bad fd 
-      _close_helper(newfd)
-
-
-    # Okay, we need the new and old to point to the same thing.
-    # NOTE: I am not making a copy here!!!   They intentionally both
-    # refer to the same instance because manipulating the position, etc.
-    # impacts both.
-    filedescriptortable[newfd] = filedescriptortable[oldfd]
-
-    return newfd
+    return _dup2_helper(oldfd, newfd)
 
   finally:
     # ... release the lock
     filedescriptortable[oldfd]['lock'].release()
 
+
+
+
+##### DUP  #####
+
+def dup_syscall(fd):
+  """ 
+    http://linux.die.net/man/2/dup
+  """
+
+
+  # check the fd
+  if fd not in filedescriptortable:
+    raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
+
+  # Acquire the fd lock...
+  filedescriptortable[fd]['lock'].acquire(True)
+
+  try: 
+    # get the next available file descriptor
+    try:
+      nextfd = _get_next_fd()
+    except SyscallError, e:
+      # If it's an error getting the fd, return our call name instead.
+      assert(e[0]=='open_syscall')
+    
+      raise SyscallError('dup_syscall',e[1],e[2])
+  
+    # this does the work.   It should _never_ raise an exception given the
+    # checks we've made...
+    return _dup2_helper(fd, nextfd)
+  
+  finally:
+    # ... release the lock
+    filedescriptortable[fd]['lock'].release()
+  
 
 
 
