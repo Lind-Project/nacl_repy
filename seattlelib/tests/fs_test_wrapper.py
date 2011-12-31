@@ -4,6 +4,7 @@ from emulmisc import createlock as createlock
 
 from emulfile import emulated_open as openfile 
 from emulfile import removefile
+from emulfile import listfiles
 
 from serialize import *
 

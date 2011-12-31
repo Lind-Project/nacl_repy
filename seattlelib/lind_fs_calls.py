@@ -164,6 +164,11 @@ def _blank_fs_init():
             '..':ROOTDIRECTORYINODE}}
     
   fastinodelookuptable['/'] = ROOTDIRECTORYINODE
+  
+  # kill all left over data files...
+  for filename in listfiles():
+    if filename.startswith(FILEDATAPREFIX):
+      removefile(filename)
 
 
 
