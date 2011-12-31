@@ -1243,6 +1243,47 @@ def _lookup_fds_by_inode(inode):
 
 
 
+# private helper that allows this to be called in other places (like dup2)
+# without changing to re-entrant locks
+def _close_helper(fd):
+
+  # get the inode for the filedescriptor
+  inode = filedescriptortable[fd]['inode']
+
+  # If it's not a regular file, we have nothing to close...
+  if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+
+    # double check that this isn't in the fileobjecttable
+    if inode in fileobjecttable:
+      raise Exception("Internal Error: non-regular file in fileobjecttable")
+   
+    # and return success
+    return 0
+
+  # so it's a regular file.
+
+  # get the list of file descriptors for the inode
+  fdsforinode = _lookup_fds_by_inode(inode)
+
+  # I should be in there!
+  assert(fd in fdsforinode)
+
+  # I should only close here if it's the last use of the file.   This can
+  # happen due to dup, multiple opens, etc.
+  if len(fdsforinode) > 1:
+    # Is there more than one descriptor open?   If so, return success
+    return 0
+
+  # now let's close it and remove it from the table
+  fileobjecttable[inode].close()
+
+  del fileobjecttable[inode]
+
+  # success!
+  return 0
+
+
+
 def close_syscall(fd):
   """ 
     http://linux.die.net/man/2/close
@@ -1259,41 +1300,7 @@ def close_syscall(fd):
 
   # ... but always release it...
   try:
-
-    # get the inode for the filedescriptor
-    inode = filedescriptortable[fd]['inode']
-
-    # If it's not a regular file, we have nothing to close...
-    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
-
-      # double check that this isn't in the fileobjecttable
-      if inode in fileobjecttable:
-        raise Exception("Internal Error: non-regular file in fileobjecttable")
-   
-      # and return success
-      return 0
-
-    # so it's a regular file.
-
-    # get the list of file descriptors for the inode
-    fdsforinode = _lookup_fds_by_inode(inode)
-
-    # I should be in there!
-    assert(fd in fdsforinode)
-
-    # I should only close here if it's the last use of the file.   This can
-    # happen due to dup, multiple opens, etc.
-    if len(fdsforinode) > 1:
-      # Is there more than one descriptor open?   If so, return success
-      return 0
-  
-    # now let's close it and remove it from the table
-    fileobjecttable[inode].close()
-
-    del fileobjecttable[inode]
-
-    # success!
-    return 0
+    return _close_helper(fd)
 
   finally:
     # ... release the lock
@@ -1303,8 +1310,62 @@ def close_syscall(fd):
 
 
 
-##### FCNTL  #####
 
+
+
+##### DUP2  #####
+
+def dup2_syscall(oldfd,newfd):
+  """ 
+    http://linux.die.net/man/2/dup2
+  """
+
+  # check the fd
+  if oldfd not in filedescriptortable:
+    raise SyscallError("dup2_syscall","EBADF","Invalid old file descriptor.")
+
+  # Acquire the fd lock...
+  filedescriptortable[oldfd]['lock'].acquire(True)
+
+
+  # ... but always release it...
+  try:
+
+    # if the new file descriptor is too low or too high
+    if newfd >= MAXFD or newfd < STARTINGFD:
+      # BUG: the STARTINGFD isn't really too low.   It's just lower than we
+      # support
+      raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
+
+    # if they are equal, return them
+    if newfd == oldfd:
+      return newfd
+
+    # okay, they are different.   If the new fd exists, close it.
+    if newfd in filedescriptortable:
+      # should not result in an error.   This only occurs on a bad fd 
+      _close_helper(newfd)
+
+
+    # Okay, we need the new and old to point to the same thing.
+    # NOTE: I am not making a copy here!!!   They intentionally both
+    # refer to the same instance because manipulating the position, etc.
+    # impacts both.
+    filedescriptortable[newfd] = filedescriptortable[oldfd]
+
+    return newfd
+
+  finally:
+    # ... release the lock
+    filedescriptortable[oldfd]['lock'].release()
+
+
+
+
+
+
+
+##### FCNTL  #####
 
 
 
