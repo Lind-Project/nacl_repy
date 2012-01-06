@@ -6,7 +6,9 @@ from emulfile import emulated_open as openfile
 from emulfile import removefile
 from emulfile import listfiles
 
-from serialize import *
+from  nonportable import get_resources as getresources
+
+from serialize import serializedata as serializedata
 
 import nanny
 
