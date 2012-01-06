@@ -115,10 +115,12 @@ def setup_lind_fs_tests(target):
   headers onto the front of the Lind testers."""
   # cat fs_test_wrapper.py lind_fs_calls.py > wrapped_lind_fs_calls.py
   # make new output file
-  print 'writing to',target
   output_name = target + '/wrapped_lind_fs_calls.py'
   header_name = os.path.basename('seattlelib/tests/fs_test_wrapper.py')
   body_name = os.path.basename('seattlelib/lind_fs_calls.py')
+
+  # need to copy over serialize.repy to be a python file so it can be imported
+  shutil.copyfile(target+'/serialize.repy',target +"/serialize.py")
 
   f = open(output_name,'w')
   header = open(header_name, 'r')
