@@ -46,14 +46,14 @@ def setup_nacl_path(nacl_base):
     raise importerror
 
   # Where should nacl get its runtime libs from
-  runnableld_str = "glibc/runnable-ld.so"
+  runnableld_str = "lib/glibc/runnable-ld.so"
   runnableld = os.path.join(nacl_base, runnableld_str)
   if not os.path.exists(runnableld):
     raise IOError("NaCl glibc runnable-ld.so is missing?: %s"%(runnableld))
  
   nacl_enviroment["NACL_DYN_LOADER"] = runnableld
 
-  libs_str = "libs/"
+  libs_str = "lib/libs/"
   libs = os.path.join(nacl_base, libs_str)
   if not os.path.exists(libs):
      raise IOError("NaCl gcc libs is missing?: %s"%(libs))
@@ -71,8 +71,3 @@ def setup_nacl_path(nacl_base):
 
   return nacl_enviroment
 
-
-
-
-if __name__ == "__main__":
-  print setup_nacl_path("/home/cmatthew/lind/native_client")
