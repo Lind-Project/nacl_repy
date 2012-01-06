@@ -27,7 +27,6 @@ O_ASYNC=020000
 MAX_FD = 1024 
 
 def lind_fs_open(args):
-  
   flags = args[0]
   mode = args[1]
   file_name_length = args[2]

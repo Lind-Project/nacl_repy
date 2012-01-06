@@ -1,0 +1,27 @@
+def lind_fs_link(args):
+  old_file_name = args[0]
+  new_file_name = args[1]
+  try:
+    result = link_syscall(old_file_name, new_file_name)
+  except SyscallError,e:
+    return ErrorResponseBuilder("fs_link", e[1], e[2] )
+  return SuccessResponseBuilder("fs_link", result)
+  
+
+def lind_safe_fs_link(args):
+    file_name = args[0]
+
+    assert isinstance(file_name, str), "filename should be a string"
+
+    file_name = args[1]
+
+    assert isinstance(file_name, str), "filename should be a string"
+
+    result = lind_fs_link(args)
+
+    assert isinstance(result, Response), "wrong return type %s"%(str(type(result)))
+    if not result.is_error:
+      assert (result.return_code == 0), "Must return 0 on success." 
+    else:
+      print result.message
+    return result

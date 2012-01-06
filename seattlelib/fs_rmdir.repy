@@ -1,0 +1,23 @@
+def lind_fs_rmdir(args):
+  file_name = args[0]
+  try:
+    result_fd = rmdir_syscall(file_name)
+  except SyscallError,e:
+    return ErrorResponseBuilder("fs_rmdir", e[1], e[2] )
+  return SuccessResponseBuilder("fs_rmdir", result_fd)
+  
+
+def lind_safe_fs_rmdir(args):
+    file_name = args[0]
+
+    assert isinstance(file_name, str), "filename should be a string"
+
+    result = lind_fs_rmdir(args)
+
+    assert isinstance(result, Response), "wrong return type %s"%(str(type(result)))
+    if not result.is_error:
+      assert (result.return_code == 0), "Must return 0 on success." 
+    else:
+      print result.message
+    return result
+

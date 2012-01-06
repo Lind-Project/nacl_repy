@@ -147,52 +147,52 @@ def SuccessResponseBuilder(who, code, data=None):
   return r
 
 
-class File:
-  def __init__(self, name, fobj):
-    self.name = name # the name of the file (path)
-    self.handle = -1 # the file descriptor number we use for this file
-    self.fobj = fobj # the repy file object
-    self.location = 0 # the file cursor position
-    self.closed = False #is this file closed?
-
-class FileList:
-  def __init__(self):
-    self.list = []
-
-
-  def insert(self, file_obj):
-    assert isinstance(file_obj, File)
-    self.list.append(file_obj)
-    file_handle = self.list.index(file_obj)
-    file_obj.handle = file_handle
-    return file_handle
-
-
-  def insertFile(self, file_name, fobj):
-     f = File(file_name, fobj)
-     return self.insert(f)
-
-
-  def lookup(self, handle):
-    return self.list[handle]
-
-
-  def lookupName(self, name):
-    for fobjs in self.list:
-      if fobjs.name == name:
-        return fobjs.handle
-    return 0
-
-
 def check_valid_fd_handle(num):
   assert isinstance(num, int)
   assert (10 <= num <= MAX_FD), "invalid handle"
 
 
 
+def pack_stat_struct(struct_tuple):
+  """Given a tuple with stat fields, pack it into a string"""
+  (my_st_dev, my_st_ino, my_st_mode, my_st_nlink, my_st_uid, my_st_gid,
+   my_st_rdev, my_st_size, my_st_blksize, my_st_blocks,
+   my_st_atime, my_st_atimeus, my_st_mtime, my_st_mtimeus, my_st_ctime,my_st_ctimeus) = struct_tuple
+  result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
+                       my_st_dev,my_st_ino,my_st_mode,my_st_nlink,my_st_uid,my_st_gid,
+                       my_st_rdev,my_st_size,my_st_blksize,my_st_blocks,
+                       my_st_atime,my_st_atimeus, my_st_mtime,my_st_mtimeus,my_st_ctime,my_st_ctimeus)
+  return result
 
+def pack_statfs_struct(fsd):
+  """struct statfs {
+  long    f_type;     -- type of file system (see below) 
+  long    f_bsize;    -- optimal transfer block size 
+  long    f_blocks;   -- total data blocks in file system 
+  long    f_bfree;    -- free blocks in fs 
+  long    f_bavail;   -- free blocks avail to non-superuser 
+  long    f_files;    -- total file nodes in file system 
+  long    f_ffree;    -- free file nodes in fs 
+  fsid_t  f_fsid;     -- file system id 
+  long    f_namelen;  -- maximum length of filenames 
+  }
+  """
+  (tipe, bsize, blocks, bfree, bavail, files, ffree, fsid, namelen, frsize, spare) = (  fsd['f_type'],
+                                                                         fsd['f_bsize'],
+                                                                         fsd['f_blocks'],
+                                                                         fsd['f_bfree'],
+                                                                         fsd['f_bavail'],
+                                                                         fsd['f_files'],
+                                                                         fsd['f_files'],
+                                                                         fsd['f_fsid'],
+                                                                         fsd['f_namelen'],
+                                                                         fsd['f_frsize'],
+                                                                         fsd['f_spare'])
 
-
+  format = '<q<q<q<q<q<q<q<Q<q<q8s'
+  result = struct_pack(format, tipe, bsize, blocks, bfree, bavail, files, ffree, fsid, namelen, frsize, spare)
+  return result
+  
 
 include lind_fs_constants.py
 
@@ -201,6 +201,8 @@ include serialize.repy
 include lind_fs_calls.py
 
 include fs_open.repy
+
+include fs_write.repy
 
 include fs_fstatfs.repy
 
@@ -214,6 +216,22 @@ include fs_fstat.repy
 
 include fs_close.repy
 
+include fs_lseek.repy
+
+include fs_mkdir.repy
+
+include fs_rmdir.repy
+
+include fs_chdir.repy
+
+include fs_link.repy
+
+include fs_unlink.repy
+
+include fs_xstat.repy
+
+include fs_getdents.repy
+
 include sys_getpid.repy
 
 include debug.repy
@@ -221,6 +239,8 @@ include debug.repy
 include unimplemented_syscalls.repy
 
 include dispatcher.repy
+
+
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
@@ -372,14 +392,6 @@ def new_compoent():
     print "Safe Binary mode must be switched on for this program to work."
 
 def setup_filetable(comp_num):
-  #table of file handles
-  comp(comp_num)[FILES] = FileList()
-
-  handle_offset = 10            # The amount by which we offset fileandles (so we
-                                # dont clobber stdin out err and system file handles
-
-  for i in range(0, handle_offset):
-    comp(comp_num)[FILES].insertFile("",None)
 
   _blank_fs_init()
 

@@ -1,28 +1,30 @@
 
 # JAC: I think this should call the lind_fs_stat call and do the below
 # work there...
-def lind_fs_fstat(args):
-  
+def lind_fs_fxstat(args):
   filedes = args[0]
-  (my_st_dev, my_st_ino, my_st_mode, my_st_nlink, my_st_uid, my_st_gid,
-      my_st_rdev, my_st_size, my_st_blksize, my_st_blocks,
-      my_st_atime, my_st_atimeus, my_st_mtime, my_st_mtimeus, my_st_ctime,my_st_ctimeus) = fstat_syscall(filedes)
-  
-
+  ver = args[1]
+  if ver == 1:
+    result = pack_stat_struct(fstat_syscall(filedes))
+  else:
+    assert False, "not implemented"
+    
+    
   # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
   # followed by 2Q for each timestamp.   The ns field is set to 0.
-  result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
-      my_st_dev,my_st_ino,my_st_mode,my_st_nlink,my_st_uid,my_st_gid,
-      my_st_rdev,my_st_size,my_st_blksize,my_st_blocks,
-      my_st_atime,my_st_atimeus, my_st_mtime,my_st_mtimeus,my_st_ctime,my_st_ctimeus)
 
   return SuccessResponseBuilder("fs_fstat", 0, result)
 
 
-def lind_safe_fs_fstat(args):
-  assert(len(args)==1), "fsstat should always have one argument"
-  assert(type(args[0]) is int or type(args[0]) is long), "argument should be an int or long"
+def lind_safe_fs_fxstat(args):
+  assert(len(args)==2), "fsstat should always have two argument"
+  handle = args[0]
+  ver = args[1]
+  assert(type(handle) is int or type(handle) is long), "argument should be an int or long"
+  assert(ver == 0 or ver == 1), "version has to be stat of fstat"
   check_valid_fd_handle(args[0])
-  result = lind_fs_fstat(args)
-  assert len(result.data)==112, "result must be exactly the size of struct stat"
+
+  result = lind_fs_fxstat(args)
+  if result.is_error == False:
+    assert len(result.data)==112, "result must be exactly the size of struct stat"
   return result

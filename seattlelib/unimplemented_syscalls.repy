@@ -1,65 +1,11 @@
 
-def lind_fs_lseek(args):
-  log("LSeek was called with," + str(args))
-  unimplemented("lseek")
-  return SuccessResponseBuilder("fs_lseek", SUCCESS)
-
-
 def lind_fs_ioctl(args):
   log("IOCTL was called with,"+ str(args))
   unimplemented("ioctl")
   return SuccessResponseBuilder("fs_ioctl", SUCCESS)
-
-
-def lind_fs_access(args):
-  log("ACCESS was called with," + str(args))
-  unimplemented("access")
-  return SuccessResponseBuilder("fs_access", SUCCESS)
-
-
-def lind_fs_unlink(args):
-  log("UNLINK was called with," + str(args))
-  unimplemented("unlink")
-  return ErrorResponseBuilder("fs_unlink", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_link(args):
-  log("LINK was called with,"+ str(args))
-  unimplemented("link")
-  return ErrorResponseBuilder("fs_link", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_chdir(args):
-  log("CHDIR was called with,"+ str(args))
-  unimplemented("chdir")
-  return ErrorResponseBuilder("fs_chdir", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_mkdir(args):
-  log("MKDIR was called with," + str(args))
-  unimplemented("mkdir")
-  return ErrorResponseBuilder("fs_mkdir", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_rmdir(args):
-  log("RMDIR was called with," + str(args))
-  unimplemented("rmdir")
-  return ErrorResponseBuilder("fs_rmdir", "ENOSYS", "unimplemented" )
-
-
-def lind_fs_xstat(args):
-  log("XSTAT was called with," + str(args))
-  unimplemented("xstat")
-  return ErrorResponseBuilder("fs_xstat", "ENOSYS", "unimplemented" )
-
   
 def lind_err_enosys(args):
   return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
 
 
-def lind_fs_write(args):
-  #TODO implement write
-  log("[info][syscall]Write was called!")
-  size = args[1]
-  return SuccessResponseBuilder("fs_write", size)
 

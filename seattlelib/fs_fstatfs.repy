@@ -1,20 +1,23 @@
 
-# JAC: I think this should call the lind_fs_stat call and do the below
-# work there...
 def lind_fs_fstatfs(args):
-
-  filedes = args[0]
-  return ErrorResponseBuilder("fs_fstatfs", "ENOSYS", "fstatfs is unimplemented")
-
+  """ Pull out arguments, and send off syscall. if it fails, handle exceptions then return a
+  Response object.  """
+  handle = args[0]
+  try:
+    result = pack_statfs_struct( fstatfs_syscall(handle) )
+  except SyscallError, e:
+    return ErrorResponseBuilder("fs_fstatfs", e[1], e[2])
+  return SuccessResponseBuilder("fs_fstatfs", len(result), result)
 
 def lind_safe_fs_fstatfs(args):
+  """Check the validity of the arugments to the fstatfs syscall and what it returns"""
+  handle = args[0]
   assert(len(args)==1), "fsstat should always have one argument"
-  assert(type(args[0]) is int or type(args[0]) is long), "argument should be an int or long"
-  check_valid_fd_handle(args[0])
+
+  check_valid_fd_handle(handle)
   result = lind_fs_fstatfs(args)
 
   assert isinstance(result, Response), "wrong return type %s"%(str(type(result)))
   if not result.is_error:
-      assert len(result.data)==88, "result must be exactly the size of struct statfs"
-
+    assert len(result.data)==88, "result must be exactly the size of struct statfs"
   return result

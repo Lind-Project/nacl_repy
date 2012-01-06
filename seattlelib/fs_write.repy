@@ -1,0 +1,22 @@
+def lind_fs_write(args):
+  size = args[1]
+  fd = args[0]
+  buffer = args[2]
+  print "Write Args:", args
+  try:
+      result = write_syscall(fd, buffer)
+  except SyscallError,e:
+      print "write failure"
+      return ErrorResponseBuilder("fs_write", e[1], e[2])
+  print "write success"
+  return SuccessResponseBuilder("fs_write", result)
+
+
+def lind_safe_fs_write(args):
+  size = args[1]
+  fd = args[0]
+  buffer = args[2]
+
+  lind_fs_write(args)
+  return SuccessResponseBuilder("fs_write", size)
+

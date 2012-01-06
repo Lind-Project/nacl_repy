@@ -2,13 +2,30 @@
 def lind_fs_access(args):
   """
   """
-  log("HELLO?!")
-  log("Calling Access with", args, "\n")
-
   mode = args[0]
   path = args[1]
-  result = access_syscall(path, mode)
+  try:
+    result = access_syscall(path, mode)
+  except SyscallError,e:
+    return ErrorResponseBuilder("fs_access", e[1], e[2])
   
   return SuccessResponseBuilder("fs_access", result)
 
+
+def lind_safe_fs_access(args):
+  """
+  """
+  mode = args[0]
+  path = args[1]
+
+  assert isinstance(mode, int), "the mode should be an int"
+
+  assert isinstance(path, str), "filename should be a string"
+
+  assert mode != 0, "mode must be the bitwise OR of one or more of R_OK, W_OK, X_OK, F_OK"
+
+
+  result = lind_fs_access(args)
+
+  return result
 

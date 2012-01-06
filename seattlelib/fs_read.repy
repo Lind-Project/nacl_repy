@@ -1,38 +1,24 @@
 def lind_fs_read(args):
+  handle = args[0]
+  size = args[1]
   try:
-    log("[info][syscall] Lind FS Read was called.\n")
-    handle = args[0]
-    size = args[1]
-    log("reading handle " + str(handle) + " of size " + str(size) + "\n")
-    file_obj = curr_comp()[FILES].lookup(handle)
-    fd = file_obj.fobj
-    head = file_obj.location
-    result = fd.readat(size, head)
-    size_read = len(result)
-    file_obj.location += size_read
-    if size_read==0:
-      #we are at EOF
-      return SuccessResponseBuilder("fs_read", 0)
-    
-
-    log("[info][syscall] Lind FS Read Finished with: " + result + "\n")
-  except:
-    unimplemented("read failure")
-  try:
-    return SuccessResponseBuilder("fs_read", size_read, result)
-  except:
-    print "problem build return values"
-    exitall()
+    result = read_syscall(handle, size)
+  except SyscallError, e:
+    print "Error!"
+    return ErrorResponseBuilder("fs_read", e[1], e[2])
+  return SuccessResponseBuilder("fs_read", len(result), result)
 
 def lind_safe_fs_read(args):
+  print "Calling read with ", args 
   handle = args[0]
   size = args[1]
   check_valid_fd_handle(handle)
   assert isinstance(size, int)
   if size >= 1024:
     print "Warning: big reads are not possible right now"
-  
+    
   result = lind_fs_read(args)
-  assert(len(result.data) <= 1024), "returning data larger than transmission buffer."
+  if result.is_error == False:
+    assert(len(result.data) <= 1024), "returning data larger than transmission buffer."
   
   return result

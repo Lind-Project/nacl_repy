@@ -345,11 +345,11 @@ def _istatfs_helper(inode):
 
   myfsdata['f_bsize'] = 4096        # Match the repy V2 block size
 
-  myfsdata['f_blocks'] = limits['diskused'] / 4096   
+  myfsdata['f_blocks'] = int(limits['diskused']) / 4096   
 
-  myfsdata['f_bfree'] = (limits['diskused']-usage['diskused']) / 4096  
+  myfsdata['f_bfree'] = (int(limits['diskused']-usage['diskused'])) / 4096  
   # same as above...
-  myfsdata['f_bavail'] = (limits['diskused']-usage['diskused']) / 4096  
+  myfsdata['f_bavail'] = (int(limits['diskused']-usage['diskused'])) / 4096  
 
   # file nodes...   I think this is infinite...
   myfsdata['f_files'] = 1024*1024*1024
@@ -366,7 +366,8 @@ def _istatfs_helper(inode):
   myfsdata['f_frsize'] = 4096 
   
   # it's supposed to be 5 bytes...   Let's try null characters...
-  myfsdata['f_spare'] = '\0'*5
+  #CM: should be 8 bytes by my calc
+  myfsdata['f_spare'] = '\x00'*8
 
 
   return myfsdata

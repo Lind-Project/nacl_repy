@@ -1,0 +1,28 @@
+def lind_fs_xstat(args):
+  type_code = args[0]
+  path = args[1]
+  try:
+    if type_code == 1:
+      result = pack_stat_struct(stat_syscall(path))
+      
+    elif type_code == 0:
+      assert False,"unimplemented."
+      py_result = xstat_syscall(handle, size)
+    else:
+      assert False, "this should never happen!  stat typecode must be 0 or 1"
+  except SyscallError, e:
+    return ErrorResponseBuilder("fs_xstat", e[1], e[2])
+  return SuccessResponseBuilder("fs_xstat", len(result), result)
+
+def lind_safe_fs_xstat(args):
+  print "Calling xstat with ", args 
+  type_code = args[0]
+  path = args[1]
+  assert (type_code == 0 or type_code == 1), "xstat type code must be stat or fstat"
+    
+  result = lind_fs_xstat(args)
+
+  if result.is_error == False:
+    assert len(result.data)==112, "result must be exactly the size of struct stat"
+
+  return result
