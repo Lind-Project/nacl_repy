@@ -115,7 +115,8 @@ def setup_lind_fs_tests(target):
   headers onto the front of the Lind testers."""
   # cat fs_test_wrapper.py lind_fs_calls.py > wrapped_lind_fs_calls.py
   # make new output file
-  output_name = target + 'wrapped_lind_fs_calls.py'
+  print 'writing to',target
+  output_name = target + '/wrapped_lind_fs_calls.py'
   header_name = os.path.basename('seattlelib/tests/fs_test_wrapper.py')
   body_name = os.path.basename('seattlelib/lind_fs_calls.py')
 
