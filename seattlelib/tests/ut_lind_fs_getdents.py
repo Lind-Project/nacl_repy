@@ -20,4 +20,7 @@ assert(lind_fs_calls.getdents_syscall(rootfd, 10)==[(1, 'bar'), (0, '..'), (0, '
 
 barfd = lind_fs_calls.open_syscall('/bar',0,0)
 assert(lind_fs_calls.getdents_syscall(barfd,10)==[(4, 'bam'), (2, 'baz'), (3, 'bap'), (0, '..'), (1, '.')])
+
+assert(lind_fs_calls.lseek_syscall(barfd,0,SEEK_SET) == 0)
 assert(lind_fs_calls.getdents_syscall(barfd,1) == [(4, 'bam')])
+assert(lind_fs_calls.getdents_syscall(barfd,1) == [(2, 'baz')])

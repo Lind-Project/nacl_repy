@@ -1069,11 +1069,19 @@ def lseek_syscall(fd, offset, whence):
     # we will need the file size in a moment, but also need to check the type
     inode = filedescriptortable[fd]['inode']
 
-    # Is it anything other than a regular file?
-    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
-      raise SyscallError("lseek_syscall","EINVAL","File descriptor does not refer to a regular file.")
+    # Let's figure out if this has a length / pointer...
+    if filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+      # straightforward if it is a file...
+      filesize = filesystemmetadata['inodetable'][inode]['size']
+
+    elif filesystemmetadata['inodetable'][inode]['mode'] & S_IFDIR:
+      # if a directory, let's use the number of entries
+      filesize = len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'])
+
+    else:
+      # otherwise we don't know
+      raise SyscallError("lseek_syscall","EINVAL","File descriptor does not refer to a regular file or directory.")
       
-    filesize = filesystemmetadata['inodetable'][inode]['size']
 
     # Figure out where we will seek to and check it...
     if whence == SEEK_SET:
@@ -1527,13 +1535,20 @@ def getdents_syscall(fd,quantity):
       
     returninodefntuplelist = []
     currentquantity = 0
+
+    # let's move the position forward...
+    startposition = filedescriptortable[fd]['position']
+
     # return tuple with inode, name tuples...
-    for entryname,entryinode in filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems():
+    for entryname,entryinode in list(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems())[startposition:]:
       if currentquantity >= quantity:
         break
       returninodefntuplelist.append((entryinode,entryname))
       currentquantity=currentquantity + 1
 
+    # and move the position along.   Go no further than the end...
+    filedescriptortable[fd]['position'] = min(startposition+quantity, len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict']))
+    
     return returninodefntuplelist
 
   finally:
