@@ -1,0 +1,23 @@
+
+def lind_fs_statfs(args):
+  """ Pull out arguments, and send off syscall. if it fails, path exceptions then return a
+  Response object.  """
+  print "STATFS CALLED"
+  path = args[0]
+  try:
+    result = pack_statfs_struct( statfs_syscall(path) )
+  except SyscallError, e:
+    return ErrorResponseBuilder("fs_statfs", e[1], e[2])
+  return SuccessResponseBuilder("fs_statfs",0, result)
+
+def lind_safe_fs_statfs(args):
+  """Check the validity of the arugments to the statfs syscall and what it returns"""
+  path = args[0]
+  assert(len(args)==1), "statfs should always have one argument"
+
+  result = lind_fs_statfs(args)
+
+  assert isinstance(result, Response), "wrong return type %s"%(str(type(result)))
+  if not result.is_error:
+    assert len(result.data)==88, "result must be exactly the size of struct statfs"
+  return result

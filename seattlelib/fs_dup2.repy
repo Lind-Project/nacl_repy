@@ -1,0 +1,19 @@
+
+def lind_fs_dup2(args):
+  handle = args[0]
+  handle2 = args[1]
+  try:
+    result = dup2_syscall(handle, handle2)
+  except SyscallError, e:
+    print "Error! ", e[2]
+    return ErrorResponseBuilder("fs_dup2", e[1], e[2])
+  return SuccessResponseBuilder("fs_dup2", result)
+
+def lind_safe_fs_dup2(args):
+  handle = args[0]
+  handle2 = args[1]
+  check_valid_fd_handle(handle)
+  check_valid_fd_handle(handle2)
+
+  return lind_fs_dup2(args)
+  

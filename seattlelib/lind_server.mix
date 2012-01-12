@@ -206,6 +206,8 @@ include fs_write.repy
 
 include fs_fstatfs.repy
 
+include fs_statfs.repy
+
 include comp.repy
 
 include fs_access.repy
@@ -231,6 +233,10 @@ include fs_unlink.repy
 include fs_xstat.repy
 
 include fs_getdents.repy
+
+include fs_dup.repy
+
+include fs_dup2.repy
 
 include sys_getpid.repy
 

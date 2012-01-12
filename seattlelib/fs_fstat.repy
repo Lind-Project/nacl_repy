@@ -13,7 +13,7 @@ def lind_fs_fxstat(args):
   # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
   # followed by 2Q for each timestamp.   The ns field is set to 0.
 
-  return SuccessResponseBuilder("fs_fstat", 0, result)
+  return SuccessResponseBuilder("fs_fstat", 0, len(result), result)
 
 
 def lind_safe_fs_fxstat(args):
