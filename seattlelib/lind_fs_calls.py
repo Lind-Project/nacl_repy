@@ -1334,7 +1334,9 @@ def close_syscall(fd):
 def _dup2_helper(oldfd,newfd):
 
   # if the new file descriptor is too low or too high
-  if newfd >= MAXFD or newfd < STARTINGFD:
+  # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
+  #      The Lind code may pass me descriptors less than STARTINGFD
+  if newfd >= MAXFD or newfd < 0:
     # BUG: the STARTINGFD isn't really too low.   It's just lower than we
     # support
     raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
