@@ -1,5 +1,7 @@
 # this file gets appended on our tests to make them work
 
+from exception_hierarchy import *
+
 from emulmisc import createlock as createlock
 
 from emulfile import emulated_open as openfile 

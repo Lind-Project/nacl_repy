@@ -834,6 +834,10 @@ def fstat_syscall(fd):
     http://linux.die.net/man/2/fstat
   """
 
+  # TODO: I don't handle socket objects.   I should return something like: 
+  # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20, 
+  # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
+
   # is the file descriptor valid?
   if fd not in filedescriptortable:
     raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")

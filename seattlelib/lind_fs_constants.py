@@ -99,3 +99,9 @@ def IS_DIR(mode):
   else:
     return False
 
+def IS_SOCK(mode):
+  if mode & S_IFSOCK == S_IFSOCK:
+    return True
+  else:
+    return False
+

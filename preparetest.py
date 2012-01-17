@@ -110,18 +110,10 @@ def help_exit(errMsg):
   print helpstring
   sys.exit(1)
 
-def setup_lind_fs_tests(target):
-  """ To deal with temporary problems in repy portability, this copies some
-  headers onto the front of the Lind testers."""
-  # cat fs_test_wrapper.py lind_fs_calls.py > wrapped_lind_fs_calls.py
-  # make new output file
-  output_name = target + '/wrapped_lind_fs_calls.py'
-  header_name = os.path.basename('seattlelib/tests/fs_test_wrapper.py')
-  body_name = os.path.basename('seattlelib/lind_fs_calls.py')
 
-  # need to copy over serialize.repy to be a python file so it can be imported
-  shutil.copyfile(target+'/serialize.repy',target +"/serialize.py")
-
+# JAC: This is terrible code and I'm sorry to be copying it, but I don't 
+# have time to re-write it now...
+def concat_files(header_name, body_name, output_name):
   f = open(output_name,'w')
   header = open(header_name, 'r')
   body = open(body_name, 'r')
@@ -139,6 +131,30 @@ def setup_lind_fs_tests(target):
   # write body into it
   # close
   
+
+
+def setup_lind_tests(target):
+  """ To deal with temporary problems in repy portability, this copies some
+  headers onto the front of the Lind testers."""
+  # cat fs_test_wrapper.py lind_fs_calls.py > wrapped_lind_fs_calls.py
+  # make new output file
+  fs_output_name = target + '/wrapped_lind_fs_calls.py'
+  fs_header_name = os.path.basename('seattlelib/tests/fs_test_wrapper.py')
+  fs_body_name = os.path.basename('seattlelib/lind_fs_calls.py')
+
+  # and for the network
+  net_output_name = target + '/wrapped_lind_net_calls.py'
+  net_header_name = os.path.basename('seattlelib/tests/net_test_wrapper.py')
+  net_body_name = os.path.basename('seattlelib/lind_net_calls.py')
+
+
+  # time to concatenate them for testing purposes...
+  concat_files(fs_header_name, fs_body_name, fs_output_name)
+  concat_files(net_header_name, net_body_name, net_output_name)
+
+  # need to copy over serialize.repy to be a python file so it can be imported
+  shutil.copyfile(target+'/serialize.repy',target +"/serialize.py")
+
 
 def main():
   repytest = False
@@ -221,7 +237,7 @@ def main():
   process_mix("repypp.py")
 
   #insatll lind test files
-  setup_lind_fs_tests(target_dir)
+  setup_lind_tests(target_dir)
 
   # set up dynamic port information
   if RANDOMPORTS:
