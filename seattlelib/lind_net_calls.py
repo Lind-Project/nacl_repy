@@ -252,6 +252,17 @@ def bind_syscall(fd,localip,localport):
   # force them to pick the result of getmyip here or could return a different 
   # error later....   I think I'll wait.
 
+  # If this is a UDP interface, then we should listen for udp datagrams
+  # (there is no 'listen' so the time to start now)...
+  if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
+    if 'socketobjectid' in filedescriptortable[fd]:
+      # BUG: I need to avoid leaking sockets, so I should close the previous...
+      raise UnimplementedError("I should close the previous UDP listener when re-binding")
+    udpsockobj = listenformessage(localip,localport)
+    filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
+    
+  
+
   # Done!   Let's set the information and bind later since Repy V2 doesn't 
   # support a separate call for binding...
   filedescriptortable[fd]['localip']=localip
@@ -540,13 +551,6 @@ def recvfrom_syscall(fd,length,flags):
     if 'localip' not in filedescriptortable[fd]:
       raise UnimplementedError("BUG / FIXME: Should bind before using UDP to recv / recvfrom")
 
-
-    # MASSIVE BUG HERE!!!   I need to fix this!!!
-    # add it to the table if there isn't an entry.   I need to reuse UDP socket
-    # objects.   If I close / reopen this every time, I'll lose messages
-    if 'socketobjectid' not in filedescriptortable[fd]:
-      udpsockobj = listenformessage(filedescriptortable[fd]['localip'],filedescriptortable[fd]['localport'])
-      filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
 
     # get the udpsocket object...
     udpsockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
