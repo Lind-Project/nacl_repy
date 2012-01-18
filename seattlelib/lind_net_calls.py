@@ -37,7 +37,7 @@
 # {'domain': AF_INET, 'type': SOCK_STREAM, 'protocol': IPPROTO_TCP, 
 #  'localip': '1.2.3.4', 'localport':12345, 'remoteip': '5.6.7.8', 
 #  'remoteport':6789, 'socketobjectid':5, 'mode':S_IFSOCK | 0666, 'options':0,
-#  'state':NOTCONNECTED}
+#  'sndbuf':131070, 'rcvbuf': 262140, 'state':NOTCONNECTED}
 #
 # To make dup and dup2 work correctly, I'll keep a socketobjecttable instead
 # of including them in the filedescriptortable...
@@ -149,6 +149,8 @@ def _socket_initializer(domain,socktype,protocol):
       'protocol':protocol,
       # BUG: I may need to handle the global setting of options here...
       'options':0,          # start with all options off...
+      'sndbuf':131070,      # buffersize (only used by getsockopt)
+      'rcvbuf':262140,      # buffersize (only used by getsockopt)
       'state':NOTCONNECTED, # we start without any connection
 # We don't set the ip / ports or socketobjectid because they are unknown now.
   }
@@ -241,7 +243,7 @@ def bind_syscall(fd,localip,localport):
     # if they are already bound to this address / port
     if 'localip' in filedescriptortable[otherfd] and filedescriptortable[otherfd]['localip'] == localip and filedescriptortable[otherfd]['localport'] == localport:
       # is SO_REUSEPORT in effect on both? I think everyone has to set 
-      # SO_REUSEADDR
+      # SO_REUSEPORT (at least this is true on some OSes.   It's OS dependent)
       if filedescriptortable[fd]['options'] & filedescriptortable[otherfd]['options'] & SO_REUSEPORT == SO_REUSEPORT:
         # all is well, continue...
         pass
@@ -720,6 +722,33 @@ def listen_syscall(fd,backlog):
       # BUG: I would need to close this (if the last) to handle this right...
       raise UnimplementedError("Listen should close the existing connected socket")
 
+
+    # Is someone else already listening on this address?   This may happen
+    # with SO_REUSEPORT
+    for otherfd in filedescriptortable:
+      # skip ours
+      if fd == otherfd:
+        continue
+
+      # if not a socket, skip it...
+      if 'domain' not in filedescriptortable[otherfd]:
+        continue
+
+      # if they are not listening, skip it...
+      if filedescriptortable[otherfd]['state'] != LISTEN:
+        continue
+
+      # if the protocol / domain/ type differ, ignore
+      if filedescriptortable[otherfd]['domain'] != filedescriptortable[fd]['domain'] or filedescriptortable[otherfd]['type'] != filedescriptortable[fd]['type'] or filedescriptortable[otherfd]['protocol'] != filedescriptortable[fd]['protocol']:
+        continue
+
+      # if they are already bound to this address / port
+      if filedescriptortable[otherfd]['localip'] == filedescriptortable[fd]['localip'] and filedescriptortable[otherfd]['localport'] == filedescriptortable[fd]['localport']:
+        raise SyscallError('bind_syscall','EADDRINUSE',"Another socket is already bound to this address")
+
+
+
+    # otherwise, all is well.   Let's set it up!
     filedescriptortable[fd]['state'] = LISTEN
 
 
@@ -809,10 +838,172 @@ def accept_syscall(fd):
 
 
 
-
-
 # int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
+
+
+# I'm just going to set these binary options or return the previous setting.   
+# In most cases, this will be while doing nothing.
+STOREDSOCKETOPTIONS = [ SO_LINGER, # ignored
+                        SO_KEEPALIVE, # ignored
+                        SO_SNDLOWAT, # ignored
+                        SO_RCVLOWAT, # ignored
+                        SO_REUSEPORT, # used to allow duplicate binds...
+                      ]
+
+
+##### GETSOCKOPT  #####
+def getsockopt_syscall(fd, level, optname):
+  """ 
+    http://linux.die.net/man/2/getsockopt
+  """
+
+  if fd not in filedescriptortable:
+    raise SyscallError("getsockopt_syscall","EBADF","The file descriptor is invalid.")
+
+  if not IS_SOCK(filedescriptortable[fd]['mode']):
+    raise SyscallError("getsockopt_syscall","ENOTSOCK","The descriptor is not a socket.")
+
+  # This should really be SOL_SOCKET, however, we'll also handle a few others
+  if level == SOL_UDP:
+    raise UnimplementedError("UDP is not supported for getsockopt")
+
+  # TCP...  Ignore most things...
+  elif level == SOL_TCP:
+    # do nothing
+    
+    raise UnimplementedError("TCP options not remembered by getsockopt")
+
+
+
+  elif level == SOL_SOCKET:
+    # this is where the work happens!!!
+
+    if optname == SO_ACCEPTCONN:
+      # indicate if we are accepting connections...
+      if filedescriptortable[fd]['state'] == LISTEN:
+        return 1
+      else:
+        return 0
+
+    # if the option is a stored binary option, just return it...
+    if optname in STOREDSOCKETOPTIONS:
+      if filedescriptortable[fd]['options'] & optname:
+        return 1
+      else:
+        return 0
+
+    # Okay, let's handle the (ignored) buffer settings...
+    if optname == SO_SNDBUF:
+      return filedescriptortable[fd]['sndbuf']
+
+    if optname == SO_RCVBUF:
+      return filedescriptortable[fd]['rcvbuf']
+
+    # similarly, let's handle the SNDLOWAT and RCVLOWAT, etc.
+    # BUG?: On Mac, this seems to be stored much like the buffer settings
+    if optname == SO_SNDLOWAT or optname == SO_RCVLOWAT:
+      return 1
+
+
+    # return the type if asked...
+    if optname == SO_TYPE:
+      return filedescriptortable[fd]['type']
+
+    # I guess this is always true!?!?   I certainly don't handle it.
+    if optname == SO_OOBINLINE:
+      return 1
+
+    raise UnimplementedError("Unknown option in getsockopt()")
+
+  else:
+    raise UnimplementedError("Unknown level in getsockopt()")
+
+
+
+
+
+
+
+
 # int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
+
+##### SETSOCKOPT  #####
+def setsockopt_syscall(fd, level, optname, optval):
+  """ 
+    http://linux.die.net/man/2/setsockopt
+  """
+
+  if fd not in filedescriptortable:
+    raise SyscallError("setsockopt_syscall","EBADF","The file descriptor is invalid.")
+
+  if not IS_SOCK(filedescriptortable[fd]['mode']):
+    raise SyscallError("setsockopt_syscall","ENOTSOCK","The descriptor is not a socket.")
+
+  # This should really be SOL_SOCKET, however, we'll also handle a few others
+  if level == SOL_UDP:
+    raise UnimplementedError("UDP is not supported for setsockopt")
+
+  # TCP...  Ignore most things...
+  elif level == SOL_TCP:
+    # do nothing
+    if optname == TCP_NODELAY:
+      return 0
+ 
+    # otherwise return an error
+    raise UnimplementedError("TCP options not remembered by setsockopt")
+
+
+  elif level == SOL_SOCKET:
+    # this is where the work happens!!!
+
+    if optname == SO_ACCEPTCONN or optname == SO_TYPE or optname == SO_SNDLOWAT or optname == SO_RCVLOWAT:
+      raise SyscallError("setsockopt_syscall","ENOPROTOOPT","Cannot set option using setsockopt.")
+
+    # if the option is a stored binary option, just return it...
+    if optname in STOREDSOCKETOPTIONS:
+      newoptions = filedescriptortable[fd]['options']
+
+      # if the value is set, unset it...
+      if newoptions & optname:
+        newoptions = newoptions - optname
+        return 1
+
+      # now let's set this if we were told to
+      if optval:
+        # this value should be 1!!!   Nothing else is allowed
+        assert(optval == 1)
+        newoptions = newoptions + optname
+
+      filedescriptortable[fd]['options'] = newoptions
+      return 0
+      
+
+    # Okay, let's handle the (ignored) buffer settings...
+    if optname == SO_SNDBUF:
+      filedescriptortable[fd]['sndbuf'] = optval
+      return 0
+
+    if optname == SO_RCVBUF:
+      filedescriptortable[fd]['rcvbuf'] = optval
+      return 0
+
+    # I guess this is always true!?!?   I certainly don't handle it.
+    if optname == SO_OOBINLINE:
+      # I can only handle this being true...
+      assert(optval == 1)
+      return 0
+
+    raise UnimplementedError("Unknown option in setsockopt()")
+
+  else:
+    raise UnimplementedError("Unknown level in setsockopt()")
+
+
+
+
+
+
+
 
 
 

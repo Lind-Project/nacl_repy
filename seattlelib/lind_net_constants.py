@@ -324,6 +324,18 @@ SO_NP_EXTENSIONS = 0x1083        # To turn off some POSIX behavior
 SO_LABEL = 0x1010                # socket's MAC label
 SO_PEERLABEL = 0x1011            # socket's peer MAC label
 
+TCP_NODELAY = 0x01           # don't delay send to coalesce packets
+TCP_MAXSEG = 0x02            # set maximum segment size
+TCP_NOPUSH = 0x04            # don't push last block of write
+TCP_NOOPT = 0x08             # don't use TCP options
+TCP_KEEPALIVE = 0x10         # idle time used when SO_KEEPALIVE is enabled
+TCP_CONNECTIONTIMEOUT = 0x20 # connection timeout
+PERSIST_TIMEOUT = 0x40       # time after which a connection in persist timeout
+                             # will terminate. 
+                             # see draft-ananth-tcpm-persist-02.txt
+TCP_RXT_CONNDROPTIME = 0x80  # time after which tcp retransmissions will be
+                             # stopped and the connection will be dropped
+TCP_RXT_FINDROP = 0x100      # When set, a connection is dropped after 3 FINs
 
 
 # Use this to specify options on a socket.   Use the protocol with setsockopt
