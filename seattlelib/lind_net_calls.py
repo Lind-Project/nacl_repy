@@ -599,7 +599,75 @@ def recv_syscall(fd, length, flags):
 
     
 
+
+
+
+
+
+# int getsockname(int sockfd, struct sockaddr *addrsocklen_t *" addrlen);
+
+
+##### GETSOCKNAME  #####
+
+
+def getsockname_syscall(fd):
+  """ 
+    http://linux.die.net/man/2/getsockname
+  """
+
+  if fd not in filedescriptortable:
+    raise SyscallError("getsockname_syscall","EBADF","The file descriptor is invalid.")
+
+  if not IS_SOCK(filedescriptortable[fd]['mode']):
+    raise SyscallError("getsockname_syscall","ENOTSOCK","The descriptor is not a socket.")
+
+
+  # if we know this, return it...
+  if 'localip' in filedescriptortable[fd]:
+    return filedescriptortable[fd]['localip'], filedescriptortable[fd]['localport']
+  
+  # otherwise, return '0.0.0.0', 0
+  else:
+    return '0.0.0.0',0
+  
+
     
+
+
+    
+
+
+
+
+##### GETPEERNAME  #####
+
+
+def getpeername_syscall(fd):
+  """ 
+    http://linux.die.net/man/2/getpeername
+  """
+
+  if fd not in filedescriptortable:
+    raise SyscallError("getpeername_syscall","EBADF","The file descriptor is invalid.")
+
+  if not IS_SOCK(filedescriptortable[fd]['mode']):
+    raise SyscallError("getpeername_syscall","ENOTSOCK","The descriptor is not a socket.")
+
+
+  # if we don't know this, we should raise an exception
+  if 'remoteip' not in filedescriptortable[fd]:
+    raise SyscallError("getpeername_syscall","ENOTCONN","The descriptor is not connected.")
+
+  # if we know this, return it...
+  return filedescriptortable[fd]['remoteip'], filedescriptortable[fd]['remoteport']
+  
+  
+
+    
+
+
+    
+
 
 
 
