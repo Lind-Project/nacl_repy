@@ -459,13 +459,20 @@ def send_syscall(fd, message, flags):
 
     # get the socket so I can send...
     sockobj = socketobjecttable[filedescriptortable[fd]['socketobjid']]
-    try:
-      bytessent = sockobj.send(message)
+    
+    # retry until it does not block...
+    while True:
+      try:
+        bytessent = sockobj.send(message)
 
-    except Exception, e:
-      # I think this shouldn't happen.   A closed socket should go to
-      # NOTCONNECTED state.   This is an internal error...
-      raise 
+      except Exception, e:
+        # I think this shouldn't happen.   A closed socket should go to
+        # NOTCONNECTED state.   This is an internal error...
+        raise 
+    
+      # sleep and retry
+      except SocketWouldBlock, e:
+        sleep(RETRYWAITAMOUNT)
  
 
     # return the characters sent!
@@ -489,7 +496,7 @@ def send_syscall(fd, message, flags):
 
 
 # Wait this long between recv calls...
-RECVRETRYWAITAMOUNT = .001
+RETRYWAITAMOUNT = .001
 
 
 
@@ -538,7 +545,7 @@ def recvfrom_syscall(fd,length,flags):
       # sleep and retry!
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
-        sleep(RECVRETRYWAITAMOUNT)
+        sleep(RETRYWAITAMOUNT)
 
 
 
@@ -565,7 +572,7 @@ def recvfrom_syscall(fd,length,flags):
       # sleep and retry!
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
-        sleep(RECVRETRYWAITAMOUNT)
+        sleep(RETRYWAITAMOUNT)
 
 
 
@@ -663,10 +670,73 @@ def getpeername_syscall(fd):
   
   
 
+
+
+
+
+# int listen(int sockfd, int backlog);
+
+
+
+##### LISTEN  #####
+
+
+# I ignore the backlog
+def listen_syscall(fd,backlog):
+  """ 
+    http://linux.die.net/man/2/listen
+  """
+
+  if fd not in filedescriptortable:
+    raise SyscallError("listen_syscall","EBADF","The file descriptor is invalid.")
+
+  if not IS_SOCK(filedescriptortable[fd]['mode']):
+    raise SyscallError("listen_syscall","ENOTSOCK","The descriptor is not a socket.")
+
+  # BUG: I need to check if someone else is already listening here...
+
+
+  # If UDP, raise an exception
+  if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
+    raise SyscallError("listen_syscall","EOPNOTSUPP","This protocol does not support listening.")
+
+
+  # it's TCP!
+  elif filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
+
+    if filedescriptortable[fd]['state'] == LISTEN:
+      # already done!
+      return 0
+
+
+    if 'localip' not in filedescriptortable[fd]:
+      # the real POSIX impl picks a random port and listens on 0.0.0.0.   
+      # I think this is unnecessary to implement.
+      raise UnimplementedError("listen without bind")
+
+
+    # If it's connected, this is still allowed, but I won't implement it...
+    if filedescriptortable[fd]['state'] == CONNECTED:
+      # BUG: I would need to close this (if the last) to handle this right...
+      raise UnimplementedError("Listen should close the existing connected socket")
+
+    filedescriptortable[fd]['state'] = LISTEN
+
+
+    # BUG: I'll let anything go through for now.   I'm fairly sure there will 
+    # be issues I may need to handle later.
+    newsockobj = listenforconnection(filedescriptortable[fd]['localip'], filedescriptortable[fd]['localport'])
+    filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(newsockobj)
+
+    # change the state and return success
+    return 0
+
+  else:
+    raise UnimplementedError("Unknown protocol in listen()")
+
     
 
 
-    
 
 
 
@@ -674,11 +744,76 @@ def getpeername_syscall(fd):
 
 
 # int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-# int getpeername(int sockfd, struct sockaddr *addr", socklen_t *" addrlen);
-# int getsockname(int sockfd, struct sockaddr *addrsocklen_t *" addrlen);
-# int listen(int sockfd, int backlog);
+
+
+
+
+##### ACCEPT  #####
+
+
+# returns ip, port, sockfd
+def accept_syscall(fd):
+  """ 
+    http://linux.die.net/man/2/accept
+  """
+
+  if fd not in filedescriptortable:
+    raise SyscallError("accept_syscall","EBADF","The file descriptor is invalid.")
+
+  if not IS_SOCK(filedescriptortable[fd]['mode']):
+    raise SyscallError("accept_syscall","ENOTSOCK","The descriptor is not a socket.")
+
+
+  # If UDP, raise an exception
+  if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
+    raise SyscallError("accept_syscall","EOPNOTSUPP","This protocol does not support listening.")
+
+
+  # it's TCP!
+  elif filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
+
+    # must be listening
+    if filedescriptortable[fd]['state'] != LISTEN:
+      raise SyscallError("accept_syscall","EINVAL","Must call listen before accept.")
+
+    listeningsocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+
+    # now we should loop (block) until we get an incoming connection
+    while True:
+      try:
+        remoteip, remoteport, acceptedsocket = listeningsocket.getconnection() 
+
+      # sleep and retry
+      except SocketWouldBlockError, e:
+        sleep(RETRYWAITAMOUNT)
+      else:
+        
+        newfd = _socket_initializer(filedescriptortable[fd]['domain'],filedescriptortable[fd]['type'],filedescriptortable[fd]['protocol'])
+
+        filedescriptortable[newfd]['state'] = CONNECTED
+        filedescriptortable[newfd]['localip'] = filedescriptortable[fd]['localip']
+        filedescriptortable[newfd]['localport'] = filedescriptortable[fd]['localport']
+        filedescriptortable[newfd]['remoteip'] = remoteip
+        filedescriptortable[newfd]['remoteport'] = remoteport
+        filedescriptortable[newfd]['socketobjectid'] = _insert_into_socketobjecttable(acceptedsocket)
+
+        return remoteip, remoteport, newfd
+
+  else:
+    raise UnimplementedError("Unknown protocol in accept()")
+
+    
+
+
+
+
+
+
+
+
 # int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
 # int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
+
 
 
 # int shutdown(int sockfd, int how);
