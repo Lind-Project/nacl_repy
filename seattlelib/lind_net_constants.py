@@ -323,5 +323,7 @@ SO_PEERLABEL = 0x1011            # socket's peer MAC label
 # Use this to specify options on a socket.   Use the protocol with setsockopt
 # to specify something for all sockets with a protocol
 SOL_SOCKET = 0xffff
+SOL_TCP = IPPROTO_TCP
+SOL_UDP = IPPROTO_UDP
 
 
