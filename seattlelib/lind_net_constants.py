@@ -240,6 +240,10 @@ SOMAXCONN = 128
 
 
 #################### for sendmsg and recvmsg
+
+# These aren't the same as in Linux.   There is no MSG_NOSIGNAL, etc.
+# Since I copied these from a Mac, these will be different than for Lind
+
 MSG_OOB = 0x1
 MSG_PEEK = 0x2
 MSG_DONTROUTE = 0x4
@@ -256,6 +260,8 @@ MSG_SEND = 0x1000
 MSG_HAVEMORE = 0x2000
 MSG_RCVMORE = 0x4000
 MSG_NEEDSA = 0x10000
+
+
 
 
 
