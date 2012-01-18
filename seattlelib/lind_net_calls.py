@@ -1008,6 +1008,44 @@ def setsockopt_syscall(fd, level, optname, optval):
 
 
 # int shutdown(int sockfd, int how);
+
+##### SHUTDOWN  #####
+def setshutdown_syscall(fd, how):
+  """ 
+    http://linux.die.net/man/2/shutdown
+  """
+
+  if fd not in filedescriptortable:
+    raise SyscallError("shutdown_syscall","EBADF","The file descriptor is invalid.")
+
+  if not IS_SOCK(filedescriptortable[fd]['mode']):
+    raise SyscallError("shutdown_syscall","ENOTSOCK","The descriptor is not a socket.")
+
+
+  if how == SHUT_RD or how == SHUT_WR:
+
+    raise UnimplementedError("Partial shutdown not implemented.")
+
+  
+  # let's shut this down...
+  elif how == SHUT_RDWR:
+    # BUG: need to check for duplicate entries (ala dup / dup2)
+    if 'socketobjectid' in filedescriptortable[fd]:
+      thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+      thesocket.close()
+      del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+      del filedescriptortable[fd]['socketobjectid']
+      
+    filedescriptortable[fd]['state'] = NOTCONNECTED
+    return 0
+
+  else:
+    # BUG: I'm not exactly clear as to how to handle this...
+    
+    raise SyscallError("shutdown_syscall","EINVAL","Shutdown given an invalid how")
+
+
+
 # int socketpair(int domain, int type, int protocol, int socket_vector[2]);
 # ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);
 # ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);
