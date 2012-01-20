@@ -18,14 +18,14 @@ clientsockfd = lind_net_calls.socket_syscall(AF_INET, SOCK_STREAM, 0)
 
 
 # bind to a socket
-lind_net_calls.bind_syscall(serversockfd,'127.0.0.1',50300)
+lind_net_calls.bind_syscall(serversockfd,'127.0.0.1',50431)
 
 lind_net_calls.listen_syscall(serversockfd,10)
 
 def do_server():
   
-  newsocketfd = lind_net_calls.accept_syscall(serversockfd)
   try:
+    newsocketfd = lind_net_calls.accept_syscall(serversockfd)
     lind_net_calls.send_syscall(serversockfd,'jhasdfhjsa',0)
     lind_net_calls.shutdown_syscall(serversockfd,SHUT_RDWR)
 
@@ -48,8 +48,10 @@ createthread(do_server)
 sleep(.1)
 
 # should be okay...
-lind_net_calls.connect_syscall(clientsockfd,'127.0.0.1',50300)
-assert(lind_net_calls.getpeername_syscall(clientsockfd) == ('127.0.0.1',50300))
-
+try:
+  lind_net_calls.connect_syscall(clientsockfd,'127.0.0.1',50431)
+  assert(lind_net_calls.getpeername_syscall(clientsockfd) == ('127.0.0.1',50431))
+finally:
+  exitall()
 
 
