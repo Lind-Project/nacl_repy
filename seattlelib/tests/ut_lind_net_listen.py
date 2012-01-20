@@ -25,7 +25,6 @@ lind_net_calls.listen_syscall(serversockfd,10)
 def do_server():
   
   newsocketfd = lind_net_calls.accept_syscall(serversockfd)
-  print newsocketfd
   exitall()
 
 
@@ -36,7 +35,7 @@ createthread(do_server)
 sleep(.1)
 
 # should be okay...
-print lind_net_calls.connect_syscall(clientsockfd,'127.0.0.1',50300)
+lind_net_calls.connect_syscall(clientsockfd,'127.0.0.1',50300)
 assert(lind_net_calls.getpeername_syscall(clientsockfd) == ('127.0.0.1',50300))
 
 
