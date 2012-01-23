@@ -2,6 +2,9 @@
 def lind_fs_dup(args):
 
   handle = args[0]
+    if handle <= 10:
+    print "Warning: low file handles are not supported in Lind dup."
+
   try:
     result = dup_syscall(handle)
   except SyscallError, e:
