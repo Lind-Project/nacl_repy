@@ -23,5 +23,5 @@ def lind_safe_fs_link(args):
     if not result.is_error:
       assert (result.return_code == 0), "Must return 0 on success." 
     else:
-      print result.message
+      pass
     return result

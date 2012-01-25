@@ -34,12 +34,10 @@ def lind_fs_getdents(args):
     final_structs.append(str_ent)
 
   result = ''.join(final_structs)
-  print result
   
   return SuccessResponseBuilder("fs_getdents", len(result), result)
 
 def lind_safe_fs_getdents(args):
-  print "Calling getdents with ", args 
   handle = args[0]
   count = args[1]
   check_valid_fd_handle(handle)
