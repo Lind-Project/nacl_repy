@@ -19,6 +19,10 @@ R_OK = 4
 O_RDONLY=00
 O_WRONLY=01
 O_RDWR=02
+
+# we will use this to get the flags
+O_RDWRFLAGS= O_RDONLY | O_WRONLY | O_RDWR
+
 O_CREAT=0100
 O_EXCL=0200
 O_NOCTTY=0400
@@ -105,3 +109,22 @@ def IS_SOCK(mode):
   else:
     return False
 
+def IS_RDONLY(flags):
+  if flags & O_RDWRFLAGS == O_RDONLY:
+    return True
+  else:
+    return False
+
+
+def IS_WRONLY(flags):
+  if flags & O_RDWRFLAGS == O_WRONLY:
+    return True
+  else:
+    return False
+
+
+def IS_RDWR(flags):
+  if flags & O_RDWRFLAGS == O_RDWR:
+    return True
+  else:
+    return False

@@ -1015,7 +1015,7 @@ def open_syscall(path, flags, mode):
 
     # Add the entry to the table!
 
-    filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWR}
+    filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
 
     # Done!   Let's return the file descriptor.
     return thisfd
@@ -1135,7 +1135,7 @@ def read_syscall(fd, count):
     raise SyscallError("read_syscall","EBADF","Invalid file descriptor.")
 
   # Is it open for reading?
-  if filedescriptortable[fd]['flags'] & O_WRONLY: 
+  if IS_WRONLY(filedescriptortable[fd]['flags']): 
     raise SyscallError("read_syscall","EBADF","File descriptor is not open for reading.")
 
   # Acquire the fd lock...
@@ -1191,7 +1191,7 @@ def write_syscall(fd, data):
     raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
   # Is it open for writing?
-  if filedescriptortable[fd]['flags'] & O_RDONLY: 
+  if IS_RDONLY(filedescriptortable[fd]['flags']): 
     raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
 
 
