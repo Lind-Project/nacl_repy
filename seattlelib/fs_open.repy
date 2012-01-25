@@ -29,13 +29,12 @@ MAX_FD = 1024
 def lind_fs_open(args):
   flags = args[0]
   mode = args[1]
-  file_name_length = args[2]
-  file_name = args[3]
+  file_name = args[2]
   try:
     result_fd = open_syscall(file_name, flags, mode)
   except SyscallError,e:
     message = "Could not find file: " + file_name +"\n" + str(e) + "\n" 
-    log( message )
+    # log( message )
     return ErrorResponseBuilder("fs_open", "ENOENT", message )
   return SuccessResponseBuilder("fs_open", result_fd)
   
@@ -43,14 +42,11 @@ def lind_fs_open(args):
 def lind_safe_fs_open(args):
     flags = args[0]
     mode = args[1]
-    file_name_length = args[2]
-    file_name = args[3]
+    file_name = args[2]
 
     assert isinstance(flags, int), "the flags should be an int" 
     assert isinstance(mode, int), "the mode should be an int"
-    assert isinstance(file_name_length, int), "file length should be an int"
     assert isinstance(file_name, str), "filename should be a string"
-    assert file_name_length == len(file_name), "name length should match passed length"
     assert ((flags&MASK)==O_RDONLY or (flags&MASK)==O_WRONLY or (flags&MASK)==O_RDWR), "the flags to not seem to be one of the expected. %o"%(flags)
 
     result = lind_fs_open(args)

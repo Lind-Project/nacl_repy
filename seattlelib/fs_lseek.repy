@@ -1,9 +1,9 @@
 
 def lind_fs_lseek(args):
-  handle = args[0]
-  whence = args[1]
+  handle = args[1]
+  whence = args[2]
 
-  offset = args[2]
+  offset = args[0]
   try:
     result = lseek_syscall(handle, offset, whence)
     reply = struct_pack("<q",result)
@@ -13,10 +13,9 @@ def lind_fs_lseek(args):
   return SuccessResponseBuilder("fs_lseek", len(reply), reply)
 
 def lind_safe_fs_lseek(args):
-  print args
-  handle = args[0]
-  offset = args[2]
-  whence = args[1]
+  offset = args[0]
+  whence = args[2]
+  handle = args[1]
   assert(whence == SEEK_SET or whence == SEEK_CUR or whence == SEEK_END), ("invalid whence=%d"%(whence))
   check_valid_fd_handle(handle)
 
@@ -24,8 +23,6 @@ def lind_safe_fs_lseek(args):
 
   if result.is_error == False:
     assert(len(result.data) == 8), "should return exactly and off_t"
-  
-
 
   return result
   
