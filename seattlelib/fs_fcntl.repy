@@ -1,0 +1,29 @@
+
+def lind_fs_fcntl(args):
+  handle = args[0]
+  cmd = args[1]
+
+  if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN:
+    arg = args[2]
+    try:
+      result = fcntl_syscall(handle, cmd, arg)
+    except SyscallError, e:
+      print "Error!"
+      return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
+  else:
+    try:
+      result = fcntl_syscall(handle, cmd)
+    except SyscallError, e:
+      print "Error!"
+      return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
+  return SuccessResponseBuilder("fs_fcntl", result)
+
+def lind_safe_fs_fcntl(args):
+  handle = args[0]
+  cmd = args[1]
+  
+  check_valid_fd_handle(handle)
+  assert (cmd==F_GETFD or cmd == F_SETFD or cmd == F_GETFL or cmd == F_SETFL or cmd == F_GETOWN or cmd == F_SETOWN), "Invalid fcntl command"
+  
+  return lind_fs_fcntl(args)
+  
