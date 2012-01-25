@@ -15,7 +15,6 @@ def lind_fs_xstat(args):
   return SuccessResponseBuilder("fs_xstat", len(result), result)
 
 def lind_safe_fs_xstat(args):
-  print "Calling xstat with ", args 
   type_code = args[0]
   path = args[1]
   assert (type_code == 0 or type_code == 1), "xstat type code must be stat or fstat"

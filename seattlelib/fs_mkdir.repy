@@ -26,7 +26,6 @@ O_ASYNC=020000
 #TODO find out what the system limit is
 
 def lind_fs_mkdir(args):
-  print args
   mode = args[0]
   file_name = args[1]
   try:
@@ -49,6 +48,7 @@ def lind_safe_fs_mkdir(args):
     if not result.is_error:
       assert (result.return_code == 0), "Must return 0 on success." 
     else:
-      print result.message
+      pass
+      #print result.message
     return result
 

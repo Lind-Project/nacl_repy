@@ -2,7 +2,6 @@
 def lind_fs_statfs(args):
   """ Pull out arguments, and send off syscall. if it fails, path exceptions then return a
   Response object.  """
-  print "STATFS CALLED"
   path = args[0]
   try:
     result = pack_statfs_struct( statfs_syscall(path) )
