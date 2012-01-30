@@ -1462,7 +1462,7 @@ def fcntl_syscall(fd, cmd, *args):
     elif cmd == F_SETFD:
       assert(len(args) == 1)
       assert(type(args[0]) == int or type(args[0]) == long)
-      return
+      return 0
 
     # if we're getting the flags, return them...
     elif cmd == F_GETFL:
@@ -1474,6 +1474,7 @@ def fcntl_syscall(fd, cmd, *args):
       assert(len(args) == 1)
       assert(type(args[0]) == int or type(args[0]) == long)
       filedescriptortable[fd]['flags'] = args[0]
+      return 0
 
     # This is saying we'll get signals for this.   Let's punt this...
     elif cmd == F_GETOWN:
