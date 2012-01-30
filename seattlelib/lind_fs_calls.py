@@ -1499,7 +1499,6 @@ def fcntl_syscall(fd, cmd, *args):
   finally:
     # ... release the lock
     filedescriptortable[fd]['lock'].release()
-    del filedescriptortable[fd]
 
 
 
