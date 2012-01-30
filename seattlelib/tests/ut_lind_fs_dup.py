@@ -6,7 +6,7 @@ from lind_fs_constants import *
 # Try to do dup2
 lind_fs_calls._blank_fs_init()
 
-flags = 577  # O_TRUNC | O_CREAT | O_WRONLY
+flags = O_TRUNC | O_CREAT | O_RDWR
 mode = 438   # 0666
 name = 'double_open_file'
 

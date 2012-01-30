@@ -11,7 +11,7 @@ myfd2 = lind_fs_calls.open_syscall('/foo',O_RDWR,S_IRWXA)
 
 assert(myfd!= myfd2)
 
-flags = 577  # O_TRUNC | O_CREAT | O_WRONLY
+flags = O_TRUNC | O_CREAT | O_RDWR
 mode = 438   # 0666
 name = 'double_open_file'
 
