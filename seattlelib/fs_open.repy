@@ -1,18 +1,33 @@
+"""
+
+Handlers for the open system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Open hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library open system call.  Then packs
+the result back up.
+
+"""
+
+
 #constants pulled from standard lib
-MASK=3
-O_RDONLY=00
-O_WRONLY=01
-O_RDWR=02
-O_CREAT=0100
-O_EXCL=0200
-O_NOCTTY=0400
-O_TRUNC=01000
-O_APPEND=02000
-O_NONBLOCK=04000
-# O_NDELAY=O_NONBLOCK
-O_SYNC=010000
-# O_FSYNC=O_SYNC
-O_ASYNC=020000
+MASK = 3
+O_RDONLY = 00
+O_WRONLY = 01
+O_RDWR = 02
+O_CREAT = 0100
+O_EXCL = 0200
+O_NOCTTY = 0400
+O_TRUNC = 01000
+O_APPEND = 02000
+O_NONBLOCK = 04000
+# O_NDELAY = O_NONBLOCK
+O_SYNC = 010000
+# O_FSYNC = O_SYNC
+O_ASYNC = 020000
 
 #ifdef __USE_GNU
 # define O_DIRECT	 040000	/* Direct disk access.	*/
@@ -24,87 +39,59 @@ O_ASYNC=020000
 
 #largest file descriptor
 #TODO find out what the system limit is
-MAX_FD = 1024 
+MAX_FD = 1024
+
 
 def lind_fs_open(args):
-  flags = args[0]
-  mode = args[1]
-  file_name = args[2]
-  try:
-    result_fd = open_syscall(file_name, flags, mode)
-  except SyscallError,e:
-    message = "Could not find file: " + file_name +"\n" + str(e) + "\n" 
-    # log( message )
-    return ErrorResponseBuilder("fs_open", "ENOENT", message )
-  return SuccessResponseBuilder("fs_open", result_fd)
-  
+    """ open calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the flags, mode and file name in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    flags = args[0]
+    mode = args[1]
+    file_name = args[2]
+    try:
+        result_fd = open_syscall(file_name, flags, mode)
+    except SyscallError, e:
+        message = "Could not find file: " + file_name + "\n" + str(e) + "\n"
+        log(message)
+        return ErrorResponseBuilder("fs_open", "ENOENT", message)
+    return SuccessResponseBuilder("fs_open", result_fd)
+
 
 def lind_safe_fs_open(args):
+    """ Safely wrap the open call.
+
+    See dispatcher.repy for details.
+
+    Check the mode flags and file for consistancy,
+    then call the real open dispatcher.
+
+    """
     flags = args[0]
     mode = args[1]
     file_name = args[2]
 
-    assert isinstance(flags, int), "the flags should be an int" 
+    assert isinstance(flags, int), "the flags should be an int"
     assert isinstance(mode, int), "the mode should be an int"
     assert isinstance(file_name, str), "filename should be a string"
-    assert ((flags&MASK)==O_RDONLY or (flags&MASK)==O_WRONLY or (flags&MASK)==O_RDWR), "the flags to not seem to be one of the expected. %o"%(flags)
+    assert ((flags & MASK) == O_RDONLY or
+            (flags & MASK) == O_WRONLY or
+            (flags & MASK) == O_RDWR), \
+            "the flags to not seem to be one of the expected. %o" % (flags)
 
     result = lind_fs_open(args)
 
-    assert isinstance(result, Response), "wrong return type %s"%(str(type(result)))
+    assert isinstance(result, Response), \
+           "wrong return type %s" % (str(type(result)))
     if not result.is_error:
-      assert (-1 <= result.return_code <= MAX_FD), "Must return a valid FD." 
+        assert (-1 <= result.return_code <= MAX_FD), "Must return a valid FD."
 
     return result
-
-
-old =   """ see man 2 open for full details
-
-  int open(const char *pathname, int flags);
-  int open(const char *pathname, int flags, mode_t mode);
-  int creat(const char *pathname, mode_t mode);
-
-  Description
-
-  Given a pathname for a file, open() returns a file descriptor, a small,
-  non-negative integer for use in subsequent system calls (read(2), write(2),
-  lseek(2), fcntl(2), etc.). The file descriptor returned by a successful call
-  will be the lowest-numbered file descriptor not currently open for the
-  process.  The new file descriptor is set to remain open across an execve(2)
-  (i.e., the FD_CLOEXEC file descriptor flag described in fcntl(2) is initially
-  disabled). The file offset is set to the beginning of the file (see lseek(2)).
-  
-
-  file_name_length = args[2]
-  file_name = args[3]
-  if "repy/lind" in file_name:
-    return ErrorResponseBuilder("fs_open", "ENOENT", "not allowed to open system files" )
-
-  # check old handles, if there, just return that one
-  already_there = curr_comp()[FILES].lookupName(file_name)
-  if already_there != 0:
-    file_obj = curr_comp()[FILES].lookup(already_there)
-    if(file_obj.closed):
-      file_obj.fobj = openfile(file_name, False)
-      file_obj.closed = False
-    return SuccessResponseBuilder("fs_open", already_there )
-  if file_name == "lind://component-manager":
-    COMP_MANAGER_FD = 9
-    return SuccessResponseBuilder("fs_open", COMP_MANAGER_FD )
-    
-  try:
-    file_name = file_name.split("/")[-1]
-    if file_name in curr_comp()[PROGRAM]:
-      return ErrorResponseBuilder("fs_open", "ENOENT", "won't allow open of program file" )
-
-    log("[info][syscall] Calling Open: " + file_name + "\n")
-    f = openfile(file_name, False)
-    file_handle = curr_comp()[FILES].insertFile(file_name, f)
-        
-  except FileNotFoundError,e:
-    message = "Could not find file: " + file_name +"\n" + str(e) + "\n" 
-    log( message )
-    return ErrorResponseBuilder("fs_open", "ENOENT", message )
-  
-  return SuccessResponseBuilder("fs_open", file_handle)
-  """
