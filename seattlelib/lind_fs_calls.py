@@ -108,7 +108,8 @@
 #
 
 # Store all of the information about the file system in a dict...
-ROOTDIRECTORYINODE = 0
+# This should not be 0 because this is considered to be deleted
+ROOTDIRECTORYINODE = 1
 
 METADATAFILENAME = 'lind.metadata'
 
@@ -152,7 +153,7 @@ class UnimplementedError(Exception):
 # 
 
 def _blank_fs_init():
-  filesystemmetadata['nextinode'] = 1
+  filesystemmetadata['nextinode'] = 2
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0, 
