@@ -997,7 +997,7 @@ def open_syscall(path, flags, mode):
     # Note, directories can be opened (to do getdents, etc.).   We shouldn't
     # actually open something in this case...
     # Is it a regular file?
-    if filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+    if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       # this is a regular file.  If it's not open, let's open it! 
       if inode not in fileobjecttable:
         thisfo = openfile(FILEDATAPREFIX+str(inode),False)
@@ -1075,11 +1075,11 @@ def lseek_syscall(fd, offset, whence):
     inode = filedescriptortable[fd]['inode']
 
     # Let's figure out if this has a length / pointer...
-    if filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+    if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       # straightforward if it is a file...
       filesize = filesystemmetadata['inodetable'][inode]['size']
 
-    elif filesystemmetadata['inodetable'][inode]['mode'] & S_IFDIR:
+    elif IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
       # if a directory, let's use the number of entries
       filesize = len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'])
 
@@ -1149,7 +1149,7 @@ def read_syscall(fd, count):
     inode = filedescriptortable[fd]['inode']
 
     # Is it anything other than a regular file?
-    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+    if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
       
 
@@ -1206,7 +1206,7 @@ def write_syscall(fd, data):
     inode = filedescriptortable[fd]['inode']
 
     # Is it anything other than a regular file?
-    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+    if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
       
 
@@ -1270,7 +1270,7 @@ def _close_helper(fd):
   inode = filedescriptortable[fd]['inode']
 
   # If it's not a regular file, we have nothing to close...
-  if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFREG:
+  if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
 
     # double check that this isn't in the fileobjecttable
     if inode in fileobjecttable:
@@ -1536,7 +1536,7 @@ def getdents_syscall(fd,quantity):
     inode = filedescriptortable[fd]['inode']
 
     # Is it a directory?
-    if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFDIR:
+    if not IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
       raise SyscallError("getdents_syscall","EINVAL","File descriptor does not refer to a directory.")
       
     returninodefntuplelist = []
