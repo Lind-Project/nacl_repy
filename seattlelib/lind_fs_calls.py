@@ -1537,7 +1537,6 @@ def getdents_syscall(fd,quantity):
 
     # Is it a directory?
     if not filesystemmetadata['inodetable'][inode]['mode'] & S_IFDIR:
-      print filesystemmetadata['inodetable'][inode]['mode'], inode
       raise SyscallError("getdents_syscall","EINVAL","File descriptor does not refer to a directory.")
       
     returninodefntuplelist = []
