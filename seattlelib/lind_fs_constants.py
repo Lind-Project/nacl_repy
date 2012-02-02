@@ -56,6 +56,9 @@ S_IFLNK = 40960
 S_IFREG = 32768
 S_IFSOCK = 49152
 
+# the above type mode is these 4 bits.   I want to be able to pull them out...
+S_FILETYPEFLAGS = 2**12 + 2**13 + 2**14 + 2**15
+
 S_IWRITE = 128
 S_ISUID = 2048
 S_IREAD = 256
@@ -98,6 +101,22 @@ PATH_MAX = 4096
 #largest file descriptor
 MAX_FD = 1024
 
+# for dirents...
+
+
+
+# convert file mode (S_) to dirent type (DT_)
+def get_direnttype_from_mode(mode):
+  if IS_DIR(mode):
+    return DT_DIR
+  if IS_REG(mode):
+    return DT_REG
+  if IS_SOCK(mode):
+    return DT_SOCK
+
+  # otherwise, return unknown for now...
+  return DT_UNKNOWN
+
 
 # types for getdents d_type field
 
@@ -131,14 +150,20 @@ DT_WHT = 14
 
 # some MACRO helpers...
 def IS_DIR(mode):
-  if mode & S_IFDIR:
+  if mode & S_FILETYPEFLAGS == S_IFDIR:
+    return True
+  else:
+    return False
+
+def IS_REG(mode):
+  if mode & S_FILETYPEFLAGS == S_IFREG:
     return True
   else:
     return False
 
 
 def IS_SOCK(mode):
-  if mode & S_IFSOCK == S_IFSOCK:
+  if mode & S_FILETYPEFLAGS == S_IFSOCK:
     return True
   else:
     return False

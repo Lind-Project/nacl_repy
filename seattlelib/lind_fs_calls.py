@@ -1545,11 +1545,14 @@ def getdents_syscall(fd,quantity):
     # let's move the position forward...
     startposition = filedescriptortable[fd]['position']
 
-    # return tuple with inode, name tuples...
+    # return tuple with inode, name, type tuples...
     for entryname,entryinode in list(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems())[startposition:]:
       if currentquantity >= quantity:
         break
-      returninodefntuplelist.append((entryinode,entryname))
+
+      # getdents returns the mode also (at least on Linux)...
+      entrytype = get_direnttype_from_mode(filesystemmetadata['inodetable'][entryinode]['mode'])
+      returninodefntuplelist.append((entryinode,entryname,entrytype))
       currentquantity=currentquantity + 1
 
     # and move the position along.   Go no further than the end...
