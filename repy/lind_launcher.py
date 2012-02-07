@@ -18,6 +18,7 @@ import sys
 import repy_constants
 import safebinary
 import naclimc
+from thread import start_new_thread
 
 RECV_SOCKET = None
 SEND_SOCKET = None
@@ -68,12 +69,19 @@ def _spawn_sel_ldr(args, fd_slots, **kwargs):
 
   cmd = [repy_constants.NACL_ENV["NACL_SEL_LDR"]] + extra_args + args
   proc = subprocess.Popen(cmd, preexec_fn=_pre_exec, **kwargs)
+  start_new_thread(nacl_watchdog, (proc,))
   for fd_slot, (child_fd, parent_fd) in sockets:
     os.close(child_fd)
   result_sockets = [naclimc.from_os_socket(parent_fd)
                     for fd_slot, (child_fd, parent_fd) in sockets]
   return proc, result_sockets
 
+
+def nacl_watchdog(proc):
+  """Watch a nacl process. Has it died? """
+  print "Starting watchdog"
+  rc = proc.wait()
+  print "NaCl process return with:", rc
 
 def launch_nacl(nacl_env, program, args):
   """wrapper to setup a NaCl enviroement given the locations of all the files
@@ -84,12 +92,11 @@ def launch_nacl(nacl_env, program, args):
   sel_ldr_args = [
       "-s","-a","-l","lind.log",
       "--", nacl_env["NACL_DYN_LOADER"] ]
-
   proc, [fd1, recv, send] = _spawn_sel_ldr( sel_ldr_args,
                                 [repy_constants.NACL_PLUGIN_BOUND_SOCK,
                                  repy_constants.NACL_PLUGIN_ASYNC_FROM_CHILD_FD,
                                  repy_constants.NACL_PLUGIN_ASYNC_TO_CHILD_FD])
-  print type(recv)
+  # print type(recv)
   
   your_program = safebinary.NaClRuntime(proc, fd1, recv, send)
 
@@ -101,4 +108,4 @@ def launch_nacl(nacl_env, program, args):
   return your_program
 
 if __name__ == "__main__":
-  print launch_nacl(sys.argv[1], sys.argv[2:], [])
+  launch_nacl(sys.argv[1], sys.argv[2:], [])
