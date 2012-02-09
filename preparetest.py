@@ -127,10 +127,6 @@ def concat_files(header_name, body_name, output_name):
   f.close()
   header.close()
   body.close()
-  # write header into it
-  # write body into it
-  # close
-  
 
 
 def setup_lind_tests(target):
@@ -144,7 +140,7 @@ def setup_lind_tests(target):
 
   # and for the network
   net_output_name = target + '/wrapped_lind_net_calls.py'
-  net_header_name = os.path.basename('seattlelib/tests/net_test_wrapper.py')
+  net_header_name = os.path.basename('seattlelib/tests/lind_test_wrapper.py')
   net_body_name = os.path.basename('seattlelib/lind_net_calls.py')
 
 

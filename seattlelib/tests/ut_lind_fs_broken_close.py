@@ -22,9 +22,7 @@ import wrapped_lind_fs_calls as lind_fs_calls
 
 from lind_fs_constants import *
 
-import lind_net_calls as lind_net_calls
-
-from emultimer import createthread as createthread
+import wrapped_lind_net_calls as lind_net_calls
 
 from emulmisc import exitall
 
@@ -39,7 +37,6 @@ lind_fs_calls._blank_fs_init()
 
 myfd = lind_fs_calls.open_syscall('/foo', O_CREAT | O_EXCL | O_RDWR, S_IRWXA)
 
-print myfd
 
 
 # write should succeed
@@ -58,7 +55,6 @@ lind_fs_calls.close_syscall(myfd)
 
 sockfd = lind_net_calls.socket_syscall(AF_INET, SOCK_STREAM, 0)
 
-print sockfd
 
 # bind will not be interesting...
 assert lind_net_calls.bind_syscall(sockfd, '10.0.0.1', 50102) == 0
@@ -68,7 +64,6 @@ except:
     pass
 
 myfd = lind_fs_calls.open_syscall('/foo', O_RDWR, S_IRWXA)
-print myfd
 lind_fs_calls.close_syscall(myfd)
 
 myfd = lind_fs_calls.open_syscall('/foo', O_RDWR, S_IRWXA)
