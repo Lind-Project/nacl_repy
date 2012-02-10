@@ -8,9 +8,10 @@ from emulfile import emulated_open as openfile
 from emulfile import removefile
 from emulfile import listfiles
 
-from  nonportable import get_resources as getresources
+from nonportable import get_resources as getresources
 
 from serialize import serializedata as serializedata
+from serialize import deserializedata as deserializedata
 
 import nanny
 
@@ -36,7 +37,6 @@ nanny._resources_consumed_dict = {'messport':set(), 'connport':set(), 'cpu':0,
       }
 
 from lind_fs_constants import *
-
 
 
 
