@@ -30,7 +30,13 @@ def pack_dirent(dir_tuple, my_start):
 
     d_ino = dir_tuple[0]
     d_name = dir_tuple[1]
-    d_type = DT_UNKNOWN  # TODO: set this
+
+    # if the system call has the type typle too use it
+    if len(dir_tuple) > 2:
+        d_type = dir_tuple[2]
+    else:
+        d_type = DT_UNKNOWN  # TODO: set this
+    
     # the format of the dirent struct is:
     #    unsigned long long d_ino
     #    signed long long offset
@@ -38,10 +44,10 @@ def pack_dirent(dir_tuple, my_start):
     #    char type
     #    char[] d_name
 
-    format = "<Q<q<H<B" + str(len(d_name)) + "s"
+    format = "<Q<q<H<B" + str(len(d_name)) + "s<B"
     dirent_len = struct_calcsize(format)
     d_off = my_start + dirent_len
-    dirent = struct_pack(format, d_ino, d_off, dirent_len, d_type, d_name)
+    dirent = struct_pack(format, d_ino, d_off, dirent_len, d_type, d_name, 0)
     return (d_off, dirent)
 
 
@@ -50,11 +56,9 @@ def lind_fs_getdents(args):
 
     See dispatcher.repy for details.
 
-    Given the flags, mode and file name in a list,
-    pull them out and make the actual syscall in the
-    file system library.
+    Given the file handle and max_bytes, return
+    up to the dirents that fit in that space.
 
-    Pack the single int returned, or error.
     """
 
     # the directory handle
@@ -62,7 +66,7 @@ def lind_fs_getdents(args):
 
     #max bytes
     count = args[1]
-    print count
+
     try:
         py_result = getdents_syscall(handle, count)
     except SyscallError, e:
