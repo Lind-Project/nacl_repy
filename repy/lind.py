@@ -57,7 +57,7 @@ def setup_nacl_path(nacl_base):
   libs = os.path.join(nacl_base, libs_str)
   if not os.path.exists(libs):
      raise IOError("NaCl gcc libs is missing?: %s"%(libs))
-  print libs
+  # print libs
   # libs = os.path.join(nacl_base, "out/install/glibc_64/nacl64/lib/")
   # if not os.path.exists(libs):
   #    raise IOError("NaCl libs glibc_64 is missing?: %s"%(libs))
