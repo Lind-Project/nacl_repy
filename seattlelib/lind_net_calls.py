@@ -21,8 +21,6 @@
 
 """
 
-
-
 # Since Repy does not have a concept of descriptors or binding before 
 # connecting, we will fake all of this.   I will determine the usable ports
 # and then choose from them when it's unspecified.
@@ -138,7 +136,7 @@ def _insert_into_socketobjecttable(socketobj):
 # A private helper that initializes a socket given validated arguments.
 def _socket_initializer(domain,socktype,protocol):
   # get a file descriptor
-  newfd = lind_fs_calls._get_next_fd()
+  newfd = _get_next_fd()
 
   # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
   # of the calls I did not change break.
@@ -1054,6 +1052,9 @@ def setshutdown_syscall(fd, how):
 def inet_ntoa(ipaddress):
   """
   Convert an IP address in integer form to a dot-and-number string
+
+  This is 
+  
   """
-  a,b,c,d = struct_unpack("<B<B<B<B",inaddr)
+  a,b,c,d = struct_unpack("<B<B<B<B",ipaddress)
   return str(a) + "." + str(b) + "." +str(c) + "." +str(d) 
