@@ -148,11 +148,41 @@ class UnimplementedError(Exception):
   """A call was called with arguments that are not fully implemented"""
 
 
+def load_fs(name=METADATAFILENAME):
+  """ Help to correcly load a filesystem, if one exists, otherwise
+  make a new empty one.  To do this, check if metadata exists.
+  If it doesnt, call _blank_fs_init, if it DOES exist call restore_metadata
+
+  This is the best entry point for programs loading the file subsystem.
+  """
+  try:
+    # lets see if the metadata file is already here?
+    f = openfile(name, False)
+  except FileNotFoundError, e:
+    print "Note: No filesystem found, building a fresh one."
+    _blank_fs_init()
+  else:
+    f.close()
+    try:
+      restore_metadata(name)
+    except (IndexError, KeyError), e:
+      print "Error: Cannot reload filesystem.  Run lind_fsck for details."
+      exitall(1)
+
+
 
 # To have a simple, blank file system, simply run this block of code.
 # 
 
 def _blank_fs_init():
+
+  # kill all left over data files...
+  # metadata will be killed on persist.
+  for filename in listfiles():
+    if filename.startswith(FILEDATAPREFIX):
+      removefile(filename)
+
+  # Now setup blank data structures
   filesystemmetadata['nextinode'] = 2
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
@@ -165,12 +195,6 @@ def _blank_fs_init():
             '..':ROOTDIRECTORYINODE}}
     
   fastinodelookuptable['/'] = ROOTDIRECTORYINODE
-  
-  # kill all left over data files...
-  for filename in listfiles():
-    if filename.startswith(FILEDATAPREFIX):
-      removefile(filename)
-
 
 
 
@@ -180,7 +204,12 @@ def persist_metadata(metadatafilename):
 
   metadatastring = serializedata(filesystemmetadata)
 
+  
   # open the file (clobber) and write out the information...
+  try:
+    removefile(metadatafilename)
+  except FileNotFoundError:
+    pass
   metadatafo = openfile(metadatafilename,True)
   metadatafo.writeat(metadatastring,0)
   metadatafo.close()
