@@ -1301,9 +1301,10 @@ def IS_SOCK_DESC(fd):
 # private helper that allows this to be called in other places (like dup2)
 # without changing to re-entrant locks
 def _close_helper(fd):
-  # if we are a socket, just 
+  # if we are a socket, we dont change disk metadata
   if IS_SOCK_DESC(fd):
-    setshutdown_syscall(fd, SHUT_RDWR)
+    #TODO maybe something here? Like shutdown
+    return 0
 
   # get the inode for the filedescriptor
   inode = filedescriptortable[fd]['inode']
