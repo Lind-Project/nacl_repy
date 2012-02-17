@@ -910,8 +910,8 @@ def _istat_helper(inode):
 STARTINGFD = 10
 MAXFD = 1024
 
-# private helper function
-def _get_next_fd():
+# get the next free file descriptor
+def get_next_fd():
   # let's get the next available fd number.   The standard says we need to 
   # return the lowest open fd number.
   for fd in range(STARTINGFD, MAXFD):
@@ -1020,7 +1020,7 @@ def open_syscall(path, flags, mode):
 
     
     # get the next fd so we can use it...
-    thisfd = _get_next_fd()
+    thisfd = get_next_fd()
   
 
     # Note, directories can be opened (to do getdents, etc.).   We shouldn't
@@ -1290,10 +1290,20 @@ def _lookup_fds_by_inode(inode):
   return returnedfdlist
 
 
+# is this file descriptor a socket? 
+def IS_SOCK_DESC(fd):
+  if 'domain' in filedescriptortable[fd]:
+    return True
+  else:
+    return False
+
 
 # private helper that allows this to be called in other places (like dup2)
 # without changing to re-entrant locks
 def _close_helper(fd):
+  # if we are a socket, just 
+  if IS_SOCK_DESC(fd):
+    setshutdown_syscall(fd, SHUT_RDWR)
 
   # get the inode for the filedescriptor
   inode = filedescriptortable[fd]['inode']
@@ -1438,7 +1448,7 @@ def dup_syscall(fd):
   try: 
     # get the next available file descriptor
     try:
-      nextfd = _get_next_fd()
+      nextfd = get_next_fd()
     except SyscallError, e:
       # If it's an error getting the fd, return our call name instead.
       assert(e[0]=='open_syscall')

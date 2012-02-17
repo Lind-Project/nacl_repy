@@ -26,7 +26,7 @@ from lind_net_constants import *
 
 import wrapped_lind_fs_calls as lind_fs_calls
 
-_get_next_fd = lind_fs_calls._get_next_fd
+get_next_fd = lind_fs_calls.get_next_fd
 
 from wrapped_lind_fs_calls import filedescriptortable
 

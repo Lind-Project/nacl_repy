@@ -1,3 +1,5 @@
+import wrapped_lind_fs_calls as lind_fs_calls
+
 import wrapped_lind_net_calls as lind_net_calls
 
 
@@ -21,3 +23,6 @@ except:
 else:
   print "Should be an error"
 
+sockfd = lind_net_calls.socket_syscall(AF_INET, SOCK_STREAM, 0)
+
+lind_fs_calls.close_syscall(sockfd)
