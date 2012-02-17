@@ -1285,7 +1285,7 @@ def write_syscall(fd, data):
 def _lookup_fds_by_inode(inode):
   returnedfdlist = []
   for fd in filedescriptortable:
-    if filedescriptortable[fd]['inode'] == inode:
+    if not IS_SOCK_DESC(fd) and filedescriptortable[fd]['inode'] == inode:
       returnedfdlist.append(fd)
   return returnedfdlist
 
