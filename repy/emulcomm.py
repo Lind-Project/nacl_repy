@@ -2013,6 +2013,13 @@ class EmulatedSocket:
 
 
   def __del__(self):
+    # this ensures that during interpreter cleanup, that the order of 
+    # freed memory doesn't matter.   If we don't have this, then 
+    # OPEN_SOCKET_INFO and other objects might get cleaned up first and cause
+    # the close call below to print an exception
+    if OPEN_SOCKET_INFO == None:
+      return
+
     # Get the socket lock
     try:
       socket_lock = OPEN_SOCKET_INFO[self.identity][0]
@@ -2223,6 +2230,13 @@ class UDPServerSocket:
  
 
   def __del__(self):
+    # this ensures that during interpreter cleanup, that the order of 
+    # freed memory doesn't matter.   If we don't have this, then 
+    # OPEN_SOCKET_INFO and other objects might get cleaned up first and cause
+    # the close call below to print an exception
+    if OPEN_SOCKET_INFO == None:
+      return
+
     # Clean up global resources on garbage collection.
     self.close()
 
@@ -2432,6 +2446,13 @@ class TCPServerSocket (object):
  
 
   def __del__(self):
+    # this ensures that during interpreter cleanup, that the order of 
+    # freed memory doesn't matter.   If we don't have this, then 
+    # OPEN_SOCKET_INFO and other objects might get cleaned up first and cause
+    # the close call below to print an exception
+    if OPEN_SOCKET_INFO == None:
+      return
+
     # Close the socket
     self.close()
 
