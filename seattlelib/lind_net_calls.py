@@ -136,7 +136,7 @@ def _insert_into_socketobjecttable(socketobj):
 # A private helper that initializes a socket given validated arguments.
 def _socket_initializer(domain,socktype,protocol):
   # get a file descriptor
-  newfd = _get_next_fd()
+  newfd = get_next_fd()
 
   # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
   # of the calls I did not change break.
