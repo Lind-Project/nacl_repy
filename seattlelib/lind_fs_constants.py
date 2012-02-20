@@ -147,6 +147,9 @@ DT_SOCK = 12
 # dont know what this is for?!  but it is in dirent.h
 DT_WHT = 14
 
+# default name for metadata
+DEFAULT_METADATA_FILENAME = "lind.metadata"
+
 
 # some MACRO helpers...
 def IS_DIR(mode):
