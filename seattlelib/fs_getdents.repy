@@ -27,7 +27,6 @@ def pack_dirent(dir_tuple, my_start):
     my_start is the distance from the start of the buffer that this
     entry starts at.
     """
-
     d_ino = dir_tuple[0]
     d_name = dir_tuple[1]
 

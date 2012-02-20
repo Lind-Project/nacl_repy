@@ -8,7 +8,7 @@ def lind_fs_lseek(args):
     result = lseek_syscall(handle, offset, whence)
     reply = struct_pack("<q",result)
   except SyscallError, e:
-    print "Error!", e[1], e[2]
+    print "Lseek error!", e[1], e[2]
     return ErrorResponseBuilder("fs_lseek", e[1], e[2])
   return SuccessResponseBuilder("fs_lseek", len(reply), reply)
 
