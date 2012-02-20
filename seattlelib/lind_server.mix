@@ -10,27 +10,31 @@ include struct.repy
 
 # if you comment this include out the line numbers are
 # correct for syntax errors.
- 
-
-SYSCALL="syscall"               # shortcut to syscall dict items
-FILES="FILES"                   # these also make a typo more specific
-COMP="comp"                                # than a dict lookup error
-ERRNO="errno.h"
-MBOX="mbox"
-LOCK="lock"
-PROGRAM="program"
-CMD_LINE="command_line_args"
-SUCCESS=0
-
-PRODUCTION=False
-COMP_MODE="component_mode"
 
 
+SYSCALL = "syscall"               # shortcut to syscall dict items
+FILES = "FILES"                   # these also make a typo more specific
+COMP = "comp"                                # than a dict lookup error
+ERRNO = "errno.h"
+MBOX = "mbox"
+LOCK = "lock"
+PROGRAM = "program"
+CMD_LINE = "command_line_args"
+SUCCESS = 0
+
+PRODUCTION = False
+COMP_MODE = "component_mode"
+
+# the size of the transmission buffer.  We should never send something
+# bigger than this!
+TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
+RX_BUF_MAX = (4096 * 4)
 
 
 # def log(arg):
 #   """Turn off logging"""
 #   pass
+
 
 def curr_comp():
   return mycontext[mycontext[COMP]]
@@ -39,11 +43,12 @@ def curr_comp():
 def comp(num):
   return mycontext[num]
 
+
 def unimplemented(who):
   """what to do when we come across some code that needs to be finished.
   For now, lets just keep running, but really this should not happen
   so we should exit.  """
-  message =  "a unimplemented function has been called " + str(who)
+  message = "a unimplemented function has been called " + str(who)
   if PRODUCTION:
     log("error: " + message)
     exitall()
@@ -57,8 +62,8 @@ class Response:
   <Purpose>
 
   This object is responsible sending responses to specific system calls.  It is
-  loaded with data, then can build a reply struct which can then be sent back to
-  NaCl through an IMC channel.
+  loaded with data, then can build a reply struct which can then be sent back
+  to NaCl through an IMC channel.
 
   The Response can be in one of two states, an Error response (for calls that
   have failed somehow), or a success response. An error response has an error
@@ -70,22 +75,23 @@ class Response:
   message = "No error message set"
   data = ""
 
-  def __init__(self, response_type,  is_error, return_code):
+  def __init__(self, response_type, is_error, return_code):
     assert isinstance(response_type, str), "response type is not a string"
     self.response_type = response_type
     assert isinstance(is_error, bool), "is error is not a boolean"
     self.is_error = is_error
-    
+
     if isinstance(return_code, str):
       try:
-        self.return_code =  curr_comp()[ERRNO][return_code]
+        self.return_code = curr_comp()[ERRNO][return_code]
       except KeyError:
         raise Exception("Return code is not a valid error number.")
     elif isinstance(return_code, int):
       self.return_code = return_code
     else:
       raise Exception("Invalid return code.")
-    assert isinstance(self.return_code, int), "return code is not a int, or a stirng which mapped to an int"
+    assert isinstance(self.return_code, int), \
+           "return code is not a int, or a stirng which mapped to an int"
 
   def make_struct(self):
     """
@@ -106,10 +112,15 @@ class Response:
     reply = None
     if self.is_error:
       # message format <size, magic, is_error, code, message>
-      reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", len(self.message) + 16, 101010, 1, self.return_code, self.message)
+      reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", \
+                          len(self.message) + 16, \
+                          101010, 1, self.return_code,\
+                          self.message)
     else:
       # message format <size, magic, is_error, code, data>
-      reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", len(self.data) + 16, 101010, 0, self.return_code, self.data)
+      reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", \
+                          len(self.data) + 16, 101010, 0, self.return_code,\
+                          self.data)
     return reply
 
   def __str__(self):
@@ -118,14 +129,19 @@ class Response:
       type_str = "Error"
     else:
       type_str = "Success"
-    return type_str + " in " + self.response_type + " with code " + str(self.return_code) + " with data of size " + str(len(self.data)) + " with data " + str(self.data)
+    return type_str + " in " + self.response_type + " with code " + \
+           str(self.return_code) + " with data of size " + str(len(self.data))\
+           + " with data " + str(self.data)
 
-def ErrorResponseBuilder(who ,code, message):
+
+def ErrorResponseBuilder(who, code, message):
   """ Build an error response object.
 
   <Arguments>
    who: Which portion of the system or system call is making this reply.
-   code: Positive error code to return, or string from errno.h to resolve to a number.
+   code: Positive error code to return, or string from errno.h to resolve
+   to a number.
+
    message: A detailed message about the error.
    """
   r = Response(who, True, code)
@@ -141,64 +157,78 @@ def SuccessResponseBuilder(who, code, data=None):
      code: the integer return code to return.
      data: the data this call returns (as a string), if any.
   """
-  r =  Response(who, False, code)
-  if data!=None:
+  r = Response(who, False, code)
+  if data != None:
     r.data = data
   return r
 
 
 def check_valid_fd_handle(num):
   assert isinstance(num, int)
-  assert (10 <= num <= MAX_FD), "invalid handle"
-
+  assert (10 <= num <= MAX_FD), "invalid handle %d" % num
 
 
 def pack_stat_struct(struct_tuple):
   """Given a tuple with stat fields, pack it into a string"""
   (my_st_dev, my_st_ino, my_st_mode, my_st_nlink, my_st_uid, my_st_gid,
    my_st_rdev, my_st_size, my_st_blksize, my_st_blocks,
-   my_st_atime, my_st_atimeus, my_st_mtime, my_st_mtimeus, my_st_ctime,my_st_ctimeus) = struct_tuple
+   my_st_atime, my_st_atimeus, my_st_mtime, \
+   my_st_mtimeus, my_st_ctime, my_st_ctimeus) = struct_tuple
   result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
-                       my_st_dev,my_st_ino,my_st_mode,my_st_nlink,my_st_uid,my_st_gid,
-                       my_st_rdev,my_st_size,my_st_blksize,my_st_blocks,
-                       my_st_atime,my_st_atimeus, my_st_mtime,my_st_mtimeus,my_st_ctime,my_st_ctimeus)
+                       my_st_dev, my_st_ino, my_st_mode, my_st_nlink, \
+                       my_st_uid, my_st_gid, my_st_rdev, my_st_size, \
+                       my_st_blksize, my_st_blocks, my_st_atime, \
+                       my_st_atimeus, my_st_mtime, my_st_mtimeus, \
+                       my_st_ctime, my_st_ctimeus)
   return result
+
 
 def pack_statfs_struct(fsd):
   """struct statfs {
-  long    f_type;     -- type of file system (see below) 
-  long    f_bsize;    -- optimal transfer block size 
-  long    f_blocks;   -- total data blocks in file system 
-  long    f_bfree;    -- free blocks in fs 
-  long    f_bavail;   -- free blocks avail to non-superuser 
-  long    f_files;    -- total file nodes in file system 
-  long    f_ffree;    -- free file nodes in fs 
-  fsid_t  f_fsid;     -- file system id 
-  long    f_namelen;  -- maximum length of filenames 
+  long    f_type;     -- type of file system (see below)
+  long    f_bsize;    -- optimal transfer block size
+  long    f_blocks;   -- total data blocks in file system
+  long    f_bfree;    -- free blocks in fs
+  long    f_bavail;   -- free blocks avail to non-superuser
+  long    f_files;    -- total file nodes in file system
+  long    f_ffree;    -- free file nodes in fs
+  fsid_t  f_fsid;     -- file system id
+  long    f_namelen;  -- maximum length of filenames
   }
   """
-  (tipe, bsize, blocks, bfree, bavail, files, ffree, fsid, namelen, frsize, spare) = (  fsd['f_type'],
-                                                                         fsd['f_bsize'],
-                                                                         fsd['f_blocks'],
-                                                                         fsd['f_bfree'],
-                                                                         fsd['f_bavail'],
-                                                                         fsd['f_files'],
-                                                                         fsd['f_files'],
-                                                                         fsd['f_fsid'],
-                                                                         fsd['f_namelen'],
-                                                                         fsd['f_frsize'],
-                                                                         fsd['f_spare'])
+  (tipe, bsize, blocks, bfree, bavail, files, ffree,\
+   fsid, namelen, frsize, spare) = (fsd['f_type'],
+                                    fsd['f_bsize'],
+                                    fsd['f_blocks'],
+                                    fsd['f_bfree'],
+                                    fsd['f_bavail'],
+                                    fsd['f_files'],
+                                    fsd['f_files'],
+                                    fsd['f_fsid'],
+                                    fsd['f_namelen'],
+                                    fsd['f_frsize'],
+                                    fsd['f_spare'])
 
   format = '<q<q<q<q<q<q<q<Q<q<q8s'
-  result = struct_pack(format, tipe, bsize, blocks, bfree, bavail, files, ffree, fsid, namelen, frsize, spare)
+  result = struct_pack(format, tipe, bsize, blocks, bfree, bavail, \
+                       files, ffree, fsid, namelen, frsize, spare)
   return result
-  
+
+
+def parse_sockaddr_struct(sock):
+  format = '<h>H<I<Q'  # family, port, address, padding
+  assert struct_calcsize(format) == 16
+  return struct_unpack(format, sock)
 
 include lind_fs_constants.py
+
+include lind_net_constants.py
 
 include serialize.repy
 
 include lind_fs_calls.py
+
+include lind_net_calls.py
 
 include fs_open.repy
 
@@ -238,7 +268,37 @@ include fs_dup.repy
 
 include fs_dup2.repy
 
+include fs_fcntl.repy
+
 include sys_getpid.repy
+
+include net_socket.repy
+
+include net_bind.repy
+
+include net_send.repy
+
+include net_sendto.repy
+
+include net_recv.repy
+
+include net_recvfrom.repy
+
+include net_connect.repy
+
+include net_listen.repy
+
+include net_accept.repy
+
+include net_getpeername.repy
+
+include net_getsockname.repy
+
+include net_getsockopt.repy
+
+include net_setsockopt.repy
+
+include net_shutdown.repy
 
 include debug.repy
 
@@ -247,10 +307,9 @@ include unimplemented_syscalls.repy
 include dispatcher.repy
 
 
-
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
-  prefix = ">> "  # prefix which the shell scripts can use to pull out these numbers
+  prefix = ">> "  # prefix which the scripts can use to pull out these numbers
   for eachtime in times:
     each = 0
     call = eachtime[each]
@@ -261,63 +320,89 @@ def print_times(times):
     each += 1
     exec_start = eachtime[each]
     each += 1
-    exec_post = eachtime[each] 
+    exec_post = eachtime[each]
     each += 1
-    exec_stop = eachtime[each] 
+    exec_stop = eachtime[each]
     each += 1
-    exec_before = eachtime[each] 
+    exec_before = eachtime[each]
     each += 1
-    exec_after = eachtime[each] 
+    exec_after = eachtime[each]
     each += 1
     call_args = eachtime[each]
-    print prefix, function_name + ", "+ "%f"%(exec_pre) + ", " + "%f"%(exec_start) + ", " + "%f"%(exec_post) + ", " + "%f"%(exec_stop) + ", " + "%f"%(exec_before) + ", " + "%f"%(exec_after) + ", \"" + str(call_args) + "\""
-
+    print prefix, function_name + ", " + "%f" % (exec_pre) + ", " + \
+          "%f" % (exec_start) + ", " + "%f" % (exec_post) + ", " + \
+          "%f" % (exec_stop) + ", " + "%f" % (exec_before) + ", " + \
+          "%f" % (exec_after) + ", \"" + str(call_args) + "\""
 
 
 def NaclRPCServer(nacl_instance, comp_num):
   #timer =  mycontext["wallclocktime"]
   #times = []
+  format = "<i<I<I<I<I<i"
+  header_size = struct_calcsize(format)
+  max_recv = 16384
+  # the expceted message sequence number
+  expected_seq_num = 0
   while True:
-    format = "<i<I<I<i"
     start = 0
     stop = 0
+
+
+    # step 1: pull out the header
     try:
      # pre = timer()
-      message = nacl_instance.recv(1024)
+      message = nacl_instance.recv(max_recv)
      # start = timer()
     except exceptions.Exception:
       log("[ERROR][RPC] " + "Exception on receive\n")
       break
-  
+
     # log("[info][RPC] " +  "Raw Message: "+ message +"\n")
-    header = message[0:16]
-    if header == "EOT":
+    # assert( len(message) == header_size), "wrong header size"
+    if message == "EOT":
       break
+
+    header = message[0:header_size]
+
+    # now parse the header
     magic = 0
     call = 0
     frmt_len = 0
     valid = 0
+    payload_size = 0
+    seq_num = 0
+
     try:
-      [magic, call, frmt_len, valid] = struct_unpack(format, header)
+      [magic, call, frmt_len, payload_size, seq_num, valid] = struct_unpack(format, header)
     except Exception, err:
-      log("[ERROR][RPC] ", type(err),  ":", err, "\n")
+      log("[ERROR][RPC] Error unmarshaling header", type(err), ":", err, "\n")
 
+    # validate the header
     if magic != -2:
-      raise Exception("Protocol Error: Magic number not found. Was expecting -2, got " + str(magic) )
+      raise Exception("Protocol Error: Magic number not found." + \
+                      " Was expecting -2, got " + str(magic))
     # We probably dont need this in the future, but for now:
-    checksum = magic + call  + frmt_len
+    checksum = magic + call + frmt_len
 
+    if (seq_num != expected_seq_num-75) and seq_num != expected_seq_num:
+      #print "Out of order sequence number %d !=%d for call %d"%(seq_num, expected_seq_num, call)
+      pass
+    expected_seq_num += 1
     if valid != checksum:
-      raise Exception("Protocol Error: Validation number not found. We got " + str(valid) + ", expected " + str(checksum) )
+      raise Exception("ProtocolError: Validation number not found. We got " + \
+                      str(valid) + ", expected " + str(checksum))
+
 
     if frmt_len == 0:
       args = []
     else:
-      args_string = message[16+frmt_len+1:]
-      message_format = message[16:16+frmt_len]
+      data_start = header_size + frmt_len + 1  # one extra for null char at end of frmt string
+      # the part of the string which is the format string
+      message_format = message[header_size:data_start-1]
       # print "message format: ", message_format
-      try: 
-        trimmed_string = args_string
+      try:
+        trimmed_string = message[data_start:]
+        assert len(trimmed_string) == payload_size, "Reported (%d) payload does not match actual payload (%d)" % (len(trimmed_string), payload_size)
         # print "Args: ",trimmed_string
         args = struct_unpack(message_format, trimmed_string)
         # print "Parsed Args", args
@@ -327,6 +412,7 @@ def NaclRPCServer(nacl_instance, comp_num):
         log("Args len=" + str(len(trimmed_string)) + "\n")
         log("Args full=" + str(args_string) + "\n")
         log("Args String=" + trimmed_string + "\n")
+        log("Syscall was=" + str(call) + "\n")
         call = NOOP_CALL_NUM # continue on with eno_sys
     # before_call = timer()
     mycontext[LOCK].acquire(True)
@@ -336,21 +422,20 @@ def NaclRPCServer(nacl_instance, comp_num):
     # after_call = timer()
     if response == None:
       raise Exception()
-    # print response
+
     retcode_buffer = response.make_struct()
-    # print retcode_buffer
+
     try:
       # post = timer()
-      got = nacl_instance.send(retcode_buffer,"")
+      got = nacl_instance.send(retcode_buffer, "")
       # stop = timer()
     except:
       log("[info][RPC] " + "Exception on Send. Stopping\n")
       break
     if got == 0:
       log("[ERROR][RPC] " + "failed to send\n")
-    # times.append((call, pre ,start, post, stop, before_call, after_call, args))
-    
-  print "Lind Server ", mycontext[comp_num][PROGRAM], " Shutting Down."
+      exitall()
+  #print "Lind Server ", mycontext[comp_num][PROGRAM], " Shutting Down."
   # print_times(times)
 
 
@@ -362,27 +447,19 @@ def main():
     NaclRPCServer(nacl, 1)
   else:
     print "Safe Binary mode must be switched on for this program to work."
-    
 
-def setup_testing():
-  """ Setup things for the test enviroment.  Remove from prouction version! """
-  #check_file_io looks for foo.txt and reads it, so we must create it here.
-  print "Warning: adding files for testing."
-  f = openfile("foo.txt", True)
-  f2 = openfile("foo2.txt", True)
-  f.writeat("Hello World", 0)
-  f.close()
-  f2.close()
 
 def launch_helper(instance, num):
   """save the instance and start the server in a thread."""
+
   def closure():
     NaclRPCServer(instance, num)
   createthread(closure)
-  
+
+
 def new_compoent():
   """add a new compoent to the system"""
-  mycontext[2]={}
+  mycontext[2] = {}
   code_loc = "liblind/com2.nexe"
   mycontext[2][PROGRAM] = code_loc
   mycontext[2][CMD_LINE] = []
@@ -390,32 +467,36 @@ def new_compoent():
   setup_filetable(2)
   setup_component_communication(2)
   nacl = safelyexecutenativecode(code_loc, [])
-  
-  
+
+
   if nacl != None:
     launch_helper(nacl, 2)
   else:
     print "Safe Binary mode must be switched on for this program to work."
 
-def setup_filetable(comp_num):
 
-  _blank_fs_init()
+def setup_filetable(comp_num):
+  """Try to open file system. If you can't, then make a new one."""
+  print "Opening file system... ",
+  load_fs()
+
+  print "done."
+
+  # except KeyError, e:
+
 
 def setup_component_communication(comp_num):
     comp(comp_num)[MBOX] = []
 
- 
+
 def lind_factory():
 
   setup_dispatcher(1)
   setup_filetable(1)
   setup_component_communication(1)
   mycontext[LOCK] = createlock()
-  # are we running the C test program? if so make testing files
-  if "glibc_test" in curr_comp()[PROGRAM]:
-    setup_testing()
 
-  #if we are running a compoent, launch another one as a test.  
+  #if we are running a compoent, launch another one as a test.
   if "com1" in curr_comp()[PROGRAM]:
     log("starting multi-component test mode")
     mycontext[COMP_MODE] = True
@@ -428,11 +509,21 @@ def parse_commandline():
   mycontext[COMP] = 1
   mycontext[1] = {}
   curr_comp()[PROGRAM] = callargs[0]
-  print curr_comp()[PROGRAM]
+  # print curr_comp()[PROGRAM]
   curr_comp()[CMD_LINE] = callargs[1:]
 
+
 if callfunc == "initialize":
+  # print struct_unpack('<i4s2s','\x00\x00\x00\x00sss\x00ss')
+  # exitall()
+
   parse_commandline()
   lind_factory()
   main()
-  log("Exiting Lind")
+  #  log("Exiting Lind")
+  print "Persisting metadata..."
+  persist_metadata(DEFAULT_METADATA_FILENAME)
+
+  print "Done."
+
+  exitall()
