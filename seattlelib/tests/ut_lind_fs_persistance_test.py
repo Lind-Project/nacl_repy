@@ -11,12 +11,15 @@ See ut_lind_fs_persistance_setup.py for filesystem init
 
 import wrapped_lind_fs_calls as lind_fs_calls
 import os
+import sys
 from lind_fs_constants import *
 from ut_lind_fs_persistance_setup import TEST_FILENAME
 
 SyscallError = lind_fs_calls.SyscallError
 
-print "Found Metadata? ", os.access(DEFAULT_METADATA_FILENAME, os.W_OK)
+if not os.access(DEFAULT_METADATA_FILENAME, os.W_OK):
+  print "Must run ut_lind_fs_persistance_setup.py first!!!"
+  sys.exit(1)
 
 lind_fs_calls.restore_metadata(DEFAULT_METADATA_FILENAME)
 

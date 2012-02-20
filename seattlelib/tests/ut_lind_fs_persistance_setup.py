@@ -60,4 +60,5 @@ if __name__ == '__main__':
 
     lind_fs_calls.persist_metadata(DEFAULT_METADATA_FILENAME)
 
-    print "Found Metadata? ", os.access(DEFAULT_METADATA_FILENAME, os.W_OK)
+    # ensure the metadata exists...
+    assert(os.access(DEFAULT_METADATA_FILENAME, os.W_OK))
