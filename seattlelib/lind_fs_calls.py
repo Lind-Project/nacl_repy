@@ -1354,16 +1354,18 @@ def close_syscall(fd):
   if fd not in filedescriptortable:
     raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
 
-  # Acquire the fd lock...
-  filedescriptortable[fd]['lock'].acquire(True)
+  # Acquire the fd lock, if there is one.
+  if 'lock' in filedescriptortable[fd]:
+    filedescriptortable[fd]['lock'].acquire(True)
 
   # ... but always release it...
   try:
     return _close_helper(fd)
 
   finally:
-    # ... release the lock
-    filedescriptortable[fd]['lock'].release()
+    # ... release the lock, if there is one
+    if 'lock' in filedescriptortable[fd]:
+      filedescriptortable[fd]['lock'].release()
     del filedescriptortable[fd]
 
 
