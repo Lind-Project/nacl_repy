@@ -1,0 +1,23 @@
+
+def lind_net_getpeername(args):
+  """
+  """
+
+  try:
+    print "doing getpeername syscall"
+    result = 0
+    # result = getpeername_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_getpeername", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_getpeername", result)
+
+
+def lind_safe_net_getpeername(args):
+  """
+  """
+  result = lind_net_getpeername(args)
+
+  return result
+

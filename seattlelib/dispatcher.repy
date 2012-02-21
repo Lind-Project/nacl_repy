@@ -29,7 +29,25 @@ def setup_dispatcher(comp_num):
     24:lind_safe_fs_dup,
     25:lind_safe_fs_dup2,
     26:lind_safe_fs_statfs,
+    28:lind_safe_fs_fcntl,
+
     31:lind_sys_getpid,
+      
+    32:lind_safe_net_socket,
+    33:lind_safe_net_bind,
+    34:lind_safe_net_send,
+    35:lind_safe_net_sendto,
+    36:lind_safe_net_recv,
+    37:lind_safe_net_recvfrom,
+    38:lind_safe_net_connect,
+    39:lind_safe_net_listen,
+    40:lind_safe_net_accept,
+    41:lind_safe_net_getpeername,
+    42:lind_safe_net_getsockname,
+    43:lind_safe_net_getsockopt,
+    44:lind_safe_net_setsockopt,
+    45:lind_safe_net_shutdown,
+
     105:lind_comp_cia,
     106:lind_comp_call,
     107:lind_comp_accept,
@@ -58,7 +76,25 @@ def setup_dispatcher(comp_num):
     24:lind_fs_dup,
     25:lind_fs_dup2,
     26:lind_fs_statfs,
+    28:lind_fs_fcntl,
+
     31:lind_getpid,
+
+    32:lind_net_socket,
+    33:lind_net_bind,
+    34:lind_net_send,
+    35:lind_net_sendto,
+    36:lind_net_recv,
+    37:lind_net_recvfrom,
+    38:lind_net_connect,
+    39:lind_net_listen,
+    40:lind_net_accept,
+    41:lind_net_getpeername,
+    42:lind_net_getsockname,
+    43:lind_net_getsockopt,
+    44:lind_net_setsockopt,
+    45:lind_net_shutdown,
+
     105:lind_comp_cia,
     106:lind_comp_call,
     107:lind_comp_accept,
@@ -208,8 +244,8 @@ def dispatch_syscall(call, args):
     
 
   except KeyError,e:
-    log("[ERROR][dispatch] Failed to look up " + str(call) + str(e) + "\n")
-    syscall_response =  ErrorResponseBuilder("ENOSYS", "The system call is not in the system call table. Call="+str(call))
+    log("[ERROR][dispatch] Failed to look up " + str(call) +" with error "+ str(e) + "\n")
+    syscall_response =  ErrorResponseBuilder("dispatcher", "ENOSYS", "The system call is not in the system call table. Call="+str(call))
   
   assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
   

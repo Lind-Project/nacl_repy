@@ -1,0 +1,47 @@
+"""
+
+Handlers for the accpet system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Accept hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library accept system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_net_accept(args):
+    """ accept calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the flags, mode and file name in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """    
+    try:
+        #TODO: this is not ready yet.
+        result = accept_syscall(0, mode)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_accept", e[1], e[2])
+
+    return SuccessResponseBuilder("net_accept", result)
+
+
+def lind_safe_net_accept(args):
+    """ Safely wrap the accept call.
+
+    See dispatcher.repy for details.
+
+    Check the mode flags and file for consistancy,
+    then call the real accept dispatcher.
+
+    """
+    result = lind_net_accept(args)
+
+    return result

@@ -1,0 +1,27 @@
+
+def lind_net_socket(args):
+  """
+  """
+  domain = args[0]
+  _type = args[1]
+  protocol = args[2]
+  print "CM: NET_SOCKET", "here" 
+  try:
+    result = socket_syscall(domain, _type, protocol)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_socket", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_socket", result)
+
+
+def lind_safe_net_socket(args):
+  """
+  """
+  domain = args[0]
+  _type = args[1]
+  protocol = args[2]
+
+  result = lind_net_socket(args)
+
+  return result

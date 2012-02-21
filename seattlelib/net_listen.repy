@@ -1,0 +1,23 @@
+
+def lind_net_listen(args):
+  """
+  """
+
+  try:
+    print "doing listen syscall"
+    result = 0
+    # result = listen_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_listen", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_listen", result)
+
+
+def lind_safe_net_listen(args):
+  """
+  """
+  result = lind_net_listen(args)
+
+  return result
+

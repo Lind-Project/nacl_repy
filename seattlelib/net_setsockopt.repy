@@ -1,0 +1,23 @@
+
+def lind_net_setsockopt(args):
+  """
+  """
+
+  try:
+    print "doing setsockopt syscall"
+    result = 0
+    # result = setsockopt_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_setsockopt", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_setsockopt", result)
+
+
+def lind_safe_net_setsockopt(args):
+  """
+  """
+  result = lind_net_setsockopt(args)
+
+  return result
+

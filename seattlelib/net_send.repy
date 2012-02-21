@@ -1,0 +1,29 @@
+
+def lind_net_send(args):
+  """
+  """
+  fd = args[0]
+  length = args[1]
+  flags = args[2]
+  
+
+  try:
+    result = send_syscall(fd, length, flags)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_send", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_send", result)
+
+
+def lind_safe_net_send(args):
+  """
+  """
+  fd = args[0]
+  length = args[1]
+  addr = args[2]
+
+  result = lind_net_send(args)
+
+  return result
+

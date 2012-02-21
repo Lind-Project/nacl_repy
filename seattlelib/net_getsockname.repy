@@ -1,0 +1,23 @@
+
+def lind_net_getsockname(args):
+  """
+  """
+
+  try:
+    print "doing getsockname syscall"
+    result = 0
+    # result = getsockname_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_getsockname", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_getsockname", result)
+
+
+def lind_safe_net_getsockname(args):
+  """
+  """
+  result = lind_net_getsockname(args)
+
+  return result
+

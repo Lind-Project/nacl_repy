@@ -1,0 +1,23 @@
+
+def lind_net_connect(args):
+  """
+  """
+
+  try:
+    print "doing connect syscall"
+    result = 0
+    # result = connect_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_connect", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_connect", result)
+
+
+def lind_safe_net_connect(args):
+  """
+  """
+  result = lind_net_connect(args)
+
+  return result
+

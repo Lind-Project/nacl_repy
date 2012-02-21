@@ -1,0 +1,58 @@
+"""
+
+Handlers for the bind system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Bind hadler pulls out the arguments, does any non-manditory checking
+then calls the repy posix library bind system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_net_bind(args):
+    """ bind calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the flags, mode and file name in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+    fd = args[0]
+    addr = args[2]
+    family, port, ip, pad = parse_sockaddr_struct(addr)
+    ipaddr = inet_ntoa(struct_pack("<I", ip))
+
+    try:
+        result = bind_syscall(fd, ipaddr, port)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_bind", e[1], e[2])
+
+    return SuccessResponseBuilder("net_bind", result)
+
+
+def lind_safe_net_bind(args):
+    """ Safely wrap the bind call.
+
+    See dispatcher.repy for details.
+
+    Check the fd and IP consistancy,
+    then call the real bind dispatcher.
+
+    """
+    fd = args[0]
+
+    check_valid_fd_handle(fd)
+
+    length = args[1]
+    addr = args[2]
+    assert(len(addr) == length)
+    result = lind_net_bind(args)
+
+    return result

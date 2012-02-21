@@ -1,0 +1,23 @@
+
+def lind_net_sendto(args):
+  """
+  """
+
+  try:
+    print "doing sendto syscall"
+    result = 0
+    # result = sendto_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_sendto", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_sendto", result)
+
+
+def lind_safe_net_sendto(args):
+  """
+  """
+  result = lind_net_sendto(args)
+
+  return result
+

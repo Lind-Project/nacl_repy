@@ -1,0 +1,23 @@
+
+def lind_net_recvfrom(args):
+  """
+  """
+
+  try:
+    print "doing recvfrom syscall"
+    result = 0
+    # result = recvfrom_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_recvfrom", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_recvfrom", result)
+
+
+def lind_safe_net_recvfrom(args):
+  """
+  """
+  result = lind_net_recvfrom(args)
+
+  return result
+

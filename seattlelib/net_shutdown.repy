@@ -1,0 +1,23 @@
+
+def lind_net_shutdown(args):
+  """
+  """
+
+  try:
+    print "doing shutdown syscall"
+    result = 0
+    # result = shutdown_syscall(path, mode)
+    print result
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_shutdown", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_shutdown", result)
+
+
+def lind_safe_net_shutdown(args):
+  """
+  """
+  result = lind_net_shutdown(args)
+
+  return result
+
