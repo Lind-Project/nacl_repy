@@ -150,9 +150,9 @@ def _socket_initializer(domain,socktype,protocol):
       'sndbuf':131070,      # buffersize (only used by getsockopt)
       'rcvbuf':262140,      # buffersize (only used by getsockopt)
       'state':NOTCONNECTED, # we start without any connection
+      'lock':createlock(),
 # We don't set the ip / ports or socketobjectid because they are unknown now.
   }
-
   return newfd
       
 
@@ -319,7 +319,7 @@ def connect_syscall(fd,remoteip,remoteport):
 
     try:
       # BUG: The timeout it configurable, right?
-      newsockobj = openconnection(remoteip, remoteport, localip, localport, 10)
+      newsockobj = openconnection(remoteip, remoteport, localip, int(localport), 10)
 
     except AddressBindingError, e:
       raise SyscallError('connect_syscall','ENETUNREACH','Network was unreachable because of inability to access local port / IP')
@@ -331,7 +331,6 @@ def connect_syscall(fd,remoteip,remoteport):
       raise SyscallError('connect_syscall','EADDRINUSE','Network address in use')
     except ConnectionRefusedError, e:
       raise SyscallError('connect_syscall','ECONNREFUSED','Connection refused.')
- 
     # fill in the file descriptor table...
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(newsockobj)
     filedescriptortable[fd]['localip'] = localip
