@@ -1,24 +1,26 @@
 def lind_fs_read(args):
   handle = args[0]
   size = args[1]
+
+  # so really this should be fixed
+  # but right now big requests dont work!
+  if size > TX_BUF_MAX:
+    size = TX_BUF_MAX
+
   try:
     result = read_syscall(handle, size)
   except SyscallError, e:
-    print "Error!"
     return ErrorResponseBuilder("fs_read", e[1], e[2])
   return SuccessResponseBuilder("fs_read", len(result), result)
 
 def lind_safe_fs_read(args):
-  print "Calling read with ", args 
   handle = args[0]
   size = args[1]
   check_valid_fd_handle(handle)
   assert isinstance(size, int)
-  if size >= 1024:
-    print "Warning: big reads are not possible right now"
     
   result = lind_fs_read(args)
   if result.is_error == False:
-    assert(len(result.data) <= 1024), "returning data larger than transmission buffer."
+    assert(len(result.data) <= TX_BUF_MAX), "returning data larger than transmission buffer."
   
   return result
