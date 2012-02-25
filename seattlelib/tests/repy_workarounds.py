@@ -6,8 +6,17 @@ from emulmisc import createlock as createlock
 
 from time import sleep
 
+from emulfile import emulated_open as openfile
+from emulfile import removefile
+from emulfile import listfiles
+
 from emulcomm import openconnection, getmyip, sendmessage
 from emulcomm import listenforconnection, listenformessage
+
+
+from serialize import serializedata as serializedata
+from serialize import deserializedata as deserializedata
+
 
 
 from nonportable import get_resources as getresources
@@ -36,9 +45,5 @@ nanny._resources_consumed_dict = {'messport':set(), 'connport':set(), 'cpu':0,
       }
 
 
-
-from lind_fs_constants import *
-from lind_net_constants import *
-import wrapped_lind_fs_calls as lind_fs_calls
 
 
