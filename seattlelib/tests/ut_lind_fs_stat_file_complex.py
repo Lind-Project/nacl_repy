@@ -1,16 +1,16 @@
-import wrapped_lind_fs_calls as lind_fs_calls
+import lind_test_server
 
 from lind_fs_constants import *
 
 # Let's add a few files, etc. to the system and see if it works...
-lind_fs_calls._blank_fs_init()
+lind_test_server._blank_fs_init()
 
-myfd = lind_fs_calls.open_syscall('/foo',O_CREAT | O_EXCL | O_WRONLY,S_IRWXA)
+myfd = lind_test_server.open_syscall('/foo',O_CREAT | O_EXCL | O_WRONLY,S_IRWXA)
 
 # write should succeed
-assert(lind_fs_calls.write_syscall(myfd,'hi') == 2)
+assert(lind_test_server.write_syscall(myfd,'hi') == 2)
 
-stat_result = lind_fs_calls.stat_syscall('/foo')
+stat_result = lind_test_server.stat_syscall('/foo')
 
 # ensure the file has size 2
 assert(stat_result[7] == 2)
@@ -20,10 +20,10 @@ assert(stat_result[3] == 1)
 
              
 # create a file with no perms...
-lind_fs_calls.link_syscall('/foo','/foo2')
+lind_test_server.link_syscall('/foo','/foo2')
 
-stat_result = lind_fs_calls.stat_syscall('/foo')
-stat_result2 = lind_fs_calls.stat_syscall('/foo2')
+stat_result = lind_test_server.stat_syscall('/foo')
+stat_result2 = lind_test_server.stat_syscall('/foo2')
 
 # ensure they are the same now...
 assert(stat_result2 == stat_result)

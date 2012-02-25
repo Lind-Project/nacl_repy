@@ -39,7 +39,6 @@ nanny._resources_consumed_dict = {'messport':set(), 'connport':set(), 'cpu':0,
 
 from lind_fs_constants import *
 from lind_net_constants import *
-from wrapped_lind_fs_calls import *
 import wrapped_lind_fs_calls as lind_fs_calls
 
 
