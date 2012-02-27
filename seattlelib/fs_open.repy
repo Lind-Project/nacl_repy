@@ -13,35 +13,6 @@ the result back up.
 """
 
 
-#constants pulled from standard lib
-MASK = 3
-O_RDONLY = 00
-O_WRONLY = 01
-O_RDWR = 02
-O_CREAT = 0100
-O_EXCL = 0200
-O_NOCTTY = 0400
-O_TRUNC = 01000
-O_APPEND = 02000
-O_NONBLOCK = 04000
-# O_NDELAY = O_NONBLOCK
-O_SYNC = 010000
-# O_FSYNC = O_SYNC
-O_ASYNC = 020000
-
-#ifdef __USE_GNU
-# define O_DIRECT	 040000	/* Direct disk access.	*/
-# define O_DIRECTORY	0200000	/* Must be a directory.	 */
-# define O_NOFOLLOW	0400000	/* Do not follow links.	 */
-# define O_NOATIME     01000000 /* Do not set atime.  */
-# define O_CLOEXEC     02000000 /* Set close_on_exec.  */
-#endif
-
-#largest file descriptor
-#TODO find out what the system limit is
-MAX_FD = 1024
-
-
 def lind_fs_open(args):
     """ open calls are dispatched to this function.
 
@@ -61,7 +32,7 @@ def lind_fs_open(args):
         result_fd = open_syscall(file_name, flags, mode)
     except SyscallError, e:
         message = "Could not find file: " + file_name + "\n" + str(e) + "\n"
-        log(message)
+        # log(message)
         return ErrorResponseBuilder("fs_open", "ENOENT", message)
     return SuccessResponseBuilder("fs_open", result_fd)
 
@@ -75,6 +46,12 @@ def lind_safe_fs_open(args):
     then call the real open dispatcher.
 
     """
+    #constants pulled from standard lib
+    MASK = 3
+    O_RDONLY = 00
+    O_WRONLY = 01
+    O_RDWR = 02
+
     flags = args[0]
     mode = args[1]
     file_name = args[2]
