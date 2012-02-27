@@ -104,6 +104,11 @@ MAX_FD = 1024
 # for dirents...
 
 
+# when saving the metadata file on disk,
+# what name should we use:
+DEFAULT_METADATA_FILENAME = "lind.metadata"
+
+
 
 # convert file mode (S_) to dirent type (DT_)
 def get_direnttype_from_mode(mode):
@@ -191,3 +196,4 @@ def IS_RDWR(flags):
     return True
   else:
     return False
+
