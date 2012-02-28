@@ -1,23 +1,49 @@
+"""
+
+Handlers for the listen system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+"""
+
 
 def lind_net_listen(args):
-  """
-  """
+    """
+    Pull out the arguments for listen and make real call.
+    Args should have a fd, and a number of connections (n).
+    """
 
-  try:
-    print "doing listen syscall"
-    result = 0
-    # result = listen_syscall(path, mode)
-    print result
-  except SyscallError,e:
-    return ErrorResponseBuilder("net_listen", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_listen", result)
+    fd = args[0]
+    n = args[1]
+    try:
+        print "doing listen syscall"
+        result = listen_syscall(fd, n)
+        print result
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_listen", e[1], e[2])
+    except ResourceForbiddenError, e:
+        log(str(e))
+        return ErrorResponseBuilder("net_listen", 'EPERM', str(e))
+      
+    return SuccessResponseBuilder("net_listen", result)
 
 
 def lind_safe_net_listen(args):
-  """
-  """
-  result = lind_net_listen(args)
+    """ listen calls are dispatched to this function.
 
-  return result
+    See dispatcher.repy for details.
 
+    Given the file handle and max_connection, return
+    0 if connection works, -1 otherwise.
+    """
+
+    fd = args[0]
+    n = args[1]
+    check_valid_fd_handle(fd)
+    assert 0 <= n <= 100, "N is not valid! %d" % (n)
+
+    result = lind_net_listen(args)
+
+    return result

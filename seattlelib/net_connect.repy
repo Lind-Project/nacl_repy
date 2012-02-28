@@ -1,12 +1,24 @@
+def parse_connect_struct(addr):
+  front = '<h>H'
+  format = front + str(len(addr) - struct_calcsize(front)) + 's'  # family, port, address, padding
+  assert struct_calcsize(format) == len(addr)
+  tup = struct_unpack(format, addr)
+  out  = ''
+  for c in tup[2]:
+    if c != '\x00':
+      out += c
+  tup[2] = out
+  return tup
 
 def lind_net_connect(args):
   """
   """
-
+  fd = args[0]
+  length = args[1]
+  family, port, ip = parse_connect_struct(args[2])
   try:
     print "doing connect syscall"
-    result = 0
-    # result = connect_syscall(path, mode)
+    result = connect_syscall(fd, ip, port)
     print result
   except SyscallError,e:
     return ErrorResponseBuilder("net_connect", e[1], e[2])

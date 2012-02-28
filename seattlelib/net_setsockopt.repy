@@ -2,16 +2,18 @@
 def lind_net_setsockopt(args):
   """
   """
-
+  fd = args[0]
+  level = args[1]
+  optname = args[2]
+  optlen = args[3]
+  opt = args[4]
   try:
     print "doing setsockopt syscall"
-    result = 0
-    # result = setsockopt_syscall(path, mode)
-    print result
+    result = setsockopt_syscall(fd, level, optname, opt)
   except SyscallError,e:
     return ErrorResponseBuilder("net_setsockopt", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_setsockopt", result)
+  except UnimplementedError, e:
+    return ErrorResponseBuilder("net_setsockopt", 'EINVAL',  str(e))
 
 
 def lind_safe_net_setsockopt(args):
