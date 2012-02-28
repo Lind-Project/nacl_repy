@@ -66,17 +66,22 @@ def process_mix(script_path):
   for file_path in mix_files:
     #generate a .py file for the .mix file specified by file_path
     processed_file_path = (os.path.basename(file_path)).replace(".mix",".py")
-    (theout, theerr) =  exec_command("python " + script_path + " " + file_path + " " + processed_file_path)
-
+    (theout, theerr, rc) =  exec_command("python " + script_path + " " + file_path + " " + processed_file_path)
+    
+    if rc != 0:
+      print theout.rstrip()
+      print "Error: could not preprocess", file_path, "Stopping."
+      sys.exit(1)
+ 
 
 def exec_command(command):
 # Windows does not like close_fds and we shouldn't need it so...
   p =  subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
+  rc = p.wait()
   # get the output and close
   theout = p.stdout.read()
   p.stdout.close()
-
+  
   # get the errput and close
   theerr = p.stderr.read()
   p.stderr.close()
@@ -95,11 +100,7 @@ def exec_command(command):
   if theerr.strip() == 'Terminated':
     theerr = ''
 
-  # Windows isn't fond of this either...
-  # clean up after the child
-#  os.waitpid(p.pid,0)
-
-  return (theout, theerr)
+  return (theout, theerr, rc)
 
 
 helpstring = """python preparetest.py [-t] <foldername>"""
