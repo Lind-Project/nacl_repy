@@ -1,28 +1,69 @@
+"""
+
+Handlers for the lseek system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Lseek hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library lseek system call.  Then packs
+the result back up.
+
+"""
+
 
 def lind_fs_lseek(args):
-  handle = args[1]
-  whence = args[2]
+    """ lseek calls are dispatched to this function.
 
-  offset = args[0]
-  try:
-    result = lseek_syscall(handle, offset, whence)
-    reply = struct_pack("<q",result)
-  except SyscallError, e:
-    print "Lseek error!", e[1], e[2]
-    return ErrorResponseBuilder("fs_lseek", e[1], e[2])
-  return SuccessResponseBuilder("fs_lseek", len(reply), reply)
+    See dispatcher.repy for details.
+
+    Given the paths in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the int returned, or error.
+    """
+
+    handle = args[1]
+    whence = args[2]
+    offset = args[0]
+
+    try:
+        result = lseek_syscall(handle, offset, whence)
+        reply = struct_pack("<q", result)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_lseek", e[1], e[2])
+    return SuccessResponseBuilder("fs_lseek", len(reply), reply)
+
 
 def lind_safe_fs_lseek(args):
-  offset = args[0]
-  whence = args[2]
-  handle = args[1]
-  assert(whence == SEEK_SET or whence == SEEK_CUR or whence == SEEK_END), ("invalid whence=%d"%(whence))
-  check_valid_fd_handle(handle)
+    """ Safely wrap the lseek call.
 
-  result = lind_fs_lseek(args) 
+    See dispatcher.repy for details.
 
-  if result.is_error == False:
-    assert(len(result.data) == 8), "should return exactly and off_t"
+    Check the paths for consistancy,
+    then call the real lseek dispatcher.
 
-  return result
-  
+    """
+
+    offset = args[0]
+    whence = args[2]
+    handle = args[1]
+
+    assert isinstance(offset, int), "offset should be a int"
+    assert isinstance(whence, int), "whence should be a int"
+
+
+    assert(whence == SEEK_SET or \
+           whence == SEEK_CUR or \
+           whence == SEEK_END), ("invalid whence=%d" % (whence))
+
+    check_valid_fd_handle(handle)
+
+    result = lind_fs_lseek(args)
+
+    if result.is_error == False:
+        assert(len(result.data) == 8), "should return exactly and off_t"
+
+    return result

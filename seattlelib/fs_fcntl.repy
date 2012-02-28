@@ -1,29 +1,68 @@
+"""
+
+Handlers for the fcntl system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Fcntl hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library fcntl system call.  Then packs
+the result back up.
+
+"""
+
 
 def lind_fs_fcntl(args):
-  handle = args[0]
-  cmd = args[1]
+    """ fcntl calls are dispatched to this function.
 
-  if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN:
-    arg = args[2]
-    try:
-      result = fcntl_syscall(handle, cmd, arg)
-    except SyscallError, e:
-      print "Fcntl set error!", e, "when setting",handle,"with", cmd, "to", arg
-      return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
-  else:
-    try:
-      result = fcntl_syscall(handle, cmd)
-    except SyscallError, e:
-      print "Fcntl get error!", e, "when getting", cmd
-      return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
-  return SuccessResponseBuilder("fs_fcntl", result)
+    See dispatcher.repy for details.
+
+    Given the handle and flag in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    handle = args[0]
+    cmd = args[1]
+
+    if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN:
+        arg = args[2]
+        try:
+            result = fcntl_syscall(handle, cmd, arg)
+        except SyscallError, e:
+            return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
+    else:
+        try:
+            result = fcntl_syscall(handle, cmd)
+        except SyscallError, e:
+            return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
+
+    return SuccessResponseBuilder("fs_fcntl", result)
+
 
 def lind_safe_fs_fcntl(args):
-  handle = args[0]
-  cmd = args[1]
-  
-  check_valid_fd_handle(handle)
-  assert (cmd==F_GETFD or cmd == F_SETFD or cmd == F_GETFL or cmd == F_SETFL or cmd == F_GETOWN or cmd == F_SETOWN), "Invalid fcntl command"
-  
-  return lind_fs_fcntl(args)
-  
+    """ Safely wrap the fcntl call.
+
+    See dispatcher.repy for details.
+
+    Check handle and flags check for consistancy,
+    then call the real fcntl dispatcher.
+
+    """
+
+    handle = args[0]
+    cmd = args[1]
+
+    check_valid_fd_handle(handle)
+
+    assert (cmd == F_GETFD or \
+            cmd == F_SETFD or \
+            cmd == F_GETFL or \
+            cmd == F_SETFL or \
+            cmd == F_GETOWN or \
+            cmd == F_SETOWN), "Invalid or unsupported fcntl command"
+
+    return lind_fs_fcntl(args)

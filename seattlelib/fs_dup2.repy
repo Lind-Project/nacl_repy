@@ -1,23 +1,60 @@
+"""
+
+Handlers for the dup2 system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Dup2 hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library dup2 system call.  Then packs
+the result back up.
+
+"""
+
 
 def lind_fs_dup2(args):
-  handle = args[0]
-  handle2 = args[1]
-  if handle <= 10 or handle2 <= 10:
-    print "Warning: low file handles are not supported in Lind dup2."
-    
+    """ dup2 calls are dispatched to this function.
 
-  try:
-    result = dup2_syscall(handle, handle2)
-  except SyscallError, e:
-    print "Dup error! ", e[2]
-    return ErrorResponseBuilder("fs_dup2", e[1], e[2])
-  return SuccessResponseBuilder("fs_dup2", result)
+    See dispatcher.repy for details.
+
+    Given two file handles in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+
+    For now, low file handles are still used for nacl,
+    so if we see them here, that is a problem, so
+    print a warning.
+    """
+    handle = args[0]
+    handle2 = args[1]
+
+    if handle <= 10 or handle2 <= 10:
+        print "Warning: low file handles are not supported in Lind dup2(", \
+              handle, handle2, ")"
+
+    try:
+        result = dup2_syscall(handle, handle2)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_dup2", e[1], e[2])
+    return SuccessResponseBuilder("fs_dup2", result)
+
 
 def lind_safe_fs_dup2(args):
-  handle = args[0]
-  handle2 = args[1]
-  check_valid_fd_handle(handle)
-  check_valid_fd_handle(handle2)
+    """ Safely wrap the dup2 call.
 
-  return lind_fs_dup2(args)
-  
+    See dispatcher.repy for details.
+
+    Check the two file handles for consistancy,
+    then call the real dup2 dispatcher.
+
+    """
+
+    handle = args[0]
+    handle2 = args[1]
+    check_valid_fd_handle(handle)
+    check_valid_fd_handle(handle2)
+
+    return lind_fs_dup2(args)

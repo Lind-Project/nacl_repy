@@ -1,30 +1,65 @@
+"""
 
-# JAC: I think this should call the lind_fs_stat call and do the below
-# work there...
+Handlers for the fxstat system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Fxstat hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library fxstat system call.  Then packs
+the result back up.
+
+"""
+
+
 def lind_fs_fxstat(args):
-  filedes = args[0]
-  ver = args[1]
-  if ver == 1:
-    result = pack_stat_struct(fstat_syscall(filedes))
-  else:
-    assert False, "not implemented"
-    
-    
-  # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
-  # followed by 2Q for each timestamp.   The ns field is set to 0.
+    """ fxstat calls are dispatched to this function.
 
-  return SuccessResponseBuilder("fs_fstat", len(result), result)
+    See dispatcher.repy for details.
+
+    Given the handle and flags in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the struct returned, or error.
+    """
+
+    filedes = args[0]
+    ver = args[1]
+    
+    if ver == 1:
+        result = pack_stat_struct(fstat_syscall(filedes))
+    else:
+        assert False, "not implemented"
+
+    # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
+    # followed by 2Q for each timestamp.   The ns field is set to 0.
+
+    return SuccessResponseBuilder("fs_fstat", len(result), result)
 
 
 def lind_safe_fs_fxstat(args):
-  assert(len(args)==2), "fsstat should always have two argument"
-  handle = args[0]
-  ver = args[1]
-  assert(type(handle) is int or type(handle) is long), "argument should be an int or long"
-  assert(ver == 0 or ver == 1), "version has to be stat of fstat"
-  check_valid_fd_handle(args[0])
+    """ Safely wrap the fxstat call.
 
-  result = lind_fs_fxstat(args)
-  if result.is_error == False:
-    assert len(result.data)==112, "result must be exactly the size of struct stat"
-  return result
+    See dispatcher.repy for details.
+
+    Check the handle and flags and file for consistancy,
+    then call the real fxstat dispatcher.
+
+    """
+
+    assert(len(args) == 2), "fsstat should always have two argument"
+    handle = args[0]
+    ver = args[1]
+
+    assert(ver == 0 or ver == 1), "version has to be stat of fstat"
+
+    check_valid_fd_handle(handle)
+
+    result = lind_fs_fxstat(args)
+
+    if result.is_error == False:
+        assert len(result.data) == 112, \
+               "result must be exactly the size of struct stat"
+    return result
