@@ -457,25 +457,24 @@ def send_syscall(fd, message, flags):
   if filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
 
     # get the socket so I can send...
-    sockobj = socketobjecttable[filedescriptortable[fd]['socketobjid']]
+    sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
     
     # retry until it does not block...
     while True:
       try:
         bytessent = sockobj.send(message)
 
+      # sleep and retry
+      except SocketWouldBlockError, e:
+         sleep(RETRYWAITAMOUNT)
+        
       except Exception, e:
         # I think this shouldn't happen.   A closed socket should go to
         # NOTCONNECTED state.   This is an internal error...
-        raise 
-    
-      # sleep and retry
-      except SocketWouldBlock, e:
-        sleep(RETRYWAITAMOUNT)
- 
+         raise 
 
-    # return the characters sent!
-    return bytessent
+      # return the characters sent!
+      return bytessent
 
   else:
     raise UnimplementedError("Unknown protocol in send()")
@@ -528,7 +527,7 @@ def recvfrom_syscall(fd,length,flags):
       raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected.")
     
     # I'm ready to recv, get the socket object...
-    sockobj = socketobjecttable[filedescriptortable[fd]['socketobjid']]
+    sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
 
     remoteip = filedescriptortable[fd]['remoteip']
     remoteport = filedescriptortable[fd]['remoteport']
@@ -536,7 +535,8 @@ def recvfrom_syscall(fd,length,flags):
     # keep trying to get something until it works (or EOF)...
     while True:
       try:
-        return remoteip, remoteport, sockobj.recv(length)
+        data = sockobj.recv(length)
+        return remoteip, remoteport, data
 
       except SocketClosedRemote, e:
         return remoteip, remoteport, ''
