@@ -338,11 +338,13 @@ def print_times(times):
 def NaclRPCServer(nacl_instance, comp_num):
   #timer =  mycontext["wallclocktime"]
   #times = []
-  format = "<i<I<I<I<I<i"
+  format = "<i<I<I<I<i<i"
   header_size = struct_calcsize(format)
   max_recv = 16384
   # the expceted message sequence number
-  expected_seq_num = 0
+  FIRST_SEQ_NUM = -10
+  expected_seq_num = FIRST_SEQ_NUM
+  booting = True
   while True:
     start = 0
     stop = 0
@@ -384,9 +386,18 @@ def NaclRPCServer(nacl_instance, comp_num):
     # We probably dont need this in the future, but for now:
     checksum = magic + call + frmt_len
 
-    if (seq_num != expected_seq_num-75) and seq_num != expected_seq_num:
-      #print "Out of order sequence number %d !=%d for call %d"%(seq_num, expected_seq_num, call)
+    # what happens is that libc overwrites the counter pretty early on
+    # for that first, but once that has happened, keep a constat counter.
+    if booting:
+      if (seq_num != expected_seq_num):
+        expected_seq_num = FIRST_SEQ_NUM
+        booting = False
+        print "Booted"
+    elif (seq_num != expected_seq_num):
       pass
+#      print "Out of order seq_num %d != %d for call %d" % \
+#           (seq_num, expected_seq_num, call)
+
     expected_seq_num += 1
     if valid != checksum:
       raise Exception("ProtocolError: Validation number not found. We got " + \
