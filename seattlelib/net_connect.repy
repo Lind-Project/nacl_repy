@@ -1,35 +1,93 @@
+"""
+
+Handlers for the connect system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Connect hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library connect system call.  Then packs
+the result back up.
+
+"""
+
+
 def parse_connect_struct(addr):
-  front = '<h>H'
-  format = front + str(len(addr) - struct_calcsize(front)) + 's'  # family, port, address, padding
-  assert struct_calcsize(format) == len(addr)
-  tup = struct_unpack(format, addr)
-  out  = ''
-  for c in tup[2]:
-    if c != '\x00':
-      out += c
-  tup[2] = out
-  return tup
+    """
+    Pull out the information from a addr struct
+
+    ARGS: addr is a buffer (string) containing the struct
+
+    RETURNS: a tuple containing
+    - integer family
+    - integer port
+    - string ip address in dot notation
+    - the padding at the back of the struct, which should be null
+
+    """
+
+    format = '<h>H4s<Q'
+    connect_struct = struct_unpack(format, addr)
+    connect_struct[2] = inet_ntoa(connect_struct[2])
+    return connect_struct
+
 
 def lind_net_connect(args):
-  """
-  """
-  fd = args[0]
-  length = args[1]
-  family, port, ip = parse_connect_struct(args[2])
-  try:
-    print "doing connect syscall"
-    result = connect_syscall(fd, ip, port)
-    print result
-  except SyscallError,e:
-    return ErrorResponseBuilder("net_connect", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_connect", result)
+    """ connect calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the file descriptor, length, and address information
+    struct in a list, pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+    fd = args[0]
+    length = args[1]
+    family, port, ip, padding = parse_connect_struct(args[2])
+
+    try:
+        result = connect_syscall(fd, ip, port)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_connect", e[1], e[2])
+    return SuccessResponseBuilder("net_connect", result)
 
 
 def lind_safe_net_connect(args):
-  """
-  """
-  result = lind_net_connect(args)
+    """ Safely wrap the connect call.
 
-  return result
+    See dispatcher.repy for details.
 
+    Check the file descriptor, length, and address information struct
+    for consistancy then call the real connect dispatcher.
+
+    """
+
+    fd = args[0]
+    length = args[1]
+    addr = args[2]
+
+    family, port, ip, padding = parse_connect_struct(args[2])
+
+    assert padding == 0, "connect struct padding should be null"
+
+    assert length == len(addr), "Passed length must match buffer size"
+
+    warning(family == 0, "Connect currently ignores family")
+
+    assert 1 <= port <= 2 ** 16, "Port must be between 1, 65k"
+
+    assert len("0.0.0.0") <= len(ip) <= len("255.255.255.255"), \
+           "IP address too long or short"
+
+    check_valid_fd_handle(fd)
+
+    assert 0 < length <= TX_BUF_MAX, "Connect length must be with in limits"
+
+    assert len(addr) == (2 + 2 + 4 + 8), "Connect struct is incorrect size"
+
+    result = lind_net_connect(args)
+
+    return result

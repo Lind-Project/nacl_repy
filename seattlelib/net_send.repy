@@ -55,8 +55,8 @@ def lind_safe_net_send(args):
 
     check_valid_fd_handle(fd)
 
-    assert (0 <= length <= TX_MAX) and \
-           (0 <= len(buf) <= TX_MAX), "Socket send message is too large."
+    assert (0 <= length <= TX_BUF_MAX) and \
+           (0 <= len(buf) <= TX_BUF_MAX), "Socket send message is too large."
 
     warning(flags == 0, "no send flags are currently supported")
 
