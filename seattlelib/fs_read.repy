@@ -1,26 +1,62 @@
+"""
+
+Handlers for the read system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Read hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library read system call.  Then packs
+the result back up.
+
+"""
+
+
 def lind_fs_read(args):
-  handle = args[0]
-  size = args[1]
+    """ read calls are dispatched to this function.
 
-  # so really this should be fixed
-  # but right now big requests dont work!
-  if size > TX_BUF_MAX:
-    size = TX_BUF_MAX
+    See dispatcher.repy for details.
 
-  try:
-    result = read_syscall(handle, size)
-  except SyscallError, e:
-    return ErrorResponseBuilder("fs_read", e[1], e[2])
-  return SuccessResponseBuilder("fs_read", len(result), result)
+    Given the handle and size in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    handle = args[0]
+    size = args[1]
+
+    # so really this should be fixed
+    # but right now big requests dont work!
+    # so truncate the request
+    if size > TX_BUF_MAX:
+        size = TX_BUF_MAX
+    try:
+        result = read_syscall(handle, size)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_read", e[1], e[2])
+    return SuccessResponseBuilder("fs_read", len(result), result)
 
 def lind_safe_fs_read(args):
-  handle = args[0]
-  size = args[1]
-  check_valid_fd_handle(handle)
-  assert isinstance(size, int)
+    """ Safely wrap the read call.
+
+    See dispatcher.repy for details.
+
+    Check the handle and size for consistancy,
+    then call the real read dispatcher.
+
+    """
     
-  result = lind_fs_read(args)
-  if result.is_error == False:
-    assert(len(result.data) <= TX_BUF_MAX), "returning data larger than transmission buffer."
+    handle = args[0]
+    size = args[1]
+    check_valid_fd_handle(handle)
+    assert isinstance(size, int)
+    
+    result = lind_fs_read(args)
+    
+    if result.is_error == False:
+        assert(len(result.data) <= TX_BUF_MAX), "returning data larger than transmission buffer."
   
-  return result
+    return result
