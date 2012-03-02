@@ -1,27 +1,65 @@
+"""
+
+Handlers for the socket system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Socket hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library socket system call.  Then packs
+the result back up.
+
+"""
+
 
 def lind_net_socket(args):
-  """
-  """
-  domain = args[0]
-  _type = args[1]
-  protocol = args[2]
-  print "net_bind called."
-  try:
-    result = socket_syscall(domain, _type, protocol)
-    print result
-  except SyscallError,e:
-    return ErrorResponseBuilder("net_socket", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_socket", result)
+    """ socket calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the socket domain, socket type and protcol in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    domain = args[0]
+    _type = args[1]
+    protocol = args[2]
+    try:
+        result = socket_syscall(domain, _type, protocol)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_socket", e[1], e[2])
+    except UnimplementedError, e:
+        return ErrorResponseBuilder("net_socket", "EACCES", "unimplemented!")
+
+    return SuccessResponseBuilder("net_socket", result)
 
 
 def lind_safe_net_socket(args):
-  """
-  """
-  domain = args[0]
-  _type = args[1]
-  protocol = args[2]
+    """ Safely wrap the socket call.
 
-  result = lind_net_socket(args)
+    See dispatcher.repy for details.
 
-  return result
+    Check the socket domain, socket type and protcol for consistancy,
+    then call the real socket dispatcher.
+
+    """
+    domain = args[0]
+    _type = args[1]
+    protocol = args[2]
+
+    assert (isinstance(domain, int)), "domain must be an int"
+    if domain != PF_INET:
+        print "Warning: only internet domain supported right " \
+              "now d=%d" % (domain)
+
+    if not (_type == SOCK_DGRAM or _type == SOCK_STREAM):
+        print "Warning: only only datagram and stream sockets " \
+              "supported right now"
+
+    result = lind_net_socket(args)
+
+    return result

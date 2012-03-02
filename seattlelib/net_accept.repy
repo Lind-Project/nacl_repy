@@ -29,8 +29,7 @@ def lind_net_accept(args):
         result = accept_syscall(fd)
     except SyscallError, e:
         return ErrorResponseBuilder("net_accept", e[1], e[2])
-
-    return SuccessResponseBuilder("net_accept", result)
+    return SuccessResponseBuilder("net_accept", result[2])
 
 
 def lind_safe_net_accept(args):

@@ -1,29 +1,65 @@
+"""
+
+Handlers for the send system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Send hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library send system call.  Then packs
+the result back up.
+
+"""
+
 
 def lind_net_send(args):
-  """
-  """
-  fd = args[0]
-  length = args[1]
-  flags = args[2]
-  
+    """ send calls are dispatched to this function.
 
-  try:
-    result = send_syscall(fd, length, flags)
-    print result
-  except SyscallError,e:
-    return ErrorResponseBuilder("net_send", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_send", result)
+    See dispatcher.repy for details.
+
+    Given the descriptor, length, flags and a message in a buffer
+    all in a list, pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    fd = args[0]
+    length = args[1]
+    flags = args[2]
+    buf = args[3]
+
+    try:
+        result = send_syscall(fd, buf, flags)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_send", e[1], e[2])
+
+    return SuccessResponseBuilder("net_send", result)
 
 
 def lind_safe_net_send(args):
-  """
-  """
-  fd = args[0]
-  length = args[1]
-  addr = args[2]
+    """ Safely wrap the send call.
 
-  result = lind_net_send(args)
+    See dispatcher.repy for details.
 
-  return result
+    Check the descriptor, length, flags and a message in
+    a buffer for consistancy, then call the real send dispatcher.
 
+    """
+
+    fd = args[0]
+    length = args[1]
+    flags = args[2]
+    buf = args[3]
+
+    check_valid_fd_handle(fd)
+
+    assert (0 <= length <= TX_MAX) and \
+           (0 <= len(buf) <= TX_MAX), "Socket send message is too large."
+
+    warning(flags == 0, "no send flags are currently supported")
+
+    result = lind_net_send(args)
+
+    return result
