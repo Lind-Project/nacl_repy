@@ -36,6 +36,11 @@ RX_BUF_MAX = (4096 * 4)
 #   pass
 
 
+def warning(logic, message):
+  """Like assert, but only warn"""
+  if not logic:
+    print "Warning:", message
+
 def curr_comp():
   return mycontext[mycontext[COMP]]
 
