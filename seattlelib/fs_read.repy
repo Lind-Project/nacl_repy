@@ -33,11 +33,22 @@ def lind_fs_read(args):
     # so truncate the request
     if size > TX_BUF_MAX:
         size = TX_BUF_MAX
-    try:
-        result = read_syscall(handle, size)
-    except SyscallError, e:
-        return ErrorResponseBuilder("fs_read", e[1], e[2])
+
+    if IS_SOCK_DESC(handle):
+        try:
+            if size == 0:
+                size == TX_BUF_MAX
+            result = recv_syscall(handle, size, 0)
+        except SyscallError, e:
+            return ErrorResponseBuilder("fs_read", e[1], e[2])
+    else:
+        try:
+            result = read_syscall(handle, size)
+        except SyscallError, e:
+            return ErrorResponseBuilder("fs_read", e[1], e[2])
+
     return SuccessResponseBuilder("fs_read", len(result), result)
+        
 
 def lind_safe_fs_read(args):
     """ Safely wrap the read call.
