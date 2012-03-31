@@ -8,8 +8,8 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 include struct.repy
 
-# if you comment this include out the line numbers are
-# correct for syntax errors.
+
+TRACE = False  # Trace system calls? (somewhat like strace) 
 
 
 SYSCALL = "syscall"               # shortcut to syscall dict items
@@ -426,15 +426,20 @@ def NaclRPCServer(nacl_instance, comp_num):
         log("Unpacking Error: " + str(e) + "\n")
         log("Message was: " + message_format + "\n")
         log("Args len=" + str(len(trimmed_string)) + "\n")
-        log("Args full=" + str(args_string) + "\n")
         log("Args String=" + trimmed_string + "\n")
         log("Syscall was=" + str(call) + "\n")
         call = NOOP_CALL_NUM # continue on with eno_sys
+    if TRACE:
+      strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call]).split(" ")[1]), str(args), " = "]
+
     # before_call = timer()
     mycontext[LOCK].acquire(True)
     mycontext[COMP] = comp_num
     response = dispatch_syscall(call, args)
     mycontext[LOCK].release()
+    if TRACE:
+      strace_msg.append(str(response))
+      print ''.join(strace_msg)
     # after_call = timer()
     if response == None:
       raise Exception()
@@ -462,7 +467,7 @@ def main():
   if nacl != None:
     NaclRPCServer(nacl, 1)
   else:
-    print "Safe Binary mode must be switched on for this program to work."
+    print "Error: Safe Binary mode must be switched on for this program to work."
 
 
 def launch_helper(instance, num):
@@ -524,9 +529,16 @@ def lind_factory():
 def parse_commandline():
   mycontext[COMP] = 1
   mycontext[1] = {}
-  curr_comp()[PROGRAM] = callargs[0]
+  
+  if callargs[0] == "--fast":
+    curr_comp()[PROGRAM] = callargs[1]
+    curr_comp()[CMD_LINE] = callargs[2:]
+    curr_comp()[CMD_LINE].append("--fast")
+  else:
+    curr_comp()[PROGRAM] = callargs[0]
+    curr_comp()[CMD_LINE] = callargs[1:]
   # print curr_comp()[PROGRAM]
-  curr_comp()[CMD_LINE] = callargs[1:]
+
 
 
 if callfunc == "initialize":
