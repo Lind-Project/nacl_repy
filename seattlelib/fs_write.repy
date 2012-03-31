@@ -13,7 +13,6 @@ def lind_fs_write(args):
             result = write_syscall(fd, buffer)
         except SyscallError, e:
             return ErrorResponseBuilder("fs_write", e[1], e[2])
-    print ">> Write said", result
     return SuccessResponseBuilder("fs_write", result)
 
 
@@ -21,7 +20,6 @@ def lind_safe_fs_write(args):
     size = args[1]
     fd = args[0]
     buffer = args[2]
-    print "## Calling write on", fd, "of", buffer
 
     assert size == len(buffer), "write size does not match buffer size"
     check_valid_fd_handle(fd)

@@ -297,6 +297,9 @@ def connect_syscall(fd,remoteip,remoteport):
     raise SyscallError("connect_syscall","EISCONN","The descriptor is already connected.")
 
 
+  filedescriptortable[fd]['last_peek'] = None
+
+
   # What I do depends on the protocol...
   # If UDP, set the items and return
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
@@ -433,8 +436,6 @@ def send_syscall(fd, message, flags):
     http://linux.die.net/man/2/send
   """
 
-  # TODO: Change write() to call send when on a socket!!!
-
   if fd not in filedescriptortable:
     raise SyscallError("send_syscall","EBADF","The file descriptor is invalid.")
 
@@ -463,7 +464,6 @@ def send_syscall(fd, message, flags):
     while True:
       try:
         bytessent = sockobj.send(message)
-
       # sleep and retry
       except SocketWouldBlockError, e:
          sleep(RETRYWAITAMOUNT)
@@ -505,18 +505,13 @@ def recvfrom_syscall(fd,length,flags):
   """ 
     http://linux.die.net/man/2/recvfrom
   """
+  
 
   if fd not in filedescriptortable:
     raise SyscallError("recvfrom_syscall","EBADF","The file descriptor is invalid.")
 
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("recvfrom_syscall","ENOTSOCK","The descriptor is not a socket.")
-
-  # Most of these are uninteresting
-  if flags != 0:
-    raise UnimplementedError("Flags are not understood by recvfrom!")
-
-
 
 
   # What I do depends on the protocol...
@@ -525,26 +520,50 @@ def recvfrom_syscall(fd,length,flags):
     # includes NOTCONNECTED and LISTEN
     if filedescriptortable[fd]['state'] != CONNECTED:
       raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected.")
-    
     # I'm ready to recv, get the socket object...
     sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-
+    peek = filedescriptortable[fd]['last_peek']
     remoteip = filedescriptortable[fd]['remoteip']
     remoteport = filedescriptortable[fd]['remoteport']
-
     # keep trying to get something until it works (or EOF)...
     while True:
+      # if we have previous data from a peek, use that
+      data = None
       try:
         data = sockobj.recv(length)
-        return remoteip, remoteport, data
-
       except SocketClosedRemote, e:
-        return remoteip, remoteport, ''
+        data = ''
+      except SocketClosedLocal, e:
+        data = ''
 
       # sleep and retry!
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
-        sleep(RETRYWAITAMOUNT)
+        if peek == None:
+          sleep(RETRYWAITAMOUNT)
+          continue
+
+      if peek == None:
+        if (flags & MSG_PEEK) != 0:
+          filedescriptortable[fd]['last_peek'] = data
+        return remoteip, remoteport, data
+
+      peek = peek + data
+      if len(peek) <= length:
+        ret_data = peek
+        filedescriptortable[fd]['last_peek'] = None
+      else:
+        ret_data = peek[:length]
+        filedescriptortable[fd]['last_peek'] = peek[length:]
+        # savd this data for later?
+      if (flags & MSG_PEEK) != 0:
+        # print "@@ peek next time"
+        filedescriptortable[fd]['last_peek'] = ret_data
+
+      return remoteip, remoteport, ret_data
+
+  
+   
 
 
 
