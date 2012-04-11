@@ -2,8 +2,8 @@ NOOP_CALL_NUM=1
 
 #include dispatcher.mix
 
-MODE="safe"
-
+#MODE="safe"
+MODE=""
 def setup_dispatcher(comp_num):
   # map a systemcall number to a particular function
   if MODE == "safe":
@@ -71,15 +71,15 @@ def setup_dispatcher(comp_num):
     14:lind_fs_lseek,
     15:lind_fs_ioctl,
     17:lind_fs_fxstat,
-    19:lind_fs_fstatfs,  
+    19:lind_fs_fstatfs,
     23:lind_fs_getdents,
     24:lind_fs_dup,
     25:lind_fs_dup2,
     26:lind_fs_statfs,
     28:lind_fs_fcntl,
 
-    31:lind_getpid,
-
+    31:lind_sys_getpid,
+      
     32:lind_net_socket,
     33:lind_net_bind,
     34:lind_net_send,
@@ -99,6 +99,7 @@ def setup_dispatcher(comp_num):
     106:lind_comp_call,
     107:lind_comp_accept,
     108:lind_comp_recv
+
     }
   
   #setup error codes
