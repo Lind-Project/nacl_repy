@@ -1100,9 +1100,13 @@ def lseek_syscall(fd, offset, whence):
 
   # ... but always release it...
   try:
-    # we will need the file size in a moment, but also need to check the type
-    inode = filedescriptortable[fd]['inode']
 
+    # we will need the file size in a moment, but also need to check the type
+    try:
+      inode = filedescriptortable[fd]['inode']
+    except KeyError:
+      raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
+    
     # Let's figure out if this has a length / pointer...
     if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       # straightforward if it is a file...
