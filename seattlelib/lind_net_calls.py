@@ -494,7 +494,7 @@ def send_syscall(fd, message, flags):
 
 
 # Wait this long between recv calls...
-RETRYWAITAMOUNT = .001
+RETRYWAITAMOUNT = .00001
 
 
 
@@ -822,7 +822,7 @@ def accept_syscall(fd):
       raise SyscallError("accept_syscall","EINVAL","Must call listen before accept.")
 
     listeningsocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-
+    
     # now we should loop (block) until we get an incoming connection
     while True:
       try:
@@ -841,6 +841,7 @@ def accept_syscall(fd):
         filedescriptortable[newfd]['remoteip'] = remoteip
         filedescriptortable[newfd]['remoteport'] = remoteport
         filedescriptortable[newfd]['socketobjectid'] = _insert_into_socketobjecttable(acceptedsocket)
+        filedescriptortable[newfd]['last_peek'] = None
 
         return remoteip, remoteport, newfd
 
