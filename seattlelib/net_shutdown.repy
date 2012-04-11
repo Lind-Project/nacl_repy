@@ -1,23 +1,56 @@
+"""
+
+Handlers for the shutdown system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Shutdown hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library shutdown system call.  Then packs
+the result back up.
+
+"""
+
 
 def lind_net_shutdown(args):
-  """
-  """
+    """ shutdown calls are dispatched to this function.
 
-  try:
-    print "doing shutdown syscall"
-    result = 0
-    # result = shutdown_syscall(path, mode)
-    print result
-  except SyscallError,e:
-    return ErrorResponseBuilder("net_shutdown", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_shutdown", result)
+    See dispatcher.repy for details.
+
+    Given the flags, mode and file name in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+    sockfd = args[0]
+    how = args[1]
+    try:
+        result = setshutdown_syscall(sockfd, how)
+
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_shutdown", e[1], e[2])
+
+    return SuccessResponseBuilder("net_shutdown", result)
 
 
 def lind_safe_net_shutdown(args):
-  """
-  """
-  result = lind_net_shutdown(args)
+    """ Safely wrap the shutdown call.
 
-  return result
+    See dispatcher.repy for details.
 
+    Check the mode flags and file for consistancy,
+    then call the real shutdown dispatcher.
+
+    """
+
+    sockfd = args[0]
+    how = args[1]
+
+    check_valid_fd_handle(sockfd)
+    assert(how == SHUT_RD or how == SHUT_WR or how == SHUT_RDWR),\
+               "How must be one of SHUT_RD, SHUT_WR, or SHUT_RDWR"
+    result = lind_net_shutdown(args)
+
+    return result
