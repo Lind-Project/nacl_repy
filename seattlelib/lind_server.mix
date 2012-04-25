@@ -8,9 +8,9 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 include struct.repy
 
+VERSION = "$Rev$"
 
 TRACE = False  # Trace system calls? (somewhat like strace) 
-
 
 SYSCALL = "syscall"               # shortcut to syscall dict items
 FILES = "FILES"                   # these also make a typo more specific
@@ -305,6 +305,8 @@ include net_setsockopt.repy
 
 include net_shutdown.repy
 
+include net_select.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy
@@ -353,7 +355,7 @@ def NaclRPCServer(nacl_instance, comp_num):
   while True:
     start = 0
     stop = 0
-
+    response = "Failed with Exception."
 
     # step 1: pull out the header
     try:
@@ -435,12 +437,13 @@ def NaclRPCServer(nacl_instance, comp_num):
     # before_call = timer()
     mycontext[LOCK].acquire(True)
     mycontext[COMP] = comp_num
-    response = dispatch_syscall(call, args)
+    try:
+      response = dispatch_syscall(call, args)
+    finally:
+      if TRACE:
+        strace_msg.append(str(response))
+        print ''.join(strace_msg)
     mycontext[LOCK].release()
-    if TRACE:
-      strace_msg.append(str(response))
-      print ''.join(strace_msg)
-    # after_call = timer()
     if response == None:
       raise Exception()
 
@@ -544,7 +547,7 @@ def parse_commandline():
 if callfunc == "initialize":
   # print struct_unpack('<i4s2s','\x00\x00\x00\x00sss\x00ss')
   # exitall()
-
+  print "Lind v0."+VERSION, "$Date$"
   parse_commandline()
   lind_factory()
   main()
