@@ -329,7 +329,7 @@ def connect_syscall(fd,remoteip,remoteport):
     except InternetConnectivityError, e:
       raise SyscallError('connect_syscall','ENETUNREACH','Network was unreachable because of inability to access local port / IP')
     except TimeoutError, e:
-      raise SyscallError('connect_syscall','ETIMEOUT','Connection timed out')
+      raise SyscallError('connect_syscall','ETIMEDOUT','Connection timed out')
     except DuplicateTupleError, e:
       raise SyscallError('connect_syscall','EADDRINUSE','Network address in use')
     except ConnectionRefusedError, e:
