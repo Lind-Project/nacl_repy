@@ -55,6 +55,12 @@ NACL_PLUGIN_BOUND_SOCK = 3
 NACL_PLUGIN_ASYNC_FROM_CHILD_FD = 6
 NACL_PLUGIN_ASYNC_TO_CHILD_FD = 7
 
+import os
 
-NACL_PATH = "/home/lind/tmp/lind/"
+repy_loc = os.getenv("REPY_PATH")
+if repy_loc == None:
+    print sys.stderr >> "[Lind] $REPY_PATH not set. Exiting."
+    sys.exit(1)
+
+NACL_PATH = repy_loc
 NACL_ENV = None
