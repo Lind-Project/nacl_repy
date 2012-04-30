@@ -31,15 +31,16 @@ TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
 RX_BUF_MAX = (4096 * 4)
 
 
-# def log(arg):
-#   """Turn off logging"""
-#   pass
+def log(arg):
+  """Turn off logging"""
+  pass
 
 
 def warning(logic, message):
   """Like assert, but only warn"""
   if not logic:
-    print "Warning:", message
+    log( "Warning:"+ message)
+
 
 def curr_comp():
   return mycontext[mycontext[COMP]]
@@ -545,16 +546,14 @@ def parse_commandline():
 
 
 if callfunc == "initialize":
-  # print struct_unpack('<i4s2s','\x00\x00\x00\x00sss\x00ss')
-  # exitall()
-  print "Lind v0."+VERSION, "$Date$"
+  print "Lind v0." + VERSION[6:-2], "Last commit:", "$Date$"[7:-2]
   parse_commandline()
   lind_factory()
+
   main()
-  #  log("Exiting Lind")
-  print "Persisting metadata..."
+
+  log("Persisting metadata: ... ")
   persist_metadata(DEFAULT_METADATA_FILENAME)
+  log("Done persisting metadata.")
 
-  print "Done."
-
-  exitall()
+  
