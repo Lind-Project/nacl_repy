@@ -306,7 +306,7 @@ SO_SNDLOWAT = 0x1003             # send low-water mark
 SO_RCVLOWAT = 0x1004             # receive low-water mark
 SO_SNDTIMEO = 0x1005             # send timeout
 SO_RCVTIMEO = 0x1006             # receive timeout
-SO_ERROR = 0x1007                # get error status and clear
+SO_ERROR = 0x1007             # get error status and clear
 SO_TYPE = 0x1008                 # get socket type
 SO_NREAD = 0x1020                # APPLE: get 1st-packet byte count
 SO_NKE = 0x1021                  # APPLE: Install socket-level NKE
@@ -342,8 +342,62 @@ TCP_RXT_FINDROP = 0x100      # When set, a connection is dropped after 3 FINs
 
 # Use this to specify options on a socket.   Use the protocol with setsockopt
 # to specify something for all sockets with a protocol
-SOL_SOCKET = 0xffff
+SOL_SOCKET = 1
 SOL_TCP = IPPROTO_TCP
 SOL_UDP = IPPROTO_UDP
 
 
+
+SOL_SOCKET	= 1
+
+SO_DEBUG=1
+SO_REUSEADDR=2
+SO_TYPE=3
+SO_ERROR=4
+SO_DONTROUTE=5
+SO_BROADCAST=6
+SO_SNDBUF=7
+SO_RCVBUF=8
+SO_SNDBUFFORCE=32
+SO_RCVBUFFORCE=33
+SO_KEEPALIVE=9
+SO_OOBINLINE=10
+SO_NO_CHECK=11
+SO_PRIORITY=12
+SO_LINGER=13
+SO_BSDCOMPAT=14
+SO_PASSCRED=16
+SO_PEERCRED=17
+SO_RCVLOWAT=18
+SO_SNDLOWAT=19
+SO_RCVTIMEO=20
+SO_SNDTIMEO=21
+SO_SECURITY_AUTHENTICATION=22
+SO_SECURITY_ENCRYPTION_TRANSPORT=23
+SO_SECURITY_ENCRYPTION_NETWORK=24
+SO_BINDTODEVICE=25
+
+SO_ATTACH_FILTER=26
+SO_DETACH_FILTER=27
+
+SO_PEERNAME=28
+SO_TIMESTAMP=29
+SCM_TIMESTAMP=SO_TIMESTAMP
+
+SO_ACCEPTCONN=30
+
+SO_PEERSEC=31
+SO_PASSSEC=34
+SO_TIMESTAMPNS=35
+SCM_TIMESTAMPNS=SO_TIMESTAMPNS
+
+SO_MARK=36
+
+SO_TIMESTAMPING=37
+SCM_TIMESTAMPING=SO_TIMESTAMPING
+
+SO_PROTOCOL=38
+SO_DOMAIN=39
+
+SO_RXQ_OVFL= 40
+    
