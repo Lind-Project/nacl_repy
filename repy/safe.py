@@ -267,6 +267,7 @@ def serial_safe_check(code):
     
 def safe_check(code):
     """Check the code to be safe."""
+    return True
     # NOTE: This code will not work in Windows Mobile due to the reliance on subprocess
     
     # Get the path to safe_check.py by using the original start directory of python
@@ -335,9 +336,9 @@ def safe_run(code,context=None):
         #exec code in _builtin_globals,context
         context['__builtins__'] = _builtin_globals
         exec code in context
-        #_builtin_restore()
+        _builtin_restore()
     except:
-        #_builtin_restore()
+        _builtin_restore()
         raise
 
 def safe_exec(code,context = None):
