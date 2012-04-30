@@ -13,8 +13,30 @@ resource loopsend 1000000
 resource looprecv 1000000
 resource lograte 100000000
 resource random 100000000
+
 resource messport 10001
+resource messport 10002
+resource messport 10003
+resource messport 10004
+resource messport 10005
+resource messport 10006
+resource messport 10007
+resource messport 10008
+resource messport 10009
+resource messport 10010
+
+
 resource connport 10001
+resource connport 10002
+resource connport 10003
+resource connport 10004
+resource connport 10005
+resource connport 10006
+resource connport 10007
+resource connport 10008
+resource connport 10009
+resource connport 10010
+
 
 call gethostbyname_ex allow
 call sendmess allow
