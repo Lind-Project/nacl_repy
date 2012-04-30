@@ -3,6 +3,7 @@
 from exception_hierarchy import *
 
 from emulmisc import createlock as createlock
+from emulmisc import getruntime as getruntime
 
 from time import sleep
 

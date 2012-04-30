@@ -151,6 +151,8 @@ def _socket_initializer(domain,socktype,protocol):
       'rcvbuf':262140,      # buffersize (only used by getsockopt)
       'state':NOTCONNECTED, # we start without any connection
       'lock':createlock(),
+      'flags':0,
+      'errno':0
 # We don't set the ip / ports or socketobjectid because they are unknown now.
   }
   return newfd
@@ -321,6 +323,7 @@ def connect_syscall(fd,remoteip,remoteport):
       localport = filedescriptortable[fd]['localport']
 
     try:
+      log(str(filedescriptortable[fd]))
       # BUG: The timeout it configurable, right?
       newsockobj = openconnection(remoteip, remoteport, localip, int(localport), 10)
 
@@ -435,7 +438,6 @@ def send_syscall(fd, message, flags):
   """ 
     http://linux.die.net/man/2/send
   """
-
   if fd not in filedescriptortable:
     raise SyscallError("send_syscall","EBADF","The file descriptor is invalid.")
 
@@ -539,6 +541,8 @@ def recvfrom_syscall(fd,length,flags):
       # sleep and retry!
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
+        if flags & O_NONBLOCK != 0:
+          raise e
         if peek == None:
           sleep(RETRYWAITAMOUNT)
           continue
@@ -770,6 +774,10 @@ def listen_syscall(fd,backlog):
 
     # BUG: I'll let anything go through for now.   I'm fairly sure there will 
     # be issues I may need to handle later.
+    #CM: this is really annoying, so for now we bind to local ip
+    if filedescriptortable[fd]['localip'] == "0.0.0.0":
+      filedescriptortable[fd]['localip'] = "127.0.0.1"
+    
     newsockobj = listenforconnection(filedescriptortable[fd]['localip'], filedescriptortable[fd]['localport'])
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(newsockobj)
 
@@ -930,10 +938,17 @@ def getsockopt_syscall(fd, level, optname):
     if optname == SO_OOBINLINE:
       return 1
 
-    raise UnimplementedError("Unknown option in getsockopt()")
+    if optname == SO_ERROR:
+      log("Warning: returning fake error value.") 
+      tmp = filedescriptortable[fd]['errno']
+      filedescriptortable[fd]['errno'] = 0
+      return tmp
+
+
+    raise UnimplementedError("Unknown option in getsockopt(). option = %s"%(oct(optname)))
 
   else:
-    raise UnimplementedError("Unknown level in getsockopt()")
+    raise UnimplementedError("Unknown level in getsockopt(). level = %s"%(oct(level)))
 
 
 
@@ -1060,6 +1075,113 @@ def setshutdown_syscall(fd, how):
     # BUG: I'm not exactly clear as to how to handle this...
     
     raise SyscallError("shutdown_syscall","EINVAL","Shutdown given an invalid how")
+  
+
+
+
+
+
+
+
+
+def _nonblock_peek_read(fd):
+  """Do a read, but don't block or change the socket cursor. Called from select.
+
+  @return False if socket will block, True if socket is ready for read. 
+  """
+  try:
+    flags = O_NONBLOCK | MSG_PEEK
+    data = recvfrom_syscall(fd, 1, flags)[2]
+  except SocketWouldBlockError, e:
+    return False
+  except SyscallError, e:
+    if e[1] == 'ENOTCONN':
+      return False
+    else:
+      raise e
+  except SocketClosedRemote, e:
+    return False
+
+  if len(data) == 1:
+    return True
+  else:
+    return False
+    # assert False, "Should never here here! data:%s"%(data)
+
+
+def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, notimer=False):
+  """ 
+    http://linux.die.net/man/2/select
+  """
+  # for each fd in readfds,
+  # if file, not socket, mark true
+  # if socket
+  #   perform read
+  # if read fails with would block
+  #   mark false
+  # if read works, do it as a peek, so next time it won't block
+  raise UnimplementedError("CM: Don't call this. It is still being tested!!")
+
+  retval = 0
+  # the bit vectors only support 1024 file descriptors, also lower FDs are not supported
+  if nfds < 10 or nfds > 1024:
+    raise SyscallError("select_syscall","EINVAL","number of FDs is wrong.")
+
+  new_readfds = []
+  new_writefds = []
+  new_exceptfds = []
+
+  start_time = getruntime()
+  end_time = start_time + time
+  while True:
+
+    # Reads
+    for fd in readfds:
+      if fd not in filedescriptortable:
+        raise SyscallError("select_syscall","EBADF","The file descriptor is invalid.")
+
+      desc = filedescriptortable[fd]
+      if not IS_SOCK_DESC(fd) or fd == 0:
+        # files never block, so always say yes for them
+        new_readfds.append(fd)
+        retval += 1
+      else:
+        #sockets might block, lets check by doing a non-blocking peek read
+        if fd != 10 and _nonblock_peek_read(fd):
+          new_readfds.append(fd)
+          retval += 1
+
+    # Writes
+    for fd in writefds:
+      if fd not in filedescriptortable:
+        raise SyscallError("select_syscall","EBADF","The file descriptor is invalid.")
+
+      desc = filedescriptortable[fd]
+      if not IS_SOCK_DESC(fd) or fd == 1 or fd == 2:
+        # files never block, so always say yes for them
+        new_writefds.append(fd)
+        retval += 1
+      else:
+        #sockets might block, lets check by doing a non-blocking peek read
+        new_writefds.append(fd)
+        retval += 1
+        # assert not writefds, "Lind does not support socket writefds yet. FD=%d"%(fd)
+
+    # Excepts
+    assert not exceptfds, "Lind does not support exceptfds yet."
+
+    # Only check once if we are non-blocking (passed a 0)
+    # loop forever if we are notimer (pass a null)
+    # or loop until we go past the end time
+    
+    if retval != 0 or nonblocking or (not notimer and getruntime() >= end_time):
+      break
+    else:
+      sleep(RETRYWAITAMOUNT)
+  leftover_time = time - (getruntime() - start_time)
+  if leftover_time < 0:
+     leftover_time = 0;
+  return (retval, new_readfds, new_writefds, new_exceptfds, leftover_time)
 
 
 

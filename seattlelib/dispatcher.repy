@@ -47,6 +47,7 @@ def setup_dispatcher(comp_num):
     43:lind_safe_net_getsockopt,
     44:lind_safe_net_setsockopt,
     45:lind_safe_net_shutdown,
+    46:lind_safe_net_select,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -94,6 +95,7 @@ def setup_dispatcher(comp_num):
     43:lind_net_getsockopt,
     44:lind_net_setsockopt,
     45:lind_net_shutdown,
+    46:lind_net_select,
 
     105:lind_comp_cia,
     106:lind_comp_call,

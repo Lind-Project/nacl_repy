@@ -1,0 +1,206 @@
+"""
+
+Handlers for the select system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+"""
+
+# how large is our bit vector? 128 bytes
+WIDTH_IN_BYTES = 128
+
+# How many bits (and file descriptors can we have then?) 8 per bytes
+MAX_FDS = WIDTH_IN_BYTES * 8
+
+
+def bit_get(n, array):
+    """Given a bitlist in ARRAY, get the bit in position N.
+
+    @param n the bit you want to set
+    @param array a bit_list, which is an list of character ordinals
+    @return True if the bit is set, False otherwise
+
+    """
+    byte = array[n / 8]
+    return ((byte >> (n % 8)) & 1) == 1
+
+
+def bit_set(n, array):
+    """Set (set to 1) the nth bit of this vector"""
+    mask = 1 << (n % 8)
+    byte = array[n / 8]
+    byte = mask | byte
+    array[n / 8] = byte
+    return array
+
+
+def bit_clear(n, array):
+    """clear (set to 0) the nth bit in this vector"""
+    mask = ~(1 << (n % 8))
+    byte = array[n / 8]
+    byte = mask & byte
+    array[n / 8] = byte
+    return array
+
+
+def bit_string_to_bitlist(strarray):
+    """Convert a string into a list of ordinals to do bit operations on."""
+    return map(ord, strarray)
+
+
+def bit_bitlist_to_str(ordlist):
+    """Given a list of ordinals, convert them back to a string"""
+    return ''.join(map(chr, ordlist))
+
+
+def bit_test_bitops():
+    """Check to make sure that the bitvector operations all work"""
+
+    # make a blank string
+    print "Info: Running bitops tests... ",
+    test_str = '\x00' * 128
+    bits = bit_string_to_bitlist(test_str)
+    for i in xrange(0, MAX_FDS):
+        bit_set(i, bits)
+    for i in xrange(0, MAX_FDS):
+        assert bit_get(i, bits), "Bits were not set correclty"
+    for i in xrange(0, MAX_FDS):
+        bit_clear(i, bits)
+    for i in xrange(0, MAX_FDS):
+        assert bit_get(i, bits) == False, "Bits were not cleared correclty"
+    for i in xrange(0, MAX_FDS, 2):
+        bit_set(i, bits)
+    for i in xrange(0, MAX_FDS, 2):
+        assert bit_get(i, bits), "Stride bits were not set correclty"
+    for i in xrange(1, MAX_FDS, 2):
+        assert bit_get(i, bits) == False, "stride bits were not set correclty"
+    for i in xrange(0, MAX_FDS, 2):
+        bit_clear(i, bits)
+    assert test_str == bit_bitlist_to_str(bits)
+    print "passed."
+
+
+def get_fds(bit_array, max_fd):
+    """Given a bitarray from select, pull out the file handles to monitor.
+    Ignore parts of the vector we know are not going to be in use.
+
+    @param bit_array a bit array from the select call.  The nth bit,
+    represents the nth file handle
+
+    @param max only check up to max bits (exclusive).
+
+    @return a list of integers, which were the positions which bits were set.
+    """
+    fds = []
+    how_far = min([max_fd, MAX_FDS, len(bit_array)])
+    for i in xrange(0, how_far):
+        if bit_get(i, bit_array):
+            fds.append(i)
+    return fds
+
+
+def set_fds(fd_list, max_fd):
+    """Given a file descriptor list from select, tick the handles which were
+    found in the bitlist, and return.
+    Ignore parts of the vector we know are not going to be in use.
+
+    @param fd_list a list from the select call.  The nth bit,
+    represents the nth file handle
+
+    @param max only check up to max bits (exclusive).
+
+    @return a ordinal array, which were the positions which bits were set.
+    """
+    ordinals = [ord('\x00')] * 128
+
+    for fd in fd_list:
+        bit_set(fd, ordinals)
+        
+    return ordinals
+
+
+SEC_PER_MICROSEC = 0.000001
+MICROSEC_PER_SEC = 1000000
+
+
+def parse_timeval(timeval_str):
+    """given a struct timeval, make it into a float in seconds.
+
+    @return a float in seceonds, then each sec and usec member
+    """
+    tv_sec, tv_usec = struct_unpack("<Q<Q",timeval_str)
+    return ((tv_sec + (SEC_PER_MICROSEC * tv_usec)), tv_sec, tv_usec)
+
+
+def build_struct_timeval(tv_sec, tv_usec):
+    """given a struct timeval, make it into a float in seconds.
+
+    @return a float in seceonds, then each sec and usec member
+    """
+    print tv_sec, tv_usec
+    new_struct= struct_pack("<Q<Q",tv_sec, tv_usec)
+    return new_struct
+
+    
+def lind_net_select(args):
+    """
+    Pull out the arguments for select and make real call.
+    Args should have a nfds, bitvectors for read write and except, and a time.
+    """
+
+    nonblocking = False
+    notimer = False
+
+    nfds = args[0]
+
+    readfds = args[4]
+    writefds = args[5]
+    exceptfds = args[6]
+    
+    time, sec, usec = parse_timeval(args[7])
+
+    if sec == 0 and usec == 0:
+        nonblocking = True
+        time = 0
+    elif usec == 4000000:  # sentinal value passed by glibc when time is NULL
+        notimer = True
+        time = 0
+        
+
+    readfds = get_fds(bit_string_to_bitlist(readfds), nfds)
+    writefds = get_fds(bit_string_to_bitlist(writefds), nfds)
+    exceptfds = get_fds(bit_string_to_bitlist(exceptfds), nfds)
+    print "@@ Select:", nfds, readfds, writefds, exceptfds, time, nonblocking, notimer,
+    try:
+        rc, nread, nwrite, nexcept, usedtime = select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking, notimer)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_select", e[1], e[2])
+
+    print " returned", rc, usedtime
+    used_sec = long((usedtime))
+    used_usec = long((usedtime - used_sec) * MICROSEC_PER_SEC)
+    used_timeval = build_struct_timeval(used_sec, used_usec)
+    readfds = bit_bitlist_to_str(set_fds(readfds, nfds))
+    writefds = bit_bitlist_to_str(set_fds(writefds, nfds))
+    exceptfds = bit_bitlist_to_str(set_fds(exceptfds, nfds))
+
+
+
+
+    return SuccessResponseBuilder("net_select", rc, ''.join((used_timeval,readfds, writefds, exceptfds)))
+
+
+def lind_safe_net_select(args):
+    """ select calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    safely call the lind select function and return the results.
+    """
+
+    bit_test_bitops()
+    result = lind_net_select(args)
+
+    return result
