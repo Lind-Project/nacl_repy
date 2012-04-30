@@ -7,8 +7,8 @@ def lind_net_setsockopt(args):
   optname = args[2]
   optlen = args[3]
   opt = args[4]
+
   try:
-    print "doing setsockopt syscall"
     result = setsockopt_syscall(fd, level, optname, opt)
   except SyscallError,e:
     return ErrorResponseBuilder("net_setsockopt", e[1], e[2])
@@ -19,7 +19,7 @@ def lind_net_setsockopt(args):
 def lind_safe_net_setsockopt(args):
   """
   """
-  result = lind_net_setsockopt(args)
 
+  result = lind_net_setsockopt(args)
   return result
 
