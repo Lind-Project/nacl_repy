@@ -4,14 +4,18 @@ def lind_net_getsockopt(args):
   """
 
   try:
-    print "doing getsockopt syscall"
     result = 0
-    # result = getsockopt_syscall(path, mode)
-    print result
+    fd = args[0]
+    level = args[1]
+    optname = args[2]
+    optlen = args[3]
+
+    result = getsockopt_syscall(fd, level, optname)
   except SyscallError,e:
     return ErrorResponseBuilder("net_getsockopt", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_getsockopt", result)
+
+  data = struct_pack("<I", result)
+  return SuccessResponseBuilder("net_getsockopt", 0, data)
 
 
 def lind_safe_net_getsockopt(args):
