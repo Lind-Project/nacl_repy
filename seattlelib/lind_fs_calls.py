@@ -148,6 +148,15 @@ class UnimplementedError(Exception):
   """A call was called with arguments that are not fully implemented"""
 
 
+def _load_lower_handle_stubs():
+  """The lower file hadles need stubs in the descriptor talbe."""
+
+  filedescriptortable[0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS}
+  filedescriptortable[1] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS}
+  filedescriptortable[2] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS}
+
+
+
 def load_fs(name=METADATAFILENAME):
   """ Help to correcly load a filesystem, if one exists, otherwise
   make a new empty one.  To do this, check if metadata exists.
@@ -159,7 +168,7 @@ def load_fs(name=METADATAFILENAME):
     # lets see if the metadata file is already here?
     f = openfile(name, False)
   except FileNotFoundError, e:
-    print "Note: No filesystem found, building a fresh one."
+    print "Note: No filesystem found, building a fresh one.",
     _blank_fs_init()
   else:
     f.close()
@@ -168,7 +177,7 @@ def load_fs(name=METADATAFILENAME):
     except (IndexError, KeyError), e:
       print "Error: Cannot reload filesystem.  Run lind_fsck for details."
       exitall(1)
-
+  _load_lower_handle_stubs()
 
 
 # To have a simple, blank file system, simply run this block of code.
@@ -1446,7 +1455,7 @@ def dup_syscall(fd):
 
 
   # check the fd
-  if fd not in filedescriptortable:
+  if fd not in filedescriptortable and fd >= 10:
     raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
 
   # Acquire the fd lock...
@@ -1498,7 +1507,6 @@ def fcntl_syscall(fd, cmd, *args):
 
   # ... but always release it...
   try:
-
     # if we're getting the flags, return them... (but this is just CLO_EXEC, 
     # so ignore)
     if cmd == F_GETFD:
