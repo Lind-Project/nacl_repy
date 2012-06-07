@@ -308,6 +308,8 @@ include net_shutdown.repy
 
 include net_select.repy
 
+include net_getifaddrs.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy
@@ -385,7 +387,7 @@ def NaclRPCServer(nacl_instance, comp_num):
     try:
       [magic, call, frmt_len, payload_size, seq_num, valid] = struct_unpack(format, header)
     except Exception, err:
-      log("[ERROR][RPC] Error unmarshaling header", type(err), ":", err, "\n")
+      log("[ERROR][RPC] Error unmarshaling header" + type(err) + ":" + err + "\n")
 
     # validate the header
     if magic != -2:
