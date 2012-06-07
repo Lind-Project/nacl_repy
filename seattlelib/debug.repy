@@ -1,6 +1,6 @@
 
 def lind_debug_trace(args):
-  log("[info][Trace]["+ str(mycontext[COMP])+"] ", args[0],"\n")
+  log("[info][Trace]["+ str(mycontext[COMP])+"] " + args[0] + "\n")
   return SuccessResponseBuilder("debug_trace", 0)
 
 
