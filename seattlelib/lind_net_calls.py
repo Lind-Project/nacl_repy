@@ -323,7 +323,6 @@ def connect_syscall(fd,remoteip,remoteport):
       localport = filedescriptortable[fd]['localport']
 
     try:
-      log(str(filedescriptortable[fd]))
       # BUG: The timeout it configurable, right?
       newsockobj = openconnection(remoteip, remoteport, localip, int(localport), 10)
 
@@ -939,7 +938,7 @@ def getsockopt_syscall(fd, level, optname):
       return 1
 
     if optname == SO_ERROR:
-      log("Warning: returning fake error value.") 
+      assert False, "returning a fake error."
       tmp = filedescriptortable[fd]['errno']
       filedescriptortable[fd]['errno'] = 0
       return tmp
@@ -1120,7 +1119,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
   # if read fails with would block
   #   mark false
   # if read works, do it as a peek, so next time it won't block
-  raise UnimplementedError("CM: Don't call this. It is still being tested!!")
+  log("Warning: Don't call this. It is still being tested!!")
 
   retval = 0
   # the bit vectors only support 1024 file descriptors, also lower FDs are not supported
@@ -1184,6 +1183,37 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
   return (retval, new_readfds, new_writefds, new_exceptfds, leftover_time)
 
 
+def getifaddrs_syscall():
+  """ 
+    http://linux.die.net/man/2/getifaddrs
+
+    Returns a list of the IP addresses of this machine.
+
+    Fake most of the values.  I dont think an overly restrictive
+    netmask is going to cause problems?
+  """
+  try:
+    ip = getmyip()
+  except:
+    raise SyscallError("getifaddrs syscall","EADDRNOTAVAIL","Problem getting the" \
+                       " local ip address.")
+  broadcast = (ip.split('.')[0:3]) # the broadcast address is just x.y.z.255?
+  broadcast = '.'.join(broadcast + ['255']) 
+  return 0, [{'ifa_name':'eth0',
+           'ifa_flags':0,
+           'ifa_addr':ip,
+           'ifa_netmask':'255.255.255.0', 
+           'ifa_broadaddr':broadcast,
+          },
+
+          {'ifa_name':'lo0',
+           'ifa_flags':0,
+           'ifa_addr':'127.0.0.1',
+           'ifa_netmask':'255.0.0.0',
+           'ifa_broadaddr':'127.0.0.1',
+          }
+          ]
+
 
 # int socketpair(int domain, int type, int protocol, int socket_vector[2]);
 # ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);
@@ -1199,3 +1229,11 @@ def inet_ntoa(ipaddress):
   """
   a,b,c,d = struct_unpack("<B<B<B<B",ipaddress)
   return str(a) + "." + str(b) + "." +str(c) + "." +str(d) 
+
+
+def inet_aton(ipaddress):
+  """
+  Convert an IP address in string format to its integer octet format
+  
+  """
+  return struct_unpack("<I",struct_pack("<B<B<B<B",*map(int, ipaddress.split("."))))[0]

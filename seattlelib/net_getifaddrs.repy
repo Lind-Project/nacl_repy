@@ -1,0 +1,103 @@
+"""
+
+Handlers for the getifaddrs ioctl call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+"""
+
+FLAGS='ifa_flags'
+ADDR='ifa_addr'
+NETMASK='ifa_netmask'
+BROADCAST='ifa_broadaddr'
+NAME='ifa_name'
+
+def _type_to_name(element):
+    _type = type(element)
+    if _type == type(1):
+        if element < 0:
+            return "<i"
+        else:
+            return "<I"
+    if _type == type(1l):
+        if element < 0:
+            return "<q"
+        else:
+            return "<Q"
+    # if _type == type(chr(0)):
+    #     return "<B"
+
+    if _type == type(""):
+        return str(len(element))+'s'
+    
+    print "tpye", _type, "not found for", element
+    raise Exception("No format for type")
+        
+
+def build_struct_format(*args):
+    """Given a list with python elements, make the struct package format string for that list"""
+    return ''.join(map(_type_to_name, args))
+
+
+def build_ifaddrs_struct(iplist):
+    """Build the ifaddrs struct.  Since it is a linked list with pointers, we
+    will not build the real one, but a packed format which glibc can unpack
+    to a usable version.
+
+    The format stuct is:
+    struct {
+       int flags
+       int flags2
+       int addr - this is an IPv4 address in network order byte binary format
+       int addr2
+       int netmask - in network byte order binary format
+       int netmask2
+       int broadcast
+       int broadcast2
+       char * name
+       char * name2
+    }
+    """
+    elements = [iplist[0][FLAGS],
+                iplist[1][FLAGS],
+                inet_aton(iplist[0][ADDR]),
+                inet_aton(iplist[1][ADDR]),
+                inet_aton(iplist[0][NETMASK]),
+                inet_aton(iplist[1][NETMASK]),
+                inet_aton(iplist[0][BROADCAST]),
+                inet_aton(iplist[1][BROADCAST]),
+                iplist[0][NAME]+chr(0),   # null terminate the string
+                iplist[1][NAME] + chr(0),
+                ]
+    return struct_pack(build_struct_format(*elements), *elements)
+    
+
+
+def lind_net_getifaddrs(args):
+    """
+    Pull out the arguments for getifaddrs and make real call.
+    """
+    size = args[0]
+    try:
+        rc, iplist = getifaddrs_syscall()
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_getifaddrs", e[1], e[2])
+
+    packed = build_ifaddrs_struct(iplist)
+    assert len(packed) <= size, "getifaddrs data buffer is too small %d into %d"%( len(packed), size)
+    return SuccessResponseBuilder("net_getifaddrs", rc, packed)
+
+
+def lind_safe_net_getifaddrs(args):
+    """ getifaddrs calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    safely call the lind getifaddrs function and return the results.
+    """
+
+    result = lind_net_getifaddrs(args)
+
+    return result
