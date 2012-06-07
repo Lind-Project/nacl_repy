@@ -17,6 +17,9 @@ from repy_workarounds import *
 from lind_fs_constants import *
 from lind_net_constants import *
 
+def log(msg):
+    print msg
+
 # execute these as scripts.   This means importing them into the current 
 # namespace as though they were included here...
 execfile('lind_fs_calls.py')
