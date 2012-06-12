@@ -1,0 +1,63 @@
+"""
+Chris Matthews (2012) cmatthew@cs.uvic.ca
+
+This file contains parsers and packers for C structs.
+
+"""
+
+
+def parse_sockaddr_struct(sock):
+    """parse a struct sockaddr, and pull out family, port, ip and padding"""
+    format = '<h>H<I<Q'  # family, port, address, padding
+    assert struct_calcsize(format) == 16
+    return struct_unpack(format, sock)
+
+
+def pack_struct_sockaddr(family, ip, port):
+    pass
+
+
+def pack_stat_struct(struct_tuple):
+    """Given a tuple with stat fields, pack it into a string"""
+    (my_st_dev, my_st_ino, my_st_mode, my_st_nlink, my_st_uid, my_st_gid,
+     my_st_rdev, my_st_size, my_st_blksize, my_st_blocks,
+     my_st_atime, my_st_atimeus, my_st_mtime, \
+     my_st_mtimeus, my_st_ctime, my_st_ctimeus) = struct_tuple
+    result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
+                         my_st_dev, my_st_ino, my_st_mode, my_st_nlink, \
+                         my_st_uid, my_st_gid, my_st_rdev, my_st_size, \
+                         my_st_blksize, my_st_blocks, my_st_atime, \
+                            my_st_atimeus, my_st_mtime, my_st_mtimeus, \
+                         my_st_ctime, my_st_ctimeus)
+    return result
+
+
+def pack_statfs_struct(fsd):
+    """struct statfs {
+                    long    f_type;     -- type of file system (see below)
+                    long    f_bsize;    -- optimal transfer block size
+                    long    f_blocks;   -- total data blocks in file system
+                    long    f_bfree;    -- free blocks in fs
+                    long    f_bavail;   -- free blocks avail to non-superuser
+                    long    f_files;    -- total file nodes in file system
+                    long    f_ffree;    -- free file nodes in fs
+                    fsid_t  f_fsid;     -- file system id
+                    long    f_namelen;  -- maximum length of filenames
+    """
+    (tipe, bsize, blocks, bfree, bavail, files, ffree,\
+     fsid, namelen, frsize, spare) = (fsd['f_type'],
+                                      fsd['f_bsize'],
+                                      fsd['f_blocks'],
+                                      fsd['f_bfree'],
+                                      fsd['f_bavail'],
+                                      fsd['f_files'],
+                                      fsd['f_files'],
+                                      fsd['f_fsid'],
+                                      fsd['f_namelen'],
+                                      fsd['f_frsize'],
+                                      fsd['f_spare'])
+
+    format = '<q<q<q<q<q<q<q<Q<q<q8s'
+    result = struct_pack(format, tipe, bsize, blocks, bfree, bavail, \
+                         files, ffree, fsid, namelen, frsize, spare)
+    return result

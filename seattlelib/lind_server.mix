@@ -31,9 +31,10 @@ TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
 RX_BUF_MAX = (4096 * 4)
 
 
-def log(arg):
-  """Turn off logging"""
-  pass
+# if not TRACE:
+#   def log(arg):
+#     """Turn off logging"""
+#     pass
 
 
 def warning(logic, message):
@@ -174,57 +175,7 @@ def check_valid_fd_handle(num):
   assert (10 <= num <= MAX_FD), "invalid handle %d" % num
 
 
-def pack_stat_struct(struct_tuple):
-  """Given a tuple with stat fields, pack it into a string"""
-  (my_st_dev, my_st_ino, my_st_mode, my_st_nlink, my_st_uid, my_st_gid,
-   my_st_rdev, my_st_size, my_st_blksize, my_st_blocks,
-   my_st_atime, my_st_atimeus, my_st_mtime, \
-   my_st_mtimeus, my_st_ctime, my_st_ctimeus) = struct_tuple
-  result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
-                       my_st_dev, my_st_ino, my_st_mode, my_st_nlink, \
-                       my_st_uid, my_st_gid, my_st_rdev, my_st_size, \
-                       my_st_blksize, my_st_blocks, my_st_atime, \
-                       my_st_atimeus, my_st_mtime, my_st_mtimeus, \
-                       my_st_ctime, my_st_ctimeus)
-  return result
-
-
-def pack_statfs_struct(fsd):
-  """struct statfs {
-  long    f_type;     -- type of file system (see below)
-  long    f_bsize;    -- optimal transfer block size
-  long    f_blocks;   -- total data blocks in file system
-  long    f_bfree;    -- free blocks in fs
-  long    f_bavail;   -- free blocks avail to non-superuser
-  long    f_files;    -- total file nodes in file system
-  long    f_ffree;    -- free file nodes in fs
-  fsid_t  f_fsid;     -- file system id
-  long    f_namelen;  -- maximum length of filenames
-  }
-  """
-  (tipe, bsize, blocks, bfree, bavail, files, ffree,\
-   fsid, namelen, frsize, spare) = (fsd['f_type'],
-                                    fsd['f_bsize'],
-                                    fsd['f_blocks'],
-                                    fsd['f_bfree'],
-                                    fsd['f_bavail'],
-                                    fsd['f_files'],
-                                    fsd['f_files'],
-                                    fsd['f_fsid'],
-                                    fsd['f_namelen'],
-                                    fsd['f_frsize'],
-                                    fsd['f_spare'])
-
-  format = '<q<q<q<q<q<q<q<Q<q<q8s'
-  result = struct_pack(format, tipe, bsize, blocks, bfree, bavail, \
-                       files, ffree, fsid, namelen, frsize, spare)
-  return result
-
-
-def parse_sockaddr_struct(sock):
-  format = '<h>H<I<Q'  # family, port, address, padding
-  assert struct_calcsize(format) == 16
-  return struct_unpack(format, sock)
+include lind_parsers.repy
 
 include lind_fs_constants.py
 
@@ -483,12 +434,27 @@ def launch_helper(instance, num):
     NaclRPCServer(instance, num)
   createthread(closure)
 
+def _check_file(name):
+  if name.startswith("./"):
+    cleanname = name[2:]
+  else:
+    cleanname = name
+  try:
+    f = openfile(cleanname, False)
+    f.readat(0,100)
+    f.close()
+  except FileNotFoundError:
+    print "File not found:", name
+    exitall()
+    
+
 
 def new_compoent():
   """add a new compoent to the system"""
   mycontext[2] = {}
   code_loc = "liblind/com2.nexe"
   mycontext[2][PROGRAM] = code_loc
+  
   mycontext[2][CMD_LINE] = []
   setup_dispatcher(2)
   setup_filetable(2)
@@ -522,7 +488,7 @@ def lind_factory():
   setup_filetable(1)
   setup_component_communication(1)
   mycontext[LOCK] = createlock()
-
+  _check_file(curr_comp()[PROGRAM])
   #if we are running a compoent, launch another one as a test.
   if "com1" in curr_comp()[PROGRAM]:
     log("starting multi-component test mode")
