@@ -44,7 +44,9 @@ def process_request():
     assert len(msg[2]) == 100, "Length expected 100 bytes to read, but only" \
       + " got " + str(len(msg[2])) + " bytes."
   except Exception, e:
-    print 'TEST:- W:100, P:100, R:100 : ' + e
+    print 'TEST:- W:100, P:100, R:100 : ', e
+
+  emultimer.sleep(0.2)
 
   #Process second test...
   try:
@@ -58,7 +60,9 @@ def process_request():
     assert len(msg[2]) == 80, "Length expected 80 bytes to read, but only" \
       + " got " + str(len(msg[2])) + " bytes."
   except Exception, e:
-    print 'Test:- W:100, R:20, P:20, R:80 : ' + e
+    print 'Test:- W:100, R:20, P:20, R:80 : ', e
+
+  emultimer.sleep(0.2)
 
   #Process thrid test...
   try:
@@ -82,7 +86,9 @@ def process_request():
     assert len(msg[2]) == 100, "Length expected 100 bytes to read, but only" \
       + " got " + str(len(msg[2])) + " bytes."
   except Exception, e:
-    print 'Test:- W:100, Peek several times : ' + e
+    print 'Test:- W:100, Peek several times : ', e
+
+  emultimer.sleep(0.2)
 
   #Process fourth test...
   try:
@@ -90,7 +96,7 @@ def process_request():
     assert len(msg[2]) == 50, "Length expected 50 bytes to peek, but only" \
       + " got " + str(len(msg[2])) + " bytes."
   except Exception, e:
-    print 'Test:- W:100 P:50 : ' + e
+    print 'Test:- W:100 P:50 : ', e
   
   #Gracefully close the socket
   lind_test_server.close_syscall(newsockfd)
