@@ -299,7 +299,7 @@ def connect_syscall(fd,remoteip,remoteport):
     raise SyscallError("connect_syscall","EISCONN","The descriptor is already connected.")
 
 
-  filedescriptortable[fd]['last_peek'] = None
+  filedescriptortable[fd]['last_peek'] = ''
 
 
   # What I do depends on the protocol...
@@ -380,7 +380,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
   # if there is no IP / port, call send instead.   It will assume the other
   # end is connected...
   if remoteip == '' and remoteport == 0:
-    return send_syscall(fd,message)
+    return send_syscall(fd, message, flags)
 
   if filedescriptortable[fd]['state'] == CONNECTED or filedescriptortable[fd]['state'] == LISTEN:
     raise SyscallError("sendto_syscall","EISCONN","The descriptor is connected.")
@@ -529,7 +529,7 @@ def recvfrom_syscall(fd,length,flags):
     # keep trying to get something until it works (or EOF)...
     while True:
       # if we have previous data from a peek, use that
-      data = None
+      data = ''
       try:
         data = sockobj.recv(length)
       except SocketClosedRemote, e:
@@ -554,15 +554,15 @@ def recvfrom_syscall(fd,length,flags):
       peek = peek + data
       if len(peek) <= length:
         ret_data = peek
-        filedescriptortable[fd]['last_peek'] = None
+        filedescriptortable[fd]['last_peek'] = ''
       else:
         ret_data = peek[:length]
         filedescriptortable[fd]['last_peek'] = peek[length:]
         # savd this data for later?
       if (flags & MSG_PEEK) != 0:
         # print "@@ peek next time"
-        filedescriptortable[fd]['last_peek'] = ret_data
-
+        filedescriptortable[fd]['last_peek'] = peek
+        
       return remoteip, remoteport, ret_data
 
   
@@ -839,7 +839,7 @@ def accept_syscall(fd):
       except SocketWouldBlockError, e:
         sleep(RETRYWAITAMOUNT)
       else:
-        
+
         newfd = _socket_initializer(filedescriptortable[fd]['domain'],filedescriptortable[fd]['type'],filedescriptortable[fd]['protocol'])
 
         filedescriptortable[newfd]['state'] = CONNECTED
