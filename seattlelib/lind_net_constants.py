@@ -401,3 +401,10 @@ SO_DOMAIN=39
 
 SO_RXQ_OVFL= 40
     
+
+POLLIN = 01  # There is data to read.
+POLLPRI	= 02 #There is urgent data to read. 
+POLLOUT	= 04 # Writing now will not block.
+POLLERR = 010 # Error condition.
+POLLHUP =  020 # Hung up.
+POLLNVAL =  040 # Invalid polling request.
