@@ -383,7 +383,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
   # end is connected...
   if remoteip == '' and remoteport == 0:
     print "warning: sending back to send."
-    return send_syscall(fd,message)
+    return send_syscall(fd,message, flags)
 
   if filedescriptortable[fd]['state'] == CONNECTED or filedescriptortable[fd]['state'] == LISTEN:
     raise SyscallError("sendto_syscall","EISCONN","The descriptor is connected.")
