@@ -260,6 +260,8 @@ def bind_syscall(fd,localip,localport):
     if 'socketobjectid' in filedescriptortable[fd]:
       # BUG: I need to avoid leaking sockets, so I should close the previous...
       raise UnimplementedError("I should close the previous UDP listener when re-binding")
+    if localip == '0.0.0.0':
+      localip = getmyip()
     udpsockobj = listenformessage(localip,localport)
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
     
@@ -380,7 +382,8 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
   # if there is no IP / port, call send instead.   It will assume the other
   # end is connected...
   if remoteip == '' and remoteport == 0:
-    return send_syscall(fd, message, flags)
+    print "warning: sending back to send."
+    return send_syscall(fd,message)
 
   if filedescriptortable[fd]['state'] == CONNECTED or filedescriptortable[fd]['state'] == LISTEN:
     raise SyscallError("sendto_syscall","EISCONN","The descriptor is connected.")
@@ -396,15 +399,14 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
     # If unspecified, use a new local port / the local ip
     if 'localip' not in filedescriptortable[fd]:
       localip = getmyip()
-      localport = _get_available_tcp_port()
+      localport = int(_get_available_tcp_port())
     else:
       localip = filedescriptortable[fd]['localip']
-      localport = filedescriptortable[fd]['localport']
+      localport = int(filedescriptortable[fd]['localport'])
 
     try:
       # BUG: The timeout it configurable, right?
       bytessent = sendmessage(remoteip, remoteport, message, localip, localport)
-
     except AddressBindingError, e:
       raise SyscallError('connect_syscall','ENETUNREACH','Network was unreachable because of inability to access local port / IP')
     except DuplicateTupleError, e:
@@ -447,11 +449,11 @@ def send_syscall(fd, message, flags):
     raise UnimplementedError("Flags are not understood by send!")
 
   # includes NOTCONNECTED and LISTEN
-  if filedescriptortable[fd]['state'] != CONNECTED:
+  if  filedescriptortable[fd]['protocol'] == IPPROTO_TCP and filedescriptortable[fd]['state'] != CONNECTED:
     raise SyscallError("send_syscall","ENOTCONN","The descriptor is not connected.")
 
 
-  if filedescriptortable[fd]['protocol'] != IPPROTO_TCP:
+  if filedescriptortable[fd]['protocol'] != IPPROTO_TCP and filedescriptortable[fd]['protocol'] != IPPROTO_UDP:
     raise SyscallError("send_syscall","EOPNOTSUPP","send not supported on this protocol.")
     
   # I'll check this anyways, because I later might have multiple protos 
@@ -476,7 +478,13 @@ def send_syscall(fd, message, flags):
 
       # return the characters sent!
       return bytessent
+  elif filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
 
+    remoteip = filedescriptortable[fd]['remoteip']
+    remoteport = filedescriptortable[fd]['remoteport']
+
+    bytessent = sendto_syscall(fd, message, remoteip, remoteport, flags)
+    return bytessent
   else:
     raise UnimplementedError("Unknown protocol in send()")
 
@@ -520,7 +528,7 @@ def recvfrom_syscall(fd,length,flags):
 
     # includes NOTCONNECTED and LISTEN
     if filedescriptortable[fd]['state'] != CONNECTED:
-      raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected.")
+      raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected."+str(filedescriptortable[fd]['state']))
     # I'm ready to recv, get the socket object...
     sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
     peek = filedescriptortable[fd]['last_peek']
@@ -572,7 +580,6 @@ def recvfrom_syscall(fd,length,flags):
 
   # If UDP, recieve a message and return...
   elif filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
-
     # BUG / HELP!!!: Calling this with UDP and without binding does something I
     # don't really understand...   It seems to block but I don't know what is 
     # happening.   The socket isn't bound to a valid inode,etc from what I see.
@@ -1215,25 +1222,39 @@ def getifaddrs_syscall():
           ]
 
 
-# int socketpair(int domain, int type, int protocol, int socket_vector[2]);
-# ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);
-# ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);
+def poll_syscall(fds, timeout):
+  """ 
+    http://linux.die.net/man/2/poll
 
+    returns a list of io status indicators for each of the
+    file handles in fds
 
-def inet_ntoa(ipaddress):
   """
-  Convert an IP address in integer form to a dot-and-number string
 
-  This is 
-  
-  """
-  a,b,c,d = struct_unpack("<B<B<B<B",ipaddress)
-  return str(a) + "." + str(b) + "." +str(c) + "." +str(d) 
+  return_code = 0
+
+  reply = []
+
+  for structpoll in fds:
+    fd = structpoll['fd']
+    events = structpoll['events']
+    read = events & POLLIN > 0 
+    write = events & POLLOUT > 0 
+    err = events & POLLERR > 0
+    reads = []
+    writes = []
+    errors = []
+    if read:
+      reads.append(fd)
+    if write:
+      writes.append(fd)
+    if err:
+      errors.append(fd)
+    #print reads, writes, errors
+
+    newfd = select_syscall(fd, reads, writes, errors, 0)
+    #print newfd
+    
+  return return_code
 
 
-def inet_aton(ipaddress):
-  """
-  Convert an IP address in string format to its integer octet format
-  
-  """
-  return struct_unpack("<I",struct_pack("<B<B<B<B",*map(int, ipaddress.split("."))))[0]
