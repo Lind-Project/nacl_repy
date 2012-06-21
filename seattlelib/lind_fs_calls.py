@@ -151,9 +151,9 @@ class UnimplementedError(Exception):
 def _load_lower_handle_stubs():
   """The lower file hadles need stubs in the descriptor talbe."""
 
-  filedescriptortable[0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS}
-  filedescriptortable[1] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS}
-  filedescriptortable[2] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS}
+  filedescriptortable[0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS, 'note':'this is a stub1'}
+  filedescriptortable[1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_RDWRFLAGS, 'note':'this is a stub2'}
+  filedescriptortable[2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_RDWRFLAGS, 'note':'this is a stub3'}
 
 
 
@@ -192,7 +192,7 @@ def _blank_fs_init():
       removefile(filename)
 
   # Now setup blank data structures
-  filesystemmetadata['nextinode'] = 2
+  filesystemmetadata['nextinode'] = 3
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0, 
@@ -881,15 +881,32 @@ def fstat_syscall(fd):
   if fd not in filedescriptortable:
     raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
 
-  
   # if so, return the information...
-  return _istat_helper(filedescriptortable[fd]['inode'])
+  inode = filedescriptortable[fd]['inode']
+  if inode in [0,1,2]:
+    return (filesystemmetadata['dev_id'],          # st_dev
+          inode,                                 # inode
+            49590, #mode
+          1,  # links
+          501, # uid
+          20, #gid
+          0,                                     # st_rdev     ignored(?)
+          0, # size
+          0,                                     # st_blksize  ignored(?)
+          0,                                     # st_blocks   ignored(?)
+          0,
+          0,                                     # atime ns
+          0,
+          0,                                     # mtime ns
+          0,
+          0,                                     # ctime ns
+        )
+  return _istat_helper(inode)
 
 
 
 # private helper routine that returns stat data given an inode
 def _istat_helper(inode):
-
   return (filesystemmetadata['dev_id'],          # st_dev
           inode,                                 # inode
           filesystemmetadata['inodetable'][inode]['mode'],
@@ -1103,6 +1120,9 @@ def lseek_syscall(fd, offset, whence):
   if fd not in filedescriptortable:
     raise SyscallError("lseek_syscall","EBADF","Invalid file descriptor.")
 
+  # if we are any of the odd handles(stderr, sockets), we cant seek, so just report we are at 0
+  if filedescriptortable[fd]['inode'] in [0,1,2]:
+    return 0
   # Acquire the fd lock...
   filedescriptortable[fd]['lock'].acquire(True)
 
@@ -1233,6 +1253,10 @@ def write_syscall(fd, data):
   if fd not in filedescriptortable:
     raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
+  if filedescriptortable[fd]['inode'] in [0,1,2]:
+    print data,
+    return len(data)
+
   # Is it open for writing?
   if IS_RDONLY(filedescriptortable[fd]['flags']): 
     raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
@@ -1362,11 +1386,15 @@ def close_syscall(fd):
   """
 
   # BUG: I probably need a filedescriptortable lock to prevent race conditions
-
+  print "Close on", fd
   # check the fd
   if fd not in filedescriptortable:
     raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
-
+  try:
+    if filedescriptortable[fd]['inode'] in [0,1,2]:
+      return 0
+  except KeyError:
+    pass
   # Acquire the fd lock, if there is one.
   if 'lock' in filedescriptortable[fd]:
     filedescriptortable[fd]['lock'].acquire(True)
