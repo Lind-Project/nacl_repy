@@ -6,7 +6,7 @@ resource filewrite 10000000
 resource fileread 10000000
 resource filesopened 5000
 resource insockets 10
-resource outsockets 5
+resource outsockets 10
 resource netsend 10000
 resource netrecv 10000
 resource loopsend 1000000
@@ -14,6 +14,12 @@ resource looprecv 1000000
 resource lograte 100000000
 resource random 100000000
 
+resource messport 9995
+resource messport 9996
+resource messport 9997
+resource messport 9998
+resource messport 9999
+resource messport 10000
 resource messport 10001
 resource messport 10002
 resource messport 10003
@@ -26,6 +32,12 @@ resource messport 10009
 resource messport 10010
 
 
+resource connport 9995
+resource connport 9996
+resource connport 9997
+resource connport 9998
+resource connport 9999
+resource connport 10000
 resource connport 10001
 resource connport 10002
 resource connport 10003
