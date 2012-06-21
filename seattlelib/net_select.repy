@@ -172,13 +172,11 @@ def lind_net_select(args):
     readfds = get_fds(bit_string_to_bitlist(readfds), nfds)
     writefds = get_fds(bit_string_to_bitlist(writefds), nfds)
     exceptfds = get_fds(bit_string_to_bitlist(exceptfds), nfds)
-    print "@@ Select:", nfds, readfds, writefds, exceptfds, time, nonblocking, notimer,
     try:
         rc, nread, nwrite, nexcept, usedtime = select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking, notimer)
     except SyscallError, e:
         return ErrorResponseBuilder("net_select", e[1], e[2])
 
-    print " returned", rc, usedtime
     used_sec = long((usedtime))
     used_usec = long((usedtime - used_sec) * MICROSEC_PER_SEC)
     used_timeval = build_struct_timeval(used_sec, used_usec)

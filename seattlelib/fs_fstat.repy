@@ -27,7 +27,8 @@ def lind_fs_fxstat(args):
 
     filedes = args[0]
     ver = args[1]
-    
+
+    print "doing a fstat of", filedes
     if ver == 1:
         result = pack_stat_struct(fstat_syscall(filedes))
     else:

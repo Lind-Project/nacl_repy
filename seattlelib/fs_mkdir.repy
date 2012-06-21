@@ -49,6 +49,5 @@ def lind_safe_fs_mkdir(args):
       assert (result.return_code == 0), "Must return 0 on success." 
     else:
       pass
-      #print result.message
     return result
 

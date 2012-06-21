@@ -1,23 +1,70 @@
+"""
+
+Handlers for the recvfrom system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Recvfrom hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library recvfrom system call.  Then packs
+the result back up.
+
+"""
+
+def pack_multiarg(*args):
+    for x in args:
+        assert type(x) == str
+        
+    nargs = len(args)
+    format = "<I" * nargs
+    header = struct_pack(format, *map(len, args))
+    return header + "".join(args)
 
 def lind_net_recvfrom(args):
-  """
-  """
+    """ recvfrom calls are dispatched to this function.
 
-  try:
-    print "doing recvfrom syscall"
-    result = 0
-    # result = recvfrom_syscall(path, mode)
-    print result
-  except SyscallError,e:
-    return ErrorResponseBuilder("net_recvfrom", e[1], e[2])
-  
-  return SuccessResponseBuilder("net_recvfrom", result)
+    See dispatcher.repy for details.
+
+    Given the file descriptor length and flags in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    sockfd = args[0]
+    length = args[1]
+    flags = args[2]
+    addrlen = args[3]
+    try:
+        result = recvfrom_syscall(sockfd, length, flags)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_recvfrom", e[1], e[2])
+    sockaddr = pack_struct_sockaddr(AF_INET, result[0], result[1])
+    result_str = pack_multiarg(struct_pack("<I",128), result[2], sockaddr)
+
+    return SuccessResponseBuilder("net_recvfrom", len(result[2]), result_str)
 
 
 def lind_safe_net_recvfrom(args):
-  """
-  """
-  result = lind_net_recvfrom(args)
+    """ Safely wrap the recvfrom call.
 
-  return result
+    See dispatcher.repy for details.
 
+    Check the file descriptor length and flags for consistancy,
+    then call the real recvfrom dispatcher.
+
+    """
+
+    sockfd = args[0]
+    length = args[1]
+    flags = args[2]
+
+    check_valid_fd_handle(sockfd)
+    assert 0 < length <= TX_BUF_MAX, "Cannot receive more than transmit buffer"
+
+    assert ((flags & MSG_PEEK) != 0) or flags == 0, "Currently no recvfrom flags are supported."
+    result = lind_net_recvfrom(args)
+
+    return result

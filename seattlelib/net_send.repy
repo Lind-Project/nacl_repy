@@ -29,12 +29,11 @@ def lind_net_send(args):
     length = args[1]
     flags = args[2]
     buf = args[3]
-
     try:
         result = send_syscall(fd, buf, flags)
     except SyscallError, e:
         return ErrorResponseBuilder("net_send", e[1], e[2])
-    
+
     return SuccessResponseBuilder("net_send", result)
 
 
