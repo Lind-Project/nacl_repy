@@ -34,8 +34,11 @@ class NaClRuntime:
       True when the process is still running, false otherwise.
 
     """  
-    return self._proc.poll() == None
-
+    if _proc != None:
+      return self._proc.poll() == None
+    else:
+      return None
+    
   def send(self, message, desc):
     """Send a message string to the Native Client instance.
 

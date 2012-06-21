@@ -39,7 +39,10 @@
   --servicelog           : Enable usage of the servicelogger for internal errors
   --safebinary           : Allow safe binaries to be run
 """
-
+profile = False
+if profile:
+  import cProfile
+  import pstats
 
 # Let's make sure the version of python is supported
 import checkpythonversion
@@ -205,7 +208,6 @@ def main(resourcefn, program, args):
 
   # Let the code string get GC'ed
   usercode = None
-
   # If we are in "simple execution" mode, execute and exit
   if simpleexec:
     main_namespace.evaluate(usercontext)
@@ -227,7 +229,14 @@ def main(resourcefn, program, args):
               "initialize' event.\n(Exception was: %s)" % e.message, 140)
  
   try:
-    main_namespace.evaluate(usercontext)
+    if profile:
+      p = cProfile.Profile()
+      p.runctx('main_namespace.evaluate(usercontext)', globals(), locals(),)
+      p = pstats.Stats(p)
+      # p.sort_stats('cumulative')
+      p.print_stats()
+    else:
+      main_namespace.evaluate(usercontext)
   except SystemExit:
     raise
   except:

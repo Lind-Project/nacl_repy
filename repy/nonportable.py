@@ -718,15 +718,17 @@ repy_process_id = None
 # will become a resource monitor
 def do_forked_resource_monitor():
   global repy_process_id
-
+  # Store the parent id
+  repy_process_id = os.getpid()
+  
   # Get a pipe
   (readhandle, writehandle) = os.pipe()
 
   # I'll fork a copy of myself
   childpid = os.fork()
 
-  if childpid == 0:
-    # We are the child, close the write end of the pipe
+  if childpid != 0:
+    # We are the parent, close the write end of the pipe
     os.close(writehandle)
 
     # Start a thread to check on the survival of the parent
@@ -737,11 +739,9 @@ def do_forked_resource_monitor():
     # We are the parent, close the read end
     os.close(readhandle)
 
-  # Store the childpid
-  repy_process_id = childpid
 
   # Start the nmstatusinterface
-  nmstatusinterface.launch(repy_process_id)
+  nmstatusinterface.launch(childpid)
   
   # Small internal error handler function
   def _internal_error(message):
@@ -755,21 +755,22 @@ def do_forked_resource_monitor():
     nmstatusinterface.stop()  
 
     # Kill repy
-    harshexit.portablekill(childpid)
+    harshexit.portablekill(repy_process_id)
 
     try:
       # Write out status information, repy was Stopped
-      statusstorage.write_status("Terminated")  
+      # statusstorage.write_status("Terminated")  
+      pass
     except:
       pass
   
   try:
     # Some OS's require that you wait on the pid at least once
     # before they do any accounting
-    (pid, status) = os.waitpid(childpid,os.WNOHANG)
+    # (pid, status) = os.waitpid(childpid,os.WNOHANG)
     
     # Launch the resource monitor, if it fails determine why and restart if necessary
-    resource_monitor(childpid, writehandle)
+    resource_monitor(repy_process_id, writehandle)
     
   except ResourceException, exp:
     # Repy exceeded its resource limit, kill it
@@ -777,20 +778,17 @@ def do_forked_resource_monitor():
     harshexit.harshexit(98)
     
   except Exception, exp:
+    while(True):
+      time.sleep(1)
     # There is some general error...
-    try:
-      (pid, status) = os.waitpid(childpid,os.WNOHANG)
-    except:
-      # This means that the process is dead
-      pass
-    
+    # (pid, status) = os.waitpid(repy_process_id, os.WNOHANG)
+      
     # Check if this is repy exiting
-    if os.WIFEXITED(status) or os.WIFSIGNALED(status):
-      sys.exit(0)
-    
-    else:
-      _internal_error(str(exp)+" Monitor death! Impolitely killing child!")
-      raise
+    #if os.WIFEXITED(status) or os.WIFSIGNALED(status):
+    #  sys.exit(0)
+    #else:
+    #  _internal_error(str(exp)+" Monitor death! Impolitely killing child!")
+    #  raise
   
 def resource_monitor(childpid, pipe_handle):
   """
