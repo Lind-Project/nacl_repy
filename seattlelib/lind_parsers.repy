@@ -7,25 +7,27 @@ This file contains parsers and packers for C structs.
 
 
 def inet_ntoa(ipaddress):
-  """
-  Convert an IP address in integer form to a presentation string
+    """
+    Convert an IP address in integer form to a presentation string
 
-  This is 
-  
-  """
-  a,b,c,d = struct_unpack("<B<B<B<B",ipaddress)
-  return str(a) + "." + str(b) + "." +str(c) + "." +str(d) 
+    This is
+
+    """
+    a, b, c, d = struct_unpack("<B<B<B<B", ipaddress)
+    return str(a) + "." + str(b) + "." + str(c) + "." + str(d)
 
 
 def inet_aton(ipaddress):
-  """
-  Convert an IP address in presentation format to its integer octet format
-  
-  """
-  return struct_unpack("<I",struct_pack("<B<B<B<B",*map(int, ipaddress.split("."))))[0]
+    """
+    Convert an IP address in presentation format to its integer octet format
+
+    """
+    return struct_unpack("<I", struct_pack("<B<B<B<B", \
+                                           *map(int, ipaddress.split("."))))[0]
 
 
 struct_sockaddr_format = '<h>H<I<Q'  # family, port, address, padding
+
 
 def parse_sockaddr_struct(sock):
     """parse a struct sockaddr, and pull out family, port, ip and padding"""
@@ -36,8 +38,7 @@ def parse_sockaddr_struct(sock):
 
 def pack_struct_sockaddr(family, ip, port):
     packed_ip = inet_aton(ip)
-    print type(port)
-    return struct_pack(struct_sockaddr_format, family, port, packed_ip, 0) 
+    return struct_pack(struct_sockaddr_format, family, port, packed_ip, 0)
 
 
 # struct pollfd {
@@ -48,20 +49,33 @@ def pack_struct_sockaddr(family, ip, port):
 
 single_struct_pollfd_fmt = "<I<h<h"
 
+
 def parse_struct_pollfds(pollfds_str, nfds):
     struct_siz = struct_calcsize(single_struct_pollfd_fmt)
     mynfds = len(pollfds_str) / struct_siz
     assert mynfds == nfds, "Struct pollfd size missmatch."
 
     def split(input, size):
-      return [input[start:start+size] for start in range(0, len(input), size)]
+        return [input[start:start + size] \
+                for start in range(0, len(input), size)]
 
     structs = split(pollfds_str, struct_siz)
-    
+
     result = map(lambda x: struct_unpack(single_struct_pollfd_fmt, x), structs)
-    result = map(lambda x: {'fd':x[0], 'events':x[1], 'revents':x[2]}, result)
-    print result
+    result = map(lambda x: {'fd': x[0],
+                            'events': x[1],
+                            'revents': x[2]},
+                 result)
     return result
+
+
+def pack_struct_pollfds(pollfds_dict, nfds):
+    format = single_struct_pollfd_fmt * nfds
+    elements = map(lambda x: (x['fd'], x['events'], x['revents']), 
+                   pollfds_dict)
+    elements = [item for sublist in elements for item in sublist]
+    return struct_pack(format, *elements)
+
 
 def pack_stat_struct(struct_tuple):
     """Given a tuple with stat fields, pack it into a string"""

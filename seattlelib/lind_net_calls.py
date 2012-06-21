@@ -214,7 +214,7 @@ def bind_syscall(fd,localip,localport):
   """ 
     http://linux.die.net/man/2/bind
   """
-
+  global usedudpportsset
   if fd not in filedescriptortable:
     raise SyscallError("bind_syscall","EBADF","The file descriptor is invalid.")
 
@@ -264,7 +264,7 @@ def bind_syscall(fd,localip,localport):
       localip = getmyip()
     udpsockobj = listenformessage(localip,localport)
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
-    
+    usedudpportsset.add(float(localport))
   
 
   # Done!   Let's set the information and bind later since Repy V2 doesn't 
@@ -309,6 +309,7 @@ def connect_syscall(fd,remoteip,remoteport):
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
     filedescriptortable[fd]['remoteip'] = remoteip
     filedescriptortable[fd]['remoteport'] = remoteport
+    rc = bind_syscall(fd, '0.0.0.0', int(_get_available_udp_port()))
     return 0
 
 
@@ -344,8 +345,8 @@ def connect_syscall(fd,remoteip,remoteport):
     filedescriptortable[fd]['localport'] = localport
     filedescriptortable[fd]['remoteip'] = remoteip
     filedescriptortable[fd]['remoteport'] = remoteport
-
     filedescriptortable[fd]['state'] = CONNECTED
+    usedtcpportsset.add(localport)
 
     # change the state and return success
     return 0
@@ -399,7 +400,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
     # If unspecified, use a new local port / the local ip
     if 'localip' not in filedescriptortable[fd]:
       localip = getmyip()
-      localport = int(_get_available_tcp_port())
+      localport = int(_get_available_udp_port())
     else:
       localip = filedescriptortable[fd]['localip']
       localport = int(filedescriptortable[fd]['localport'])
@@ -506,15 +507,11 @@ def send_syscall(fd, message, flags):
 RETRYWAITAMOUNT = .00001
 
 
-
-
-
 # Note that this call may be used by recv_syscall since they are so similar
 def recvfrom_syscall(fd,length,flags):
   """ 
     http://linux.die.net/man/2/recvfrom
   """
-  
 
   if fd not in filedescriptortable:
     raise SyscallError("recvfrom_syscall","EBADF","The file descriptor is invalid.")
@@ -585,7 +582,7 @@ def recvfrom_syscall(fd,length,flags):
     # happening.   The socket isn't bound to a valid inode,etc from what I see.
     if 'localip' not in filedescriptortable[fd]:
       raise UnimplementedError("BUG / FIXME: Should bind before using UDP to recv / recvfrom")
-
+    
 
     # get the udpsocket object...
     udpsockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
@@ -1095,6 +1092,7 @@ def _nonblock_peek_read(fd):
 
   @return False if socket will block, True if socket is ready for read. 
   """
+
   try:
     flags = O_NONBLOCK | MSG_PEEK
     data = recvfrom_syscall(fd, 1, flags)[2]
@@ -1126,7 +1124,6 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
   # if read fails with would block
   #   mark false
   # if read works, do it as a peek, so next time it won't block
-  log("Warning: Don't call this. It is still being tested!!")
 
   retval = 0
   # the bit vectors only support 1024 file descriptors, also lower FDs are not supported
@@ -1153,7 +1150,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
         retval += 1
       else:
         #sockets might block, lets check by doing a non-blocking peek read
-        if fd != 10 and _nonblock_peek_read(fd):
+        if filedescriptortable[fd]['protocol'] == IPPROTO_UDP or _nonblock_peek_read(fd):
           new_readfds.append(fd)
           retval += 1
 
@@ -1168,7 +1165,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
         new_writefds.append(fd)
         retval += 1
       else:
-        #sockets might block, lets check by doing a non-blocking peek read
+        #sockets d
         new_writefds.append(fd)
         retval += 1
         # assert not writefds, "Lind does not support socket writefds yet. FD=%d"%(fd)
@@ -1253,8 +1250,17 @@ def poll_syscall(fds, timeout):
     #print reads, writes, errors
 
     newfd = select_syscall(fd, reads, writes, errors, 0)
-    #print newfd
-    
-  return return_code
+
+    # this FD found something
+    mask = 0
+
+    if newfd[0] > 0:
+      mask = mask + (POLLIN if newfd[1] else 0)
+      mask = mask + (POLLOUT if newfd[2] else 0) 
+      mask = mask + (POLLERR if newfd[3] else 0)
+      return_code += 1
+    structpoll['revents'] = mask
+
+  return return_code, structpoll
 
 
