@@ -5,7 +5,7 @@ resource events 10
 resource filewrite 10000000
 resource fileread 10000000
 resource filesopened 5000
-resource insockets 5
+resource insockets 10
 resource outsockets 5
 resource netsend 10000
 resource netrecv 10000
