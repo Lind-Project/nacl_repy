@@ -1386,7 +1386,6 @@ def close_syscall(fd):
   """
 
   # BUG: I probably need a filedescriptortable lock to prevent race conditions
-  print "Close on", fd
   # check the fd
   if fd not in filedescriptortable:
     raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")

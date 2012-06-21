@@ -309,8 +309,13 @@ def connect_syscall(fd,remoteip,remoteport):
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
     filedescriptortable[fd]['remoteip'] = remoteip
     filedescriptortable[fd]['remoteport'] = remoteport
-    rc = bind_syscall(fd, '0.0.0.0', int(_get_available_udp_port()))
-    return 0
+    rc = 0
+    try:
+      a = filedescriptortable[fd]['localip']
+    except KeyError:
+      # if the local IP is not yet set, allocate it and bind to it.
+      rc = bind_syscall(fd, '0.0.0.0', int(_get_available_udp_port()))
+    return rc
 
 
   # it's TCP!
