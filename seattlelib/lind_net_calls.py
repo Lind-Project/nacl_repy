@@ -66,8 +66,17 @@ class UnimplementedError(Exception):
   """A call was called with arguments that are not fully implemented"""
 
 
+class CompositeSocket:
+  """This class can be used in place of a regular repy socket,
+  when you need to bind and operate on two sockets at once.
+  """
 
-
+  def __init__(self, ip1, ip2, port):
+    self.ip1 = ip1
+    self.ip2 = ip2
+    self.port = port
+    
+  
 
 
 
@@ -86,9 +95,9 @@ usabletcpportsset = getresources()[0]['connport'].copy()
 
 
 # We need a helper that gets an available port...
-# Get the first unused port and return it...
+# Get the last unused port and return it...
 def _get_available_udp_port():
-  for port in usableudpportsset:
+  for port in list(usableudpportsset)[::-1]:
     if port not in usedudpportsset:
       return port
   
@@ -99,7 +108,7 @@ def _get_available_udp_port():
 
 # A verbatim copy of the above...   It's so simple, I guess it's okay to do so
 def _get_available_tcp_port():
-  for port in usabletcpportsset:
+  for port in list(usabletcpportsset)[::-1]:
     if port not in usedtcpportsset:
       return port
   
@@ -214,6 +223,7 @@ def bind_syscall(fd,localip,localport):
   """ 
     http://linux.die.net/man/2/bind
   """
+  print "Bind:", fd, localip, localport
   global usedudpportsset
   if fd not in filedescriptortable:
     raise SyscallError("bind_syscall","EBADF","The file descriptor is invalid.")
@@ -240,6 +250,9 @@ def bind_syscall(fd,localip,localport):
     if filedescriptortable[otherfd]['domain'] != filedescriptortable[fd]['domain'] or filedescriptortable[otherfd]['type'] != filedescriptortable[fd]['type'] or filedescriptortable[otherfd]['protocol'] != filedescriptortable[fd]['protocol']:
       continue
 
+    if localip == '0.0.0.0':
+      localip = getmyip()
+
     # if they are already bound to this address / port
     if 'localip' in filedescriptortable[otherfd] and filedescriptortable[otherfd]['localip'] == localip and filedescriptortable[otherfd]['localport'] == localport:
       # is SO_REUSEPORT in effect on both? I think everyone has to set 
@@ -261,6 +274,7 @@ def bind_syscall(fd,localip,localport):
       # BUG: I need to avoid leaking sockets, so I should close the previous...
       raise UnimplementedError("I should close the previous UDP listener when re-binding")
     if localip == '0.0.0.0':
+      
       localip = getmyip()
     udpsockobj = listenformessage(localip,localport)
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
@@ -382,7 +396,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("sendto_syscall","ENOTSOCK","The descriptor is not a socket.")
 
-  if flags != 0:
+  if flags != 0 and flags != MSG_NOSIGNAL:
     raise UnimplementedError("Flags are not understood by sendto!")
 
   # if there is no IP / port, call send instead.   It will assume the other
@@ -451,8 +465,8 @@ def send_syscall(fd, message, flags):
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("send_syscall","ENOTSOCK","The descriptor is not a socket.")
 
-  if flags != 0:
-    raise UnimplementedError("Flags are not understood by send!")
+  if flags  != 0 and flags != MSG_NOSIGNAL: 
+    raise UnimplementedError("Flagss are not understood by send!")
 
   # includes NOTCONNECTED and LISTEN
   if  filedescriptortable[fd]['protocol'] == IPPROTO_TCP and filedescriptortable[fd]['state'] != CONNECTED:
@@ -782,9 +796,9 @@ def listen_syscall(fd,backlog):
 
     # BUG: I'll let anything go through for now.   I'm fairly sure there will 
     # be issues I may need to handle later.
-    #CM: this is really annoying, so for now we bind to local ip
+    # #CM: this is really annoying, so for now we bind to local ip
     if filedescriptortable[fd]['localip'] == "0.0.0.0":
-      filedescriptortable[fd]['localip'] = "127.0.0.1"
+      filedescriptortable[fd]['localip'] = getmyip()
     
     newsockobj = listenforconnection(filedescriptortable[fd]['localip'], filedescriptortable[fd]['localport'])
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(newsockobj)
@@ -947,7 +961,7 @@ def getsockopt_syscall(fd, level, optname):
       return 1
 
     if optname == SO_ERROR:
-      assert False, "returning a fake error."
+      print "Warning: returning no error because error reporting is not done correctly yet."
       tmp = filedescriptortable[fd]['errno']
       filedescriptortable[fd]['errno'] = 0
       return tmp
