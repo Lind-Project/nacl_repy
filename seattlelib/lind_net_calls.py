@@ -955,7 +955,6 @@ def getsockopt_syscall(fd, level, optname):
   """ 
     http://linux.die.net/man/2/getsockopt
   """
-
   if fd not in filedescriptortable:
     raise SyscallError("getsockopt_syscall","EBADF","The file descriptor is invalid.")
 
@@ -986,7 +985,7 @@ def getsockopt_syscall(fd, level, optname):
 
     # if the option is a stored binary option, just return it...
     if optname in STOREDSOCKETOPTIONS:
-      if filedescriptortable[fd]['options'] & optname:
+      if (filedescriptortable[fd]['options'] & optname) == optname:
         return 1
       else:
         return 0
@@ -1038,7 +1037,6 @@ def setsockopt_syscall(fd, level, optname, optval):
   """ 
     http://linux.die.net/man/2/setsockopt
   """
-
   if fd not in filedescriptortable:
     raise SyscallError("setsockopt_syscall","EBADF","The file descriptor is invalid.")
 
@@ -1061,25 +1059,26 @@ def setsockopt_syscall(fd, level, optname, optval):
 
   elif level == SOL_SOCKET:
     # this is where the work happens!!!
-
+    
     if optname == SO_ACCEPTCONN or optname == SO_TYPE or optname == SO_SNDLOWAT or optname == SO_RCVLOWAT:
       raise SyscallError("setsockopt_syscall","ENOPROTOOPT","Cannot set option using setsockopt.")
 
     # if the option is a stored binary option, just return it...
     if optname in STOREDSOCKETOPTIONS:
-      newoptions = filedescriptortable[fd]['options']
 
+      newoptions = filedescriptortable[fd]['options']
+            
       # if the value is set, unset it...
-      if newoptions & optname:
+      if (newoptions & optname) == optname:
         newoptions = newoptions - optname
+        filedescriptortable[fd]['options'] = newoptions
         return 1
 
       # now let's set this if we were told to
       if optval:
         # this value should be 1!!!   Nothing else is allowed
         assert(optval == 1)
-        newoptions = newoptions + optname
-
+        newoptions = newoptions | optname
       filedescriptortable[fd]['options'] = newoptions
       return 0
       
