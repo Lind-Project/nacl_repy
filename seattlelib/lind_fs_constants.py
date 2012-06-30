@@ -110,7 +110,7 @@ DEFAULT_METADATA_FILENAME = "lind.metadata"
 
 
 
-# convert file mode (S_) to dirent type (DT_)
+# convert file mode (S_) to dirent type (D_SIR_)
 def get_direnttype_from_mode(mode):
   if IS_DIR(mode):
     return DT_DIR

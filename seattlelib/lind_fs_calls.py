@@ -1335,12 +1335,29 @@ def IS_SOCK_DESC(fd):
     return False
 
 
+
+# BAD this is copied from net_calls, but there is no way to get it
+def _cleanup_socket(fd):
+  if 'socketobjectid' in filedescriptortable[fd]:
+    thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+    thesocket.close()
+    localport = filedescriptortable[fd]['localport']
+    _release_localport(localport, filedescriptortable[fd]['protocol'])
+    del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+    del filedescriptortable[fd]['socketobjectid']
+    
+    filedescriptortable[fd]['state'] = NOTCONNECTED
+    return 0
+
+
+
+
 # private helper that allows this to be called in other places (like dup2)
 # without changing to re-entrant locks
 def _close_helper(fd):
   # if we are a socket, we dont change disk metadata
   if IS_SOCK_DESC(fd):
-    #TODO maybe something here? Like shutdown
+    _cleanup_socket(fd)
     return 0
 
   # get the inode for the filedescriptor

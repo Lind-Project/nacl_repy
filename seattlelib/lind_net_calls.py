@@ -85,40 +85,62 @@ class CompositeSocket:
 
 # a list of udp ports already used.   This is used to help us figure out a good
 # available port
-usedudpportsset = set([])
+_usedudpportsset = set([])
 # these are the ports we possibly could use...
-usableudpportsset = getresources()[0]['messport'].copy()
+_usableudpportsset = getresources()[0]['messport'].copy()
 
 # the same for tcp...
-usedtcpportsset = set([])
-usabletcpportsset = getresources()[0]['connport'].copy()
+_usedtcpportsset = set([])
+_usabletcpportsset = getresources()[0]['connport'].copy()
 
 
 # We need a helper that gets an available port...
 # Get the last unused port and return it...
 def _get_available_udp_port():
-  for port in list(usableudpportsset)[::-1]:
-    if port not in usedudpportsset:
+  print _usableudpportsset
+  print _usedudpportsset
+  for port in list(_usableudpportsset)[::-1]:
+    if port not in _usedudpportsset:
       return port
   
   # this is probably the closest syscall.   No buffer space available...
   raise SyscallError("_get_available_udp_port","ENOBUFS","No UDP port available")
 
 
-
 # A verbatim copy of the above...   It's so simple, I guess it's okay to do so
 def _get_available_tcp_port():
-  for port in list(usabletcpportsset)[::-1]:
-    if port not in usedtcpportsset:
+  for port in list(_usabletcpportsset)[::-1]:
+    if port not in _usedtcpportsset:
       return port
   
   # this is probably the closest syscall.   No buffer space available...
   raise SyscallError("_get_available_tcp_port","ENOBUFS","No TCP port available")
 
 
+def _reserve_localport(port, protocol):
+  global _usedtcpportsset
+  global _usedudpportsset
+  
+  if protocol == IPPROTO_UDP:
+    _usedudpportsset.add(float(port))
+  elif protocol == IPPROTO_TCP:
+    _usedtcpportsset.add(float(port))  
+
+
+# give a port and protocol, return the port to that portocol's pool
+def _release_localport(port, protocol):
+  global _usedtcpportsset
+  global _usedudpportsset
+
+  if protocol == IPPROTO_UDP:
+    _usedudpportsset.remove(float(port))
+  elif protocol == IPPROTO_TCP:
+    _usedtcpportsset.remove(float(port))
+
 
 STARTINGSOCKOBJID = 0
 MAXSOCKOBJID = 1024
+
 
 # get an available socket object ID...
 def _get_next_socketobjid():
@@ -224,7 +246,6 @@ def bind_syscall(fd,localip,localport):
     http://linux.die.net/man/2/bind
   """
   print "Bind:", fd, localip, localport
-  global usedudpportsset
   if fd not in filedescriptortable:
     raise SyscallError("bind_syscall","EBADF","The file descriptor is invalid.")
 
@@ -278,7 +299,7 @@ def bind_syscall(fd,localip,localport):
       localip = getmyip()
     udpsockobj = listenformessage(localip,localport)
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
-    usedudpportsset.add(float(localport))
+    _reserve_localport(localport, filedescriptortable[fd]['protocol'])
   
 
   # Done!   Let's set the information and bind later since Repy V2 doesn't 
@@ -365,7 +386,7 @@ def connect_syscall(fd,remoteip,remoteport):
     filedescriptortable[fd]['remoteip'] = remoteip
     filedescriptortable[fd]['remoteport'] = remoteport
     filedescriptortable[fd]['state'] = CONNECTED
-    usedtcpportsset.add(localport)
+    _reserve_localport(localport, filedescriptortable[fd]['protocol'])
 
     # change the state and return success
     return 0
@@ -1057,6 +1078,17 @@ def setsockopt_syscall(fd, level, optname, optval):
 
 
 
+def _cleanup_socket(fd):
+  if 'socketobjectid' in filedescriptortable[fd]:
+    thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+    thesocket.close()
+    localport = filedescriptortable[fd]['localport']
+    _release_localport(localport, filedescriptortable[fd]['protocol'])
+    del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+    del filedescriptortable[fd]['socketobjectid']
+    
+    filedescriptortable[fd]['state'] = NOTCONNECTED
+    return 0
 
 
 
@@ -1084,15 +1116,7 @@ def setshutdown_syscall(fd, how):
   # let's shut this down...
   elif how == SHUT_RDWR:
     # BUG: need to check for duplicate entries (ala dup / dup2)
-    if 'socketobjectid' in filedescriptortable[fd]:
-      thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-      thesocket.close()
-      del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-      del filedescriptortable[fd]['socketobjectid']
-      
-    filedescriptortable[fd]['state'] = NOTCONNECTED
-    return 0
-
+    _cleanup_socket(fd)
   else:
     # BUG: I'm not exactly clear as to how to handle this...
     
