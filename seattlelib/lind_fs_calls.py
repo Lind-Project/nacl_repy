@@ -1342,7 +1342,10 @@ def _cleanup_socket(fd):
     thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
     thesocket.close()
     localport = filedescriptortable[fd]['localport']
-    _release_localport(localport, filedescriptortable[fd]['protocol'])
+    try:
+      _release_localport(localport, filedescriptortable[fd]['protocol'])
+    except KeyError:
+      pass
     del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
     del filedescriptortable[fd]['socketobjectid']
     
