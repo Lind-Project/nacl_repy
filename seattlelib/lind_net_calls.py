@@ -130,12 +130,16 @@ _usableudpportsset = map(int, getresources()[0]['messport'].copy())
 _usedtcpportsset = set([])
 _usabletcpportsset = map(int, getresources()[0]['connport'].copy())
 
+# collect all the port list operations
+_port_operations_debug = []
 
+_port_list_lock = createlock()
 # We need a helper that gets an available port...
 # Get the last unused port and return it...
 def _get_available_udp_port():
   for port in list(_usableudpportsset)[::-1]:
     if port not in _usedudpportsset:
+      _port_operations_debug.append("suggesting UDP port " + str(port))
       return port
   
   # this is probably the closest syscall.   No buffer space available...
@@ -146,7 +150,9 @@ def _get_available_udp_port():
 def _get_available_tcp_port():
   for port in list(_usabletcpportsset)[::-1]:
     if port not in _usedtcpportsset:
+      _port_operations_debug.append("suggesting TCP port " + str(port))
       return port
+
   
   # this is probably the closest syscall.   No buffer space available...
   raise SyscallError("_get_available_tcp_port","ENOBUFS","No TCP port available")
@@ -155,21 +161,42 @@ def _get_available_tcp_port():
 def _reserve_localport(port, protocol):
   global _usedtcpportsset
   global _usedudpportsset
+  
+  _port_list_lock.acquire(True)
+  status = True
+  _port_operations_debug.append("Reserving port " + str(port))
   if protocol == IPPROTO_UDP:
-    _usedudpportsset.add(port)
+    if port not in _usedudpportsset:
+      _usedudpportsset.add(port)
+    else:
+      status = False
   elif protocol == IPPROTO_TCP:
-    _usedtcpportsset.add(port)  
-
+    if port not in _usedtcpportsset:
+      _usedtcpportsset.add(port)
+    else:
+      status = False
+  _port_list_lock.release()
+  if not status:
+    print _port_operations_debug
+  return status
 
 # give a port and protocol, return the port to that portocol's pool
 def _release_localport(port, protocol):
   global _usedtcpportsset
   global _usedudpportsset
-  if protocol == IPPROTO_UDP:
-    _usedudpportsset.remove(port)
-  elif protocol == IPPROTO_TCP:
-    _usedtcpportsset.remove(port)
+  _port_list_lock.acquire(True)
+  _port_operations_debug.append("Releasing port " + str(port))
 
+  try:
+    if protocol == IPPROTO_UDP:
+      _usedudpportsset.remove(port)
+    elif protocol == IPPROTO_TCP:
+      _usedtcpportsset.remove(port)
+  except KeyError:
+    print "Warning: freeing a port which is already free.  Port is", port
+    print _port_operations_debug
+  finally:
+    _port_list_lock.release()
 
 STARTINGSOCKOBJID = 0
 MAXSOCKOBJID = 1024
@@ -288,6 +315,7 @@ def bind_syscall(fd,localip,localport):
   if 'localip' in filedescriptortable[fd]:
     raise SyscallError('bind_syscall','EINVAL',"The socket is already bound to an address")
 
+  intent_to_rebind = False
 
   # Is someone else already bound to this address?
   for otherfd in filedescriptortable:
@@ -302,22 +330,23 @@ def bind_syscall(fd,localip,localport):
     # if the protocol / domain/ type differ, ignore
     if filedescriptortable[otherfd]['domain'] != filedescriptortable[fd]['domain'] or filedescriptortable[otherfd]['type'] != filedescriptortable[fd]['type'] or filedescriptortable[otherfd]['protocol'] != filedescriptortable[fd]['protocol']:
       continue
-
+    
     # if they are already bound to this address / port
     if 'localip' in filedescriptortable[otherfd] and filedescriptortable[otherfd]['localip'] == localip and filedescriptortable[otherfd]['localport'] == localport:
       # is SO_REUSEPORT in effect on both? I think everyone has to set 
       # SO_REUSEPORT (at least this is true on some OSes.   It's OS dependent)
       if filedescriptortable[fd]['options'] & filedescriptortable[otherfd]['options'] & SO_REUSEPORT == SO_REUSEPORT:
         # all is well, continue...
-        pass
+        intent_to_rebind = True
       else:
         raise SyscallError('bind_syscall','EADDRINUSE',"Another socket is already bound to this address")
 
   # BUG (?): hmm, how should I support multiple interfaces?   I could either 
   # force them to pick the result of getmyip here or could return a different 
   # error later....   I think I'll wait.
-  _reserve_localport(localport, filedescriptortable[fd]['protocol'])
-
+  if not intent_to_rebind:
+    ret = _reserve_localport(localport, filedescriptortable[fd]['protocol'])
+    assert ret
   # If this is a UDP interface, then we should listen for udp datagrams
   # (there is no 'listen' so the time to start now)...
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
@@ -328,9 +357,7 @@ def bind_syscall(fd,localip,localport):
       udpsockobj = CompositeUDPSocket('127.0.0.1', getmyip(), localport)
     else:
       udpsockobj = listenformessage(localip, localport)
-    filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
-    _reserve_localport(localport, filedescriptortable[fd]['protocol'])
-  
+    filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj) 
 
   # Done!   Let's set the information and bind later since Repy V2 doesn't 
   # support a separate call for binding...
@@ -389,26 +416,40 @@ def connect_syscall(fd,remoteip,remoteport):
     # Am I already bound?   If not, we'll need to get an ip / port
     if 'localip' not in filedescriptortable[fd]:
       localip = getmyip()
+      
       localport = _get_available_tcp_port()
-
+      while not _reserve_localport(localport, filedescriptortable[fd]['protocol']):
+        localport = _get_available_tcp_port()
     else:
       localip = filedescriptortable[fd]['localip']
       localport = filedescriptortable[fd]['localport']
+
+
 
     try:
       # BUG: The timeout it configurable, right?
       newsockobj = openconnection(remoteip, remoteport, localip, localport, 10)
 
     except AddressBindingError, e:
+      _release_localport(localport, filedescriptortable[fd]['protocol'])
       raise SyscallError('connect_syscall','ENETUNREACH','Network was unreachable because of inability to access local port / IP')
+
     except InternetConnectivityError, e:
+      _release_localport(localport, filedescriptortable[fd]['protocol'])
       raise SyscallError('connect_syscall','ENETUNREACH','Network was unreachable because of inability to access local port / IP')
+
     except TimeoutError, e:
+      _release_localport(localport, filedescriptortable[fd]['protocol'])
       raise SyscallError('connect_syscall','ETIMEDOUT','Connection timed out')
+
     except DuplicateTupleError, e:
+      _release_localport(localport, filedescriptortable[fd]['protocol'])
       raise SyscallError('connect_syscall','EADDRINUSE','Network address in use')
+
     except ConnectionRefusedError, e:
+      _release_localport(localport, filedescriptortable[fd]['protocol'])
       raise SyscallError('connect_syscall','ECONNREFUSED','Connection refused.')
+
     # fill in the file descriptor table...
     filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(newsockobj)
     filedescriptortable[fd]['localip'] = localip
@@ -416,8 +457,6 @@ def connect_syscall(fd,remoteip,remoteport):
     filedescriptortable[fd]['remoteip'] = remoteip
     filedescriptortable[fd]['remoteport'] = remoteport
     filedescriptortable[fd]['state'] = CONNECTED
-    _reserve_localport(localport, filedescriptortable[fd]['protocol'])
-
     # change the state and return success
     return 0
 
@@ -918,7 +957,8 @@ def accept_syscall(fd):
         filedescriptortable[newfd]['state'] = CONNECTED
         filedescriptortable[newfd]['localip'] = filedescriptortable[fd]['localip']
         newport = _get_available_tcp_port()
-        _reserve_localport(newport, IPPROTO_TCP)
+        ret = _reserve_localport(newport, IPPROTO_TCP)
+        assert ret
         filedescriptortable[newfd]['localport'] = newport
         filedescriptortable[newfd]['remoteip'] = remoteip
         filedescriptortable[newfd]['remoteport'] = remoteport

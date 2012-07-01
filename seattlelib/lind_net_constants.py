@@ -51,10 +51,10 @@ AF_HYLINK = 15       # NSC Hyperchannel
 AF_APPLETALK = 16    # Apple Talk
 AF_ROUTE = 17        # Internal Routing Protocol
 AF_LINK = 18         # Link layer interface
-pseudo_AF_XTP = 19   # eXpress Transfer Protocol (no AF) 
+pseudo_AF_XTP = 19   # eXpress Transfer Protocol (no AF)
 AF_COIP = 20         # connection-oriented IP, aka ST II
 AF_CNT = 21          # Computer Network Technology
-pseudo_AF_RTIP = 22  # Help Identify RTIP packets 
+pseudo_AF_RTIP = 22  # Help Identify RTIP packets
 AF_IPX = 23          # Novell Internet Protocol
 AF_SIP = 24          # Simple Internet Protocol
 pseudo_AF_PIP = 25   # Help Identify PIP packets
@@ -130,7 +130,7 @@ IPPROTO_AH = 51         # IP6 Auth Header
 IPPROTO_INLSP = 52      # Integ. Net Layer Security
 IPPROTO_SWIPE = 53      # IP with encryption
 IPPROTO_NHRP = 54       # Next Hop Resolution
-# 55-57: Unassigned 
+# 55-57: Unassigned
 IPPROTO_ICMPV6 = 58     # ICMP6
 IPPROTO_NONE = 59       # IP6 no next header
 IPPROTO_DSTOPTS = 60    # IP6 destination option
@@ -181,7 +181,7 @@ IPPROTO_SCTP = 132      # SCTP
 IPPROTO_DIVERT = 254    # divert pseudo-protocol
 IPPROTO_RAW = 255       # raw IP packet
 IPPROTO_MAX = 256
-# last return value of *_input(), meaning "all job for this pkt is done". 
+# last return value of *_input(), meaning "all job for this pkt is done".
 IPPROTO_DONE = 257
 
 
@@ -196,7 +196,7 @@ IPPROTO_DONE = 257
 PF_UNSPEC = AF_UNSPEC
 PF_LOCAL = AF_LOCAL
 PF_UNIX = PF_LOCAL           # backward compatibility
-PF_FILE = PF_LOCAL           # used on Linux 
+PF_FILE = PF_LOCAL           # used on Linux
 PF_INET = AF_INET
 PF_IMPLINK = AF_IMPLINK
 PF_PUP = AF_PUP
@@ -279,17 +279,17 @@ SHUT_RDWR = 2
 
 ################### setsockopt / getsockopt...
 
-SO_DEBUG = 0x0001        # turn on debugging info recording 
+SO_DEBUG =      0x0001        # turn on debugging info recording
 SO_ACCEPTCONN = 0x0002   # socket has had listen()
-SO_REUSEADDR = 0x0004    # allow local address reuse
-SO_KEEPALIVE = 0x0008    # keep connections alive
-SO_DONTROUTE = 0x0010    # just use interface addresses
-SO_BROADCAST = 0x0020    # permit sending of broadcast msgs
-SO_USELOOPBACK = 0x0040  # bypass hardware when possible
-SO_LINGER = 0x0080       # linger on close if data present (in ticks)
-SO_OOBINLINE = 0x0100    # leave received OOB data in line
-SO_REUSEPORT = 0x0200    # allow local address & port reuse
-SO_TIMESTAMP = 0x0400    # timestamp received dgram traffic
+SO_REUSEADDR =  0x0004    # allow local address reuse
+SO_KEEPALIVE =  0x0008    # keep connections alive
+SO_DONTROUTE =  0x0010    # just use interface addresses
+SO_BROADCAST =  0x0020    # permit sending of broadcast msgs
+SO_USELOOPBACK =0x0040  # bypass hardware when possible
+SO_LINGER =     0x0080       # linger on close if data present (in ticks)
+SO_OOBINLINE =  0x0100    # leave received OOB data in line
+SO_REUSEPORT =  0x0200    # allow local address & port reuse
+SO_TIMESTAMP =  0x0400    # timestamp received dgram traffic
 SO_ACCEPTFILTER = 0x1000 # there is an accept filter
 SO_DONTTRUNC = 0x2000    # APPLE: Retain unread data
 SO_WANTMORE = 0x4000     # APPLE: Give hint when more data ready
@@ -332,7 +332,7 @@ TCP_NOOPT = 0x08             # don't use TCP options
 TCP_KEEPALIVE = 0x10         # idle time used when SO_KEEPALIVE is enabled
 TCP_CONNECTIONTIMEOUT = 0x20 # connection timeout
 PERSIST_TIMEOUT = 0x40       # time after which a connection in persist timeout
-                             # will terminate. 
+                             # will terminate.
                              # see draft-ananth-tcpm-persist-02.txt
 TCP_RXT_CONNDROPTIME = 0x80  # time after which tcp retransmissions will be
                              # stopped and the connection will be dropped
@@ -346,63 +346,8 @@ SOL_TCP = IPPROTO_TCP
 SOL_UDP = IPPROTO_UDP
 
 
-
-SOL_SOCKET	= 1
-
-SO_DEBUG=1
-SO_REUSEADDR=2
-SO_TYPE=3
-SO_ERROR=4
-SO_DONTROUTE=5
-SO_BROADCAST=6
-SO_SNDBUF=7
-SO_RCVBUF=8
-SO_SNDBUFFORCE=32
-SO_RCVBUFFORCE=33
-SO_KEEPALIVE=9
-SO_OOBINLINE=10
-SO_NO_CHECK=11
-SO_PRIORITY=12
-SO_LINGER=13
-SO_BSDCOMPAT=14
-SO_PASSCRED=16
-SO_PEERCRED=17
-SO_RCVLOWAT=18
-SO_SNDLOWAT=19
-SO_RCVTIMEO=20
-SO_SNDTIMEO=21
-SO_SECURITY_AUTHENTICATION=22
-SO_SECURITY_ENCRYPTION_TRANSPORT=23
-SO_SECURITY_ENCRYPTION_NETWORK=24
-SO_BINDTODEVICE=25
-
-SO_ATTACH_FILTER=26
-SO_DETACH_FILTER=27
-
-SO_PEERNAME=28
-SO_TIMESTAMP=29
-SCM_TIMESTAMP=SO_TIMESTAMP
-
-SO_ACCEPTCONN=30
-
-SO_PEERSEC=31
-SO_PASSSEC=34
-SO_TIMESTAMPNS=35
-SCM_TIMESTAMPNS=SO_TIMESTAMPNS
-
-SO_MARK=36
-
-SO_TIMESTAMPING=37
-SCM_TIMESTAMPING=SO_TIMESTAMPING
-
-SO_PROTOCOL=38
-SO_DOMAIN=39
-
-SO_RXQ_OVFL= 40
-    
-
 POLLIN = 01  # There is data to read.
-POLLPRI	= 02 #There is urgent data to read. 
+POLLPRI	= 02 #There is urgent data to read.
 POLLOUT	= 04 # Writing now will not block.
 POLLERR = 010 # Error condition.
 POLLHUP =  020 # Hung up.
