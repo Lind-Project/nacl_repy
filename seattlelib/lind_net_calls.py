@@ -55,6 +55,8 @@ LISTEN = 512
 # contains socket objects... (keyed by id)   Mostly done for dup / dup2
 socketobjecttable = {}
 
+connectedsocket = []
+
 # This is raised to return an error...   It's the same as for the file 
 # system calls
 class SyscallError(Exception):
@@ -946,7 +948,10 @@ def accept_syscall(fd):
     # now we should loop (block) until we get an incoming connection
     while True:
       try:
-        remoteip, remoteport, acceptedsocket = listeningsocket.getconnection() 
+        if connectedsocket != []:
+          remoteip, remoteport, acceptedsocket = connectedsocket.pop(0)
+        else:
+          remoteip, remoteport, acceptedsocket = listeningsocket.getconnection() 
 
       # sleep and retry
       except SocketWouldBlockError, e:
@@ -1262,10 +1267,23 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
         new_readfds.append(fd)
         retval += 1
       else:
+        #Get an interm connection and save it, so when acctually accept_syscall() is called
+        #we pass the saved the connection.
+        if filedescriptortable[fd]['state'] == LISTEN:
+          listeningsocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+          try:
+            connectedsocket.append(listeningsocket.getconnection())
+          except SocketWouldBlockError, e:
+            pass
+          else:
+            new_readfds.append(fd)
+            retval += 1
+        #If the socket is not a listener, then it should be able to read data from socket.
+        else:
         #sockets might block, lets check by doing a non-blocking peek read
-        if filedescriptortable[fd]['protocol'] == IPPROTO_UDP or _nonblock_peek_read(fd):
-          new_readfds.append(fd)
-          retval += 1
+          if filedescriptortable[fd]['protocol'] == IPPROTO_UDP or _nonblock_peek_read(fd):
+            new_readfds.append(fd)
+            retval += 1
 
     # Writes
     for fd in writefds:
