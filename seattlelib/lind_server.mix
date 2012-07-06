@@ -31,10 +31,10 @@ TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
 RX_BUF_MAX = (4096 * 4)
 
 
-# if not TRACE:
-#   def log(arg):
-#     """Turn off logging"""
-#     pass
+if not TRACE:
+  def log(arg):
+    """Turn off logging"""
+    pass
 
 
 def warning(logic, message):
@@ -62,122 +62,19 @@ def unimplemented(who):
   else:
     log("warning: " + message)
 
-
-class Response:
-  """ An Response to a RPC request.
-
-  <Purpose>
-
-  This object is responsible sending responses to specific system calls.  It is
-  loaded with data, then can build a reply struct which can then be sent back
-  to NaCl through an IMC channel.
-
-  The Response can be in one of two states, an Error response (for calls that
-  have failed somehow), or a success response. An error response has an error
-  code and a message for perror to display. A success has a return code and
-  optionally a data string.
-
-  TODO: error message is not yet displayed by perror.
-  """
-  message = "No error message set"
-  data = ""
-
-  def __init__(self, response_type, is_error, return_code):
-    assert isinstance(response_type, str), "response type is not a string"
-    self.response_type = response_type
-    assert isinstance(is_error, bool), "is error is not a boolean"
-    self.is_error = is_error
-
-    if isinstance(return_code, str):
-      try:
-        self.return_code = curr_comp()[ERRNO][return_code]
-      except KeyError:
-        raise Exception("Return code is not a valid error number.")
-    elif isinstance(return_code, int):
-      self.return_code = return_code
-    else:
-      raise Exception("Invalid return code.")
-    assert isinstance(self.return_code, int), \
-           "return code is not a int, or a stirng which mapped to an int"
-
-  def make_struct(self):
-    """
-    <Purpose>
-
-    Get the representation of this Response in struct format.  A struct is a
-    string, which when sent to C can be cast as a struct and used nativly.
-    The struct format is iiii123s, wich is:
-    struct {
-        int message_len;
-        int magic_number;
-        int is_in_error;
-        int return_or_error_code;
-        char data_or_message[];
-    };
-
-    """
-    reply = None
-    if self.is_error:
-      # message format <size, magic, is_error, code, message>
-      reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", \
-                          len(self.message) + 16, \
-                          101010, 1, self.return_code,\
-                          self.message)
-    else:
-      # message format <size, magic, is_error, code, data>
-      reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", \
-                          len(self.data) + 16, 101010, 0, self.return_code,\
-                          self.data)
-    return reply
-
-  def __str__(self):
-    """Human readable format for debugging"""
-    if self.is_error:
-      type_str = "Error"
-    else:
-      type_str = "Success"
-    return type_str + " in " + self.response_type + " with code " + \
-           str(self.return_code) + " with data of size " + str(len(self.data))\
-           + " with data " + str(self.data)
-
-
-def ErrorResponseBuilder(who, code, message):
-  """ Build an error response object.
-
-  <Arguments>
-   who: Which portion of the system or system call is making this reply.
-   code: Positive error code to return, or string from errno.h to resolve
-   to a number.
-
-   message: A detailed message about the error.
-   """
-  r = Response(who, True, code)
-  r.message = message
-  return r
-
-
-def SuccessResponseBuilder(who, code, data=None):
-  """Build an success response object.
-
-  <Arugments>
-     who: Which portion of the system or system call is making this reply.
-     code: the integer return code to return.
-     data: the data this call returns (as a string), if any.
-  """
-  r = Response(who, False, code)
-  if data != None:
-    r.data = data
-  return r
-
-
-def check_valid_fd_handle(num):
-  assert isinstance(num, int)
-  assert (10 <= num <= MAX_FD), "invalid handle %d" % num
+include lind_rpc.repy
 
 
 include lind_parsers.repy
 
 include lind_fs_constants.py
+
+def check_valid_fd_handle(num):
+  assert isinstance(num, int)
+  assert (STARTINGFD <= num <= MAX_FD), "invalid handle %d" % num
+
+
+
 
 include lind_net_constants.py
 
@@ -437,6 +334,9 @@ def launch_helper(instance, num):
   createthread(closure)
 
 def _check_file(name):
+  if name.startswith("/"):
+    raise FileNotFoundError("Cannot open files from full path")
+
   if name.startswith("./"):
     cleanname = name[2:]
   else:
