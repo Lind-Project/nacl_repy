@@ -100,6 +100,8 @@ PATH_MAX = 4096
 
 #largest file descriptor
 MAX_FD = 1024
+STARTINGFD = 10
+
 
 # for dirents...
 

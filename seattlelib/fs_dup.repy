@@ -46,7 +46,7 @@ def lind_safe_fs_dup(args):
     handle = args[0]
 
     # Make sure this is not one of the reserved handles we use for libraries
-    if handle <= 10:
+    if handle <= STARTINGFD:
         log("Warning: low file handles are not supported in Lind dup.")
 
     return lind_fs_dup(args)

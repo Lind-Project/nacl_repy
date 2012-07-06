@@ -933,14 +933,11 @@ def _istat_helper(inode):
 ##### OPEN  #####
 
 
-STARTINGFD = 10
-MAXFD = 1024
-
 # get the next free file descriptor
 def get_next_fd():
   # let's get the next available fd number.   The standard says we need to 
   # return the lowest open fd number.
-  for fd in range(STARTINGFD, MAXFD):
+  for fd in range(STARTINGFD, MAX_FD):
     if not fd in filedescriptortable:
       return fd
 
@@ -1443,7 +1440,7 @@ def _dup2_helper(oldfd,newfd):
   # if the new file descriptor is too low or too high
   # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
   #      The Lind code may pass me descriptors less than STARTINGFD
-  if newfd >= MAXFD or newfd < 0:
+  if newfd >= MAX_FD or newfd < 0:
     # BUG: the STARTINGFD isn't really too low.   It's just lower than we
     # support
     raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
@@ -1502,7 +1499,7 @@ def dup_syscall(fd):
 
 
   # check the fd
-  if fd not in filedescriptortable and fd >= 10:
+  if fd not in filedescriptortable and fd >= STARTINGFD:
     raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
 
   # Acquire the fd lock...

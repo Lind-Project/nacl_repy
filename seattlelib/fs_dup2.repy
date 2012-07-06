@@ -31,7 +31,7 @@ def lind_fs_dup2(args):
     handle = args[0]
     handle2 = args[1]
 
-    if handle <= 10 or handle2 <= 10:
+    if handle <= STARTINGFD or handle2 <= STARTINGFD:
         print "Warning: low file handles are not supported in Lind dup2(", \
               handle, handle2, ")"
 
