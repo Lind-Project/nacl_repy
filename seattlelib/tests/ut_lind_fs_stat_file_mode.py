@@ -21,3 +21,6 @@ stat_result2 = lind_test_server.stat_syscall('/foo2')
 
 # ensure the mode is a regular file with all bits off.
 assert(stat_result2[2] == S_IFREG)
+
+stat_result = lind_test_server.stat_syscall('.')
+
