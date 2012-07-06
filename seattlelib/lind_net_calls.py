@@ -1244,9 +1244,10 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
   # if read works, do it as a peek, so next time it won't block
 
   retval = 0
+
   # the bit vectors only support 1024 file descriptors, also lower FDs are not supported
-  if nfds < 10 or nfds > 1024:
-    raise SyscallError("select_syscall","EINVAL","number of FDs is wrong.")
+  if nfds < STARTINGFD or nfds > MAX_FD:
+    raise SyscallError("select_syscall","EINVAL","number of FDs is wrong: %s"%(str(nfds)))
 
   new_readfds = []
   new_writefds = []
@@ -1362,7 +1363,6 @@ def poll_syscall(fds, timeout):
   return_code = 0
 
   reply = []
-
   for structpoll in fds:
     fd = structpoll['fd']
     events = structpoll['events']
@@ -1378,8 +1378,7 @@ def poll_syscall(fds, timeout):
       writes.append(fd)
     if err:
       errors.append(fd)
-    #print reads, writes, errors
-
+    
     newfd = select_syscall(fd, reads, writes, errors, 0)
 
     # this FD found something
@@ -1391,7 +1390,6 @@ def poll_syscall(fds, timeout):
       mask = mask + (POLLERR if newfd[3] else 0)
       return_code += 1
     structpoll['revents'] = mask
-
-  return return_code, structpoll
+  return return_code, fds
 
 

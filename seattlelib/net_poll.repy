@@ -35,7 +35,7 @@ def lind_net_poll(args):
     except SyscallError, e:
         return ErrorResponseBuilder("net_poll", e[1], e[2])
 
-    data = pack_struct_pollfds([result[1]], nfds)
+    data = pack_struct_pollfds(result[1], nfds)
 
     return SuccessResponseBuilder("net_poll", result[0], data)
 
