@@ -1663,3 +1663,33 @@ def getdents_syscall(fd,quantity):
     filedescriptortable[fd]['lock'].release()
 
 
+
+#### CHMOD ####
+
+
+def chmod_syscall(path, mode):
+  """
+    http://linux.die.net/man/2/chmod
+  """
+  # in an abundance of caution, I'll grab a lock...
+  filesystemmetadatalock.acquire(True)
+
+  # ... but always release it...
+  try:
+    truepath = _get_absolute_path(path)
+
+    # is the path there?
+    if truepath not in fastinodelookuptable:
+      raise SyscallError("chmod_syscall", "ENOENT", "The path does not exist.")
+
+    thisinode = fastinodelookuptable[truepath]
+
+    # be sure there aren't extra mode bits... No errno seems to exist for this
+    assert(mode & S_IRWXA == mode)
+
+    # should overwrite any previous permissions, according to POSIX
+    filesystemmetadata['inodetable'][thisinode]['mode'] = S_IFREG + mode
+
+  finally:
+    persist_metadata(METADATAFILENAME)
+    filesystemmetadatalock.release()
