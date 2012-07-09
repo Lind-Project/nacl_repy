@@ -1224,7 +1224,9 @@ def _nonblock_peek_read(fd):
   except SocketClosedRemote, e:
     return False
 
-  if len(data) == 1:
+  if len(data) == 1: #return True, if data is present...
+    return True
+  elif len(data) == 0: #return True, since it tells that remote socket is closed...
     return True
   else:
     return False
@@ -1268,7 +1270,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
         new_readfds.append(fd)
         retval += 1
       else:
-        #Get an interm connection and save it, so when acctually accept_syscall() is called
+        #Get an interim connection and save it, so when actual accept_syscall() is called
         #we pass the saved the connection.
         if filedescriptortable[fd]['state'] == LISTEN:
           listeningsocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
@@ -1378,7 +1380,7 @@ def poll_syscall(fds, timeout):
       writes.append(fd)
     if err:
       errors.append(fd)
-    
+
     newfd = select_syscall(fd, reads, writes, errors, 0)
 
     # this FD found something
