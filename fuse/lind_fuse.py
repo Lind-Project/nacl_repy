@@ -14,10 +14,11 @@ import stat
 # add repy install path to script
 path = os.getenv("REPY_PATH")
 if path == None:
-    print "Error: REPY_PATH enviroment variable must be set, using default"
-    path = "/home/lind/tmp/lind/"
+    print "Warning: REPY_PATH enviroment variable must be set, using default"
+    path = "."
+else:
+    path = os.path.join(path, "repy/")
 
-path = os.path.join(path, "repy/")
 sys.path.append(path)
 
 
@@ -34,6 +35,7 @@ try:
     import _find_fuse_parts
 except ImportError:
     pass
+
 import fuse
 from fuse import Fuse
 
