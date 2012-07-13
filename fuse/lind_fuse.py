@@ -14,8 +14,9 @@ import stat
 # add repy install path to script
 path = os.getenv("REPY_PATH")
 if path == None:
-    print "Warning: REPY_PATH enviroment variable must be set, using default"
-    path = "."
+    (path, name) = os.path.split(os.path.abspath(__file__))
+    print path
+    os.putenv("REPY_PATH", path) 
 else:
     path = os.path.join(path, "repy/")
 
