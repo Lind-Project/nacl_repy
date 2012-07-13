@@ -486,6 +486,10 @@ class LindFuseFS(Fuse):
 
 
 def main():
+    global LOGGING
+
+    if "-v" in sys.argv or "--verbose" in sys.argv:
+        LOGGING = True
 
     usage = """
 Lind Fuse File System.
@@ -500,10 +504,15 @@ Lind Fuse File System.
                  dash_s_do='setsingle')
 
     server.multithreaded = False  # if this is true, better add some locks!
+    
+    server.parser.add_option("-v", "--verbose",
+                             action="store_true", dest="verbose", default=False,
+                             help="print extra information about what system calls are being called.")
 
     server.parser.add_option(mountopt="root", metavar="PATH", default='/',
                              help="mirror filesystem from under PATH [default: %default]")
     server.parse(values=server, errex=1)
+
     server.main()
     lind.persist_metadata("lind.metadata")
 
