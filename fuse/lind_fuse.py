@@ -276,7 +276,7 @@ class LindFuseFS(Fuse):
 
     def readlink(self, path):
         log("readlink (unimplemented)", path)
-        return errno["ENOSYS"]
+        return -errno["ENOSYS"]
 
 
     def readdir(self, path, offset):
@@ -291,7 +291,7 @@ class LindFuseFS(Fuse):
 
     def unlink(self, path):
         log("unlink (unimplemented)", path)
-        return errno["ENOSYS"]
+        return -errno["ENOSYS"]
 
 
     def rmdir(self, path):
@@ -314,7 +314,7 @@ class LindFuseFS(Fuse):
 
     def rename(self, path, path1):
         log("rename (unimplemented)", path, path1)
-        return errno["ENOSYS"]
+        return -errno["ENOSYS"]
 
 
     def link(self, path, path1):
@@ -328,22 +328,22 @@ class LindFuseFS(Fuse):
 
     def chmod(self, path, mode):
         log("chmod (unimplemented)", path, hex(mode))
-        return errno["ENOSYS"]
+        return -errno["ENOSYS"]
 
 
     def chown(self, path, user, group):
         log("chown (unimplemented)", path, user, group)
-        return errno["ENOSYS"]
+        return -errno["ENOSYS"]
 
 
     def truncate(self, path, len):
         log("truncate (unimplemented)", path, len)
-        return errno["ENOSYS"]
+        return -errno["ENOSYS"]
 
 
     def mknod(self, path, mode, dev):
         log("mknod (unimplemented)", path, mode, dev)
-        return errno["ENOSYS"]
+        return -errno["ENOSYS"]
 
 
     def mkdir(self, path, mode):
