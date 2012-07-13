@@ -12,23 +12,26 @@ import stat
 # can import the lind_test_server
 
 # add repy install path to script
-path = os.getenv("REPY_PATH")
+repy_path = os.getenv("REPY_PATH")
 
-if path == None:
-    (path, name) = os.path.split(os.path.abspath(__file__))
-    os.environ['REPY_PATH'] = path 
+if repy_path == None:
+    # if not set, use the location of this file.
+    (lind_fuse_path, name) = os.path.split(os.path.abspath(__file__))
+    os.environ['REPY_PATH'] = lind_fuse_path
+    code_path = lind_fuse_path
 else:
-    path = os.path.join(path, "repy/")
+    # If it is set, use the standard lind path
+    code_path = os.path.join(repy_path, "repy/")
 
-sys.path.append(path)
+sys.path.append(code_path)
 
 
 # change dir so the execfile in test server works
-cur = os.getcwd()
-os.chdir(path)
+pwd = os.getcwd()
+os.chdir(code_path)
 import lind_test_server as lind
 # and now back to where we started.
-os.chdir(cur)
+os.chdir(pwd)
 
 
 # pull in some spaghetti to make this stuff work without fuse-py being installed
@@ -220,7 +223,7 @@ class LindFileStatFS(fuse.Stat):
     """File system attributes.
 
     See man statfs and fstatfs.
-    
+
     http://linux.die.net/man/2/fstatfs
 
     """
@@ -254,7 +257,7 @@ class LindFuseFS(Fuse):
         devid, inode, mode, linkcount, uid, gid, rdev,size, blocksize, blocks, \
                atime, atimens, mtime, mtimens, ctime, ctimens = stats
         st = LindFileStat()
-        
+
         # treat root specially
         if path == '/':
             st.st_mode = stat.S_IFDIR | 0755
@@ -452,20 +455,16 @@ class LindFuseFS(Fuse):
             devid, inode, mode, linkcount, uid, gid, rdev,size, blocksize, blocks, \
                 atime, atimens, mtime, mtimens, ctime, ctimens = stats
             st = LindFileStat()
-            if path == '/':
-                st.st_mode = stat.S_IFDIR | 0755
-                st.st_nlink = 2
-            else:
-                st.st_mode = mode # stat.S_IFREG | 0444
-                st.st_nlink = linkcount
-                st.st_size = size
-                st.st_dev = devid
-                st.st_uid = uid
-                st.st_gid = gid
-                st.st_ino = inode
-                st.st_atime = atime
-                st.st_ctime = ctime
-                st.st_mtime = mtime
+            st.st_mode = mode # stat.S_IFREG | 0444
+            st.st_nlink = linkcount
+            st.st_size = size
+            st.st_dev = devid
+            st.st_uid = uid
+            st.st_gid = gid
+            st.st_ino = inode
+            st.st_atime = atime
+            st.st_ctime = ctime
+            st.st_mtime = mtime
 
             return st
 
@@ -504,7 +503,7 @@ Lind Fuse File System.
                  dash_s_do='setsingle')
 
     server.multithreaded = False  # if this is true, better add some locks!
-    
+
     server.parser.add_option("-v", "--verbose",
                              action="store_true", dest="verbose", default=False,
                              help="print extra information about what system calls are being called.")
