@@ -59,7 +59,7 @@ import os
 
 repy_loc = os.getenv("REPY_PATH")
 if repy_loc == None:
-    print sys.stderr >> "[Lind] $REPY_PATH not set. Exiting."
+    print "[Lind] $REPY_PATH not set. Exiting."
     sys.exit(1)
 
 NACL_PATH = repy_loc
