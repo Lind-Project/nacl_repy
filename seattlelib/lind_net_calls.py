@@ -1233,7 +1233,7 @@ def _nonblock_peek_read(fd):
     # assert False, "Should never here here! data:%s"%(data)
 
 
-def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, notimer=False):
+def select_syscall(nfds, readfds, writefds, exceptfds, time):
   """ 
     http://linux.die.net/man/2/select
   """
@@ -1246,7 +1246,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
   # if read works, do it as a peek, so next time it won't block
 
   retval = 0
-
+  
   # the bit vectors only support 1024 file descriptors, also lower FDs are not supported
   if nfds < STARTINGFD or nfds > MAX_FD:
     raise SyscallError("select_syscall","EINVAL","number of FDs is wrong: %s"%(str(nfds)))
@@ -1256,7 +1256,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
   new_exceptfds = []
 
   start_time = getruntime()
-  end_time = start_time + time
+  end_time = start_time + (time if time != None else -1)
   while True:
 
     # Reads
@@ -1307,11 +1307,11 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking=False, 
     # Excepts
     assert not exceptfds, "Lind does not support exceptfds yet."
 
-    # Only check once if we are non-blocking (passed a 0)
-    # loop forever if we are notimer (pass a null)
-    # or loop until we go past the end time
+    # if the timeout is given as null or negative value, block forever until 
+    # an event has occured, if timeout is provided as zero, return immediatly.
+    # if positive time provided, wait until time expires and return
     
-    if retval != 0 or nonblocking or (not notimer and getruntime() >= end_time):
+    if retval != 0 or time == 0 or (getruntime() >= end_time and time > 0):
       break
     else:
       sleep(RETRYWAITAMOUNT)
@@ -1364,34 +1364,42 @@ def poll_syscall(fds, timeout):
 
   return_code = 0
 
-  reply = []
-  for structpoll in fds:
-    fd = structpoll['fd']
-    events = structpoll['events']
-    read = events & POLLIN > 0 
-    write = events & POLLOUT > 0 
-    err = events & POLLERR > 0
-    reads = []
-    writes = []
-    errors = []
-    if read:
-      reads.append(fd)
-    if write:
-      writes.append(fd)
-    if err:
-      errors.append(fd)
+  endtime = getruntime() + timeout
+  while True:
+    for structpoll in fds:
+      fd = structpoll['fd']
+      events = structpoll['events']
+      read = events & POLLIN > 0 
+      write = events & POLLOUT > 0 
+      err = events & POLLERR > 0
+      reads = []
+      writes = []
+      errors = []
+      if read:
+        reads.append(fd)
+      if write:
+        writes.append(fd)
+      if err:
+        errors.append(fd)
 
-    newfd = select_syscall(fd, reads, writes, errors, 0)
+      #select with timeout set to zero, acts as a poll... 
+      newfd = select_syscall(fd, reads, writes, errors, 0)
+      
+      # this FD found something
+      mask = 0
 
-    # this FD found something
-    mask = 0
+      if newfd[0] > 0:
+        mask = mask + (POLLIN if newfd[1] else 0)
+        mask = mask + (POLLOUT if newfd[2] else 0) 
+        mask = mask + (POLLERR if newfd[3] else 0)
+        return_code += 1
+      structpoll['revents'] = mask
 
-    if newfd[0] > 0:
-      mask = mask + (POLLIN if newfd[1] else 0)
-      mask = mask + (POLLOUT if newfd[2] else 0) 
-      mask = mask + (POLLERR if newfd[3] else 0)
-      return_code += 1
-    structpoll['revents'] = mask
+    #if timeout is a negative value, then poll should run indefinitely
+    #until there's an event in one of the descriptors.
+    if (getruntime() > endtime and timeout >= 0) or return_code != 0:
+      break
+    else:
+      sleep(RETRYWAITAMOUNT)
+
   return return_code, fds
-
-

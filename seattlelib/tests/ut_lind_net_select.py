@@ -19,7 +19,7 @@ lind_test_server._blank_fs_init()
 #Create a file, to read/write using select.
 filefd = lind_test_server.open_syscall('/foo.txt', O_CREAT | O_EXCL | O_RDWR, S_IRWXA)
  
-#Create a socket, to handle incomming connections.
+#Create 3 socket, one for server and two client sockets.
 serversockfd = lind_test_server.socket_syscall(AF_INET, SOCK_STREAM, 0)
 clientsockfd = lind_test_server.socket_syscall(AF_INET, SOCK_STREAM, 0)
 client2sockfd = lind_test_server.socket_syscall(AF_INET, SOCK_STREAM, 0)
@@ -28,8 +28,8 @@ client2sockfd = lind_test_server.socket_syscall(AF_INET, SOCK_STREAM, 0)
 lind_test_server.bind_syscall(serversockfd, '127.0.0.1', 50300)
 lind_test_server.listen_syscall(serversockfd, 4)
 
-#Will contain list of sockets that select needs to watch for. The first is
-#the server socket for handling incomming new connections.
+#Will contain list of sockets that select needs to watch for. By default we
+#provide server socket and file, new sockets will be added to monitor by server. 
 inputs = [serversockfd, filefd]
 outputs = [filefd]
 excepts = []
@@ -42,8 +42,7 @@ def process_request():
   while True:
     #Pass list of Inputs, Outputs for select which returns if any activity
     #occurs on any socket.
-    ret = lind_test_server.select_syscall(11, inputs, outputs, excepts, 0, \
-      notimer=True)
+    ret = lind_test_server.select_syscall(11, inputs, outputs, excepts, 5)
 
     #Check for any activity in any of the Input sockets...
     for sock in ret[1]:
@@ -54,9 +53,10 @@ def process_request():
         inputs.append(newsockfd[2])
       #Write to a file...
       elif sock is filefd:
-        assert lind_test_server.write_syscall(filefd, 'test') == 4, \
+        emultimer.sleep(1)
+        assert lind_test_server.write_syscall(sock, 'test') == 4, \
           "Failed to write into a file..."
-        lind_test_server.lseek_syscall(filefd,0,SEEK_SET)
+        lind_test_server.lseek_syscall(sock, 0, SEEK_SET)
         inputs.remove(sock)
       #If the socket is in established conn., then we recv the data, if
       #there's no data, then close the client socket.
@@ -67,7 +67,9 @@ def process_request():
           #We make the ouput ready, so that it sends out data... 
           if sock not in outputs:
             outputs.append(sock)
-        else:          
+        else:         
+          #No data means remote socket closed, hence close the client socket
+          #in server, also remove this socket from readfd's. 
           lind_test_server.close_syscall(sock)
           inputs.remove(sock)
     
@@ -76,9 +78,12 @@ def process_request():
       if sock is filefd:
         assert lind_test_server.read_syscall(sock, 4) == "test", \
           "Failed to read from a file..."
+        #test for file finished, remove from monitoring.
         outputs.remove(sock)
       else:
         lind_test_server.send_syscall(sock, data, 0)
+        #Data is sent out this socket, it's no longer ready for writing
+        #remove this socket from writefd's. 
         outputs.remove(sock)
 
   lind_test_server.close_syscall(serversockfd)
