@@ -1611,7 +1611,7 @@ def fcntl_syscall(fd, cmd, *args):
 
 
 
-def getdents_syscall(fd,quantity):
+def getdents_syscall(fd, quantity):
   """ 
     http://linux.die.net/man/2/getdents
   """
@@ -1623,6 +1623,14 @@ def getdents_syscall(fd,quantity):
   # check the fd
   if fd not in filedescriptortable:
     raise SyscallError("getdents_syscall","EBADF","Invalid file descriptor.")
+
+  # Sanitizing the Input, there are people who would send other types too.
+  if not isinstance(quantity, (int, long)):
+    raise SyscallError("getdents_syscall","EINVAL","Invalid type for buffer size.")
+
+  # This is the minimum number of bytes, that should be provided.
+  if quantity < 24:
+    raise SyscallError("getdents_syscall","EINVAL","Buffer size is too small.")
 
   # Acquire the fd lock...
   filedescriptortable[fd]['lock'].acquire(True)
@@ -1638,23 +1646,30 @@ def getdents_syscall(fd,quantity):
       raise SyscallError("getdents_syscall","EINVAL","File descriptor does not refer to a directory.")
       
     returninodefntuplelist = []
-    currentquantity = 0
+    bufferedquantity = 0
 
     # let's move the position forward...
     startposition = filedescriptortable[fd]['position']
-
     # return tuple with inode, name, type tuples...
     for entryname,entryinode in list(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems())[startposition:]:
-      if currentquantity >= quantity:
-        break
-
       # getdents returns the mode also (at least on Linux)...
       entrytype = get_direnttype_from_mode(filesystemmetadata['inodetable'][entryinode]['mode'])
-      returninodefntuplelist.append((entryinode,entryname,entrytype))
-      currentquantity=currentquantity + 1
+
+      # Get the size of each entry, the size should be a multiple of 8.
+      # The size of each entry is determined by sizeof(struct linux_dirent) which is 20 bytes plus the length of name of the file.
+      # So, size of each entry becomes : 21 => 24, 26 => 32, 32 => 32.
+      currentquantity = (((20 + len(entryname)) + 7) / 8) * 8
+
+      # This is the overall size of entries parsed till now, if size exceeds given size, then stop parsing and return
+      bufferedquantity += currentquantity
+      if bufferedquantity > quantity:
+        break
+
+      returninodefntuplelist.append((entryinode, entryname, entrytype, currentquantity))
 
     # and move the position along.   Go no further than the end...
-    filedescriptortable[fd]['position'] = min(startposition+quantity, len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict']))
+    filedescriptortable[fd]['position'] = min(startposition + len(returninodefntuplelist),\
+      len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict']))
     
     return returninodefntuplelist
 
