@@ -2,20 +2,21 @@
 
 include struct.repy
 
+
 def test_struct():
 
   # let's try some valid pack / unpack of things first
-  a = struct_pack('0s!i!2I10s0s','',-1,2,123,'helloworld','')
+  a = struct_pack('0s!i!2I10s0s', '', -1, 2, 123, 'helloworld', '')
 
-  result = struct_unpack('0s!i!2I10s0s',a)
+  result = struct_unpack('0s!i!2I10s0s', a)
 
-  if result != ['',-1,2,123,"helloworld",'']:
-    print result,'does not match expected value'
+  if result != ['', -1, 2, 123, "helloworld", '']:
+    print result, 'does not match expected value'
 
   # integer boundary conditions
-  a = struct_pack('!I!I!i!i',0, 2**32-1, -2**31, -1)
+  a = struct_pack('!I!I!i!i', 0, 2**32-1, -2**31, -1)
 
-  result = struct_unpack('!I!I!i!i',a)
+  result = struct_unpack('!I!I!i!i', a)
 
   if result != [0,2**32-1, -2**31, -1L]:
     print result,'does not match expected value', [0,2**32-1, -2**31, -1]
@@ -27,10 +28,18 @@ def test_struct():
   assert('\x00\x00\x00\x01' == struct_pack('>i',1))
   assert('\x01\x00\x00\x00' == struct_pack('<i',1))
 
-###### PACK ERROR TESTS !!!#####
+  # None tests
+  assert [None] == struct_unpack("P", '\x00\x00\x00\x00\x00\x00\x00\x00'), "Simple None unpack"
+  assert [1,None,1] == struct_unpack("<iP<i", '\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00'), "Complex None unpack"
+
+  val =  struct_unpack("P", '\x00\x00\x00\x00\x00\x00\x00\x01')
+  assert [hex(1)] == val,  "Simple pointer type: %s"%(str(val))
+  
+
+  ###### PACK ERROR TESTS !!!#####
 
   try:
-    bad =  struct_pack('10s','helloworld!')  # too long
+    bad = struct_pack('10s','helloworld!')  # too long
   except Exception, e:
     pass
   else:
@@ -50,14 +59,12 @@ def test_struct():
   else:
     print "bad",bad
 
-
   try:
     bad =  struct_pack('!i',-2**31-1)  # too small
   except Exception, e:
     pass
   else:
     print "bad",bad
-
 
   try:
     bad =  struct_pack('!I',-1)  # too small
@@ -66,15 +73,12 @@ def test_struct():
   else:
     print "bad",bad
 
-
   try:
     bad =  struct_pack('!I',2**32)  # too big
   except Exception, e:
     pass
   else:
     print "bad",bad
-
-
 
   try:
     bad =  struct_pack('I',22)  # no endianness
@@ -83,16 +87,12 @@ def test_struct():
   else:
     print "bad",bad
 
-
-
-
   try:
     bad =  struct_pack('2s1s','hi')  # missing arg
   except Exception, e:
     pass
   else:
     print "bad",bad
-
 
   try:
     bad =  struct_pack('2s1s','hi','a','b')  # extra arg
@@ -101,12 +101,7 @@ def test_struct():
   else:
     print "bad",bad
 
-
-
-
-###### UNPACK ERROR TESTS!!!#####
-
-
+  ###### UNPACK ERROR TESTS!!!#####
 
   try:
     bad =  struct_unpack('2s1s','hiab')  # extra data
@@ -115,17 +110,12 @@ def test_struct():
   else:
     print "bad",bad
 
-
-
-
   try:
     bad =  struct_pack('2s1s','hi')  # not enough
   except Exception, e:
     pass
   else:
     print "bad",bad
-
-
 
   try:
     bad =  struct_pack('!i','\x00\x00\x00')  # not enough
@@ -134,8 +124,6 @@ def test_struct():
   else:
     print "bad",bad
 
-
-
   try:
     bad =  struct_pack('!i','\x00\x00\x00\x00\x00')  # too much
   except Exception, e:
@@ -143,16 +131,12 @@ def test_struct():
   else:
     print "bad",bad
 
-
-
   try:
     bad =  struct_pack('i','\x00\x00\x00\x00')  # no endianness
   except Exception, e:
     pass
   else:
     print "bad",bad
-
-
 
 
 test_struct()

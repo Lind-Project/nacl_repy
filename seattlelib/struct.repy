@@ -339,11 +339,10 @@ def struct_unpack(formatstring, packedstring):
   if type(packedstring) != str:
     raise TypeError("Packed string must have type str, not '"+str(type(packedstring))+"'")
 
-
   # let's check the size and see if this matches.   We also check the format
   # and endianness at the same time.
   expectedpackedstringlength = struct_calcsize(formatstring)
-
+  
   if expectedpackedstringlength != len(packedstring):
     raise ValueError("Expected packed string of length "+str(expectedpackedstringlength)+", got "+str(len(packedstring)))
 
@@ -351,11 +350,12 @@ def struct_unpack(formatstring, packedstring):
   currentformatstring = formatstring
   currentpackedstring = packedstring
 
+
   # this will be built as we go
   retlist = []
 
-  while currentformatstring and currentpackedstring:
-
+  # keep going while there are tokens to consume, or None's (which dont have packed space)
+  while (currentformatstring and currentpackedstring):
     #### Get the endianness! ###
 
     endianness = "none"
@@ -383,6 +383,8 @@ def struct_unpack(formatstring, packedstring):
     if repeatcountstring:
       repeatcount = int(repeatcountstring)
     
+
+ 
 
 
     #### Handle the type! ###
@@ -517,8 +519,27 @@ def struct_unpack(formatstring, packedstring):
 
         # and append it.
         retlist.append(thisnumber)
-        
 
+        # Pointer
+      elif typetounpack == 'P':
+        # shouldn't happen because we checked above
+        assert(endianness == "none")
+        assert(len(currentpackedstring) >= 8)
+  
+ 
+        thisnumberstring = currentpackedstring[:8]
+ 
+        currentpackedstring = currentpackedstring[8:]
+
+        # okay, so now we have the big-endian description...
+        thisnumber = _convert_big_endian_string_to_number(thisnumberstring)
+
+        # NULL -> None, and Any other number will be in hex
+        if thisnumber == 0:
+          retlist.append(None)
+        else:
+          retlist.append(hex(thisnumber))
+ 
       else:
         raise TypeError("Unknown format type '"+typetounpack+"'")
     
@@ -532,7 +553,8 @@ def struct_unpack(formatstring, packedstring):
 
   # all done, did everything get consumed?
   if currentformatstring:
-    raise ValueError("Not enough arguments for formatstring in struct.unpack")
+    raise ValueError("Not enough arguments for formatstring in struct.unpack,\
+remains: %s"%(currentformatstring))
 
   if currentpackedstring:
     raise ValueError("Too many arguments for formatstring in struct.unpack")
@@ -656,6 +678,19 @@ def struct_calcsize(formatstring):
       # add the size of an integer + the number of integers
       currentlength += 8 * repeatcount
 
+    # Pointer!!!
+    elif typetounpack == 'P':
+
+      if specifiesendianness:
+        raise ValueError("An pointer must not have endianness specified! (position "+str(position)+" of '"+formatstring+"')")
+
+      # add the size of an integer + the number of integers
+      currentlength += 8 * repeatcount
+
+    elif typetounpack == 'N' or typetounpack == 'n':
+      # None does not take any extra space
+      pass
+    
 
     else:
       raise TypeError("Unknown format type '"+typetounpack+"' at (position "+str(position)+" of '"+formatstring+"')")
