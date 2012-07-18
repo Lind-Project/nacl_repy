@@ -1708,3 +1708,56 @@ def chmod_syscall(path, mode):
   finally:
     persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
+
+
+#### FTRUNCATE ####
+
+
+def ftruncate_syscall(fd, new_len):
+  """
+    http://linux.die.net/man/2/ftruncate
+  """
+  
+
+  # check the fd
+  if fd not in filedescriptortable and fd >= STARTINGFD:
+    raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
+
+  # Acquire the fd lock...
+  desc = filedescriptortable[fd]
+  desc['lock'].acquire(True)
+
+  try: 
+
+        # we will need the file size in a moment, but also need to check the type
+    try:
+      inode = desc['inode']
+    except KeyError:
+      raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
+    
+    
+    filesize = filesystemmetadata['inodetable'][inode]['size']
+
+    if filesize < new_len:
+      # we must pad with zeros
+      blankbytecount = new_len - filesize 
+      fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
+      
+    else:
+      # we must cut
+      to_save = fileobjecttable[inode].readat(new_len,0)
+      fileobjecttable[inode].close()
+      # remove the old file
+      removefile(FILEDATAPREFIX+str(inode))
+      # make a new blank one
+      fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
+
+      fileobjecttable[inode].writeat(to_save, 0)
+
+      
+    filesystemmetadata['inodetable'][inode]['size'] = new_len
+        
+  finally:
+    desc['lock'].release() 
+
+  return 0

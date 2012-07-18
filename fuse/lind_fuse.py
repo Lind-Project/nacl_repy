@@ -451,7 +451,11 @@ class LindFuseFS(Fuse):
             return st
 
         def ftruncate(self, len):
-            return -errno["ENOSYS"]
+            try:
+                trunc = lind.ftruncate_syscall(self.fd, len)
+            except lind.SyscallError, e:
+                return -errno[e[1]]
+            return trunc
 
         def lock(self, cmd, owner, **kw):
             return -errno["ENOSYS"]
