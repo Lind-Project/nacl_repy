@@ -327,7 +327,7 @@ class LindFuseFS(Fuse):
         return ret
 
     def chmod(self, path, mode):
-        log("chmod (unimplemented)", path, hex(mode))
+        log("chmod", path, hex(mode))
         try:
             ret = lind.chmod_syscall(path, mode)
         except lind.SyscallError, e:
