@@ -328,7 +328,12 @@ class LindFuseFS(Fuse):
 
     def chmod(self, path, mode):
         log("chmod (unimplemented)", path, hex(mode))
-        return -errno["ENOSYS"]
+        try:
+            ret = lind.chmod_syscall(path, mode)
+        except lind.SyscallError, e:
+            ret = -errno[e[1]]
+        return ret
+        
 
     def chown(self, path, user, group):
         log("chown (unimplemented)", path, user, group)
