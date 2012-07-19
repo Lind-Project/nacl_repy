@@ -28,16 +28,20 @@ def lind_fs_fxstat(args):
     filedes = args[0]
     ver = args[1]
 
-    print "doing a fstat of", filedes
     if ver == 1:
-        result = pack_stat_struct(fstat_syscall(filedes))
+        try:
+            result = fstat_syscall(filedes)
+        except SyscallError, e:
+            return ErrorResponseBuilder("fs_fxstat", e[1], e[2])
+
+        # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
+        # followed by 2Q for each timestamp.   The ns field is set to 0.
+        packed = pack_stat_struct(result)
+        
+        return SuccessResponseBuilder("fs_fxstat", 0, packed)
+
     else:
         assert False, "not implemented"
-
-    # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
-    # followed by 2Q for each timestamp.   The ns field is set to 0.
-
-    return SuccessResponseBuilder("fs_fstat", len(result), result)
 
 
 def lind_safe_fs_fxstat(args):
