@@ -64,7 +64,7 @@ def parse_struct_pollfds(pollfds_str, nfds):
     result = map(lambda x: struct_unpack(single_struct_pollfd_fmt, x), structs)
     result = map(lambda x: {'fd': x[0],
                             'events': x[1],
-                            'revents': x[2]}xo,
+                            'revents': x[2]},
                  result)
     return result
 
