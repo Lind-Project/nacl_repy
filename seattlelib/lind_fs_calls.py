@@ -197,7 +197,7 @@ def _blank_fs_init():
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0, 
             'uid':1000, 'gid':1000, 
-            'mode':16877,  # DIR+rwxr-xr-x
+            'mode':S_IFDIR | S_IRWXA, # directory + all permissions
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
             'linkcount':2,    # the number of dir entries...
             'filename_to_inode_dict': {'.':ROOTDIRECTORYINODE, 
@@ -872,7 +872,6 @@ def fstat_syscall(fd):
   """ 
     http://linux.die.net/man/2/fstat
   """
-
   # TODO: I don't handle socket objects.   I should return something like: 
   # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20, 
   # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
@@ -883,7 +882,7 @@ def fstat_syscall(fd):
 
   # if so, return the information...
   inode = filedescriptortable[fd]['inode']
-  if inode in [0,1,2]:
+  if fd in [0,1,2]:
     return (filesystemmetadata['dev_id'],          # st_dev
           inode,                                 # inode
             49590, #mode
@@ -907,7 +906,7 @@ def fstat_syscall(fd):
 
 # private helper routine that returns stat data given an inode
 def _istat_helper(inode):
-  return (filesystemmetadata['dev_id'],          # st_dev
+  ret =  (filesystemmetadata['dev_id'],          # st_dev
           inode,                                 # inode
           filesystemmetadata['inodetable'][inode]['mode'],
           filesystemmetadata['inodetable'][inode]['linkcount'],
@@ -924,6 +923,7 @@ def _istat_helper(inode):
           filesystemmetadata['inodetable'][inode]['ctime'],
           0,                                     # ctime ns
         )
+  return ret
 
 
 
