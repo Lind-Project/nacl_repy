@@ -459,6 +459,7 @@ def connect_syscall(fd,remoteip,remoteport):
     filedescriptortable[fd]['remoteip'] = remoteip
     filedescriptortable[fd]['remoteport'] = remoteport
     filedescriptortable[fd]['state'] = CONNECTED
+    filedescriptortable[fd]['errno'] = 0
     # change the state and return success
     return 0
 
@@ -658,11 +659,11 @@ def recvfrom_syscall(fd,length,flags):
       except SocketWouldBlockError, e:
         if flags & O_NONBLOCK != 0:
           raise e
-        if peek == None:
+        if peek == '':
           sleep(RETRYWAITAMOUNT)
           continue
 
-      if peek == None:
+      if peek == '':
         if (flags & MSG_PEEK) != 0:
           filedescriptortable[fd]['last_peek'] = data
         return remoteip, remoteport, data
@@ -968,7 +969,7 @@ def accept_syscall(fd):
         filedescriptortable[newfd]['remoteip'] = remoteip
         filedescriptortable[newfd]['remoteport'] = remoteport
         filedescriptortable[newfd]['socketobjectid'] = _insert_into_socketobjecttable(acceptedsocket)
-        filedescriptortable[newfd]['last_peek'] = None
+        filedescriptortable[newfd]['last_peek'] = ''
 
         return remoteip, remoteport, newfd
 
