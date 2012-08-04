@@ -285,7 +285,7 @@ def NaclRPCServer(nacl_instance, comp_num):
         log("Syscall was=" + str(call) + "\n")
         call = NOOP_CALL_NUM # continue on with eno_sys
     if TRACE:
-      strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call]).split(" ")[1]), str(args), " = "]
+      strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call]).split(" ")[1]), str(args)[:128], " = "]
 
     # before_call = timer()
     mycontext[LOCK].acquire(True)
@@ -294,7 +294,7 @@ def NaclRPCServer(nacl_instance, comp_num):
       response = dispatch_syscall(call, args)
     finally:
       if TRACE:
-        strace_msg.append(str(response))
+        strace_msg.append(str(response)[:128])
         print ''.join(strace_msg)
     mycontext[LOCK].release()
     if response == None:
