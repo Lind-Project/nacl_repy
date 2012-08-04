@@ -524,12 +524,12 @@ def struct_unpack(formatstring, packedstring):
       elif typetounpack == 'P':
         # shouldn't happen because we checked above
         assert(endianness == "none")
-        assert(len(currentpackedstring) >= 8)
+        assert(len(currentpackedstring) >= 4)
   
  
-        thisnumberstring = currentpackedstring[:8]
+        thisnumberstring = currentpackedstring[:4]
  
-        currentpackedstring = currentpackedstring[8:]
+        currentpackedstring = currentpackedstring[4:]
 
         # okay, so now we have the big-endian description...
         thisnumber = _convert_big_endian_string_to_number(thisnumberstring)
@@ -685,12 +685,7 @@ def struct_calcsize(formatstring):
         raise ValueError("An pointer must not have endianness specified! (position "+str(position)+" of '"+formatstring+"')")
 
       # add the size of an integer + the number of integers
-      currentlength += 8 * repeatcount
-
-    elif typetounpack == 'N' or typetounpack == 'n':
-      # None does not take any extra space
-      pass
-    
+      currentlength += 4 * repeatcount
 
     else:
       raise TypeError("Unknown format type '"+typetounpack+"' at (position "+str(position)+" of '"+formatstring+"')")
