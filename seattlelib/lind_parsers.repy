@@ -121,3 +121,28 @@ def pack_statfs_struct(fsd):
     result = struct_pack(format, tipe, bsize, blocks, bfree, bavail, \
                          files, ffree, fsid, namelen, frsize, spare)
     return result
+
+
+SEC_PER_MICROSEC = 0.000001
+MICROSEC_PER_SEC = 1000000
+
+def parse_timeval(timeval_str):
+    """given a struct timeval, make it into a float in seconds.
+
+    @return a float in seceonds, then each sec and usec member
+    """
+    
+    tv_sec, tv_usec = struct_unpack("<Q<Q",timeval_str)
+    return ((tv_sec + (SEC_PER_MICROSEC * tv_usec)), tv_sec, tv_usec)
+
+
+def pack_struct_timeval(tv_sec, tv_usec):
+    """given a struct timeval, make it into a float in seconds.
+
+    @return a float in seceonds, then each sec and usec member
+    """
+    print tv_sec, tv_usec
+    new_struct= struct_pack("<Q<Q",tv_sec, tv_usec)
+    return new_struct
+
+    

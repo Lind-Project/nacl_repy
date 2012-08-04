@@ -121,65 +121,38 @@ def set_fds(fd_list, max_fd):
     return ordinals
 
 
-SEC_PER_MICROSEC = 0.000001
-MICROSEC_PER_SEC = 1000000
-
-
-def parse_timeval(timeval_str):
-    """given a struct timeval, make it into a float in seconds.
-
-    @return a float in seceonds, then each sec and usec member
-    """
-    tv_sec, tv_usec = struct_unpack("<Q<Q",timeval_str)
-    return ((tv_sec + (SEC_PER_MICROSEC * tv_usec)), tv_sec, tv_usec)
-
-
-def build_struct_timeval(tv_sec, tv_usec):
-    """given a struct timeval, make it into a float in seconds.
-
-    @return a float in seceonds, then each sec and usec member
-    """
-    print tv_sec, tv_usec
-    new_struct= struct_pack("<Q<Q",tv_sec, tv_usec)
-    return new_struct
-
-    
 def lind_net_select(args):
     """
     Pull out the arguments for select and make real call.
     Args should have a nfds, bitvectors for read write and except, and a time.
     """
-
+    print "\n!!!!!!!!!!!!!!", args
     nonblocking = False
     notimer = False
 
     nfds = args[0]
 
-    readfds = args[4]
-    writefds = args[5]
-    exceptfds = args[6]
-    
-    time, sec, usec = parse_timeval(args[7])
+    readfds = args[1]
+    writefds = args[2]
+    exceptfds = args[3]
+    timeval = args[4]
 
-    if sec == 0 and usec == 0:
-        nonblocking = True
-        time = 0
-    elif usec == 4000000:  # sentinal value passed by glibc when time is NULL
-        notimer = True
-        time = 0
-        
-
-    readfds = get_fds(bit_string_to_bitlist(readfds), nfds)
-    writefds = get_fds(bit_string_to_bitlist(writefds), nfds)
-    exceptfds = get_fds(bit_string_to_bitlist(exceptfds), nfds)
+    if timeval == None:
+        time = -1
+    else:
+        time, sec, usec = parse_timeval(args[4])
+ 
+    readfds = [] if readfds == None else get_fds(bit_string_to_bitlist(readfds), nfds)
+    writefds = [] if writefds == None else get_fds(bit_string_to_bitlist(writefds), nfds)
+    exceptfds = [] if exceptfds == None else get_fds(bit_string_to_bitlist(exceptfds), nfds)
     try:
-        rc, nread, nwrite, nexcept, usedtime = select_syscall(nfds, readfds, writefds, exceptfds, time, nonblocking, notimer)
+        rc, nread, nwrite, nexcept, usedtime = select_syscall(nfds, readfds, writefds, exceptfds, time)
     except SyscallError, e:
         return ErrorResponseBuilder("net_select", e[1], e[2])
 
     used_sec = long((usedtime))
     used_usec = long((usedtime - used_sec) * MICROSEC_PER_SEC)
-    used_timeval = build_struct_timeval(used_sec, used_usec)
+    used_timeval = pack_struct_timeval(used_sec, used_usec)
     readfds = bit_bitlist_to_str(set_fds(readfds, nfds))
     writefds = bit_bitlist_to_str(set_fds(writefds, nfds))
     exceptfds = bit_bitlist_to_str(set_fds(exceptfds, nfds))
