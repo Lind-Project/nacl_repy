@@ -31,10 +31,11 @@ def lind_fs_lseek(args):
 
     try:
         result = lseek_syscall(handle, offset, whence)
-        reply = struct_pack("<q", result)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_lseek", e[1], e[2])
-    return SuccessResponseBuilder("fs_lseek", len(reply), reply)
+
+    reply = struct_pack("<q", result)
+    return SuccessResponseBuilder("fs_lseek", 0, reply)
 
 
 def lind_safe_fs_lseek(args):
