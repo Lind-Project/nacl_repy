@@ -10,7 +10,13 @@ include struct.repy
 
 VERSION = "$Rev$"
 
-TRACE = False  # Trace system calls? (somewhat like strace) 
+
+SILENT = False # Try to produce output as close as the OS would
+               # this means no debug/error messages!
+
+TRACE = True  # Trace system calls? (somewhat like strace) 
+
+
 
 SYSCALL = "syscall"               # shortcut to syscall dict items
 FILES = "FILES"                   # these also make a typo more specific
@@ -237,7 +243,7 @@ def NaclRPCServer(nacl_instance, comp_num):
     try:
       [magic, call, frmt_len, payload_size, seq_num, valid] = struct_unpack(format, header)
     except Exception, err:
-      log("[ERROR][RPC] Error unmarshaling header" + type(err) + ":" + err + "\n")
+      log("[ERROR][RPC] Error unmarshaling header" + str(type(err)) + ":" + str(err) + "\n")
 
     # validate the header
     if magic != -2:
@@ -252,7 +258,7 @@ def NaclRPCServer(nacl_instance, comp_num):
       if (seq_num != expected_seq_num):
         expected_seq_num = FIRST_SEQ_NUM
         booting = False
-        print "Booted"
+        log("Booted")
     elif (seq_num != expected_seq_num):
       pass
 #      print "Out of order seq_num %d != %d for call %d" % \
@@ -295,7 +301,7 @@ def NaclRPCServer(nacl_instance, comp_num):
     finally:
       if TRACE:
         strace_msg.append(str(response)[:128])
-        print ''.join(strace_msg)
+        log( ''.join(strace_msg))
     mycontext[LOCK].release()
     if response == None:
       raise Exception()
@@ -372,10 +378,10 @@ def new_compoent():
 
 def setup_filetable(comp_num):
   """Try to open file system. If you can't, then make a new one."""
-  print "Opening file system... ",
+  log( "Opening file system... ")
   load_fs()
 
-  print "done."
+  log( "done.")
 
   # except KeyError, e:
 
@@ -416,7 +422,7 @@ def parse_commandline():
 
 
 if callfunc == "initialize":
-  print "Lind v0." + VERSION[6:-2], "Last commit:", "$Date$"[7:-2]
+  log( "Lind v0." + VERSION[6:-2] + "Last commit:" + "$Date$"[7:-2])
   parse_commandline()
   lind_factory()
 
