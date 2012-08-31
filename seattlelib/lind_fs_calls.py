@@ -109,6 +109,7 @@
 
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
+
 ROOTDIRECTORYINODE = 1
 
 METADATAFILENAME = 'lind.metadata'
@@ -850,20 +851,18 @@ def stat_syscall(path):
       raise SyscallError("stat_syscall","ENOENT","The path does not exist.")
 
     thisinode = fastinodelookuptable[truepath]
-      
+    
+    # If its a character file, call the helper function.
+    if IS_CHR(filesystemmetadata['inodetable'][thisinode]['mode']):
+      return _istat_helper_chr_file(thisinode)
+   
     return _istat_helper(thisinode)
 
   finally:
     persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
-
-
-
-
-
-
-    
+   
 
 
 ##### FSTAT  #####
@@ -900,6 +899,10 @@ def fstat_syscall(fd):
           0,
           0,                                     # ctime ns
         )
+
+  if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+    return _istat_helper_chr_file(inode)
+
   return _istat_helper(inode)
 
 
@@ -989,7 +992,7 @@ def open_syscall(path, flags, mode):
       assert(mode & S_IRWXA == mode)
 
       newinodeentry = {'size':0, 'uid':1000, 'gid':1000, 
-            'mode':S_IFREG + mode,  # FILE + their entries
+            'mode':S_IFCHR+mode if S_IFCHR & flags else S_IFREG+mode,
             # BUG: I'm listing some arbitrary time values.  I could keep a time
             # counter too.
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
@@ -1207,6 +1210,10 @@ def read_syscall(fd, count):
     # get the inode so I can and check the mode (type)
     inode = filedescriptortable[fd]['inode']
 
+    # If its a character file, call the helper function.
+    if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+      return _read_chr_file(inode)
+
     # Is it anything other than a regular file?
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
@@ -1267,6 +1274,10 @@ def write_syscall(fd, data):
 
     # get the inode so I can update the size (if needed) and check the type
     inode = filedescriptortable[fd]['inode']
+
+    # If its a character file, call the helper function.
+    if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+      return _write_chr_file(inode, data)
 
     # Is it anything other than a regular file?
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1700,7 +1711,7 @@ def chmod_syscall(path, mode):
     thisinode = fastinodelookuptable[truepath]
 
     # be sure there aren't extra mode bits... No errno seems to exist for this
-    assert(mode & S_IRWXA == mode)
+    #assert(mode & S_IRWXA == mode)
 
     # should overwrite any previous permissions, according to POSIX
     filesystemmetadata['inodetable'][thisinode]['mode'] = S_IFREG + mode
@@ -1761,3 +1772,115 @@ def ftruncate_syscall(fd, new_len):
     desc['lock'].release() 
 
   return 0
+
+#### MKNOD ####
+
+# for now, I am considering few assumptions:
+# 1. It is only used for creating character special files.
+# 2. I am not bothering about S_IRWXA in mode. (I need to fix this).
+# 3. /dev/null    : (1, 3)
+#    /dev/random  : (1, 8)
+#    /dev/urandom : (1, 9)
+#    The major and minor device number's should be passed in as a 2-tuple.
+
+def mknod_syscall(path, mode, dev):
+  """
+    http://linux.die.net/man/2/mknod
+  """
+  truepath = _get_absolute_path(path)
+
+  # check if file already exists, if so raise an error.
+  if truepath in fastinodelookuptable:
+    raise SyscallError("mknod_syscall", "EEXIST", "file already exists.")
+
+  # FIXME: mode should also accept user permissions(S_IRWXA)
+  if not mode & S_FILETYPEFLAGS == mode: 
+    raise SyscallError("mknod_syscall", "EINVAL", "mode requested creation\
+      of something other than regular file, device special file, FIFO or socket")
+
+  # FIXME: for now, lets just only create character special file 
+  if not IS_CHR(mode):
+    raise UnimplementedError("Only Character special files are supported.")
+
+  # this has nothing to do with syscall, so I will raise UnimplementedError.
+  if type(dev) is not tuple or len(dev) != 2:
+    raise UnimplementedError("Third argument should be 2-tuple.")
+
+  # Create a file, but don't open it. openning a chr_file should be done only using
+  # open_syscall. S_IFCHR flag will ensure that the file is not opened.
+  fd = open_syscall(path, mode | O_CREAT, S_IRWXA)
+
+  # add the major and minor device no.'s, I did it here so that the code can be managed
+  # properly, instead of putting everything in open_syscall.
+  inode = filedescriptortable[fd]['inode']
+  filesystemmetadata['inodetable'][inode]['rdev'] = dev
+ 
+  # close the file descriptor... 
+  close_syscall(fd)
+  return 0
+
+
+#### Helper Functions for Character Files.####
+# currently supported devices are:
+# 1. /dev/null
+# 2. /dev/random
+# 3. /dev/urandom
+
+def _read_chr_file(inode):
+  """
+   helper function for reading data from chr_file's.
+  """
+
+  # check if it's a /dev/null. 
+  if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
+    return ''
+  # /dev/random
+  elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
+    return randombytes()
+  # /dev/urandom
+  # FIXME: urandom is supposed to be non-blocking.
+  elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 9):
+    return randombytes()
+  else:
+    raise UnimplementedError("Given device is not supported.")
+
+
+def _write_chr_file(inode, data):
+  """
+   helper function for writing data to chr_file's.
+  """
+
+  # check if it's a /dev/null.
+  if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
+    return len(data)
+  # /dev/random
+  # There's no real /dev/random file, just vanish it into thin air.
+  elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
+    return len(data)
+  # /dev/urandom
+  # There's no real /dev/random file, just vanish it into thin air.
+  elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 9):
+    return len(data)
+  else:
+    raise UnimplementedError("Given device is not supported.")
+
+
+def _istat_helper_chr_file(inode):
+  ret =  (5,          # st_dev, its always 5 for chr_file's.
+          inode,                                 # inode
+          filesystemmetadata['inodetable'][inode]['mode'],
+          filesystemmetadata['inodetable'][inode]['linkcount'],
+          filesystemmetadata['inodetable'][inode]['uid'],
+          filesystemmetadata['inodetable'][inode]['gid'],
+          filesystemmetadata['inodetable'][inode]['rdev'],
+          filesystemmetadata['inodetable'][inode]['size'],
+          0,                                     # st_blksize  ignored(?)
+          0,                                     # st_blocks   ignored(?)
+          filesystemmetadata['inodetable'][inode]['atime'],
+          0,                                     # atime ns
+          filesystemmetadata['inodetable'][inode]['mtime'],
+          0,                                     # mtime ns
+          filesystemmetadata['inodetable'][inode]['ctime'],
+          0,                                     # ctime ns
+        )
+  return ret

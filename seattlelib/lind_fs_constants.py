@@ -171,6 +171,11 @@ def IS_REG(mode):
   else:
     return False
 
+def IS_CHR(mode):
+  if mode & S_FILETYPEFLAGS == S_IFCHR:
+    return True
+  else:
+    return False
 
 def IS_SOCK(mode):
   if mode & S_FILETYPEFLAGS == S_IFSOCK:

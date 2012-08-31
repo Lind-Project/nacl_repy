@@ -42,7 +42,6 @@
 #
 
 
-
 # States for my own internal use:
 
 NOTCONNECTED = 128
@@ -1404,3 +1403,61 @@ def poll_syscall(fds, timeout):
       sleep(RETRYWAITAMOUNT)
 
   return return_code, fds
+
+
+#### SOCKETPAIR ####
+
+# FIXME: I need to use Repy's mycontext.
+mycontext = {}
+
+def _helper_sockpair():
+  """
+    Helper function for socktpair() syscall. This is a thread that runs to
+    establish a TCP connection and immediatly exists.
+  """
+  listen_syscall(mycontext['socket'], 1)
+  mycontext['listen'] = accept_syscall(mycontext['socket'])[2]
+
+def socketpair_syscall(domain, socktype, protocol, sv):
+  """ 
+    http://linux.die.net/man/2/socketpair
+  """
+  # check if socket pair is passed as a list or not.
+  if type(sv) is not list or len(sv) != 0:
+    raise SyscallError("socketpair_syscall", "EFAULT",\
+      "SocketPair must be an empty list.")
+  
+  # create two sockets...
+  sockfd = socket_syscall(domain, socktype, protocol)
+  listfd = socket_syscall(domain, socktype, protocol)
+
+  # bind both the sockets to local interface and specific ports.
+  # FIXME: we need to reserve these ports, so that no other application would
+  #        use this port, before socketpair is called.
+  bind_syscall(sockfd, '127.0.0.1', 50365)
+  bind_syscall(listfd, '127.0.0.1', 50366)
+  
+  # TCP connection happens differently...
+  if socktype == SOCK_STREAM:
+    mycontext['socket'] = sockfd
+    createthread(_helper_sockpair)
+    sleep(.1)
+
+    connect_syscall(listfd, '127.0.0.1', 50365)
+    sleep(.1)
+
+    sv.append(mycontext['listen'])
+    sv.append(listfd)
+
+    # we need to close this socket...
+    close_syscall(sockfd)
+
+  # Make a connection oriented UDP.
+  else:
+    connect_syscall(sockfd, '127.0.0.1', 50366)
+    connect_syscall(listfd, '127.0.0.1', 50365)
+
+    sv.append(sockfd)
+    sv.append(listfd)
+  
+  return 0
