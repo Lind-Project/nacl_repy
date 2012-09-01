@@ -4,8 +4,10 @@ from exception_hierarchy import *
 
 from emulmisc import createlock as createlock
 from emulmisc import getruntime as getruntime
+from emulmisc import randombytes as randombytes
 
-from time import sleep
+from emultimer import sleep
+from emultimer import createthread
 
 from emulfile import emulated_open as openfile
 from emulfile import removefile

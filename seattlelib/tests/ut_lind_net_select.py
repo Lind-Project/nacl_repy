@@ -90,7 +90,7 @@ def process_request():
 
 #Thread for running server ...
 emultimer.createthread(process_request)
-emultimer.sleep(1)
+emultimer.sleep(.1)
 
 def client1():
   """
@@ -117,7 +117,7 @@ lind_test_server.connect_syscall(client2sockfd, '127.0.0.1', 50300)
 
 lind_test_server.send_syscall(client2sockfd, "test", 0)
 #Short sleeps are not working, give enough time...
-emultimer.sleep(1)
+emultimer.sleep(.1)
 assert lind_test_server.recv_syscall(client2sockfd, 100, 0) == "test", \
   "Write failed in select while processing client 2..."
 

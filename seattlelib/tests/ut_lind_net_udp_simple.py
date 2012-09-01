@@ -1,15 +1,10 @@
 import lind_test_server
-
-from time import sleep
-
+from emultimer import sleep
+from emultimer import createthread as createthread
 from lind_net_constants import *
-
-from emulmisc import exitall
 
 SyscallError = lind_test_server.SyscallError
 
-
-from emultimer import createthread as createthread
 
 def log(*args):
   print ' '.join(args)
@@ -19,20 +14,15 @@ def log(*args):
 # let's do a few basic things with connect.   This will be UDP only for now...
 
 listensockfd = lind_test_server.socket_syscall(AF_INET, SOCK_DGRAM, 0)
-
 sendsockfd = lind_test_server.socket_syscall(AF_INET, SOCK_DGRAM, 0)
-
 
 def recvmessages():
   # let's wait for packets here...
   lind_test_server.bind_syscall(listensockfd,'127.0.0.1',50102)
-
-  lind_test_server.recv_syscall(listensockfd,10000,0)
-
-  lind_test_server.recv_syscall(listensockfd,10000,0)
-  # we should get two and exit...
-  exitall()
-
+  assert lind_test_server.recv_syscall(listensockfd,10000,0) == 'test',\
+    "UDP recv test 1 failed."
+  lind_test_server.recv_syscall(listensockfd,10000,0) == 'test2',\
+    "UDP recv test 2 failed."
 
 # I need a thread...
 createthread(recvmessages)
@@ -40,18 +30,15 @@ createthread(recvmessages)
 # let's wait for it to start...
 sleep(.1)
 
-
 # send a message
-lind_test_server.sendto_syscall(sendsockfd,'hi','127.0.0.1',50102,0)
-
+lind_test_server.sendto_syscall(sendsockfd,'test','127.0.0.1',50102,0)
 
 # get another socket, bind and then send
 sendsockfd2 = lind_test_server.socket_syscall(AF_INET, SOCK_DGRAM, 0)
 lind_test_server.bind_syscall(sendsockfd2,'127.0.0.1',50992)
-lind_test_server.sendto_syscall(sendsockfd2,'yo','127.0.0.1',50102,0)
+lind_test_server.sendto_syscall(sendsockfd2,'test2','127.0.0.1',50102,0)
 
-# let's wait for it to happen...
-sleep(10)
-
-log('fail!!!')
-exitall()
+sleep(0.1)
+lind_test_server.close_syscall(sendsockfd2)
+lind_test_server.close_syscall(sendsockfd)
+lind_test_server.close_syscall(listensockfd)

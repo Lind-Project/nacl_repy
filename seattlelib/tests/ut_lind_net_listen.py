@@ -25,7 +25,6 @@ lind_test_server.listen_syscall(serversockfd,10)
 def do_server():
   
   newsocketfd = lind_test_server.accept_syscall(serversockfd)
-  exitall()
 
 
 createthread(do_server)

@@ -1884,3 +1884,33 @@ def _istat_helper_chr_file(inode):
           0,                                     # ctime ns
         )
   return ret
+
+#### USER/GROUP IDENTITIES ####
+
+def getuid_syscall():
+  """
+    http://linux.die.net/man/2/getuid
+  """
+  # I will return 1000, since this is also used in stat
+  return 1000
+
+def geteuid_syscall():
+  """
+    http://linux.die.net/man/2/geteuid
+  """
+  # I will return 1000, since this is also used in stat
+  return 1000
+
+def getgid_syscall():
+  """
+    http://linux.die.net/man/2/getgid
+  """
+  # I will return 1000, since this is also used in stat
+  return 1000
+
+def getegid_syscall():
+  """
+    http://linux.die.net/man/2/getegid
+  """
+  # I will return 1000, since this is also used in stat
+  return 1000
