@@ -14,7 +14,7 @@ VERSION = "$Rev$"
 SILENT = False # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
-TRACE = True  # Trace system calls? (somewhat like strace) 
+TRACE = False  # Trace system calls? (somewhat like strace) 
 
 
 
@@ -80,7 +80,7 @@ def check_valid_fd_handle(num):
   assert (STARTINGFD <= num <= MAX_FD), "invalid handle %d" % num
 
 
-
+include errno.repy
 
 include lind_net_constants.py
 
@@ -225,7 +225,7 @@ def NaclRPCServer(nacl_instance, comp_num):
       log("[ERROR][RPC] " + "Exception on receive\n")
       break
 
-    # log("[info][RPC] " +  "Raw Message: "+ message +"\n")
+    #log("[info][RPC] " +  "Raw Message: "+ message +"\n")
     # assert( len(message) == header_size), "wrong header size"
     if message == "EOT":
       break
@@ -244,7 +244,7 @@ def NaclRPCServer(nacl_instance, comp_num):
       [magic, call, frmt_len, payload_size, seq_num, valid] = struct_unpack(format, header)
     except Exception, err:
       log("[ERROR][RPC] Error unmarshaling header" + str(type(err)) + ":" + str(err) + "\n")
-
+      continue
     # validate the header
     if magic != -2:
       raise Exception("Protocol Error: Magic number not found." + \
@@ -391,7 +391,7 @@ def setup_component_communication(comp_num):
 
 
 def lind_factory():
-
+  setup_errnos(1)
   setup_dispatcher(1)
   setup_filetable(1)
   setup_component_communication(1)
