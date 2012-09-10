@@ -52,7 +52,7 @@ def lind_safe_fs_lseek(args):
     whence = args[2]
     handle = args[1]
 
-    assert isinstance(offset, int), "offset should be a int"
+    assert isinstance(offset, int) or isinstance(offset, long), "offset should be a int"
     assert isinstance(whence, int), "whence should be a int"
 
 
