@@ -1,0 +1,74 @@
+"""
+
+Handlers for the socketpair system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Socketpair hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library socketpair system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_net_socketpair(args):
+    """ socketpair calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the socketpair domain, socketpair type and protcol in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+    domain = args[0]
+    _type = args[1]
+    protocol = args[2]
+    try:
+        (result, sv) = socketpair_syscall(domain, _type, protocol)
+    except SyscallError, e:
+        print str(e)
+        return ErrorResponseBuilder("net_socketpair", e[1], e[2])
+    except UnimplementedError, e:
+        print str(e)
+        return ErrorResponseBuilder("net_socketpair", "EACCES", "unimplemented!")
+
+    assert len(sv) == 2, "Socket pair must have two elements"
+    assert type(sv[1]) == int and type(sv[0]) == int, "Socketpair results must be socket handles."
+    
+    data = struct_pack("<i<i", sv[0], sv[1])
+    print data
+
+    return SuccessResponseBuilder("net_socketpair", result, data)
+
+
+def lind_safe_net_socketpair(args):
+    """ Safely wrap the socketpair call.
+
+    See dispatcher.repy for details.
+
+    Check the socketpair domain, socketpair type and protcol for consistancy,
+    then call the real socketpair dispatcher.
+
+    """
+    domain = args[0]
+    _type = args[1]
+    protocol = args[2]
+
+    assert (isinstance(domain, int)), "domain must be an int"
+    if domain != PF_INET:
+        log( "Warning: only internet domain supported right " \
+              "now d=%d" % (domain))
+
+    if not (_type == SOCK_DGRAM or _type == SOCK_STREAM):
+        log ("Warning: only only datagram and stream socketpairs " \
+              "supported right now")
+
+    result = lind_net_socketpair(args)
+
+    
+
+    return result

@@ -166,6 +166,8 @@ include net_getifaddrs.repy
 
 include net_poll.repy
 
+include net_socketpair.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy
