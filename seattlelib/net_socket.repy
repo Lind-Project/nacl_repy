@@ -54,11 +54,7 @@ def lind_safe_net_socket(args):
     assert (isinstance(domain, int)), "domain must be an int"
     if domain != PF_INET:
         log( "Warning: only internet domain supported right " \
-              "now d=%d" % (domain))
-
-    if not (_type == SOCK_DGRAM or _type == SOCK_STREAM):
-        log ("Warning: only only datagram and stream sockets " \
-              "supported right now")
+              "now d=%d\n" % (domain))
 
     result = lind_net_socket(args)
 
