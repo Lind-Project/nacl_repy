@@ -1,0 +1,52 @@
+"""
+
+Handlers for the getegid system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Getegid hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library getegid system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_sys_getegid(args):
+    """ getegid calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the paths in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the int returned, or error.
+    """
+
+
+    try:
+        result = getegid_syscall()
+    except SyscallError, e:
+        return ErrorResponseBuilder("sys_getegid", e[1], e[2])
+    except UnimplementedError, e:
+        return ErrorResponseBuilder("sys_getegid", 'EINVAL', str(e))
+
+    return SuccessResponseBuilder("sys_getegid", result)
+
+
+def lind_safe_sys_getegid(args):
+    """ Safely wrap the getegid call.
+
+    See dispatcher.repy for details.
+
+    Check the paths for consistancy,
+    then call the real getegid dispatcher.
+
+    """
+
+    result = lind_sys_getegid(args)
+    assert len(result.message) == 4, "we return a sinlge in"
+
+    return result

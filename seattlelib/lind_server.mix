@@ -168,6 +168,10 @@ include net_poll.repy
 
 include net_socketpair.repy
 
+include sys_getuid.repy
+
+include sys_geteuid.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy

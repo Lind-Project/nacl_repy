@@ -50,6 +50,10 @@ def setup_dispatcher(comp_num):
     47:lind_safe_net_getifaddrs,
     48:lind_safe_net_poll,
     49:lind_safe_net_socketpair,
+    50:lind_safe_sys_getuid,
+    51:lind_safe_sys_geteuid,
+    52:lind_safe_sys_getgid,
+    53:lind_safe_sys_getegid,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -102,6 +106,10 @@ def setup_dispatcher(comp_num):
     47:lind_net_getifaddrs,
     48:lind_net_poll,
     49:lind_net_socketpair,
+    50:lind_sys_getuid,
+    51:lind_sys_geteuid,
+    52:lind_sys_getgid,
+    53:lind_sys_getegid,
 
     105:lind_comp_cia,
     106:lind_comp_call,
