@@ -1914,3 +1914,75 @@ def getegid_syscall():
   """
   # I will return 1000, since this is also used in stat
   return 1000
+
+
+#### RESOURCE LIMITS  ####
+
+# FIXME: These constants should be specified in a different file, 
+# it at all additional support needs to be added.
+NOFILE_CUR = 1024
+NOFILE_MAX = 4*1024
+
+STACK_CUR = 8192*1024
+STACK_MAX = 2**32
+
+def getrlimit_syscall(res_type):
+  """
+    http://linux.die.net/man/2/getrlimit
+
+    NOTE: Second argument is deprecated. 
+  """
+  if res_type == RLIMIT_NOFILE:
+    return (NOFILE_CUR, NOFILE_MAX)
+  elif res_type == RLIMIT_STACK:
+    return (STACK_CUR, STACK_MAX)
+  else:
+    raise UnimplementedError("The resource type is unimplemented.")
+
+def setrlimit_syscall(res_type, limits):
+  """
+    http://linux.die.net/man/2/setrlimit
+  """
+
+  if res_type == RLIMIT_NOFILE:
+    # always make sure that, current value is less than or equal to Max value.
+    if NOFILE_CUR > NOFILE_MAX:
+      raise SyscallException("setrlimit", "EPERM", "Should not exceed Max limit.")
+
+    # FIXME: I should update the value which should be per program.
+    # since, Lind doesn't need this right now, I will pass.
+    return 0
+
+  else:
+    raise UnimplementedError("This resource type is unimplemented")
+
+#### FLOCK SYSCALL  ####
+
+def flock_syscall(fd, operation):
+  """
+    http://linux.die.net/man/2/flock
+  """
+  if fd not in filedescriptortable:
+    raise SyscallError("flock_syscall", "EBADF" "Invalid file descriptor.")
+
+  # FIXME: I should only allow flock constants. I am not understanding how to do
+  # this right now, will fix later.
+  #if operation & LOCK_ALL == operation:
+  #  raise SyscallError("flock_syscall", "EINVAL", "operation is invalid.")
+
+  if operation & LOCK_SH:
+    raise UnimplementedError("Shared lock is not yet implemented.")
+
+  # check whether its a blocking or non-blocking lock...
+  if operation & LOCK_EX and operation & LOCK_NB: 
+    if filedescriptortable[fd]['lock'].acquire(False): 
+      return 0
+    else: # raise an error, if there's another lock already holding this
+      raise SyscallError("flock_syscall", "EWOULDBLOCK", "Operation would block.")
+  elif operation & LOCK_EX:
+    filedescriptortable[fd]['lock'].acquire(True)
+    return 0
+
+  if operation & LOCK_UN:
+    filedescriptortable[fd]['lock'].release()
+    return 0

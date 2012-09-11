@@ -95,6 +95,13 @@ F_UNLCK = 2
 F_EXLCK = 4
 F_SHLCK = 8
 
+# for flock syscall
+LOCK_SH = 1
+LOCK_EX = 2
+LOCK_UN = 8
+LOCK_NB = 4
+
+
 # the longest path in Linux
 PATH_MAX = 4096
 
