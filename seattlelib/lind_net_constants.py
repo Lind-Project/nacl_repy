@@ -25,6 +25,8 @@ SOCK_DGRAM = 2     # datagram socket
 SOCK_RAW = 3       # raw-protocol interface
 SOCK_RDM = 4       # reliably-delivered message
 SOCK_SEQPACKET = 5 # sequenced packet stream
+SOCK_CLOEXEC = 02000000
+SOCK_NONBLOCK = 0x4000
 
 
 # Address families...

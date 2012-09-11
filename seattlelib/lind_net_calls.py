@@ -256,14 +256,23 @@ def socket_syscall(domain, socktype, protocol):
   """ 
     http://linux.die.net/man/2/socket
   """
-
   # this code is basically one huge case statement by domain
+
+  # sock type is stored in last 3 bits
+  real_socktype = socktype & 7
+  blocking = (socktype & SOCK_NONBLOCK) != 0
+  cloexec = (socktype & SOCK_CLOEXEC) != 0
+
+  if blocking:
+    print "Warning: trying to create a non-blocking socket - we don't support that yet."
+  
+  #print "Socket domain:", domain, "type:",socktype, "proto", protocol, "real type",real_socktype, "blocking",blocking, "cloexec", cloexec 
 
   # okay, let's do different things depending on the domain...
   if domain == PF_INET:
 
     
-    if socktype == SOCK_STREAM:
+    if real_socktype == SOCK_STREAM:
       # If is 0, set to default (IPPROTO_TCP)
       if protocol == 0:
         protocol = IPPROTO_TCP
@@ -272,11 +281,11 @@ def socket_syscall(domain, socktype, protocol):
       if protocol != IPPROTO_TCP:
         raise UnimplementedError("The only SOCK_STREAM implemented is TCP.  Unknown protocol:"+str(protocol))
       
-      return _socket_initializer(domain,socktype,protocol)
+      return _socket_initializer(domain,real_socktype,protocol)
 
 
     # datagram!
-    elif socktype == SOCK_DGRAM:
+    elif real_socktype == SOCK_DGRAM:
       # If is 0, set to default (IPPROTO_UDP)
       if protocol == 0:
         protocol = IPPROTO_UDP
@@ -284,9 +293,9 @@ def socket_syscall(domain, socktype, protocol):
       if protocol != IPPROTO_UDP:
         raise UnimplementedError("The only SOCK_DGRAM implemented is UDP.  Unknown protocol:"+str(protocol))
     
-      return _socket_initializer(domain,socktype,protocol)
+      return _socket_initializer(domain,real_socktype,protocol)
     else:
-      raise UnimplementedError("Unimplemented sockettype: "+str(socktype))
+      raise UnimplementedError("Unimplemented sockettype: "+str(real_socktype))
 
   else:
     raise UnimplementedError("Unimplemented domain: "+str(domain))
