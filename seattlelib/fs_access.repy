@@ -54,10 +54,6 @@ def lind_safe_fs_access(args):
 
     assert len(path) < PATH_MAX, " path is too long!"
 
-    assert mode != 0, \
-           "mode must be the bitwise OR of one \
-           or more of R_OK, W_OK, X_OK, F_OK"
-
     result = lind_fs_access(args)
 
     return result
