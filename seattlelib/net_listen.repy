@@ -40,7 +40,7 @@ def lind_safe_net_listen(args):
     fd = args[0]
     n = args[1]
     check_valid_fd_handle(fd)
-    assert 0 <= n <= 100, "N is not valid! %d" % (n)
+    assert 0 <= n <= 128, "N is not valid! %d" % (n)
 
     result = lind_net_listen(args)
 
