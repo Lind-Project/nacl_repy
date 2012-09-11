@@ -258,15 +258,15 @@ def socket_syscall(domain, socktype, protocol):
   """
   # this code is basically one huge case statement by domain
 
-  # sock type is stored in last 3 bits
-  real_socktype = socktype & 7
-  blocking = (socktype & SOCK_NONBLOCK) != 0
-  cloexec = (socktype & SOCK_CLOEXEC) != 0
+  # sock type is stored in last 3 or 4 bits, the rest is flags
+
+  real_socktype = socktype & 7 # the type without the extra flags
+
+  blocking = (socktype & SOCK_NONBLOCK) != 0 # check the non-blocking flag
+  cloexec = (socktype & SOCK_CLOEXEC) != 0 # check the cloexec flag
 
   if blocking:
     print "Warning: trying to create a non-blocking socket - we don't support that yet."
-  
-  #print "Socket domain:", domain, "type:",socktype, "proto", protocol, "real type",real_socktype, "blocking",blocking, "cloexec", cloexec 
 
   # okay, let's do different things depending on the domain...
   if domain == PF_INET:
