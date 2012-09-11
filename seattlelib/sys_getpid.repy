@@ -38,7 +38,7 @@ def lind_sys_getpid(args):
 
 
 def lind_safe_sys_getpid(args):
-      """ Safely wrap the getepid call.
+    """ Safely wrap the getepid call.
 
     See dispatcher.repy for details.
 
