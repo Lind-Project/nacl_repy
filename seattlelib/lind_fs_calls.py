@@ -197,7 +197,7 @@ def _blank_fs_init():
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0, 
-            'uid':1000, 'gid':1000, 
+            'uid':DEFAULT_UID, 'gid':DEFAULT_GID, 
             'mode':S_IFDIR | S_IRWXA, # directory + all permissions
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
             'linkcount':2,    # the number of dir entries...
@@ -886,8 +886,8 @@ def fstat_syscall(fd):
           inode,                                 # inode
             49590, #mode
           1,  # links
-          501, # uid
-          20, #gid
+          DEFAULT_UID, # uid
+          DEFAULT_GID, #gid
           0,                                     # st_rdev     ignored(?)
           0, # size
           0,                                     # st_blksize  ignored(?)
@@ -1887,33 +1887,35 @@ def _istat_helper_chr_file(inode):
 
 #### USER/GROUP IDENTITIES ####
 
+
 def getuid_syscall():
   """
     http://linux.die.net/man/2/getuid
   """
   # I will return 1000, since this is also used in stat
-  return 1000
+  return DEFAULT_UID
 
 def geteuid_syscall():
   """
     http://linux.die.net/man/2/geteuid
   """
+  print "Calling geteuid"
   # I will return 1000, since this is also used in stat
-  return 1000
+  return DEFAULT_UID
 
 def getgid_syscall():
   """
     http://linux.die.net/man/2/getgid
   """
   # I will return 1000, since this is also used in stat
-  return 1000
+  return DEFAULT_GID
 
 def getegid_syscall():
   """
     http://linux.die.net/man/2/getegid
   """
   # I will return 1000, since this is also used in stat
-  return 1000
+  return DEFAULT_GID
 
 
 #### RESOURCE LIMITS  ####
@@ -1986,3 +1988,4 @@ def flock_syscall(fd, operation):
   if operation & LOCK_UN:
     filedescriptortable[fd]['lock'].release()
     return 0
+

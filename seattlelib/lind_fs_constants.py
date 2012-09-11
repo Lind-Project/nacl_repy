@@ -113,6 +113,9 @@ STARTINGFD = 10
 # for dirents...
 
 
+DEFAULT_UID=1000
+DEFAULT_GID=1000
+
 # when saving the metadata file on disk,
 # what name should we use:
 DEFAULT_METADATA_FILENAME = "lind.metadata"
