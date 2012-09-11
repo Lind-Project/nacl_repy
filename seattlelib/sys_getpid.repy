@@ -1,13 +1,53 @@
+"""
+
+Handlers for the getepid system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Getepid hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library getepid system call.  Then packs
+the result back up.
+
+"""
+
+
 def lind_sys_getpid(args):
-  # For now we dont want processes to know they are different than each other
-  # maybe this could be a lind specific counter in the future?
-  # what is the impact of doing this?
-  DEFAULT_PID = 1000
-  result = struct_pack("<i", DEFAULT_PID)
-  return SuccessResponseBuilder("sys_getpid",0 ,result)
+    """ getepid calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the paths in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the int returned, or error.
+
+    For now we dont want processes to know they are different than each other
+
+    maybe this could be a lind specific counter in the future?
+
+    what is the impact of doing this?
+
+    @TODO(cmatthew) this should be moved with the other sys calls.
+    """
+    DEFAULT_PID = 1000
+    result = struct_pack("<i", DEFAULT_PID)
+    return SuccessResponseBuilder("sys_getpid", len(result), result)
 
 
 def lind_safe_sys_getpid(args):
-  result = lind_sys_getpid(args)
-  assert len(result.message) == 4, "we return a sinlge in"
+      """ Safely wrap the getepid call.
 
+    See dispatcher.repy for details.
+
+    Check the paths for consistancy,
+    then call the real getepid dispatcher.
+
+    """
+
+    result = lind_sys_getpid(args)
+    assert len(result.message) == 4, "we return a sinlge in"
+
+    return result
