@@ -54,6 +54,7 @@ def setup_dispatcher(comp_num):
     51:lind_safe_sys_geteuid,
     52:lind_safe_sys_getgid,
     53:lind_safe_sys_getegid,
+    54:lind_safe_fs_flock,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -110,6 +111,7 @@ def setup_dispatcher(comp_num):
     51:lind_sys_geteuid,
     52:lind_sys_getgid,
     53:lind_sys_getegid,
+    54:lind_fs_flock,
 
     105:lind_comp_cia,
     106:lind_comp_call,

@@ -1,0 +1,61 @@
+"""
+
+Handlers for the flock system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Flock hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library flock system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_fs_flock(args):
+    """ flock calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the flags, mode and file name in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    fd = args[0]
+    operation = args[1]
+
+    try:
+        result = flock_syscall(fd, operation)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_flock", e[1], e[2])
+
+    return SuccessResponseBuilder("fs_flock", result)
+
+
+def lind_safe_fs_flock(args):
+    """ Safely wrap the flock call.
+
+    See dispatcher.repy for details.
+
+    Check the mode flags and file for consistancy,
+    then call the real flock dispatcher.
+
+    """
+
+    fd = args[0]
+    operation = args[1]
+
+    # if we are anything besides the allowed flags, fail
+    assert operation & (LOCK_SH | LOCK_EX | LOCK_NB | LOCK_UN), \
+           "At least one operation must be passed"
+    check_valid_fd_handle(fd)
+    assert isinstance(fd, int), "the fd should be an int"
+    assert isinstance(operation, int), "the operation should be an int"
+
+    result = lind_fs_flock(args)
+
+    return result
