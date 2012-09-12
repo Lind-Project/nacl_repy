@@ -1967,10 +1967,9 @@ def flock_syscall(fd, operation):
   if fd not in filedescriptortable:
     raise SyscallError("flock_syscall", "EBADF" "Invalid file descriptor.")
 
-  # FIXME: I should only allow flock constants. I am not understanding how to do
-  # this right now, will fix later.
-  #if operation & LOCK_ALL == operation:
-  #  raise SyscallError("flock_syscall", "EINVAL", "operation is invalid.")
+  # if we are anything besides the allowed flags, fail
+  if operation & ~(LOCK_SH|LOCK_EX|LOCK_NB|LOCK_UN):
+    raise SyscallError("flock_syscall", "EINVAL", "operation is invalid.")
 
   if operation & LOCK_SH:
     raise UnimplementedError("Shared lock is not yet implemented.")
