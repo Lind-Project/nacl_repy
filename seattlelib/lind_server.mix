@@ -172,6 +172,12 @@ include sys_getuid.repy
 
 include sys_geteuid.repy
 
+include sys_getgid.repy
+
+include sys_getegid.repy
+
+include fs_flock.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy

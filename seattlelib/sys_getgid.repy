@@ -45,6 +45,6 @@ def lind_safe_sys_getgid(args):
     """
     
     result = lind_sys_getgid(args)
-    assert len(result.message) == 4, "we return a sinlge in"
+    assert len(result.data) == 4, "we return a sinlge int"
 
     return result

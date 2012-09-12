@@ -47,6 +47,6 @@ def lind_safe_sys_geteuid(args):
     """
 
     result = lind_sys_geteuid(args)
-    assert len(result.message) == 4, "we return a sinlge in"
+    assert len(result.data) == 4, "we return a sinlge int"
 
     return result
