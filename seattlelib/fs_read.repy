@@ -39,6 +39,8 @@ def lind_fs_read(args):
             if size == 0:
                 size == TX_BUF_MAX
             result = recv_syscall(handle, size, 0)
+        except SocketWouldBlockError as e:
+            return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
         except SyscallError, e:
             return ErrorResponseBuilder("fs_read", e[1], e[2])
     else:

@@ -157,7 +157,6 @@ def _load_lower_handle_stubs():
   filedescriptortable[2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_RDWRFLAGS, 'note':'this is a stub3'}
 
 
-
 def load_fs(name=METADATAFILENAME):
   """ Help to correcly load a filesystem, if one exists, otherwise
   make a new empty one.  To do this, check if metadata exists.
@@ -179,6 +178,34 @@ def load_fs(name=METADATAFILENAME):
       print "Error: Cannot reload filesystem.  Run lind_fsck for details."
       exitall(1)
   _load_lower_handle_stubs()
+
+
+def load_fs_special_files():
+  """ If called adds special files in standard locations.
+  Specifically /dev/null, /dev/urandom and /dev/random
+  """
+  try: 
+     mkdir_syscall("/dev", S_IRWXA)
+  except SyscallError as e:
+    print "making /dev failed. Skipping" + str(e)
+
+  # load /dev/null
+  try:
+    mknod_syscall("/dev/null", S_IFCHR, (1,3))
+  except SyscallError as e:
+    print "making /dev/null failed. Skipping" + str(e)
+
+  # load /dev/urandom
+  try:
+    mknod_syscall("/dev/urandom", S_IFCHR, (1,9))
+  except SyscallError as e:
+    print "making /dev/urandcom failed. Skipping" + str(e)
+
+  # load /dev/random
+  try:
+    mknod_syscall("/dev/random", S_IFCHR, (1,8))
+  except SyscallError as e:
+    print "making /dev/random failed. Skipping" + str(e)
 
 
 # To have a simple, blank file system, simply run this block of code.
@@ -590,7 +617,7 @@ def mkdir_syscall(path, mode):
     newinode = filesystemmetadata['nextinode']
     filesystemmetadata['nextinode'] += 1
 
-    newinodeentry = {'size':0, 'uid':1000, 'gid':1000, 
+    newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID, 
             'mode':mode | S_IFDIR,  # DIR+rwxr-xr-x
             # BUG: I'm listing some arbitrary time values.  I could keep a time
             # counter too.
@@ -1899,7 +1926,6 @@ def geteuid_syscall():
   """
     http://linux.die.net/man/2/geteuid
   """
-  print "Calling geteuid"
   # I will return 1000, since this is also used in stat
   return DEFAULT_UID
 

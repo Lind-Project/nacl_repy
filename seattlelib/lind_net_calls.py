@@ -226,10 +226,15 @@ def _insert_into_socketobjecttable(socketobj):
 
 
 # A private helper that initializes a socket given validated arguments.
-def _socket_initializer(domain,socktype,protocol):
+def _socket_initializer(domain,socktype,protocol, blocking=False, cloexec=False):
   # get a file descriptor
+  flags = 0
+  if blocking:
+    flags = flags | O_NONBLOCK
+  if cloexec:
+    flags = flags | O_CLOEXEC
   newfd = get_next_fd()
-
+  
   # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
   # of the calls I did not change break.
   filedescriptortable[newfd] = {
@@ -243,7 +248,7 @@ def _socket_initializer(domain,socktype,protocol):
       'rcvbuf':262140,      # buffersize (only used by getsockopt)
       'state':NOTCONNECTED, # we start without any connection
       'lock':createlock(),
-      'flags':0,
+      'flags':flags,
       'errno':0
 # We don't set the ip / ports or socketobjectid because they are unknown now.
   }
@@ -281,7 +286,7 @@ def socket_syscall(domain, socktype, protocol):
       if protocol != IPPROTO_TCP:
         raise UnimplementedError("The only SOCK_STREAM implemented is TCP.  Unknown protocol:"+str(protocol))
       
-      return _socket_initializer(domain,real_socktype,protocol)
+      return _socket_initializer(domain,real_socktype,protocol, blocking, cloexec)
 
 
     # datagram!
@@ -646,12 +651,16 @@ def recvfrom_syscall(fd,length,flags):
     # includes NOTCONNECTED and LISTEN
     if filedescriptortable[fd]['state'] != CONNECTED:
       raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected."+str(filedescriptortable[fd]['state']))
+    # is this a non-blocking recv OR a nonblocking socket?
+    is_nonblocking = ((filedescriptortable[fd]['flags'] | O_NONBLOCK) != 0) or (flags & O_NONBLOCK != 0)
+    
     # I'm ready to recv, get the socket object...
     sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
     peek = filedescriptortable[fd]['last_peek']
     remoteip = filedescriptortable[fd]['remoteip']
     remoteport = filedescriptortable[fd]['remoteport']
     # keep trying to get something until it works (or EOF)...
+    print "Reading from a blocking socket?", is_nonblocking
     while True:
       # if we have previous data from a peek, use that
       data = ''
@@ -665,7 +674,7 @@ def recvfrom_syscall(fd,length,flags):
       # sleep and retry!
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
-        if flags & O_NONBLOCK != 0:
+        if is_nonblocking:
           raise e
         if peek == '':
           sleep(RETRYWAITAMOUNT)
@@ -1071,6 +1080,9 @@ def getsockopt_syscall(fd, level, optname):
       filedescriptortable[fd]['errno'] = 0
       return tmp
 
+    if optname == SO_REUSEADDR:
+      return 0
+
 
     raise UnimplementedError("Unknown option in getsockopt(). option = %s"%(oct(optname)))
 
@@ -1206,7 +1218,7 @@ def setshutdown_syscall(fd, how):
     
     raise SyscallError("shutdown_syscall","EINVAL","Shutdown given an invalid how")
   
-
+  return 0
 
 
 
