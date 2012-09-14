@@ -40,7 +40,6 @@ def lind_net_socketpair(args):
     assert type(sv[1]) == int and type(sv[0]) == int, "Socketpair results must be socket handles."
     
     data = struct_pack("<i<i", sv[0], sv[1])
-    print data
 
     return SuccessResponseBuilder("net_socketpair", result, data)
 
