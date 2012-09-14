@@ -83,6 +83,12 @@ def pack_stat_struct(struct_tuple):
      my_st_rdev, my_st_size, my_st_blksize, my_st_blocks,
      my_st_atime, my_st_atimeus, my_st_mtime, \
      my_st_mtimeus, my_st_ctime, my_st_ctimeus) = struct_tuple
+
+    if type(my_st_rdev) == tuple:
+        ma = my_st_rdev[0]
+        mi = my_st_rdev[1]
+        my_st_rdev = (((ma) << 20) | (mi))
+        
     result = struct_pack('<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
                          my_st_dev, my_st_ino, my_st_mode, my_st_nlink, \
                          my_st_uid, my_st_gid, my_st_rdev, my_st_size, \
