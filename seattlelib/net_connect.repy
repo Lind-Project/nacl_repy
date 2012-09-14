@@ -84,7 +84,7 @@ def lind_safe_net_connect(args):
 
     assert 0 < length <= TX_BUF_MAX, "Connect length must be with in limits"
 
-    assert len(addr) == (2 + 2 + 4 + 8), "Connect struct is incorrect size"
+    # assert len(addr) == (2 + 2 + 4 + 8), "Connect struct is incorrect size"
 
     result = lind_net_connect(args)
 
