@@ -280,52 +280,90 @@ SHUT_RDWR = 2
 
 
 ################### setsockopt / getsockopt...
+SOL_SOCKET = 1
+SO_DEBUG = 1
+SO_REUSEADDR = 2
+SO_TYPE = 3
+SO_ERROR = 4
+SO_DONTROUTE = 5
+SO_BROADCAST = 6
+SO_SNDBUF = 7
+SO_RCVBUF = 8
+SO_SNDBUFFORCE = 32
+SO_RCVBUFFORCE = 33
+SO_KEEPALIVE = 9
+SO_OOBINLINE = 10
+SO_NO_CHECK = 11
+SO_PRIORITY = 12
+SO_LINGER = 13
+SO_BSDCOMPAT = 14
+SO_REUSEPORT = 15
+SO_PASSCRED = 16
+SO_PEERCRED = 17
+SO_RCVLOWAT = 18
+SO_SNDLOWAT = 19
+SO_RCVTIMEO = 20
+SO_SNDTIMEO = 21
 
-SO_DEBUG =      0x0001        # turn on debugging info recording
-SO_ACCEPTCONN = 0x0002   # socket has had listen()
-SO_REUSEADDR =  0x0004    # allow local address reuse
-SO_KEEPALIVE =  0x0008    # keep connections alive
-SO_DONTROUTE =  0x0010    # just use interface addresses
-SO_BROADCAST =  0x0020    # permit sending of broadcast msgs
-SO_USELOOPBACK =0x0040  # bypass hardware when possible
-SO_LINGER =     0x0080       # linger on close if data present (in ticks)
-SO_OOBINLINE =  0x0100    # leave received OOB data in line
-SO_REUSEPORT =  0x0200    # allow local address & port reuse
-SO_TIMESTAMP =  0x0400    # timestamp received dgram traffic
-SO_ACCEPTFILTER = 0x1000 # there is an accept filter
-SO_DONTTRUNC = 0x2000    # APPLE: Retain unread data
-SO_WANTMORE = 0x4000     # APPLE: Give hint when more data ready
-SO_WANTOOBFLAG = 0x8000  # APPLE: Want OOB in MSG_FLAG on receive
+SO_SECURITY_AUTHENTICATION = 22
+SO_SECURITY_ENCRYPTION_TRANSPORT = 23
+SO_SECURITY_ENCRYPTION_NETWORK = 24
+
+SO_BINDTODEVICE = 25
+
+#/* Socket filtering */
+SO_ATTACH_FILTER = 26
+SO_DETACH_FILTER = 27
+
+SO_PEERNAME = 28
+SO_TIMESTAMP = 29
+SCM_TIMESTAMP = SO_TIMESTAMP
+
+SO_ACCEPTCONN = 30
+
+SO_PEERSEC = 31
+SO_PASSSEC = 34
+SO_TIMESTAMPNS = 35
+SCM_TIMESTAMPNS = SO_TIMESTAMPNS
+
+SO_MARK = 36
+
+SO_TIMESTAMPING = 37
+SCM_TIMESTAMPING = SO_TIMESTAMPING
+
+SO_PROTOCOL = 38
+SO_DOMAIN = 39
+
+SO_RXQ_OVFL = 40
 
 
+# # More setsockopt / getsockopt
 
-# More setsockopt / getsockopt
-
-SO_SNDBUF = 0x1001               # send buffer size
-SO_RCVBUF = 0x1002               # receive buffer size
-SO_SNDLOWAT = 0x1003             # send low-water mark
-SO_RCVLOWAT = 0x1004             # receive low-water mark
-SO_SNDTIMEO = 0x1005             # send timeout
-SO_RCVTIMEO = 0x1006             # receive timeout
-SO_ERROR = 0x1007             # get error status and clear
-SO_TYPE = 0x1008                 # get socket type
-SO_NREAD = 0x1020                # APPLE: get 1st-packet byte count
-SO_NKE = 0x1021                  # APPLE: Install socket-level NKE
-SO_NOSIGPIPE = 0x1022            # APPLE: No SIGPIPE on EPIPE
-SO_NOADDRERR = 0x1023            # APPLE: Returns EADDRNOTAVAIL when src is not available anymore
-SO_NWRITE = 0x1024               # APPLE: Get number of bytes currently in send socket buffer
-SO_REUSESHAREUID = 0x1025        # APPLE: Allow reuse of port/socket by different userids
-SO_NOTIFYCONFLICT = 0x1026       # APPLE: send notification if there is a bind on a port which is already in use
-SO_UPCALLCLOSEWAIT = 0x1027      # APPLE: block on close until an upcall returns
-SO_LINGER_SEC = 0x1080           # linger on close if data present (in seconds)
-SO_RESTRICTIONS = 0x1081         # APPLE: deny inbound/outbound/both/flag set
-SO_RESTRICT_DENYIN = 0x00000001  # flag for SO_RESTRICTIONS - deny inbound
-SO_RESTRICT_DENYOUT = 0x00000002 # flag for SO_RESTRICTIONS - deny outbound
-SO_RESTRICT_DENYSET = 0x80000000 # flag for SO_RESTRICTIONS - deny has been set
-SO_RANDOMPORT = 0x1082           # APPLE: request local port randomization
-SO_NP_EXTENSIONS = 0x1083        # To turn off some POSIX behavior
-SO_LABEL = 0x1010                # socket's MAC label
-SO_PEERLABEL = 0x1011            # socket's peer MAC label
+# SO_SNDBUF = 0x1001               # send buffer size
+# SO_RCVBUF = 0x1002               # receive buffer size
+# SO_SNDLOWAT = 0x1003             # send low-water mark
+# SO_RCVLOWAT = 0x1004             # receive low-water mark
+# SO_SNDTIMEO = 0x1005             # send timeout
+# SO_RCVTIMEO = 0x1006             # receive timeout
+# SO_ERROR = 0x1007             # get error status and clear
+# SO_TYPE = 0x1008                 # get socket type
+# SO_NREAD = 0x1020                # APPLE: get 1st-packet byte count
+# SO_NKE = 0x1021                  # APPLE: Install socket-level NKE
+# SO_NOSIGPIPE = 0x1022            # APPLE: No SIGPIPE on EPIPE
+# SO_NOADDRERR = 0x1023            # APPLE: Returns EADDRNOTAVAIL when src is not available anymore
+# SO_NWRITE = 0x1024               # APPLE: Get number of bytes currently in send socket buffer
+# SO_REUSESHAREUID = 0x1025        # APPLE: Allow reuse of port/socket by different userids
+# SO_NOTIFYCONFLICT = 0x1026       # APPLE: send notification if there is a bind on a port which is already in use
+# SO_UPCALLCLOEEWAIT = 0x1027      # APPLE: block on close until an upcall returns
+# SO_LINGER_SEC = 0x1080           # linger on close if data present (in seconds)
+# SO_RESTRICTIONS = 0x1081         # APPLE: deny inbound/outbound/both/flag set
+# SO_RESTRICT_DENYIN = 0x00000001  # flag for SO_RESTRICTIONS - deny inbound
+# SO_RESTRICT_DENYOUT = 0x00000002 # flag for SO_RESTRICTIONS - deny outbound
+# SO_RESTRICT_DENYSET = 0x80000000 # flag for SO_RESTRICTIONS - deny has been set
+# SO_RANDOMPORT = 0x1082           # APPLE: request local port randomization
+# SO_NP_EXTENSIONS = 0x1083        # To turn off some POSIX behavior
+# SO_LABEL = 0x1010                # socket's MAC label
+# SO_PEERLABEL = 0x1011            # socket's peer MAC label
 
 TCP_NODELAY = 0x01           # don't delay send to coalesce packets
 TCP_MAXSEG = 0x02            # set maximum segment size
