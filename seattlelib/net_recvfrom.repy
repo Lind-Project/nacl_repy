@@ -37,6 +37,10 @@ def lind_net_recvfrom(args):
     length = args[1]
     flags = args[2]
     addrlen = args[3]
+
+    # the lind - repy send buffer is 8k, so shrink this request if we have to.
+    if length > TX_BUF_MAX:
+        length = TX_BUF_MAX
     try:
         result = recvfrom_syscall(sockfd, length, flags)
     except SyscallError, e:
@@ -62,7 +66,7 @@ def lind_safe_net_recvfrom(args):
     flags = args[2]
 
     check_valid_fd_handle(sockfd)
-    assert 0 < length <= TX_BUF_MAX, "Cannot receive more than transmit buffer"
+    # assert 0 <= length <= TX_BUF_MAX, "Cannot receive more than transmit buffer: %d"%(length)
 
     assert ((flags & MSG_PEEK) != 0) or flags == 0, "Currently no recvfrom flags are supported."
     result = lind_net_recvfrom(args)
