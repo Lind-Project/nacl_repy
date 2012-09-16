@@ -167,11 +167,16 @@ def _reserve_localport(port, protocol):
   status = True
   _port_operations_debug.append("Reserving port " + str(port))
   if protocol == IPPROTO_UDP:
+    if port == 0:
+      port = _get_available_udp_port()
     if port not in _usedudpportsset:
       _usedudpportsset.add(port)
     else:
       status = False
   elif protocol == IPPROTO_TCP:
+    if port == 0:
+      port = _get_available_tcp_port()
+
     if port not in _usedtcpportsset:
       _usedtcpportsset.add(port)
     else:
@@ -179,7 +184,7 @@ def _reserve_localport(port, protocol):
   _port_list_lock.release()
   if not status:
     print _port_operations_debug
-  return status
+  return (status, port)
 
 # give a port and protocol, return the port to that portocol's pool
 def _release_localport(port, protocol):
@@ -360,7 +365,7 @@ def bind_syscall(fd,localip,localport):
   # force them to pick the result of getmyip here or could return a different 
   # error later....   I think I'll wait.
   if not intent_to_rebind:
-    ret = _reserve_localport(localport, filedescriptortable[fd]['protocol'])
+    (ret, localport) = _reserve_localport(localport, filedescriptortable[fd]['protocol'])
     assert ret
   # If this is a UDP interface, then we should listen for udp datagrams
   # (there is no 'listen' so the time to start now)...
@@ -433,7 +438,7 @@ def connect_syscall(fd,remoteip,remoteport):
       localip = getmyip()
       
       localport = _get_available_tcp_port()
-      while not _reserve_localport(localport, filedescriptortable[fd]['protocol']):
+      while not _reserve_localport(localport, filedescriptortable[fd]['protocol'])[0]:
         localport = _get_available_tcp_port()
     else:
       localip = filedescriptortable[fd]['localip']
@@ -508,7 +513,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
   # if there is no IP / port, call send instead.   It will assume the other
   # end is connected...
   if remoteip == '' and remoteport == 0:
-    print "warning: sending back to send."
+    print "Warning: sending back to send."
     return send_syscall(fd,message, flags)
 
   if filedescriptortable[fd]['state'] == CONNECTED or filedescriptortable[fd]['state'] == LISTEN:
@@ -660,7 +665,6 @@ def recvfrom_syscall(fd,length,flags):
     remoteip = filedescriptortable[fd]['remoteip']
     remoteport = filedescriptortable[fd]['remoteport']
     # keep trying to get something until it works (or EOF)...
-    print "Reading from a blocking socket?", is_nonblocking
     while True:
       # if we have previous data from a peek, use that
       data = ''
@@ -980,7 +984,7 @@ def accept_syscall(fd):
         filedescriptortable[newfd]['state'] = CONNECTED
         filedescriptortable[newfd]['localip'] = filedescriptortable[fd]['localip']
         newport = _get_available_tcp_port()
-        ret = _reserve_localport(newport, IPPROTO_TCP)
+        (ret, newport) = _reserve_localport(newport, IPPROTO_TCP) 
         assert ret
         filedescriptortable[newfd]['localport'] = newport
         filedescriptortable[newfd]['remoteip'] = remoteip
@@ -1010,6 +1014,7 @@ STOREDSOCKETOPTIONS = [ SO_LINGER, # ignored
                         SO_SNDLOWAT, # ignored
                         SO_RCVLOWAT, # ignored
                         SO_REUSEPORT, # used to allow duplicate binds...
+                        SO_REUSEADDR,
                       ]
 
 
@@ -1127,7 +1132,7 @@ def setsockopt_syscall(fd, level, optname, optval):
     # this is where the work happens!!!
     
     if optname == SO_ACCEPTCONN or optname == SO_TYPE or optname == SO_SNDLOWAT or optname == SO_RCVLOWAT:
-      raise SyscallError("setsockopt_syscall","ENOPROTOOPT","Cannot set option using setsockopt.")
+      raise SyscallError("setsockopt_syscall","ENOPROTOOPT","Cannot set option using setsockopt. %d"%(optname))
 
     # if the option is a stored binary option, just return it...
     if optname in STOREDSOCKETOPTIONS:
@@ -1143,7 +1148,7 @@ def setsockopt_syscall(fd, level, optname, optval):
       # now let's set this if we were told to
       if optval:
         # this value should be 1!!!   Nothing else is allowed
-        assert(optval == 1)
+        # assert(optval == 1), "Invalid optval"  This is not a valid assertion for SO_LINGER
         newoptions = newoptions | optname
       filedescriptortable[fd]['options'] = newoptions
       return 0
@@ -1161,14 +1166,13 @@ def setsockopt_syscall(fd, level, optname, optval):
     # I guess this is always true!?!?   I certainly don't handle it.
     if optname == SO_OOBINLINE:
       # I can only handle this being true...
-      assert(optval == 1)
+      assert(optval == 1), "Optval must be true"
       return 0
 
-    raise UnimplementedError("Unknown option in setsockopt()")
+    raise UnimplementedError("Unknown option in setsockopt()" + str(optname))
 
   else:
     raise UnimplementedError("Unknown level in setsockopt()")
-
 
 
 
