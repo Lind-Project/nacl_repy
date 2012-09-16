@@ -112,17 +112,16 @@ def _spawn_internal_sel_ldr(args, fd_slots, **kwargs):
 
 def nacl_watchdog(proc):
     """Watch a nacl process. Has it died? """
-    print "Starting watchdog"
     rc = proc.wait()
-    print "NaCl process return with:", rc
+    if rc != 0:
+        print "NaCl process return with:", rc
 
 
 def launch_nacl(nacl_env, program, args):
     """wrapper to setup a NaCl enviroement given the locations of all the files
     and the arugmetns"""
 
-    lib_dir = nacl_env["NACL_LIBRARY_DIR"]
-
+    lib_dir = nacl_env["NACL_LIBRARY_DIR"] + ":/home/lind/tmp/lind/sdk/linux_x86/nacl64/lib/"
     sel_ldr_args = [
         "-s", "-a", "-l", "lind.log",
         "--", nacl_env["NACL_DYN_LOADER"]]
@@ -142,13 +141,9 @@ def launch_nacl(nacl_env, program, args):
                                                   repy_constants.NACL_PLUGIN_ASYNC_TO_CHILD_FD])
 
     your_program = safebinary.NaClRuntime(proc, fd1, recv, send)
-#    print send, recv
     argv = ["unused-argv0", "--library-path", lib_dir] + [program] + args
     envv = ["NACL_FILE_RPC=1"]
-    # time.sleep(1)
-#    print "Sending args:", argv
     rc = send.imc_sendmsg(_pack_args_message(argv, envv), tuple([]))
-#    print "RC=", rc
     return your_program
 
 if __name__ == "__main__":
