@@ -5,8 +5,8 @@ resource events 10
 resource filewrite 10000000
 resource fileread 10000000
 resource filesopened 5000
-resource insockets 10
-resource outsockets 10
+resource insockets 1000
+resource outsockets 1000
 resource netsend 10000
 resource netrecv 10000
 resource loopsend 1000000
@@ -48,6 +48,20 @@ resource connport 10007
 resource connport 10008
 resource connport 10009
 resource connport 10010
+resource connport 10011
+resource connport 10012
+resource connport 10013
+resource connport 10014
+resource connport 10015
+resource connport 10016
+resource connport 10017
+resource connport 10018
+resource connport 10019
+resource connport 10020
+resource connport 10021
+resource connport 10022
+resource connport 10023
+resource connport 10024
 
 
 call gethostbyname_ex allow
