@@ -11,7 +11,7 @@ include struct.repy
 VERSION = "$Rev$"
 
 
-SILENT = False # Try to produce output as close as the OS would
+SILENT = True # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
 TRACE = False  # Trace system calls? (somewhat like strace) 
@@ -177,6 +177,8 @@ include sys_getgid.repy
 include sys_getegid.repy
 
 include fs_flock.repy
+
+include fs_rename.repy
 
 include debug.repy
 
@@ -351,6 +353,7 @@ def launch_helper(instance, num):
     NaclRPCServer(instance, num)
   createthread(closure)
 
+
 def _check_file(name):
   if name.startswith("/"):
     raise FileNotFoundError("Cannot open files from full path")
@@ -392,7 +395,7 @@ def setup_filetable(comp_num):
   """Try to open file system. If you can't, then make a new one."""
   log( "Opening file system... ")
   load_fs()
-
+  load_fs_special_files()
   log( "done.")
 
   # except KeyError, e:
