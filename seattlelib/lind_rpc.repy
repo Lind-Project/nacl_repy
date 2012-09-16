@@ -98,7 +98,8 @@ def ErrorResponseBuilder(who, code, message):
 
         message: A detailed message about the error.
         """
-    print "Note:", str(who), "got return code", code, ":", message
+    if not SILENT:
+        print "Note:", str(who), "got return code", code, ":", message
     r = Response(who, True, code)
     r.message = message
     return r
