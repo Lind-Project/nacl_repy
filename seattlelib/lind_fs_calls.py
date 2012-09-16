@@ -1244,7 +1244,6 @@ def read_syscall(fd, count):
 
     # If its a character file, call the helper function.
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-      print "Accessing a IS_CHR file."
       return _read_chr_file(inode, count)
 
     # Is it anything other than a regular file?
