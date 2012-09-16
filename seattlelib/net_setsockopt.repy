@@ -15,6 +15,8 @@ def lind_net_setsockopt(args):
   except UnimplementedError, e:
     return ErrorResponseBuilder("net_setsockopt", 'EINVAL',  str(e))
 
+  return SuccessResponseBuilder("net_setsockopt", result)
+
 
 def lind_safe_net_setsockopt(args):
   """
