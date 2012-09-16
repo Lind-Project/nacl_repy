@@ -31,6 +31,7 @@ O_NONBLOCK = 04000
 O_SYNC = 010000
 # O_FSYNC=O_SYNC
 O_ASYNC = 020000
+O_CLOEXEC = 02000000
 
 S_IRWXA = 00777
 S_IRWXU = 00700
@@ -181,11 +182,10 @@ def IS_REG(mode):
   else:
     return False
 
+
 def IS_CHR(mode):
-  if mode & S_FILETYPEFLAGS == S_IFCHR:
-    return True
-  else:
-    return False
+  return (mode & S_FILETYPEFLAGS) == S_IFCHR
+
 
 def IS_SOCK(mode):
   if mode & S_FILETYPEFLAGS == S_IFSOCK:
