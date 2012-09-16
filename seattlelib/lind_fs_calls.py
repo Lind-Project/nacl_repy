@@ -908,7 +908,11 @@ def fstat_syscall(fd):
 
   # if so, return the information...
   inode = filedescriptortable[fd]['inode']
-  if fd in [0,1,2]:
+  if fd in [0,1,2] or \
+         (filedescriptortable[fd] is filedescriptortable[0] or \
+          filedescriptortable[fd] is filedescriptortable[1] or \
+          filedescriptortable[fd] is filedescriptortable[2] \
+          ):
     return (filesystemmetadata['dev_id'],          # st_dev
           inode,                                 # inode
             49590, #mode
@@ -926,10 +930,8 @@ def fstat_syscall(fd):
           0,
           0,                                     # ctime ns
         )
-
   if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
     return _istat_helper_chr_file(inode)
-
   return _istat_helper(inode)
 
 
@@ -1018,8 +1020,10 @@ def open_syscall(path, flags, mode):
       # this.
       assert(mode & S_IRWXA == mode)
 
-      newinodeentry = {'size':0, 'uid':1000, 'gid':1000, 
-            'mode':S_IFCHR+mode if S_IFCHR & flags else S_IFREG+mode,
+      effective_mode = (S_IFCHR | mode) if (S_IFCHR & flags) != 0 else (S_IFREG | mode)
+
+      newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID, 
+            'mode':effective_mode,
             # BUG: I'm listing some arbitrary time values.  I could keep a time
             # counter too.
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
@@ -1217,6 +1221,7 @@ def read_syscall(fd, count):
     http://linux.die.net/man/2/read
   """
 
+  print "At start of read syscall count is", count
   # BUG: I probably need a filedescriptortable lock to prevent an untimely
   # close call or similar from messing everything up...
 
@@ -1239,7 +1244,8 @@ def read_syscall(fd, count):
 
     # If its a character file, call the helper function.
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-      return _read_chr_file(inode)
+      print "Accessing a IS_CHR file."
+      return _read_chr_file(inode, count)
 
     # Is it anything other than a regular file?
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1248,7 +1254,7 @@ def read_syscall(fd, count):
 
     # let's do a readat!
     position = filedescriptortable[fd]['position']
-
+    print "Doing regular read of ", count, " at ", position
     data = fileobjecttable[inode].readat(count,position)
 
     # and update the position
@@ -1853,7 +1859,7 @@ def mknod_syscall(path, mode, dev):
 # 2. /dev/random
 # 3. /dev/urandom
 
-def _read_chr_file(inode):
+def _read_chr_file(inode, count):
   """
    helper function for reading data from chr_file's.
   """
@@ -1863,11 +1869,11 @@ def _read_chr_file(inode):
     return ''
   # /dev/random
   elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
-    return randombytes()
+    return randombytes()[0:count]
   # /dev/urandom
   # FIXME: urandom is supposed to be non-blocking.
   elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 9):
-    return randombytes()
+    return randombytes()[0:count]
   else:
     raise UnimplementedError("Given device is not supported.")
 
@@ -2014,3 +2020,30 @@ def flock_syscall(fd, operation):
     filedescriptortable[fd]['lock'].release()
     return 0
 
+
+
+def rename_syscall(old, new):
+  """
+  http://linux.die.net/man/2/flock
+  TODO: this needs to be fixed up.
+
+  """
+  filesystemmetadatalock.acquire(True)
+
+
+  true_old_path = _get_absolute_path(old)
+  true_new_path = _get_absolute_path(new)
+
+  if true_old_path not in fastinodelookuptable:
+    raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
+
+  inode = fastinodelookuptable[true_old_path]
+
+  fastinodelookuptable[true_new_path] = inode
+
+  del fastinodelookuptable[true_old_path]
+
+  persist_metadata(METADATAFILENAME)
+  filesystemmetadatalock.release()
+
+  return 0

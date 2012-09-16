@@ -1,0 +1,58 @@
+"""
+
+Handlers for the rename system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Rename hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library rename system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_fs_rename(args):
+    """ rename calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the handle and size in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    old = args[0]
+    new = args[1]
+
+    try:
+        result = rename_syscall(old, new)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_rename", e[1], e[2])
+
+    return SuccessResponseBuilder("fs_rename", result)
+        
+
+def lind_safe_fs_rename(args):
+    """ Safely wrap the rename call.
+
+    See dispatcher.repy for details.
+
+    Check the handle and size for consistancy,
+    then call the real rename dispatcher.
+
+    """
+    
+    old = args[0]
+    new = args[1]
+
+    assert isinstance(old, str)
+    assert isinstance(new, str)
+    assert len(old) != 0 and len(new) != 0, "Empty string in rename"
+    
+    result = lind_fs_rename(args)
+    
+    return result

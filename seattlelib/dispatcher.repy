@@ -55,6 +55,7 @@ def setup_dispatcher(comp_num):
     52:lind_safe_sys_getgid,
     53:lind_safe_sys_getegid,
     54:lind_safe_fs_flock,
+    55:lind_safe_fs_rename,
 
     105:lind_comp_cia,
     106:lind_comp_call,
