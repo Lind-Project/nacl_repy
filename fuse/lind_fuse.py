@@ -295,8 +295,12 @@ class LindFuseFS(Fuse):
             yield fuse.Direntry(e)
 
     def unlink(self, path):
-        log("unlink (unimplemented)", path)
-        return -errno["ENOSYS"]
+        log("unlink", path)
+        try:
+            ret = lind.unlink_syscall(path)
+        except lind.SyscallError, e:
+            ret = -errno[e[1]]
+        return ret
 
     def rmdir(self, path):
         log("rmdir", path)
@@ -315,8 +319,12 @@ class LindFuseFS(Fuse):
         return ret
 
     def rename(self, path, path1):
-        log("rename (unimplemented)", path, path1)
-        return -errno["ENOSYS"]
+        log("rename", path, path1)
+        try:
+            ret = lind.rename_syscall(path, path1)
+        except lind.SyscallError, e:
+            ret = -errno[e[1]]
+        return ret
 
     def link(self, path, path1):
         log("link", path, path1)
