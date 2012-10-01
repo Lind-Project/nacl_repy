@@ -13,7 +13,7 @@ def lind_fs_xstat(args):
     return ErrorResponseBuilder("fs_xstat", e[1], e[2])
 
   result = pack_stat_struct(stat)
-  return SuccessResponseBuilder("fs_xstat", len(result), result)
+  return SuccessResponseBuilder("fs_xstat", 0, result)
 
 def lind_safe_fs_xstat(args):
   type_code = args[0]
