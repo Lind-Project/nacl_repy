@@ -909,10 +909,10 @@ def fstat_syscall(fd):
   # if so, return the information...
   inode = filedescriptortable[fd]['inode']
   if fd in [0,1,2] or \
-         (filedescriptortable[fd] is filedescriptortable[0] or \
-          filedescriptortable[fd] is filedescriptortable[1] or \
-          filedescriptortable[fd] is filedescriptortable[2] \
-          ):
+    (filedescriptortable[fd] is filedescriptortable[0] or \
+     filedescriptortable[fd] is filedescriptortable[1] or \
+     filedescriptortable[fd] is filedescriptortable[2] \
+    ):
     return (filesystemmetadata['dev_id'],          # st_dev
           inode,                                 # inode
             49590, #mode
@@ -1221,7 +1221,6 @@ def read_syscall(fd, count):
     http://linux.die.net/man/2/read
   """
 
-  print "At start of read syscall count is", count
   # BUG: I probably need a filedescriptortable lock to prevent an untimely
   # close call or similar from messing everything up...
 
@@ -1253,7 +1252,6 @@ def read_syscall(fd, count):
 
     # let's do a readat!
     position = filedescriptortable[fd]['position']
-    print "Doing regular read of ", count, " at ", position
     data = fileobjecttable[inode].readat(count,position)
 
     # and update the position
@@ -1597,13 +1595,16 @@ def fcntl_syscall(fd, cmd, *args):
     # if we're getting the flags, return them... (but this is just CLO_EXEC, 
     # so ignore)
     if cmd == F_GETFD:
-      assert(len(args) == 0)
-      return 0
+      if len(args) > 0:
+        raise SyscallError("fcntl_syscall", "EINVAL", "Argument is more than\
+          maximun allowable value.")
+      return int((filedescriptortable[fd]['flags'] & FD_CLOEXEC) != 0)
 
-    # set the flags... (but this is just CLO_EXEC, so ignore...)
+    # set the flags...
     elif cmd == F_SETFD:
       assert(len(args) == 1)
-      assert(type(args[0]) == int or type(args[0]) == long)
+      assert(args[0] == FD_CLOEXEC)
+      filedescriptortable[fd]['flags'] |= args[0]
       return 0
 
     # if we're getting the flags, return them...
