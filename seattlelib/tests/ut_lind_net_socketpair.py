@@ -43,15 +43,13 @@ def tester():
 
 # Let's get a piar of sockets and check if a two way communication
 # is possible. This is TCP sockpair.
-sockets = []
-lind_test_server.socketpair_syscall(AF_INET, SOCK_STREAM, 0, sockets)
+sockets = lind_test_server.socketpair_syscall(AF_INET, SOCK_STREAM, 0)[1]
 
 # performs message passing among the sockets...
 tester()
 
 # Test for UDP connection...
-sockets = []
-lind_test_server.socketpair_syscall(AF_INET, SOCK_DGRAM, 0, sockets)
+sockets = lind_test_server.socketpair_syscall(AF_INET, SOCK_DGRAM, 0)[1]
 
 # performs message passing among the sockets...
 tester()
