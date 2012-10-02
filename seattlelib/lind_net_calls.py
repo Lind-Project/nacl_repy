@@ -657,7 +657,6 @@ def recvfrom_syscall(fd,length,flags):
     if filedescriptortable[fd]['state'] != CONNECTED:
       raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected."+str(filedescriptortable[fd]['state']))
     # is this a non-blocking recv OR a nonblocking socket?
-    is_nonblocking = ((filedescriptortable[fd]['flags'] | O_NONBLOCK) != 0) or (flags & O_NONBLOCK != 0)
     
     # I'm ready to recv, get the socket object...
     sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
@@ -678,7 +677,7 @@ def recvfrom_syscall(fd,length,flags):
       # sleep and retry!
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
-        if is_nonblocking:
+        if IS_NONBLOCKING(filedescriptortable[fd]['flags'], flags):
           raise e
         if peek == '':
           sleep(RETRYWAITAMOUNT)
@@ -941,7 +940,7 @@ def listen_syscall(fd,backlog):
 
 
 # returns ip, port, sockfd
-def accept_syscall(fd):
+def accept_syscall(fd, flags=0):
   """ 
     http://linux.die.net/man/2/accept
   """
@@ -952,11 +951,12 @@ def accept_syscall(fd):
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("accept_syscall","ENOTSOCK","The descriptor is not a socket.")
 
+  blocking = (flags & SOCK_NONBLOCK) != 0
+  cloexec = (flags & SOCK_CLOEXEC) != 0
 
   # If UDP, raise an exception
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
     raise SyscallError("accept_syscall","EOPNOTSUPP","This protocol does not support listening.")
-
 
   # it's TCP!
   elif filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
@@ -980,7 +980,7 @@ def accept_syscall(fd):
         sleep(RETRYWAITAMOUNT)
       else:
 
-        newfd = _socket_initializer(filedescriptortable[fd]['domain'],filedescriptortable[fd]['type'],filedescriptortable[fd]['protocol'])
+        newfd = _socket_initializer(filedescriptortable[fd]['domain'],filedescriptortable[fd]['type'],filedescriptortable[fd]['protocol'], blocking, cloexec)
         filedescriptortable[newfd]['state'] = CONNECTED
         filedescriptortable[newfd]['localip'] = filedescriptortable[fd]['localip']
         newport = _get_available_tcp_port()
@@ -1447,13 +1447,12 @@ def _helper_sockpair():
   rc = accept_syscall(mycontext[SOCKETPAIR]) 
   mycontext[SOCKETPAIR_LISTEN] = rc[2]
 
-
 def socketpair_syscall(domain, socktype, protocol):
-  """ 
+  """
     http://linux.die.net/man/2/socketpair
   """
   sv = []
-  
+
   # Our implementation use TCP/UDP ports to mimic Unix domain sockets
   # so if we find that, swap to internet domain
   if domain == AF_UNIX:
@@ -1463,17 +1462,10 @@ def socketpair_syscall(domain, socktype, protocol):
   sockfd = socket_syscall(domain, socktype, protocol)
   listfd = socket_syscall(domain, socktype, protocol)
 
-  # bind both the sockets to local interface and specific ports.
-  # FIXME: we need to reserve these ports, so that no other application would
-  #        use this port, before socketpair is called.
-  
   # TCP connection happens differently...
   if socktype == SOCK_STREAM:
     port1 = _get_available_tcp_port()
     rc = bind_syscall(sockfd, '127.0.0.1', port1)
-    assert rc == 0, "Bind failed in socket pair"
-    port2 = _get_available_tcp_port()
-    rc = bind_syscall(listfd, '127.0.0.1', port2)
     assert rc == 0, "Bind failed in socket pair"
 
     mycontext[SOCKETPAIR] = sockfd
@@ -1491,14 +1483,15 @@ def socketpair_syscall(domain, socktype, protocol):
 
   # Make a connection oriented UDP.
   else:
-    assert False, "Message based socketpair needs fixing up to use correct ports"
+    port1 = _get_available_udp_port()
     bind_syscall(sockfd, '127.0.0.1', port1)
+    port2 = _get_available_udp_port()
     bind_syscall(listfd, '127.0.0.1', port2)
 
-    connect_syscall(sockfd, '127.0.0.1', 50366)
-    connect_syscall(listfd, '127.0.0.1', 50365)
+    connect_syscall(sockfd, '127.0.0.1', port2)
+    connect_syscall(listfd, '127.0.0.1', port1)
 
     sv.append(sockfd)
     sv.append(listfd)
-  
+
   return (0, sv)
