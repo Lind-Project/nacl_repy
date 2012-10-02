@@ -8,6 +8,7 @@ import lind_test_server
 from lind_fs_constants import *
 
 lind_test_server._blank_fs_init()
+lind_test_server._load_lower_handle_stubs()
 
 # let's create /dev/null...
 lind_test_server.mknod_syscall('/null', S_IFCHR, (1, 3))
