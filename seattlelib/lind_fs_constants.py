@@ -89,6 +89,9 @@ F_SETLEASE = 1024
 F_GETLEASE = 1025
 F_NOTIFY = 1026
 
+# for fcntl to manipulate file descriptor flags..
+FD_CLOEXEC = 02000000
+
 # for the lock calls
 F_RDLCK = 0
 F_WRLCK = 1
@@ -112,8 +115,6 @@ STARTINGFD = 10
 
 
 # for dirents...
-
-
 DEFAULT_UID=1000
 DEFAULT_GID=1000
 
@@ -214,3 +215,8 @@ def IS_RDWR(flags):
   else:
     return False
 
+def IS_NONBLOCKING(fd_flags, recv_flags):
+  if ((fd_flags & O_NONBLOCK) != 0) or ((recv_flags & O_NONBLOCK) != 0):
+    return True
+  else:
+    return False
