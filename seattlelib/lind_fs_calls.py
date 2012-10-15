@@ -324,6 +324,10 @@ def _rebuild_fastinodelookuptable():
 # private helper function that converts a relative path or a path with things
 # like foo/../bar to a normal path.
 def _get_absolute_path(path):
+  
+  # should raise an ENOENT error...
+  if path == '':
+    return path
 
   # If it's a relative path, prepend the CWD...
   if path[0] != '/':
@@ -586,6 +590,9 @@ def mkdir_syscall(path, mode):
 
   # ... but always release it...
   try:
+    if path == '':
+      raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
+
     truepath = _get_absolute_path(path)
 
     # is the path there?
@@ -743,7 +750,10 @@ def link_syscall(oldpath, newpath):
     # TODO: I should check permissions...
 
     # okay, the old path info seems fine...
-      
+    
+    if newpath == '':
+      raise SyscallError("link_syscall","ENOENT","New path does not exist.")
+
     truenewpath = _get_absolute_path(newpath)
 
     # does the newpath exist?   It shouldn't
@@ -987,6 +997,9 @@ def open_syscall(path, flags, mode):
 
   # ... but always release it...
   try:
+    if path == '':
+      raise SyscallError("open_syscall","ENOENT","The file does not exist.")
+
     truepath = _get_absolute_path(path)
 
     # is the file missing?
@@ -1820,6 +1833,9 @@ def mknod_syscall(path, mode, dev):
   """
     http://linux.die.net/man/2/mknod
   """
+  if path == '':
+    raise SyscallError("mknod_syscall","ENOENT","The file does not exist.")
+
   truepath = _get_absolute_path(path)
 
   # check if file already exists, if so raise an error.
@@ -2033,9 +2049,12 @@ def rename_syscall(old, new):
 
   true_old_path = _get_absolute_path(old)
   true_new_path = _get_absolute_path(new)
-
+  
   if true_old_path not in fastinodelookuptable:
     raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
+
+  if true_new_path == '':
+    raise SyscallError("rename_syscall", "ENOENT", "New file does not exist")
 
   inode = fastinodelookuptable[true_old_path]
 
