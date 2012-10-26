@@ -347,9 +347,13 @@ class LindFuseFS(Fuse):
         log("chown (unimplemented)", path, user, group)
         return -errno["ENOSYS"]
 
-    def truncate(self, path, len):
-        log("truncate (unimplemented)", path, len)
-        return -errno["ENOSYS"]
+    def truncate(self, path, length):
+	log("truncate", path, length)
+        try:
+            ret = lind.truncate_syscall(path, length)
+        except lind.SyscallError, e:
+            ret = -errno[e[1]]
+        return ret
 
     def mknod(self, path, mode, dev):
         log("mknod (unimplemented)", path, mode, dev)

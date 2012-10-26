@@ -1766,6 +1766,24 @@ def chmod_syscall(path, mode):
     filesystemmetadatalock.release()
 
 
+
+#### TRUNCATE  ####
+
+
+def truncate_syscall(path, length):
+  """
+    http://linux.die.net/man/2/truncate
+  """
+
+  fd = open_syscall(path, O_RDWR, S_IRWXA)
+
+  ret = ftruncate_syscall(fd, length)
+
+  close_syscall(fd)
+
+  return ret
+
+
 #### FTRUNCATE ####
 
 
@@ -1777,7 +1795,10 @@ def ftruncate_syscall(fd, new_len):
 
   # check the fd
   if fd not in filedescriptortable and fd >= STARTINGFD:
-    raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
+    raise SyscallError("ftruncate_syscall","EBADF","Invalid old file descriptor.")
+
+  if new_len < 0:
+    raise SyscallError("ftruncate_syscall", "EINVAL", "Incorrect length passed.")
 
   # Acquire the fd lock...
   desc = filedescriptortable[fd]
