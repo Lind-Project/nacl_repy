@@ -1616,7 +1616,6 @@ def fcntl_syscall(fd, cmd, *args):
     # set the flags...
     elif cmd == F_SETFD:
       assert(len(args) == 1)
-      assert(args[0] == FD_CLOEXEC)
       filedescriptortable[fd]['flags'] |= args[0]
       return 0
 
