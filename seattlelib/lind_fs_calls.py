@@ -2056,33 +2056,36 @@ def flock_syscall(fd, operation):
     filedescriptortable[fd]['lock'].release()
     return 0
 
-
-
 def rename_syscall(old, new):
   """
-  http://linux.die.net/man/2/flock
+  http://linux.die.net/man/2/rename
   TODO: this needs to be fixed up.
-
   """
   filesystemmetadatalock.acquire(True)
+  try:
+    true_old_path = _get_absolute_path(old)
+    true_new_path = _get_absolute_path(new)
 
+    if true_old_path not in fastinodelookuptable:
+      raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
 
-  true_old_path = _get_absolute_path(old)
-  true_new_path = _get_absolute_path(new)
-  
-  if true_old_path not in fastinodelookuptable:
-    raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
+    if true_new_path == '':
+      raise SyscallError("rename_syscall", "ENOENT", "New file does not exist")
 
-  if true_new_path == '':
-    raise SyscallError("rename_syscall", "ENOENT", "New file does not exist")
+    trueparentpath_old = _get_absolute_parent_path(true_old_path)
+    parentinode = fastinodelookuptable[trueparentpath_old]
 
-  inode = fastinodelookuptable[true_old_path]
+    inode = fastinodelookuptable[true_old_path]
 
-  fastinodelookuptable[true_new_path] = inode
+    newname = true_new_path.split('/')[-1]
+    filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][newname] = inode
 
-  del fastinodelookuptable[true_old_path]
+    fastinodelookuptable[true_new_path] = inode
 
-  persist_metadata(METADATAFILENAME)
-  filesystemmetadatalock.release()
+    oldname = true_old_path.split('/')[-1]
+    del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][oldname]
+    del fastinodelookuptable[true_old_path]
 
+  finally:
+    filesystemmetadatalock.release()
   return 0
