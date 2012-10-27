@@ -1475,6 +1475,7 @@ def close_syscall(fd):
 
   finally:
     # ... release the lock, if there is one
+    persist_metadata(METADATAFILENAME)
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].release()
     del filedescriptortable[fd]
@@ -1759,13 +1760,12 @@ def chmod_syscall(path, mode):
     #assert(mode & S_IRWXA == mode)
 
     # should overwrite any previous permissions, according to POSIX
-    filesystemmetadata['inodetable'][thisinode]['mode'] = S_IFREG + mode
+    filesystemmetadata['inodetable'][thisinode]['mode'] = S_IFREG | mode
 
   finally:
     persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
-
-
+  return 0
 
 #### TRUNCATE  ####
 
