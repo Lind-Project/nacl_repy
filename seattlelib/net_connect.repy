@@ -73,7 +73,7 @@ def lind_safe_net_connect(args):
 
     assert length == len(addr), "Passed length must match buffer size"
 
-    warning(family == 0, "Connect currently ignores family")
+    assert_warning(family == 0, "Connect currently ignores family")
 
     assert 1 <= port <= 2 ** 16, "Port must be between 1, 65k"
 
