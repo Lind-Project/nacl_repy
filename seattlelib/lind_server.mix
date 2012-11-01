@@ -43,7 +43,15 @@ if not TRACE:
     pass
 
 
-def warning(logic, message):
+def warning(*msg):
+  if not SILENT:
+    for part in msg:
+      print part,
+    print
+
+
+
+def assert_warning(logic, message):
   """Like assert, but only warn"""
   if not logic:
     log( "Warning:"+ message)
