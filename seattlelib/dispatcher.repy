@@ -1,7 +1,7 @@
 NOOP_CALL_NUM=1
 
-MODE="safe"
-#MODE=""
+# MODE="safe"
+MODE="fast"
 
 def setup_dispatcher(comp_num):
   # map a systemcall number to a particular function
@@ -63,7 +63,7 @@ def setup_dispatcher(comp_num):
     108:lind_comp_recv
     }
     
-  elif mode == "":
+  elif MODE == "fast":
     comp(comp_num)[SYSCALL] = {
     1:lind_debug_noop,
     2:lind_fs_access,
