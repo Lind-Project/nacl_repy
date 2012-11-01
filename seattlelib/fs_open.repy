@@ -31,9 +31,8 @@ def lind_fs_open(args):
     try:
         result_fd = open_syscall(file_name, flags, mode)
     except SyscallError, e:
-        message = "Could not find file: " + file_name + "\n" + str(e) + "\n"
-        # log(message)
-        return ErrorResponseBuilder("fs_open", "ENOENT", message)
+        message = "Could not find file: " + file_name + ":\n" + str(e[2]) + "\n"
+        return ErrorResponseBuilder("fs_open", e[1], message)
     return SuccessResponseBuilder("fs_open", result_fd)
 
 
