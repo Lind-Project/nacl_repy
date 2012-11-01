@@ -147,7 +147,6 @@ def pack_struct_timeval(tv_sec, tv_usec):
 
     @return a float in seceonds, then each sec and usec member
     """
-    print tv_sec, tv_usec
     new_struct= struct_pack("<Q<Q",tv_sec, tv_usec)
     return new_struct
 
