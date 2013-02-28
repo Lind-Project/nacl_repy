@@ -173,6 +173,7 @@ def main():
   copy_to_target("softwareupdater/*", target_dir)
   copy_to_target("autograder/nm_remote_api.mix", target_dir)
   copy_to_target("keydaemon/*", target_dir)
+  copy_to_target("tools/*", target_dir)
   # The license must be included in anything we distribute.
   copy_to_target("LICENSE.TXT", target_dir)
   
