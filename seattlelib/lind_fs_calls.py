@@ -1759,10 +1759,11 @@ def chmod_syscall(path, mode):
     thisinode = fastinodelookuptable[truepath]
 
     # be sure there aren't extra mode bits... No errno seems to exist for this
-    #assert(mode & S_IRWXA == mode)
+    assert(mode & S_IRWXA == mode)
 
-    # should overwrite any previous permissions, according to POSIX
-    filesystemmetadata['inodetable'][thisinode]['mode'] = S_IFREG | mode
+    # should overwrite any previous permissions, according to POSIX.   However,
+    # we want to keep the 'type' part of the mode from before
+    filesystemmetadata['inodetable'][thisinode]['mode'] = (filesystemmetadata['inodetable'][thisinode]['mode'] &~S_IRWXA) | mode
 
   finally:
     persist_metadata(METADATAFILENAME)
