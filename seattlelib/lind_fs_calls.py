@@ -233,6 +233,8 @@ def _blank_fs_init():
     
   fastinodelookuptable['/'] = ROOTDIRECTORYINODE
 
+  # it makes no sense this wasn't done before...
+  persist_metadata(METADATAFILENAME)
 
 
 
