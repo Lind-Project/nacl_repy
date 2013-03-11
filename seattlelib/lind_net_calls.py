@@ -183,7 +183,7 @@ def _reserve_localport(port, protocol):
       status = False
   _port_list_lock.release()
   if not status:
-    print _port_operations_debug
+    warning("_reserve_local_port", _port_operations_debug)
   return (status, port)
 
 # give a port and protocol, return the port to that portocol's pool
@@ -199,8 +199,8 @@ def _release_localport(port, protocol):
     elif protocol == IPPROTO_TCP:
       _usedtcpportsset.remove(port)
   except KeyError:
-    print "Warning: freeing a port which is already free.  Port is", port
-    print _port_operations_debug
+    warning("Warning: freeing a port which is already free.  Port is", port)
+    warning(_port_operations_debug)
   finally:
     _port_list_lock.release()
 
@@ -276,7 +276,7 @@ def socket_syscall(domain, socktype, protocol):
   cloexec = (socktype & SOCK_CLOEXEC) != 0 # check the cloexec flag
 
   if blocking:
-    print "Warning: trying to create a non-blocking socket - we don't support that yet."
+    warning("Warning: trying to create a non-blocking socket - we don't support that yet.")
 
   # okay, let's do different things depending on the domain...
   if domain == PF_INET:
@@ -513,7 +513,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
   # if there is no IP / port, call send instead.   It will assume the other
   # end is connected...
   if remoteip == '' and remoteport == 0:
-    print "Warning: sending back to send."
+    warning("Warning: sending back to send.")
     return send_syscall(fd,message, flags)
 
   if filedescriptortable[fd]['state'] == CONNECTED or filedescriptortable[fd]['state'] == LISTEN:
@@ -1080,7 +1080,7 @@ def getsockopt_syscall(fd, level, optname):
       return 1
 
     if optname == SO_ERROR:
-      print "Warning: returning no error because error reporting is not done correctly yet."
+      warning("Warning: returning no error because error reporting is not done correctly yet.")
       tmp = filedescriptortable[fd]['errno']
       filedescriptortable[fd]['errno'] = 0
       return tmp
@@ -1286,11 +1286,14 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time):
 
     # Reads
     for fd in readfds:
+      if fd == 0:
+        warning("Warning: Can't do select on stdin.")
+        continue
       if fd not in filedescriptortable:
         raise SyscallError("select_syscall","EBADF","The file descriptor is invalid.")
 
       desc = filedescriptortable[fd]
-      if not IS_SOCK_DESC(fd) or fd == 0:
+      if not IS_SOCK_DESC(fd) and fd != 0:
         # files never block, so always say yes for them
         new_readfds.append(fd)
         retval += 1

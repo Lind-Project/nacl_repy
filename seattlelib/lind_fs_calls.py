@@ -136,7 +136,16 @@ fileobjecttable = {}
 fs_calls_context = {}
 
 # Where we currently are at...
+
 fs_calls_context['currentworkingdirectory'] = '/'
+
+SILENT=True
+
+def warning(*msg):
+  if not SILENT:
+    for part in msg:
+      print part,
+    print
 
 
 # This is raised to return an error...
@@ -168,7 +177,7 @@ def load_fs(name=METADATAFILENAME):
     # lets see if the metadata file is already here?
     f = openfile(name, False)
   except FileNotFoundError, e:
-    print "Note: No filesystem found, building a fresh one.",
+    warning("Note: No filesystem found, building a fresh one.")
     _blank_fs_init()
   else:
     f.close()
@@ -187,30 +196,29 @@ def load_fs_special_files():
   try: 
      mkdir_syscall("/dev", S_IRWXA)
   except SyscallError as e:
-    print "making /dev failed. Skipping" + str(e)
+    warning( "making /dev failed. Skipping",str(e))
 
   # load /dev/null
   try:
     mknod_syscall("/dev/null", S_IFCHR, (1,3))
   except SyscallError as e:
-    print "making /dev/null failed. Skipping" + str(e)
+    warning("making /dev/null failed. Skipping", str(e))
 
   # load /dev/urandom
   try:
     mknod_syscall("/dev/urandom", S_IFCHR, (1,9))
   except SyscallError as e:
-    print "making /dev/urandcom failed. Skipping" + str(e)
+    warning("making /dev/urandcom failed. Skipping",str(e))
 
   # load /dev/random
   try:
     mknod_syscall("/dev/random", S_IFCHR, (1,8))
   except SyscallError as e:
-    print "making /dev/random failed. Skipping" + str(e)
+    warning("making /dev/random failed. Skipping", str(e))
 
 
 # To have a simple, blank file system, simply run this block of code.
 # 
-
 def _blank_fs_init():
 
   # kill all left over data files...
@@ -1303,7 +1311,6 @@ def write_syscall(fd, data):
     raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
   if filedescriptortable[fd]['inode'] in [0,1,2]:
-    print data,
     return len(data)
 
   # Is it open for writing?
