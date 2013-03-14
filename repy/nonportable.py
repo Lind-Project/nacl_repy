@@ -110,10 +110,6 @@ def preparesocket(socketobject):
     # Linux seems not to care if we set the timeout, Mac goes nuts and refuses
     # to let you send from a socket you're receiving on (why?)
     pass
-
-  elif ostype == "WindowsCE":
-    # No known issues, so just go
-    pass
 	
   else:
     raise UnsupportedSystemException, "Unsupported system type: '"+osrealtype+"' (alias: "+ostype+")"
@@ -127,15 +123,9 @@ def monitor_cpu_disk_and_mem():
     # Startup a CPU monitoring thread/process
     do_forked_resource_monitor()
     
-  elif ostype == 'Windows' or ostype == 'WindowsCE':
+  elif ostype == 'Windows':
     # Now we set up a cpu nanny...
-    # Use an external CPU monitor for WinCE
-    if ostype == 'WindowsCE':
-      nannypath = "\"" + repy_constants.PATH_SEATTLE_INSTALL + 'win_cpu_nanny.py' + "\""
-      cmdline = str(os.getpid())+" "+str(nanny.get_resource_limit("cpu"))+" "+str(repy_constants.CPU_POLLING_FREQ_WINCE)
-      windows_api.launch_python_script(nannypath, cmdline)
-    else:
-      WinCPUNannyThread().start()
+    WinCPUNannyThread().start()
     
     # Launch mem./disk resource nanny
     WindowsNannyThread().start()
@@ -218,7 +208,7 @@ def getruntime():
       last_uptime = uptime
 
   # Check for windows  
-  elif ostype in ["Windows", "WindowsCE"]:   
+  elif ostype in ["Windows"]:   
     # Release the lock
     runtimelock.release()
     
@@ -263,7 +253,7 @@ def getruntime():
   return elapsedtime
  
 
-# This lock is used to serialize calls to get_resouces
+# This lock is used to serialize calls to get_resources
 get_resources_lock = threading.Lock()
 
 # Cache the disk used from the external process
@@ -280,7 +270,7 @@ process_stopped_max_entries = 100
 def get_resources():
   """
   <Purpose>
-    Returns the resouce utilization limits as well
+    Returns the resource utilization limits as well
     as the current resource utilization.
 
   <Arguments>
@@ -289,13 +279,13 @@ def get_resources():
   <Returns>
     A tuple of dictionaries and an array (limits, usage, stoptimes).
 
-    Limits is the dictionary which maps the resouce name
+    Limits is the dictionary which maps the resource name
     to its maximum limit.
 
     Usage is the dictionary which maps the resource name
     to its current usage.
 
-    Stoptimes is an array of tuples with the times which the Repy proces
+    Stoptimes is an array of tuples with the times which the Repy process
     was stopped and for how long, due to CPU over-use.
     Each entry in the array is a tuple (TOS, Sleep Time) where TOS is the
     time of stop (respective to getruntime()) and Sleep Time is how long the
@@ -330,7 +320,7 @@ def get_resources():
 
 
     # Windows Specific versions
-    elif ostype in ["Windows","WindowsCE"]:
+    elif ostype in ["Windows"]:
     
       # Get the CPU time
       usage["cpu"] = windows_api.get_process_cpu_time(pid)
@@ -367,12 +357,13 @@ class WindowsNannyThread(threading.Thread):
     threading.Thread.__init__(self,name="NannyThread")
 
   def run(self):
-    # Calculate how often disk should be checked
-    if ostype == "WindowsCE":
-      disk_interval = int(repy_constants.RESOURCE_POLLING_FREQ_WINCE / repy_constants.CPU_POLLING_FREQ_WINCE)
-    else:
-      disk_interval = int(repy_constants.RESOURCE_POLLING_FREQ_WIN / repy_constants.CPU_POLLING_FREQ_WIN)
-    current_interval = 0 # What cycle are we on  
+    # How often the memory will be checked (seconds)
+    memory_check_interval = repy_constants.CPU_POLLING_FREQ_WIN
+    # The ratio of the disk polling time to memory polling time.
+    disk_to_memory_ratio = int(repy_constants.DISK_POLLING_HDD / memory_check_interval)
+      
+    # Which cycle number we're on  
+    counter = 0
     
     # Elevate our priority, above normal is higher than the usercode, and is enough for disk/mem
     windows_api.set_current_thread_priority(windows_api.THREAD_PRIORITY_ABOVE_NORMAL)
@@ -383,27 +374,25 @@ class WindowsNannyThread(threading.Thread):
     # run forever (only exit if an error occurs)
     while True:
       try:
+        # Increment the interval counter
+        counter += 1
+        
         # Check memory use, get the WorkingSetSize or RSS
         memused = windows_api.process_memory_info(mypid)['WorkingSetSize']
-        
+
         if memused > nanny.get_resource_limit("memory"):
           # We will be killed by the other thread...
           raise Exception, "Memory use '"+str(memused)+"' over limit '"+str(nanny.get_resource_limit("memory"))+"'"
-        
-        # Increment the interval we are on
-        current_interval += 1
 
         # Check if we should check the disk
-        if (current_interval % disk_interval) == 0:
+        if (counter % disk_to_memory_ratio) == 0:
           # Check diskused
           diskused = compute_disk_use(repy_constants.REPY_CURRENT_DIR)
           if diskused > nanny.get_resource_limit("diskused"):
             raise Exception, "Disk use '"+str(diskused)+"' over limit '"+str(nanny.get_resource_limit("diskused"))+"'"
-        
-        if ostype == 'WindowsCE':
-          time.sleep(repy_constants.CPU_POLLING_FREQ_WINCE)
-        else:
-          time.sleep(repy_constants.CPU_POLLING_FREQ_WIN)
+        # Sleep until the next iteration of checking the memory
+        time.sleep(memory_check_interval)
+
         
       except windows_api.DeadProcess:
         #  Process may be dead, or die while checking memory use
@@ -419,7 +408,7 @@ class WindowsNannyThread(threading.Thread):
 # Windows specific CPU Nanny Stuff
 winlastcpuinfo = [0,0]
 
-# Enfoces CPU limit on Windows and Windows CE
+# Enforces CPU limit on Windows and Windows CE
 def win_check_cpu_use(cpulim, pid):
   global winlastcpuinfo
   
@@ -535,7 +524,7 @@ def IPC_handle_diskused(bytes):
   cached_disk_used = bytes
 
 
-# This method handles meessages on the "repystopped" channel from
+# This method handles messages on the "repystopped" channel from
 # the external process. When the external process stops repy, it sends
 # a tuple with (TOS, amount) where TOS is time of stop (getruntime()) and
 # amount is the amount of time execution was suspended.
@@ -625,7 +614,7 @@ def read_message_from_pipe(readhandle):
       # Read 8 bytes at a time
       mesg = os.read(readhandle,8)
       if len(mesg) == 0:
-        raise EnvironmentError, "Read returned emtpy string! Pipe broken!"
+        raise EnvironmentError, "Read returned empty string! Pipe broken!"
       data += mesg
 
     # Increment the index while there is data and we have not found a colon
@@ -644,7 +633,7 @@ def read_message_from_pipe(readhandle):
       while more_data > 0:
         mesg = os.read(readhandle, more_data)
         if len(mesg) == 0:
-          raise EnvironmentError, "Read returned emtpy string! Pipe broken!"
+          raise EnvironmentError, "Read returned empty string! Pipe broken!"
         data += mesg
         more_data -= len(mesg)
 
@@ -718,17 +707,15 @@ repy_process_id = None
 # will become a resource monitor
 def do_forked_resource_monitor():
   global repy_process_id
-  # Store the parent id
-  repy_process_id = os.getpid()
-  
+
   # Get a pipe
   (readhandle, writehandle) = os.pipe()
 
   # I'll fork a copy of myself
   childpid = os.fork()
 
-  if childpid != 0:
-    # We are the parent, close the write end of the pipe
+  if childpid == 0:
+    # We are the child, close the write end of the pipe
     os.close(writehandle)
 
     # Start a thread to check on the survival of the parent
@@ -739,9 +726,11 @@ def do_forked_resource_monitor():
     # We are the parent, close the read end
     os.close(readhandle)
 
+  # Store the childpid
+  repy_process_id = childpid
 
   # Start the nmstatusinterface
-  nmstatusinterface.launch(childpid)
+  nmstatusinterface.launch(repy_process_id)
   
   # Small internal error handler function
   def _internal_error(message):
@@ -755,22 +744,21 @@ def do_forked_resource_monitor():
     nmstatusinterface.stop()  
 
     # Kill repy
-    harshexit.portablekill(repy_process_id)
+    harshexit.portablekill(childpid)
 
     try:
       # Write out status information, repy was Stopped
-      # statusstorage.write_status("Terminated")  
-      pass
+      statusstorage.write_status("Terminated")  
     except:
       pass
   
   try:
     # Some OS's require that you wait on the pid at least once
     # before they do any accounting
-    # (pid, status) = os.waitpid(childpid,os.WNOHANG)
+    (pid, status) = os.waitpid(childpid,os.WNOHANG)
     
     # Launch the resource monitor, if it fails determine why and restart if necessary
-    resource_monitor(repy_process_id, writehandle)
+    resource_monitor(childpid, writehandle)
     
   except ResourceException, exp:
     # Repy exceeded its resource limit, kill it
@@ -778,17 +766,20 @@ def do_forked_resource_monitor():
     harshexit.harshexit(98)
     
   except Exception, exp:
-    while(True):
-      time.sleep(1)
     # There is some general error...
-    # (pid, status) = os.waitpid(repy_process_id, os.WNOHANG)
-      
+    try:
+      (pid, status) = os.waitpid(childpid,os.WNOHANG)
+    except:
+      # This means that the process is dead
+      pass
+    
     # Check if this is repy exiting
-    #if os.WIFEXITED(status) or os.WIFSIGNALED(status):
-    #  sys.exit(0)
-    #else:
-    #  _internal_error(str(exp)+" Monitor death! Impolitely killing child!")
-    #  raise
+    if os.WIFEXITED(status) or os.WIFSIGNALED(status):
+      sys.exit(0)
+    
+    else:
+      _internal_error(str(exp)+" Monitor death! Impolitely killing child!")
+      raise
   
 def resource_monitor(childpid, pipe_handle):
   """
@@ -818,7 +809,7 @@ def resource_monitor(childpid, pipe_handle):
   # Run forever...
   while True:
     ########### Check CPU ###########
-    # Get elasped time
+    # Get elapsed time
     currenttime = getruntime()
     elapsedtime1 = currenttime - last_time     # Calculate against last run
     elapsedtime2 = currenttime - resume_time   # Calculate since we last resumed repy
@@ -910,7 +901,7 @@ def resource_monitor(childpid, pipe_handle):
 def calculate_granularity():
   global granularity
 
-  if ostype in ["Windows", "WindowsCE"]:
+  if ostype in ["Windows"]:
     # The Granularity of getTickCount is 1 millisecond
     granularity = pow(10,-3)
     
@@ -953,7 +944,7 @@ elif osrealtype == "Darwin":
   import darwin_api as os_api
 elif osrealtype == "FreeBSD":
   import freebsd_api as os_api
-elif ostype == "Windows" or ostype == "WindowsCE":
+elif ostype == "Windows":
   # There is no real reason to do this, since windows is imported separately
   import windows_api as os_api
 else:
@@ -964,7 +955,7 @@ else:
 calculate_granularity()  
 
 # For Windows, we need to initialize time.clock()
-if ostype in ["Windows", "WindowsCE"]:
+if ostype in ["Windows"]:
   time.clock()
 
 # Initialize getruntime for other platforms 
