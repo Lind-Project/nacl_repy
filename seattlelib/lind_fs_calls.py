@@ -1042,7 +1042,7 @@ def open_syscall(path, flags, mode):
 
       # be sure there aren't extra mode bits...   No errno seems to exist for 
       # this.
-      assert(mode & S_IRWXA == mode)
+      assert(mode & (S_IRWXA|S_FILETYPEFLAGS) == mode)
 
       effective_mode = (S_IFCHR | mode) if (S_IFCHR & flags) != 0 else (S_IFREG | mode)
 
@@ -1767,7 +1767,7 @@ def chmod_syscall(path, mode):
     thisinode = fastinodelookuptable[truepath]
 
     # be sure there aren't extra mode bits... No errno seems to exist for this
-    assert(mode & S_IRWXA == mode)
+    assert(mode & (S_IRWXA|S_FILETYPEFLAGS) == mode)
 
     # should overwrite any previous permissions, according to POSIX.   However,
     # we want to keep the 'type' part of the mode from before
