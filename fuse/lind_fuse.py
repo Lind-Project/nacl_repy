@@ -5,7 +5,7 @@
 import sys
 import os
 import stat
-
+import runonce
 
 # We need lind_test_server.py, lind_fs_calls.py and lind_fs_constants.py.
 # They should be in the REPY_PATH OR copy them in to this folder so python
@@ -496,7 +496,17 @@ Lind Fuse File System.
 """ + Fuse.fusage
 
     lind.load_fs()
-
+    
+    gotlock = runonce.getprocesslock('lind_fuse')
+    if gotlock == True:
+      pass
+    else:
+      if gotlock:
+        print "\n\n#########################################################"
+        print "[Warning] Another Process (pid: " + str(gotlock) + ") already in use."
+        print "#########################################################\n\n"
+      else:
+        print "[Warning] Another Process is running"
 
     server = LindFuseFS(version="%prog " + fuse.__version__,
                  usage=usage,
