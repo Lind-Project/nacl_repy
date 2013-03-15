@@ -179,6 +179,7 @@ def load_fs(name=METADATAFILENAME):
   except FileNotFoundError, e:
     warning("Note: No filesystem found, building a fresh one.")
     _blank_fs_init()
+    load_fs_special_files()
   else:
     f.close()
     try:

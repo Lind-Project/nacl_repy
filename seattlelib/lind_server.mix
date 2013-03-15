@@ -403,7 +403,10 @@ def setup_filetable(comp_num):
   """Try to open file system. If you can't, then make a new one."""
   log( "Opening file system... ")
   load_fs()
-  load_fs_special_files()
+  # load_fs() will check first if the metadata is present, if not
+  # present it will create it. I am removing the following call
+  # because it duplicates the creation of special files.
+  # load_fs_special_files()
   log( "done.")
 
   # except KeyError, e:
