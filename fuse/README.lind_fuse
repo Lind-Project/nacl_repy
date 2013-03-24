@@ -15,6 +15,19 @@ The kernel you are using must also support fuse.  That is most kernels now-a-day
 
 Finding the Lind file system.  Lind has many subsystems, and is install in a central location. For those subsystems to interact, they use an environment variable named REPY_PATH, which is set to the location of the Lind and its Repy subfolder.
 
+Load the Appropriate Seattle code:
+==================================
+
+You will need to get the nacl_repy branch of Seattle from SVN. You should have already done this, or else you wouldn't be reading this file from your local repo.
+
+$ svn co https://seattle.cs.washington.edu/svn/seattle/branches/nacl_repy
+
+Once that happens, run the preparetest.py script to copy the files into a directory of your choice (existing files there will be removed). For example, to use ~/test-fuse do the following:
+
+$ cd nacl_repy
+$ mkdir ~/test-fuse
+$ python preparetest.py -t ~/test-fuse
+
 USE:
 ====
 
@@ -25,7 +38,7 @@ EXAMPLE:
 
 $ cd somepath
 $ mkdir mountpoint   # make an empty directory
-$ python <path_to_lindfuse>/lind_fuse.py mountpoint  # given the mountpoint you just made, mount a Lind-fuse filesystem into it.
+$ python ~/test-fuse/lind_fuse.py -f mountpoint &  # given the mountpoint you just made, mount a Lind-fuse filesystem into it.
 $ cd mountpoint   # now try it out
 $ ls
 $ cp -r /var/logs .
@@ -43,7 +56,7 @@ DEBUGGING:
 
 lind fuse uses the python-fuse interface.  The code is very simple. Two classes, one which handles filesystem related system calls, and the other which does file related system calls.  To debug what is going on, you can run lind-fuse in the foreground, so you can see its output:
 
-$ python lind_fuse.py mountpoint -f
+$ python lind_fuse.py mountpoint -f -v
 
 Output will come out in this shell. Now go to another and do things in mountpoint.
 
