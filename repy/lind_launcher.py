@@ -123,8 +123,9 @@ def launch_nacl(nacl_env, program, args):
 
     lib_dir = nacl_env["NACL_LIBRARY_DIR"] + ":/home/lind/tmp/lind/sdk/linux_x86/nacl64/lib/"
     sel_ldr_args = [
-        "-s", "-a", "-l", "lind.log",
-        "--", nacl_env["NACL_DYN_LOADER"]]
+        "-a", "-l", "lind.log", "-E", "LD_DEBUG=all"
+        "--", "/home/lind/tmp/lind/lib/glibc/runnable-ld.so", 
+	"--library-path", "/home/lind/tmp/lind/lib/libs/:/home/lind/tmp/lind/sdk/linux_x86/x86_64-nacl/lib/", program ]
 
     fast_mode = is_fast_lind()
     args = [item for item in args if '--fast' not in item]
@@ -141,9 +142,9 @@ def launch_nacl(nacl_env, program, args):
                                                   repy_constants.NACL_PLUGIN_ASYNC_TO_CHILD_FD])
 
     your_program = safebinary.NaClRuntime(proc, fd1, recv, send)
-    argv = ["unused-argv0", "--library-path", lib_dir] + [program] + args
-    envv = ["NACL_FILE_RPC=1"]
-    rc = send.imc_sendmsg(_pack_args_message(argv, envv), tuple([]))
+    #argv = ["unused-argv0", "--library-path", lib_dir] + [program] + args
+    #envv = ["NACL_FILE_RPC=1"]
+    #rc = send.imc_sendmsg(_pack_args_message(argv, envv), tuple([]))
     return your_program
 
 if __name__ == "__main__":
