@@ -29,6 +29,9 @@ import time
 # Import the exception hierarchy
 from exception_hierarchy import *
 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
+
 ##### Constants
 
 # Armon: Prefix for use with event handles

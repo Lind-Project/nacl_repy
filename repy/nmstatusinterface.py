@@ -18,6 +18,9 @@ import time
 # This is for the thread
 import threading
 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
+
 # This is for path checking and stuff
 import os
 

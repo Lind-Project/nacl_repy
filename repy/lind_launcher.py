@@ -23,6 +23,9 @@ import safebinary
 import naclimc
 from thread import start_new_thread
 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
+
 
 def is_fast_lind():
     return 

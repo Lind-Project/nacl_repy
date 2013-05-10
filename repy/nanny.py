@@ -37,7 +37,8 @@ import resource_constants
 
 import threading
 
-
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
 
 # I'm going to global information about the resources allowed and used...
 # These will be initialized when the nanny is started.

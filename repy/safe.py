@@ -73,6 +73,9 @@ import compiler
 import platform # This is for detecting Nokia tablets
 import __builtin__
 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
+
 # Armon: This is how long we will wait for the external process
 # to validate the safety of the user code before we timeout, 
 # and exit with an exception

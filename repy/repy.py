@@ -89,6 +89,9 @@ import emulfile
 import emulmisc
 import emultimer
 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
+
 # This block allows or denies different actions in the safe module.   I'm 
 # doing this here rather than the natural place in the safe module because
 # I want to keep that module unmodified to make upgrading easier.

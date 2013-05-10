@@ -23,6 +23,9 @@ import tracebackrepy
 # Used to get a lock object
 import threading
 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
+
 # Get access to the current working directory
 import repy_constants
 

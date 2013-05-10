@@ -45,6 +45,8 @@ import naclimc
 import subprocess
 import struct
 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+threading.hasattr = hasattr
 
 def NaclRPCServer(recv_socket, send_socket):
   pass
