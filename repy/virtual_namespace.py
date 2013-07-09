@@ -115,4 +115,43 @@ class VirtualNamespace(object):
     # Return the dictionary we used
     return context
 
+  # Evaluates the virtual namespace
+  def get_safe_context(self,context):
+    """
+    <Purpose>
+      Evaluates the wrapped code within a context.
+
+    <Arguments>
+      context: A global context to use when executing the code.
+      This should be a SafeDict object, but if a dict object is provided
+      it will automatically be converted to a SafeDict object.
+
+    <Exceptions>
+      Any that may be raised by the code that is being evaluated.
+      A RepyArgumentError exception will be raised if the provided context is not
+      a safe dictionary object or a ContextUnsafeError if the
+      context is a dict but cannot be converted into a SafeDict.
+
+    <Returns>
+      The context dictionary that was used during evaluation.
+      If the context was a dict object, this will be a new
+      SafeDict object. If the context was a SafeDict object,
+      then this will return the same context object.
+    """
+    # Try to convert a normal dict into a SafeDict
+    if type(context) is dict:
+      try:
+        context = safe.SafeDict(context)
+      except Exception, e:
+        raise ContextUnsafeError, "Provided context is not safe! Exception: "+str(e)
+
+    # Type check
+    if not isinstance(context, safe.SafeDict):
+      raise RepyArgumentError, "Provided context is not a safe dictionary!"
+
+    # Call safe_context with the underlying dictionary
+    safe_context = safe.safe_context(self.code, context.__under__)
+
+    # Return the dictionary we used
+    return safe_context
 

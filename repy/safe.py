@@ -343,6 +343,26 @@ def safe_run(code,context=None):
     except:
         _builtin_restore()
         raise
+      
+def safe_context(code,context=None):
+    """Exec code with only safe builtins on."""
+    global BUILTINS_DESTROYED
+    if context == None: context = {}
+    
+    # Destroy the builtins if needed
+    if not BUILTINS_DESTROYED:
+      BUILTINS_DESTROYED = True
+      _builtin_destroy()
+      
+    try:
+        #exec code in _builtin_globals,context
+        context['__builtins__'] = _builtin_globals
+        _builtin_restore()
+    except:
+        _builtin_restore()
+        raise
+      
+    return context
 
 def safe_exec(code,context = None):
     """Check the code to be safe, then run it with only safe builtins on."""
