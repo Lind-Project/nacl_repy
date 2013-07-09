@@ -221,6 +221,37 @@ def print_times(times):
           "%f" % (exec_start) + ", " + "%f" % (exec_post) + ", " + \
           "%f" % (exec_stop) + ", " + "%f" % (exec_before) + ", " + \
           "%f" % (exec_after) + ", \"" + str(call_args) + "\""
+          
+def LindSyscall(call_num, args):
+  comp_num = 1
+  response = "Failed with Exception."
+  if TRACE:
+    strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call_num]).split(" ")[1]), str(args)[:128], " = "]
+  mycontext[LOCK].acquire(True)
+  mycontext[COMP] = comp_num
+  try:
+    response = dispatch_syscall(call_num, args)
+  finally:
+    if TRACE:
+      strace_msg.append(str(response)[:128])
+      log( ''.join(strace_msg))
+  mycontext[LOCK].release()
+  if response == None:
+    raise Exception()
+  return response
+
+def GetHostFdFromLindFd(lind_fd):
+  assert isinstance(lind_fd, int)
+  if lind_fd < 0:
+    return -1
+  if not lind_fd in filedescriptortable.keys():
+    print "GetHostFdFromLindFd: fd "+str(lind_fd)+" not found"
+    return -1
+  inode = filedescriptortable[lind_fd]["inode"]
+  if not inode in fileobjecttable.keys():
+    print "GetHostFdFromLindFd: inode "+str(inode)+" not found"
+  fobj = fileobjecttable[inode].fobj
+  return fobj.fileno()
 
 
 def NaclRPCServer(nacl_instance, comp_num):
@@ -452,10 +483,13 @@ if callfunc == "initialize":
   parse_commandline()
   lind_factory()
 
-  main()
+  #main()
 
+  #log("Persisting metadata: ... ")
+  #persist_metadata(DEFAULT_METADATA_FILENAME)
+  #log("Done persisting metadata.")
+
+def finalize():
   log("Persisting metadata: ... ")
   persist_metadata(DEFAULT_METADATA_FILENAME)
   log("Done persisting metadata.")
-
-  

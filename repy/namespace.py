@@ -991,6 +991,10 @@ class NamespaceObjectWrapper(object):
 
       return __do_func_call
 
+    #TODO: temperory hack
+    elif name == 'fobj':
+      return self._wrapped__object.fobj
+    
     else:
       # This is the standard way of handling "it doesn't exist as far as we
       # are concerned" in __getattr__() methods.
