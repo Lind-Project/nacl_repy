@@ -14,7 +14,7 @@ VERSION = "$Rev$"
 SILENT = True # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
-TRACE = False  # Trace system calls? (somewhat like strace) 
+TRACE = True  # Trace system calls? (somewhat like strace) 
 
 
 
@@ -234,7 +234,7 @@ def LindSyscall(call_num, args):
   finally:
     if TRACE:
       strace_msg.append(str(response)[:128])
-      log( ''.join(strace_msg))
+      log( ''.join(strace_msg)+'\n')
   mycontext[LOCK].release()
   if response == None:
     raise Exception()
@@ -245,11 +245,11 @@ def GetHostFdFromLindFd(lind_fd):
   if lind_fd < 0:
     return -1
   if not lind_fd in filedescriptortable.keys():
-    print "GetHostFdFromLindFd: fd "+str(lind_fd)+" not found"
+    log("GetHostFdFromLindFd: fd "+str(lind_fd)+" not found\n")
     return -1
   inode = filedescriptortable[lind_fd]["inode"]
   if not inode in fileobjecttable.keys():
-    print "GetHostFdFromLindFd: inode "+str(inode)+" not found"
+    log("GetHostFdFromLindFd: inode "+str(inode)+" not found\n")
   fobj = fileobjecttable[inode].fobj
   return fobj.fileno()
 
@@ -453,7 +453,7 @@ def lind_factory():
   setup_filetable(1)
   setup_component_communication(1)
   mycontext[LOCK] = createlock()
-  _check_file(curr_comp()[PROGRAM])
+  #_check_file(curr_comp()[PROGRAM])
   #if we are running a compoent, launch another one as a test.
   if "com1" in curr_comp()[PROGRAM]:
     log("starting multi-component test mode")
