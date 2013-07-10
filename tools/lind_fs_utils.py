@@ -47,6 +47,22 @@ def _mirror_stat_data(posixfn, lindfn):
   #lind_test_server.chgrp_syscall(lindfn, statdata[5])
 
 
+def cp_dir_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
+  posixfn = os.path.join(rootpath,fullfilename)
+
+  if not os.path.exists(posixfn):
+    if os.path.islink(posixfn):
+      print "Ignore broken link on POSIX FS: '"+posixfn+"'"
+      return
+    else:
+      raise IOError("Cannot locate file on POSIX FS: '"+posixfn+"'")
+    
+  if os.path.isfile(posixfn):
+    cp_into_lind(fullfilename, rootpath, createmissingdirs)
+  elif os.path.isdir(posixfn):
+    children = os.listdir(posixfn)
+    for child in children:
+      cp_dir_into_lind(os.path.join(fullfilename, child), rootpath, createmissingdirs)
 
 
 def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
@@ -82,11 +98,12 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   posixfn = os.path.join(rootpath,fullfilename)
 
   if not os.path.exists(posixfn):
-    raise IOError("Cannot locate file on POSIX FS: '"+posixfilename+"'")
+    raise IOError("Cannot locate file on POSIX FS: '"+posixfn+"'")
 
   if not os.path.isfile(posixfn):
-    raise IOError("POSIX FS path is not a file: '"+posixfilename+"'")
+    raise IOError("POSIX FS path is not a file: '"+posixfn+"'")
   
+  print "Copying "+posixfn+" as "+fullfilename
 
   # now, we should check / make intermediate dirs if needed...
   # we will walk through the components of the dir and look for them...
@@ -280,7 +297,7 @@ def main():
 
     root = args[0]
     for filetocp in args[1:]:
-      cp_into_lind(filetocp, rootpath=root)
+      cp_dir_into_lind(filetocp, rootpath=root)
 
 
 
