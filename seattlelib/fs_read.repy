@@ -31,8 +31,8 @@ def lind_fs_read(args):
     # so really this should be fixed
     # but right now big requests dont work!
     # so truncate the request
-    if size > TX_BUF_MAX:
-        size = TX_BUF_MAX
+    #if size > TX_BUF_MAX:
+    #    size = TX_BUF_MAX
 
     if IS_SOCK_DESC(handle):
         try:
@@ -69,7 +69,7 @@ def lind_safe_fs_read(args):
     
     result = lind_fs_read(args)
     
-    if result.is_error == False:
-        assert(len(result.data) <= TX_BUF_MAX), "returning data larger than transmission buffer."
+    #if result.is_error == False:
+    #    assert(len(result.data) <= TX_BUF_MAX), "returning data larger than transmission buffer."
   
     return result

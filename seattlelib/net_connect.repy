@@ -82,7 +82,7 @@ def lind_safe_net_connect(args):
     # map(lambda: x assert 0 <= int(x) <= 255, ip.split('.'))
     check_valid_fd_handle(fd)
 
-    assert 0 < length <= TX_BUF_MAX, "Connect length must be with in limits"
+    #assert 0 < length <= TX_BUF_MAX, "Connect length must be with in limits"
 
     # assert len(addr) == (2 + 2 + 4 + 8), "Connect struct is incorrect size"
 

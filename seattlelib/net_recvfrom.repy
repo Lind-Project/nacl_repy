@@ -39,8 +39,8 @@ def lind_net_recvfrom(args):
     addrlen = args[3]
 
     # the lind - repy send buffer is 8k, so shrink this request if we have to.
-    if length > TX_BUF_MAX:
-        length = TX_BUF_MAX
+    #if length > TX_BUF_MAX:
+    #    length = TX_BUF_MAX
     try:
         result = recvfrom_syscall(sockfd, length, flags)
     except SyscallError, e:
