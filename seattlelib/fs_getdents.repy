@@ -104,8 +104,8 @@ def lind_safe_fs_getdents(args):
     result = lind_fs_getdents(args)
 
     if result.is_error == False:
-        assert(len(result.data) <= TX_BUF_MAX), \
-            "returning data larger than transmission buffer."
+        #assert(len(result.data) <= TX_BUF_MAX), \
+        #    "returning data larger than transmission buffer."
 
         assert(len(result.data) <= count), \
                "not observing byte count parameter."

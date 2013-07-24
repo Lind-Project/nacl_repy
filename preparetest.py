@@ -122,6 +122,7 @@ def setup_lind_tests(target):
 def main():
   repytest = False
   RANDOMPORTS = False
+  force_install = False
 	
   target_dir = None
   for arg in sys.argv[1:]:
@@ -132,6 +133,10 @@ def main():
     # The user wants us to fill in the port numbers randomly.
     elif arg == '-randomports':
       RANDOMPORTS = True
+      
+    # Force install if target_dir does not exists
+    elif arg == '-f':
+      force_install = True
 
     # Not a flag? Assume it's the target directory
     else:
@@ -145,8 +150,17 @@ def main():
   current_dir = os.getcwd()
 
   # Make sure they gave us a valid directory
-  if not( os.path.isdir(target_dir) ):
+  if not os.path.isdir(target_dir) and not force_install:
     help_exit("given foldername is not a directory")
+  
+  # Remove existing file
+  if os.path.isfile(target_dir):
+    os.remove(target_dir)
+  
+  # Make target directory
+  if not os.path.exists(target_dir):
+    os.mkdir(target_dir)
+  
 
   #set working directory to the test folder
   os.chdir(target_dir)	
@@ -195,15 +209,14 @@ def main():
     #copy_to_target("assignments/webserver/*", target_dir)
     #copy_to_target("softwareupdater/test/*", target_dir)
 
-
+  #insatll lind test files
+  setup_lind_tests(target_dir)
+  
   #set working directory to the test folder
   os.chdir(target_dir)
 
   #call the process_mix function to process all mix files in the target directory
   process_mix("repypp.py")
-
-  #insatll lind test files
-  setup_lind_tests(target_dir)
 
   # set up dynamic port information
   if RANDOMPORTS:

@@ -52,7 +52,7 @@ def lind_safe_net_recv(args):
     flags = args[2]
 
     check_valid_fd_handle(sockfd)
-    assert 0 < length <= TX_BUF_MAX, "Cannot receive more than transmit buffer"
+    #assert 0 < length <= TX_BUF_MAX, "Cannot receive more than transmit buffer"
 
     assert ((flags & MSG_PEEK) != 0) or flags == 0, "Currently no recv flags are supported."
     result = lind_net_recv(args)
