@@ -27,7 +27,8 @@ from lind_fs_constants import *
 
 
 import os
-
+import hashlib
+import stat
 import sys
 
 
@@ -45,9 +46,112 @@ def _mirror_stat_data(posixfn, lindfn):
   # Note: chown / chgrp aren't implemented!!!   We would call them here.
   #lind_test_server.chown_syscall(lindfn, statdata[4])
   #lind_test_server.chgrp_syscall(lindfn, statdata[5])
+  
+def update_dir_into_lind(fullfilename, rootpath='.'):
+  
+  if fullfilename.startswith(os.pathsep):
+    fullfilename = '.'+fullfilename
+  posixfn = os.path.join(rootpath,fullfilename)
 
+  if not os.path.exists(posixfn):
+    if os.path.islink(posixfn):
+      print "Ignore broken link on POSIX FS: '"+posixfn+"'"
+      return
+    else:
+      raise IOError("Cannot locate file on POSIX FS: '"+posixfn+"'")
+    
+  if os.path.isfile(posixfn):
+    update_into_lind(fullfilename, rootpath)
+  elif os.path.isdir(posixfn):
+    children = os.listdir(posixfn)
+    for child in children:
+      update_dir_into_lind(os.path.join(fullfilename, child), rootpath)
 
+def update_into_lind(fullfilename, rootpath='.'):
+  
+  if fullfilename.startswith(os.pathsep):
+    fullfilename = '.'+fullfilename
+    
+  # check for the file.
+  posixfn = os.path.join(rootpath,fullfilename)
+  host_time = 0
+  host_size = 0
+  host_content = ""
+  lind_time = 0
+  lind_size = 0
+  lind_content = ""
+  lind_exists = False
+  lind_isfile = False
+  
+  print "looking at \""+posixfn+"\""
+  
+  if not os.path.exists(posixfn):
+    print posixfn+" does not exist, skipping"
+    return
+  
+  if not os.path.isfile(posixfn):
+    print posixfn+" is not regular file, skipping"
+    return
+  
+  try:
+    host_statinfo = os.stat(posixfn)
+  except OSError, e:
+    print e
+    return
+  else:
+    host_time = host_statinfo.st_mtime
+    host_size = host_statinfo.st_size
+  
+  try:
+    lind_statinfo = lind_test_server.stat_syscall(fullfilename)
+  except lind_test_server.SyscallError, e:
+    print e
+  else:
+    lind_exists = True
+    lind_time = lind_statinfo[12]
+    lind_isfile = IS_REG(lind_statinfo[2])
+    lind_size = lind_statinfo[7]
+  
+  #always false because lind uses fake time
+  if host_time<=lind_time:
+    print "lind file is newer than host file, skipping"
+    return
+  
+  if not lind_isfile:
+    print fullfilename+" on lind file system is not a regular file, skipping"
+    return
+  
+  samefile = True
+  if host_size == lind_size:
+  
+    fd = open(posixfn, "rb")
+    host_content = fd.read()
+    fd.close()
+    
+    lindfd = lind_test_server.open_syscall(fullfilename, O_RDONLY, 0)
+    lind_content = lind_test_server.read_syscall(lindfd, lind_size)
+    lind_test_server.close_syscall(lindfd)
+    
+    samefile = (host_content == lind_content)
+  else:
+    samefile = False
+  
+  if not samefile:
+    if lind_exists:
+      print "removing "+fullfilename
+      lind_test_server.unlink_syscall(fullfilename)
+    
+    cp_into_lind(fullfilename, rootpath, True)
+  else:
+    print "same file, skipping"
+  
+  
+  
+  
 def cp_dir_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
+  
+  if fullfilename.startswith(os.pathsep):
+    fullfilename = '.'+fullfilename
   posixfn = os.path.join(rootpath,fullfilename)
 
   if not os.path.exists(posixfn):
@@ -93,7 +197,7 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
    <Returns>
       None
   """
-  
+    
   # check for the file.
   posixfn = os.path.join(rootpath,fullfilename)
 
@@ -199,14 +303,15 @@ def _find_all_paths_recursively(startingpath):
     if dent[1]=='.' or dent[1]=='..':
       continue
    
-    thisitem = startingpath+'/'+dent[1]
+    thisitem = (dent[0], startingpath+'/'+dent[1])
 
     # add it...
     knownitems.append(thisitem)
+    print thisitem
 
     # if it's a directory, recurse...
     if dent[2]==DT_DIR:
-      knownitems = knownitems + _find_all_paths_recursively(thisitem)
+      knownitems = knownitems + _find_all_paths_recursively(thisitem[1])
 
   return knownitems
     
@@ -299,6 +404,20 @@ def main():
     for filetocp in args[1:]:
       cp_dir_into_lind(filetocp, rootpath=root)
 
+#update root file1 [file2...]   : copies files from the root into the lindfs if they are different.   For
+#                                 example, cp bar /etc/passwd /bin/ls will copy
+#                                 bar/etc/passwd, bar/bin/ls as /etc/passwd, /bin/ls
+  elif command == 'update':
+    lind_test_server.load_fs()
+
+    if len(args)<2:
+      print 'Too few arguments to update.   Must specify root and at least one file'
+      return
+
+    root = args[0]
+    for filetoup in args[1:]:
+      update_dir_into_lind(filetoup, rootpath=root)
+
 
 
 #find [startingpath]        : print the names of all files / paths in the fs
@@ -316,8 +435,8 @@ def main():
       
     allpathlist = list_all_lind_paths(startingdir=startingpath)
     # want to print this more cleanly than as a list
-    for thispath in allpathlist:
-      print thispath
+    #for thispath in allpathlist:
+    #  print thispath
 
 
 #format                     : make a new blank fs, removing the current one.
