@@ -124,11 +124,11 @@ def launch_nacl(nacl_env, program, args):
     """wrapper to setup a NaCl enviroement given the locations of all the files
     and the arugmetns"""
 
-    lib_dir = nacl_env["NACL_LIBRARY_DIR"] + ":/home/lind/tmp/lind/sdk/linux_x86/nacl64/lib/"
+    lib_dir = nacl_env["NACL_LIBRARY_DIR"]
     sel_ldr_args = [
         "-a", "-l", "lind.log", "-E", "LD_DEBUG=all",
-        "--", "/home/lind/tmp/lind/lib/glibc/runnable-ld.so", 
-	"--library-path", "/home/lind/tmp/lind/lib/libs/:/home/lind/tmp/lind/sdk/linux_x86/x86_64-nacl/lib/:/home/lind/tmp/lind/usr/lib", program ]
+        "--", "../lib/glibc/runnable-ld.so", 
+	"--library-path", lib_dir, program ]
 
     fast_mode = is_fast_lind()
     args = [item for item in args if '--fast' not in item]
