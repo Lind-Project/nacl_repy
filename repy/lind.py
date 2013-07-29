@@ -31,19 +31,19 @@ def setup_nacl_path(nacl_base):
                     %(selldr))
   nacl_enviroment["NACL_SEL_LDR"] = selldr
 
-  imcso = os.path.join(nacl_bin, "naclimc.so")
-  if not os.path.exists(imcso):
-    raise IOError("NaCl Linux Debug bin directory does not have naclimc.so: %s"
-                    %(imcso))
-  nacl_enviroment["NACL_IMCDOTSO"] = imcso
+  #imcso = os.path.join(nacl_bin, "naclimc.so")
+  #if not os.path.exists(imcso):
+  #  raise IOError("NaCl Linux Debug bin directory does not have naclimc.so: %s"
+  #                  %(imcso))
+  #nacl_enviroment["NACL_IMCDOTSO"] = imcso
   
   #add this naclimc.so to the pythonpath and make sure it works
   sys.path.append(nacl_bin)
-  try:
-    import naclimc
-  except ImportError, importerror:
-    print "Unable to load the naclimc.so library."
-    raise importerror
+  #try:
+  #  import naclimc
+  #except ImportError, importerror:
+  #  print "Unable to load the naclimc.so library."
+  #  raise importerror
 
   # Where should nacl get its runtime libs from
   runnableld_str = "lib/glibc/runnable-ld.so"

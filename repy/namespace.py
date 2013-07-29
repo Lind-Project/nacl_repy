@@ -120,7 +120,7 @@ import safe # Used to get SafeDict
 import tracebackrepy
 import virtual_namespace
 
-from naclimc import * 
+#from naclimc import * 
 from exception_hierarchy import *
 
 # Save a copy of a few functions not available at runtime.

@@ -20,7 +20,7 @@ import threading
 import time
 import repy_constants
 import safebinary
-import naclimc
+#import naclimc
 from thread import start_new_thread
 
 # threading in python2.7 needs hasattr. It needs to be allowed explicitly. 

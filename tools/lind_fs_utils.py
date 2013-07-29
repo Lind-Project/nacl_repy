@@ -27,8 +27,6 @@ from lind_fs_constants import *
 
 
 import os
-import hashlib
-import stat
 import sys
 
 
@@ -206,8 +204,6 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
 
   if not os.path.isfile(posixfn):
     raise IOError("POSIX FS path is not a file: '"+posixfn+"'")
-  
-  print "Copying "+posixfn+" as "+fullfilename
 
   # now, we should check / make intermediate dirs if needed...
   # we will walk through the components of the dir and look for them...
@@ -260,8 +256,13 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   # should write all at once...
   datalen = lind_test_server.write_syscall(lindfd, filecontents)
   assert(datalen == len(filecontents))
+  
+  inode = lind_test_server.fstat_syscall(lindfd)[1]
 
   lind_test_server.close_syscall(lindfd)
+  
+  
+  print "Copied "+posixfn+" as "+fullfilename+"("+str(inode)+")"
 
    # fix stat, etc.
   _mirror_stat_data(posixfn,normalizedlindfn)
@@ -403,8 +404,6 @@ def main():
     root = args[0]
     for filetocp in args[1:]:
       cp_dir_into_lind(filetocp, rootpath=root)
-<<<<<<< HEAD
-=======
 
 #update root file1 [file2...]   : copies files from the root into the lindfs if they are different.   For
 #                                 example, cp bar /etc/passwd /bin/ls will copy
@@ -419,8 +418,6 @@ def main():
     root = args[0]
     for filetoup in args[1:]:
       update_dir_into_lind(filetoup, rootpath=root)
->>>>>>> 942a598643ddbe36ef7ee420e3aed5fa35fe43a8
-
 
 
 #find [startingpath]        : print the names of all files / paths in the fs
