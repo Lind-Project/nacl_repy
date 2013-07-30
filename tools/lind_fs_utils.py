@@ -115,7 +115,7 @@ def update_into_lind(fullfilename, rootpath='.'):
     print "lind file is newer than host file, skipping"
     return
   
-  if not lind_isfile:
+  if lind_exists and not lind_isfile:
     print fullfilename+" on lind file system is not a regular file, skipping"
     return
   

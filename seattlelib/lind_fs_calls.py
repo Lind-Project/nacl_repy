@@ -1627,7 +1627,7 @@ def fcntl_syscall(fd, cmd, *args):
     # set the flags...
     elif cmd == F_SETFD:
       assert(len(args) == 1)
-      filedescriptortable[fd]['flags'] |= args[0]
+      filedescriptortable[fd]['flags'] |= FD_CLOEXEC #Linux only supports FD_CLOEXEC
       return 0
 
     # if we're getting the flags, return them...
