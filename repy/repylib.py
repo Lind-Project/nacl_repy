@@ -158,7 +158,7 @@ def init_namespace(resourcefn, program, args):
   nanny.start_resource_nanny(resourcefn)
 
   # now, let's fire up the cpu / disk / memory monitor...
-  #nonportable.monitor_cpu_disk_and_mem()
+  nonportable.monitor_cpu_disk_and_mem()
 
   # Armon: Update our IP cache
   emulcomm.update_ip_cache()
@@ -245,7 +245,7 @@ def finalize():
     # do accounting here?
     time.sleep(0.25)
   # Once there are no more pending events for the user thread, we exit
-  #harshexit.harshexit(0)
+  harshexit.harshexit(0)
 
 def usage(str_err=""):
   # Ivan 12/24/2008

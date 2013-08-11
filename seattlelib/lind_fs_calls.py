@@ -1247,6 +1247,8 @@ def read_syscall(fd, count):
 
   # BUG: I probably need a filedescriptortable lock to prevent an untimely
   # close call or similar from messing everything up...
+  if fd == 0:
+    return ""
 
   # check the fd
   if fd not in filedescriptortable:
@@ -1311,7 +1313,8 @@ def write_syscall(fd, data):
   if fd not in filedescriptortable:
     raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
-  if filedescriptortable[fd]['inode'] in [0,1,2]:
+  if filedescriptortable[fd]['inode'] in [1,2]:
+    log(data)
     return len(data)
 
   # Is it open for writing?
