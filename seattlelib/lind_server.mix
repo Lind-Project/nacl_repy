@@ -37,10 +37,10 @@ TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
 RX_BUF_MAX = (4096 * 4)
 
 
-if not TRACE:
-  def log(arg):
-    """Turn off logging"""
-    pass
+#if not TRACE:
+#  def log(arg):
+#    """Turn off logging"""
+#    pass
 
 
 def warning(*msg):
@@ -231,6 +231,8 @@ def LindSyscall(call_num, args):
   mycontext[COMP] = comp_num
   try:
     response = dispatch_syscall(call_num, args)
+  except object as e:
+      response = ErrorResponseBuilder("LindSyscall", "ENOSYS", "Internal Syscall Error "+str(e))
   finally:
     if TRACE:
       strace_msg.append(str(response)[:128])
@@ -432,13 +434,13 @@ def new_compoent():
 
 def setup_filetable(comp_num):
   """Try to open file system. If you can't, then make a new one."""
-  log( "Opening file system... ")
+  log( "Opening file system...\n")
   load_fs()
   # load_fs() will check first if the metadata is present, if not
   # present it will create it. I am removing the following call
   # because it duplicates the creation of special files.
   # load_fs_special_files()
-  log( "done.")
+  log( "done.\n")
 
   # except KeyError, e:
 
@@ -479,17 +481,17 @@ def parse_commandline():
 
 
 if callfunc == "initialize":
-  log( "Lind v0." + VERSION[6:-2] + "Last commit:" + "$Date$"[7:-2])
+  log( "Lind v0." + VERSION[6:-2] + "Last commit:" + "$Date$"[7:-2]+"\n")
   parse_commandline()
   lind_factory()
 
   #main()
 
-  #log("Persisting metadata: ... ")
+  #log("Persisting metadata: ...\n")
   #persist_metadata(DEFAULT_METADATA_FILENAME)
-  #log("Done persisting metadata.")
+  #log("Done persisting metadata.\n")
 
 def finalize():
-  log("Persisting metadata: ... ")
+  log("Persisting metadata: ...\n")
   persist_metadata(DEFAULT_METADATA_FILENAME)
-  log("Done persisting metadata.")
+  log("Done persisting metadata.\n")

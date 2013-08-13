@@ -161,9 +161,9 @@ class UnimplementedError(Exception):
 def _load_lower_handle_stubs():
   """The lower file hadles need stubs in the descriptor talbe."""
 
-  filedescriptortable[0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDWRFLAGS, 'note':'this is a stub1'}
-  filedescriptortable[1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_RDWRFLAGS, 'note':'this is a stub2'}
-  filedescriptortable[2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_RDWRFLAGS, 'note':'this is a stub3'}
+  filedescriptortable[0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDONLY, 'note':'this is a stdin'}
+  filedescriptortable[1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stdout'}
+  filedescriptortable[2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stderr'}
 
 
 def load_fs(name=METADATAFILENAME):
@@ -907,7 +907,7 @@ def stat_syscall(path):
     return _istat_helper(thisinode)
 
   finally:
-    persist_metadata(METADATAFILENAME)
+    #persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
    
@@ -1067,6 +1067,8 @@ def open_syscall(path, flags, mode):
 
       # this file must not exist or it's an internal error!!!
       openfile(FILEDATAPREFIX+str(newinode),True).close()
+      
+      persist_metadata(METADATAFILENAME)
 
     # if the file did exist, were we told to create with exclusion?
     else:
@@ -1090,6 +1092,8 @@ def open_syscall(path, flags, mode):
 
         # always open the file.
         fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
+        
+        persist_metadata(METADATAFILENAME)
 
 
     # TODO: I should check permissions...
@@ -1132,7 +1136,7 @@ def open_syscall(path, flags, mode):
     return thisfd
 
   finally:
-    persist_metadata(METADATAFILENAME)
+    #persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
@@ -1247,7 +1251,7 @@ def read_syscall(fd, count):
 
   # BUG: I probably need a filedescriptortable lock to prevent an untimely
   # close call or similar from messing everything up...
-  if fd == 0:
+  if filedescriptortable[fd]["inode"] == 0:
     return ""
 
   # check the fd
@@ -1324,6 +1328,7 @@ def write_syscall(fd, data):
 
   # Acquire the fd lock...
   filedescriptortable[fd]['lock'].acquire(True)
+  filesystemmetadatalock.acquire(True)
 
   # ... but always release it...
   try:
@@ -1364,6 +1369,7 @@ def write_syscall(fd, data):
     # update the file size if we've extended it
     if filedescriptortable[fd]['position'] > filesize:
       filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
+      persist_metadata(METADATAFILENAME)
       
     # we always write it all, so just return the length of what we were passed.
     # We do not mention whether we write blank data (if position is after the 
@@ -1373,6 +1379,7 @@ def write_syscall(fd, data):
   finally:
     # ... release the lock
     filedescriptortable[fd]['lock'].release()
+    filesystemmetadatalock.release()
 
 
 
@@ -1488,7 +1495,7 @@ def close_syscall(fd):
 
   finally:
     # ... release the lock, if there is one
-    persist_metadata(METADATAFILENAME)
+    #persist_metadata(METADATAFILENAME)
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].release()
     del filedescriptortable[fd]
