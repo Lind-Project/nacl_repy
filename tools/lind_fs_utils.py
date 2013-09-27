@@ -5,6 +5,7 @@
           lists files in the fs, etc.
 
   Start Date: Feb 28th, 2012
+  Modified: Sept 27th, 2013 (Sai Teja Peddinti)
 
   I want to make a few basic utilities for manipulating a lind fs.   My 
   goal here isn't to make a perfect, production-ready tool, but instead to
@@ -268,6 +269,51 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   _mirror_stat_data(posixfn,normalizedlindfn)
 
 
+def deltree_lind(dirname):
+  # took part of the code from _find_all_paths_recursively method below.
+  # It recursively looks at all child dirs
+
+  # I need to open the dir to use getdents...
+  dirfd = lind_test_server.open_syscall(dirname,0,0)
+
+  # build a list of all dents.   These have an odd format:
+  #  [(inode, filename, d_type (DT_DIR, DR_REG, etc.), length of entry), ...]
+  # We only care about the filename and d_type.
+  mydentslist = []
+
+  # Note: the length parameter is odd, it's related to data structure space, so
+  # it doesn't map to python cleanly.   So long as it's > the largest possible
+  # entry size, this code should work though.
+  thesedents = lind_test_server.getdents_syscall(dirfd,10000)
+  while thesedents:
+    mydentslist += thesedents
+    thesedents = lind_test_server.getdents_syscall(dirfd,10000)
+
+  lind_test_server.close_syscall(dirfd)
+
+  for dent in mydentslist:
+    # ignore '.' and '..' because they aren't interesting and we don't want
+    # to loop forever.
+    if dent[1]=='.' or dent[1]=='..':
+      continue
+   
+    thisitem = (dent[0], dirname+'/'+dent[1])
+    
+    print "deleting",thisitem[1]
+
+    # if it's a directory, recurse...
+    if dent[2]==DT_DIR:
+      deltree_lind(thisitem[1])
+    else:
+      lind_test_server.unlink_syscall(thisitem[1])
+
+  lind_test_server.rmdir_syscall(dirname)
+  return  
+
+  #for dirname in args:
+  #    lind_test_server.rmdir_syscall(dirname)
+  #for filename in args:
+  #    lind_test_server.unlink_syscall(filename)
 
 
 
@@ -451,8 +497,8 @@ def main():
     if len(args)!= 1:
       print 'deltree takes exactly one argument, the dir to remove'
       return
-
-    print 'Unimplemented...'
+ 
+    deltree_lind(args[0])
 
 #rm file1 [file2...]        : delete a file
   elif command == 'rm':
