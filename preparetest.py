@@ -123,6 +123,7 @@ def main():
   repytest = False
   RANDOMPORTS = False
   force_install = False
+  clean_install = False
 	
   target_dir = None
   for arg in sys.argv[1:]:
@@ -137,6 +138,9 @@ def main():
     # Force install if target_dir does not exists
     elif arg == '-f':
       force_install = True
+      
+    elif arg == '-clean':
+      clean_install = True
 
     # Not a flag? Assume it's the target directory
     else:
@@ -161,17 +165,17 @@ def main():
   if not os.path.exists(target_dir):
     os.mkdir(target_dir)
   
-
-  #set working directory to the test folder
-  os.chdir(target_dir)	
-  files_to_remove = glob.glob("*")
-
-  #clean the test folder
-  for f in files_to_remove: 
-    if os.path.isdir(f):
-      shutil.rmtree(f)		
-    else:
-      os.remove(f)
+  if clean_install:
+    #set working directory to the test folder
+    os.chdir(target_dir)	
+    files_to_remove = glob.glob("*")
+  
+    #clean the test folder
+    for f in files_to_remove: 
+      if os.path.isdir(f):
+        shutil.rmtree(f)		
+      else:
+        os.remove(f)
 
   #go back to root project directory
   os.chdir(current_dir) 

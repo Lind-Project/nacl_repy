@@ -1393,9 +1393,13 @@ def write_syscall(fd, data):
 def _lookup_fds_by_inode(inode):
   returnedfdlist = []
   for fd in filedescriptortable:
-    if not IS_SOCK_DESC(fd) and filedescriptortable[fd]['inode'] == inode:
+    if not IS_SOCK_DESC(fd) and not IS_EPOLL_FD(fd) and filedescriptortable[fd]['inode'] == inode:
       returnedfdlist.append(fd)
   return returnedfdlist
+
+
+def IS_EPOLL_FD(fd):
+  return (fd in filedescriptortable) and ('registered_fds' in filedescriptortable[fd])
 
 
 # is this file descriptor a socket? 

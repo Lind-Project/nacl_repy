@@ -1123,6 +1123,8 @@ def setsockopt_syscall(fd, level, optname, optval):
     # do nothing
     if optname == TCP_NODELAY:
       return 0
+    
+    return 0 #temporary for Apache
  
     # otherwise return an error
     raise UnimplementedError("TCP options not remembered by setsockopt")
@@ -1392,7 +1394,7 @@ def poll_syscall(fds, timeout):
 
   return_code = 0
 
-  endtime = getruntime() + timeout
+  endtime = getruntime() + timeout*1e-3
   while True:
     for structpoll in fds:
       fd = structpoll['fd']
@@ -1498,3 +1500,109 @@ def socketpair_syscall(domain, socktype, protocol):
     sv.append(listfd)
 
   return (0, sv)
+
+EPOLLIN = 0x001
+EPOLLPRI = 0x002
+EPOLLOUT = 0x004
+EPOLLRDNORM = 0x040
+EPOLLRDBAND = 0x080
+EPOLLWRNORM = 0x100
+EPOLLWRBAND = 0x200
+EPOLLMSG = 0x400
+EPOLLERR = 0x008
+EPOLLHUP = 0x010
+EPOLLRDHUP = 0x2000
+EPOLLWAKEUP = 1 << 29
+EPOLLONESHOT = 1 << 30
+EPOLLET = 1 << 31
+
+EPOLL_CTL_ADD = 1
+EPOLL_CTL_DEL = 2
+EPOLL_CTL_MOD = 3
+
+def _epoll_object_allocator():
+  # get a file descriptor
+  newfd = get_next_fd()
+  
+  # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
+  # of the calls I did not change break.
+  filedescriptortable[newfd] = {
+      'mode':0000,
+      'lock':createlock(),
+      'registered_fds':{},
+      'errno':0,
+      'flags':0,
+  }
+  return newfd
+
+def epoll_create_syscall(size):
+  if not size>0:
+    raise SyscallError("epoll_create_syscall","EINVAL","size argument is not positive")
+  return _epoll_object_allocator()
+
+def epoll_ctl_syscall(epfd, op, fd, event):
+  if not IS_EPOLL_FD(epfd):
+    raise SyscallError("epoll_ctl_syscall","EBADF","epfd is not a valid FD")
+  
+  if (not fd in filedescriptortable) or (IS_EPOLL_FD(fd)):
+    raise SyscallError("epoll_ctl_syscall","EBADF","fd is not a valid FD")
+  
+  epfd_obj = filedescriptortable[epfd];
+  
+  if op == EPOLL_CTL_DEL or op == EPOLL_CTL_MOD:
+    try:
+      del epfd_obj['registered_fds'][fd]
+    except KeyError, e:
+      raise SyscallError("epoll_ctl_syscall","ENOENT","fd is not registered with this epfd")
+  
+  if op == EPOLL_CTL_ADD and fd in epfd_obj['registered_fds']:
+    raise SyscallError("epoll_ctl_syscall","EEXIST","fd is already registered")
+  
+  if op == EPOLL_CTL_MOD or op == EPOLL_CTL_ADD:
+    events = event["events"]
+    data = event["fd"]
+    epfd_obj['registered_fds'][fd] = {'events':events, 'data':data}
+  
+  return 0
+  
+def epoll_wait_syscall(epfd, maxevents, timeout):
+  if not epfd in filedescriptortable:
+    raise SyscallError("epoll_wait_syscall","EBADF","epfd is not a valid FD")
+  
+  if not IS_EPOLL_FD(epfd):
+    raise SyscallError("epoll_wait_syscall","EINVAL","epfd is not a epoll FD")
+  
+  if not maxevents>0:
+    raise SyscallError("epoll_wait_syscall","EINVAL","maxevents is not a postive number")
+  
+  readfds=[]
+  writefds=[]
+  errfds=[]
+  
+  poll_fds=[]
+  for fd in filedescriptortable[epfd]['registered_fds']:
+    events = filedescriptortable[epfd]['registered_fds'][fd]['events']
+    structpoll = {'fd':fd, 'events':0, 'revents':0}
+    if events & EPOLLIN > 0:
+      structpoll['events'] |= POLLIN
+    if events & EPOLLOUT > 0:
+      structpoll['events'] |= POLLOUT
+    if events & EPOLLERR > 0:
+      structpoll['events'] |= POLLERR
+    poll_fds.append(structpoll)
+  
+  ret, pollresult = poll_syscall(poll_fds, timeout)
+  nepoll_return = min(ret, maxevents)
+  epoll_return = []
+  for result in pollresult:
+    event={'events':0, 'fd':filedescriptortable[epfd]['registered_fds'][result['fd']]['data']}
+    if result['revents'] & POLLIN>0:
+      event['events'] |= EPOLLIN
+    if result['revents'] & POLLOUT>0:
+      event['events'] |= EPOLLOUT
+    if result['revents'] & POLLERR>0:
+      event['events'] |= EPOLLERR
+    epoll_return.append(event)
+    if len(epoll_return) == nepoll_return:
+      break;
+  return ret, epoll_return

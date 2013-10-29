@@ -53,7 +53,7 @@ def setup_nacl_path(nacl_base):
  
   nacl_enviroment["NACL_DYN_LOADER"] = runnableld
 
-  libs_str = "lib/libs/"
+  libs_str = "lib/glibc/"
   libs = os.path.join(nacl_base, libs_str)
   if not os.path.exists(libs):
      raise IOError("NaCl gcc libs is missing?: %s"%(libs))

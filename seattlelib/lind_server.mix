@@ -174,6 +174,8 @@ include net_getifaddrs.repy
 
 include net_poll.repy
 
+include net_epoll.repy
+
 include net_socketpair.repy
 
 include sys_getuid.repy
@@ -224,15 +226,15 @@ def print_times(times):
           
 def LindSyscall(call_num, args):
   comp_num = 1
-  response = "Failed with Exception."
+  response = None
   if TRACE:
     strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call_num]).split(" ")[1]), str(args)[:128], " = "]
   mycontext[LOCK].acquire(True)
   mycontext[COMP] = comp_num
   try:
     response = dispatch_syscall(call_num, args)
-  except object as e:
-      response = ErrorResponseBuilder("LindSyscall", "ENOSYS", "Internal Syscall Error "+str(e))
+  except:
+    response = ErrorResponseBuilder("LindSyscall", "ENOSYS", "Internal Syscall Error")
   finally:
     if TRACE:
       strace_msg.append(str(response)[:128])

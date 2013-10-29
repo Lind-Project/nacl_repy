@@ -2,16 +2,18 @@
 def lind_net_getpeername(args):
   """
   """
+  
+  sockfd = args[0]
+  addrlen = args[1]
 
   try:
-    print "doing getpeername syscall"
-    result = 0
-    # result = getpeername_syscall(path, mode)
-    print result
+    ip, port = getpeername_syscall(sockfd)
   except SyscallError,e:
     return ErrorResponseBuilder("net_getpeername", e[1], e[2])
+    
+  data = pack_struct_sockaddr(AF_INET, ip, port)
   
-  return SuccessResponseBuilder("net_getpeername", result)
+  return SuccessResponseBuilder("net_getpeername", 0, data)
 
 
 def lind_safe_net_getpeername(args):

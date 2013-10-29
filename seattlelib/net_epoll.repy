@@ -1,0 +1,109 @@
+"""
+
+Handlers for the epoll_create, epoll_ctl and epoll_wait system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Poll hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library poll system call.  Then packs
+the result back up.
+
+"""
+
+single_epfd_struct_format = "<I<Q"
+
+def parse_epoll_struct(epollfds_str):
+
+    structs = [epollfds_str]
+
+    result = struct_unpack(single_epfd_struct_format, epollfds_str)
+    result = {'events': result[0], 'fd': result[1]}
+    return result
+
+
+def pack_struct_epollfds(epfd_list):
+    nfds = len(epfd_list)
+    format = single_epfd_struct_format * nfds
+    elements = map(lambda x: (x['events'], x['fd']),
+                   epfd_list)
+    elements = [item for sublist in elements for item in sublist]
+    return struct_pack(format, *elements)
+    
+
+
+def lind_net_epoll_create(args):
+    """ epoll_create calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Pack the single int returned, or error.
+    """
+
+    size = args[0]
+    result = 0
+    try:
+        result = epoll_create_syscall(size)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_epoll_create", e[1], e[2])
+
+    return SuccessResponseBuilder("net_epoll_create", result)
+
+
+def lind_safe_net_epoll_create(args):
+    """ Safely wrap the epoll_create call.
+
+    See dispatcher.repy for details.
+
+    Check the file descriptor length and flags for consistancy,
+    then call the real epoll_create dispatcher.
+
+    """
+
+    result = lind_net_epoll_create(args)
+
+    return result
+    
+def lind_net_epoll_ctl(args):
+    
+    epfd = args[0]
+    op = args[1]
+    fd = args[2]
+    epstruct = parse_epoll_struct(args[3])
+    
+    result=0
+    try:
+        result=epoll_ctl_syscall(epfd, op, fd, epstruct)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_epoll_ctl", e[1], e[2])
+    
+    return SuccessResponseBuilder("net_epoll_ctl", result)
+    
+def lind_safe_net_epoll_ctl(args):
+
+    result = lind_net_epoll_ctl(args)
+    
+    return result
+    
+def lind_net_epoll_wait(args):
+
+    epfd = args[0]
+    maxevents = args[1]
+    timeout = args[2]
+    
+    result=0
+    try:
+        result=epoll_wait_syscall(epfd, maxevents, timeout)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_epoll_wait", e[1], e[2])
+    
+    data = pack_struct_epollfds(result[1])
+    
+    return SuccessResponseBuilder("net_epoll_wait", result[0], data)
+    
+def lind_safe_net_epoll_wait(args):
+
+    result = lind_net_epoll_wait(args)
+    
+    return result
