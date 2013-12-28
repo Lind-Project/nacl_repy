@@ -1180,16 +1180,17 @@ def setsockopt_syscall(fd, level, optname, optval):
 
 
 
-def _cleanup_socket(fd):
+def _cleanup_socket(fd, partial = False):
   if 'socketobjectid' in filedescriptortable[fd]:
     thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-    thesocket.close()
+    thesocket.close(partial)
     localport = filedescriptortable[fd]['localport']
     _release_localport(localport, filedescriptortable[fd]['protocol'])
-    del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-    del filedescriptortable[fd]['socketobjectid']
-    
-    filedescriptortable[fd]['state'] = NOTCONNECTED
+    if not partial:
+      del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+      del filedescriptortable[fd]['socketobjectid']
+      
+      filedescriptortable[fd]['state'] = NOTCONNECTED
     return 0
 
 
@@ -1198,11 +1199,11 @@ def _cleanup_socket(fd):
 # int shutdown(int sockfd, int how);
 
 ##### SHUTDOWN  #####
-def setshutdown_syscall(fd, how):
+def netshutdown_syscall(fd, how):
   """ 
     http://linux.die.net/man/2/shutdown
   """
-
+  
   if fd not in filedescriptortable:
     raise SyscallError("shutdown_syscall","EBADF","The file descriptor is invalid.")
 
@@ -1210,15 +1211,18 @@ def setshutdown_syscall(fd, how):
     raise SyscallError("shutdown_syscall","ENOTSOCK","The descriptor is not a socket.")
 
 
-  if how == SHUT_RD or how == SHUT_WR:
-
-    raise UnimplementedError("Partial shutdown not implemented.")
-
+  if how == SHUT_RD:
+    
+    raise UnimplementedError("Partial shutdown read not implemented.")
+  
+  elif how == SHUT_WR:
+    
+    _cleanup_socket(fd, True)
   
   # let's shut this down...
   elif how == SHUT_RDWR:
     # BUG: need to check for duplicate entries (ala dup / dup2)
-    _cleanup_socket(fd)
+    _cleanup_socket(fd, False)
   else:
     # BUG: I'm not exactly clear as to how to handle this...
     
@@ -1592,7 +1596,7 @@ def epoll_wait_syscall(epfd, maxevents, timeout):
     poll_fds.append(structpoll)
   
   ret, pollresult = poll_syscall(poll_fds, timeout)
-  nepoll_return = min(ret, maxevents)
+  nepoll_return = min(len(pollresult), maxevents)
   epoll_return = []
   for result in pollresult:
     event={'events':0, 'fd':filedescriptortable[epfd]['registered_fds'][result['fd']]['data']}
@@ -1603,6 +1607,6 @@ def epoll_wait_syscall(epfd, maxevents, timeout):
     if result['revents'] & POLLERR>0:
       event['events'] |= EPOLLERR
     epoll_return.append(event)
-    if len(epoll_return) == nepoll_return:
+    if len(epoll_return) >= nepoll_return:
       break;
-  return ret, epoll_return
+  return nepoll_return, epoll_return

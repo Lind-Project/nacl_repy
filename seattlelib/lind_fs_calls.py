@@ -547,7 +547,7 @@ def access_syscall(path, amode):
     if filesystemmetadata['inodetable'][thisinode]['mode'] & amode == amode:
       return 0
 
-    raise SyscallError("access_syscall","EACESS","The requested access is denied.")
+    raise SyscallError("access_syscall","EACCES","The requested access is denied.")
 
   finally:
     persist_metadata(METADATAFILENAME)

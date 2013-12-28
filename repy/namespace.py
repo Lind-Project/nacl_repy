@@ -712,7 +712,7 @@ FILE_OBJECT_WRAPPER_INFO = {
 TCP_SOCKET_OBJECT_WRAPPER_INFO = {
   'close' :
       {'func' : emulcomm.EmulatedSocket.close,
-       'args' : [],
+       'args' : [Bool()],
        'return' : Bool()},
   'recv' :
       {'func' : emulcomm.EmulatedSocket.recv,

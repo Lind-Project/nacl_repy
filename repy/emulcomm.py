@@ -764,7 +764,7 @@ def _get_localIP_to_remoteIP(connection_type, external_ip, external_port=80):
 RETRY_INTERVAL = 0.2 # In seconds
 
 
-def _cleanup_socket(identity):
+def _cleanup_socket(identity, partial=False):
   """
   <Purpose>
     Internal cleanup method for open sockets. The socket
@@ -816,30 +816,31 @@ def _cleanup_socket(identity):
   except:
     pass
 
-  # Close the socket
-  try:
-    sock.close()
-  except:
-    pass
-
-  # Re-store resources
-  if listening_sock:
-    nanny.tattle_remove_item('insockets', identity)
-
-    # Loop until the socket no longer exists
-    # BUG: There exists a potential race condition here. The problem is that
-    # the socket may be cleaned up and then before we are able to check for it again
-    # another process binds to the ip/port we are checking. This would cause us to detect
-    # the socket from the other process and we would block indefinately while that socket
-    # is open.
-    while nonportable.os_api.exists_listening_network_socket(localip, localport, is_tcp):
-      time.sleep(RETRY_INTERVAL)
-
-  else:
-    nanny.tattle_remove_item('outsockets', identity)
-
-  # Cleanup the socket
-  del OPEN_SOCKET_INFO[identity]
+  if(not partial):
+    # Close the socket
+    try:
+      sock.close()
+    except:
+      pass
+  
+    # Re-store resources
+    if listening_sock:
+      nanny.tattle_remove_item('insockets', identity)
+  
+      # Loop until the socket no longer exists
+      # BUG: There exists a potential race condition here. The problem is that
+      # the socket may be cleaned up and then before we are able to check for it again
+      # another process binds to the ip/port we are checking. This would cause us to detect
+      # the socket from the other process and we would block indefinately while that socket
+      # is open.
+      while nonportable.os_api.exists_listening_network_socket(localip, localport, is_tcp):
+        time.sleep(RETRY_INTERVAL)
+  
+    else:
+      nanny.tattle_remove_item('outsockets', identity)
+  
+    # Cleanup the socket
+    del OPEN_SOCKET_INFO[identity]
 
 
 
@@ -1744,7 +1745,7 @@ class EmulatedSocket:
       raise InteralRepyError("Internal Error. No table entry for new socket!")
 
 
-  def _close(self):
+  def _close(self, partial=False):
     """
     <Purpose>
       Private close method. Called when socket lock is held.
@@ -1761,13 +1762,13 @@ class EmulatedSocket:
       None
     """
     # Clean up the socket
-    _cleanup_socket(self.identity)
+    _cleanup_socket(self.identity, partial)
 
     # Replace the identity
     self.identity = None
 
 
-  def close(self):
+  def close(self, partial):
     """
       <Purpose>
         Closes a socket.   Pending remote recv() calls will return with the 
@@ -1811,7 +1812,7 @@ class EmulatedSocket:
     socket_lock.acquire()
     try:
       # Internal close
-      self._close()
+      self._close(partial)
 
       # Tattle the resources
       if self.on_loopback:
@@ -1887,7 +1888,7 @@ class EmulatedSocket:
       
       # Raise an exception if there was no data
       if data_length == 0:
-        self._close()
+        #self._close()
         raise SocketClosedRemote("The socket has been closed remotely!")
 
       if self.on_loopback:

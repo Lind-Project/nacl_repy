@@ -85,7 +85,8 @@ class Response:
             type_str = "Success"
         return type_str + " in " + self.response_type + " with code " + \
                str(self.return_code) + " with data of size " + \
-               str(len(self.data)) + " with data " + repr(self.data)
+               str(len(self.data)) + " with data " + repr(self.data) + \
+               str(len(self.message)) + " with data " + repr(self.message)
 
 
 def ErrorResponseBuilder(who, code, message):

@@ -158,7 +158,7 @@ def init_namespace(resourcefn, program, args):
   nanny.start_resource_nanny(resourcefn)
 
   # now, let's fire up the cpu / disk / memory monitor...
-  nonportable.monitor_cpu_disk_and_mem()
+  # nonportable.monitor_cpu_disk_and_mem()
 
   # Armon: Update our IP cache
   emulcomm.update_ip_cache()
