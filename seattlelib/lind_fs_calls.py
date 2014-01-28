@@ -179,11 +179,11 @@ def load_fs(name=METADATAFILENAME):
   except FileNotFoundError, e:
     warning("Note: No filesystem found, building a fresh one.")
     _blank_fs_init()
-    load_fs_special_files()
   else:
     f.close()
     try:
       restore_metadata(name)
+      load_fs_special_files()
     except (IndexError, KeyError), e:
       print "Error: Cannot reload filesystem.  Run lind_fsck for details."
       exitall(1)
@@ -1436,6 +1436,10 @@ def _close_helper(fd):
   # if we are a socket, we dont change disk metadata
   if IS_SOCK_DESC(fd):
     _cleanup_socket(fd)
+    return 0
+
+  if IS_EPOLL_FD(fd):
+    _epoll_object_deallocator(fd)
     return 0
 
   # get the inode for the filedescriptor

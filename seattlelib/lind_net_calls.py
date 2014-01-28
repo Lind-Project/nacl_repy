@@ -1538,6 +1538,9 @@ def _epoll_object_allocator():
       'flags':0,
   }
   return newfd
+  
+def _epoll_object_deallocator(efd):
+  pass
 
 def epoll_create_syscall(size):
   if not size>0:

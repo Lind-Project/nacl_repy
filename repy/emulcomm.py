@@ -786,6 +786,7 @@ def _cleanup_socket(identity, partial=False):
     None
   """
   # Get the socket lock
+  #print 'in _cleanup_socket: partial = '+str(partial)
   try:
     socket_lock = OPEN_SOCKET_INFO[identity][0]
   except KeyError:
@@ -840,6 +841,7 @@ def _cleanup_socket(identity, partial=False):
       nanny.tattle_remove_item('outsockets', identity)
   
     # Cleanup the socket
+    #print 'clean up '+str(identity)
     del OPEN_SOCKET_INFO[identity]
 
 
@@ -1765,7 +1767,8 @@ class EmulatedSocket:
     _cleanup_socket(self.identity, partial)
 
     # Replace the identity
-    self.identity = None
+    if not partial:
+      self.identity = None
 
 
   def close(self, partial):
@@ -1792,10 +1795,13 @@ class EmulatedSocket:
         True if this is the first close call to this socket, False otherwise.
     """
     # Get the socket lock
+    #print 'EmulatedSocket::close'
     try:
+      #print self.identity
       socket_lock = OPEN_SOCKET_INFO[self.identity][0]
     except KeyError:
       # Socket is already closed, ignore
+      #print 'already closed'
       return False
    
 
@@ -1812,6 +1818,7 @@ class EmulatedSocket:
     socket_lock.acquire()
     try:
       # Internal close
+      #print 'internal close'
       self._close(partial)
 
       # Tattle the resources
@@ -2187,7 +2194,7 @@ class UDPServerSocket:
 
 
 
-  def close(self):
+  def close(self, partial=False):
     """
     <Purpose>
         Closes a socket that is listening for messages.
@@ -2211,6 +2218,7 @@ class UDPServerSocket:
 
     """
     # Get the socket lock
+    #print 'UDPServerSocket::close'
     try:
       socket_lock = OPEN_SOCKET_INFO[self.identity][0]
     except KeyError:
@@ -2405,7 +2413,7 @@ class TCPServerSocket (object):
       socket_lock.release()
 
 
-  def close(self):
+  def close(self, partial=False):
     """
     <Purpose>
       Closes the listening TCP socket.
@@ -2427,6 +2435,7 @@ class TCPServerSocket (object):
       False otherwise.
     """
     # Get the socket lock
+    #print 'TCPServerSocket::close'
     try:
       socket_lock = OPEN_SOCKET_INFO[self.identity][0]
     except KeyError:
