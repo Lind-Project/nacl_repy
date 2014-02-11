@@ -951,7 +951,7 @@ def accept_syscall(fd, flags=0):
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("accept_syscall","ENOTSOCK","The descriptor is not a socket.")
 
-  blocking = (flags & SOCK_NONBLOCK) != 0
+  blocking = (filedescriptortable[fd]['flags'] & O_NONBLOCK) == 0
   cloexec = (flags & SOCK_CLOEXEC) != 0
 
   # If UDP, raise an exception
@@ -977,7 +977,10 @@ def accept_syscall(fd, flags=0):
 
       # sleep and retry
       except SocketWouldBlockError, e:
-        sleep(RETRYWAITAMOUNT)
+        if blocking:
+          sleep(RETRYWAITAMOUNT)
+        else:
+          raise SyscallError("accept_syscall","EWOULDBLOCK","operation would block")
       else:
 
         newfd = _socket_initializer(filedescriptortable[fd]['domain'],filedescriptortable[fd]['type'],filedescriptortable[fd]['protocol'], blocking, cloexec)
