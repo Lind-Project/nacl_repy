@@ -59,6 +59,8 @@ def setup_dispatcher(comp_num):
     56:lind_safe_net_epoll_create,
     57:lind_safe_net_epoll_ctl,
     58:lind_safe_net_epoll_wait,
+    59:lind_safe_net_sendmsg,
+    60:lind_safe_net_recvmsg,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -119,6 +121,8 @@ def setup_dispatcher(comp_num):
     56:lind_net_epoll_create,
     57:lind_net_epoll_ctl,
     58:lind_net_epoll_wait,
+    59:lind_net_sendmsg,
+    60:lind_net_recvmsg,
 
     105:lind_comp_cia,
     106:lind_comp_call,

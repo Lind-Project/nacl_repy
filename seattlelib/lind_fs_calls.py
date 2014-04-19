@@ -179,6 +179,7 @@ def load_fs(name=METADATAFILENAME):
   except FileNotFoundError, e:
     warning("Note: No filesystem found, building a fresh one.")
     _blank_fs_init()
+    load_fs_special_files()
   else:
     f.close()
     try:
@@ -1410,7 +1411,7 @@ def IS_SOCK_DESC(fd):
     return False
 
 
-
+'''
 # BAD this is copied from net_calls, but there is no way to get it
 def _cleanup_socket(fd):
   if 'socketobjectid' in filedescriptortable[fd]:
@@ -1425,8 +1426,8 @@ def _cleanup_socket(fd):
     del filedescriptortable[fd]['socketobjectid']
     
     filedescriptortable[fd]['state'] = NOTCONNECTED
-    return 0
-
+  return 0
+'''
 
 
 
@@ -1673,7 +1674,26 @@ def fcntl_syscall(fd, cmd, *args):
       # this would almost certainly say our PID (if positive) or our process
       # group (if negative).   Either way, we do nothing and return success.
       return 0
+    
+    elif cmd == F_DUPFD or cmd == F_DUPFD_CLOEXEC:
+      assert(len(args) == 1)
+      assert(type(args[0]) == int or type(args[0]) == long)
+      if fd not in filedescriptortable:
+        raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
 
+      # get the next available file descriptor
+      try:
+        nextfd = get_next_fd()
+      except SyscallError, e:
+            # If it's an error getting the fd, return our call name instead.
+        assert(e[0]=='open_syscall')
+                                                            
+        raise SyscallError('dup_syscall',e[1],e[2])
+                                                                
+      # this does the work.   It should _never_ raise an exception given the
+      # checks we've made...
+      return _dup2_helper(fd, nextfd)
+                                                                            
 
     else:
       # This is either unimplemented or malformed.   Let's raise

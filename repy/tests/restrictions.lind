@@ -30,6 +30,25 @@ resource messport 10007
 resource messport 10008
 resource messport 10009
 resource messport 10010
+resource messport 10011
+resource messport 10012
+resource messport 10013
+resource messport 10014
+resource messport 10015
+resource messport 10016
+resource messport 10017
+resource messport 10018
+resource messport 10019
+resource messport 10020
+resource messport 10021
+resource messport 10022
+resource messport 10023
+resource messport 10024
+resource messport 10025
+resource messport 10026
+resource messport 10027
+resource messport 10028
+resource messport 10029
 
 
 resource connport 9995
@@ -62,6 +81,11 @@ resource connport 10021
 resource connport 10022
 resource connport 10023
 resource connport 10024
+resource connport 10025
+resource connport 10026
+resource connport 10027
+resource connport 10028
+resource connport 10029
 
 
 call gethostbyname_ex allow

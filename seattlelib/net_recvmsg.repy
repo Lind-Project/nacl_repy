@@ -1,0 +1,36 @@
+
+def break_into_vectors(msg, iovlens):
+  iov = []
+  start = 0;
+  for length in iovlens:
+    iov.append(msg[start:start+length])
+    start = start+length
+  return iov
+
+def lind_net_recvmsg(args):
+  sockfd = args[0]
+  flags = args[1]
+  name = args[2]
+  controllen = args[3]
+  msgflags = args[4]
+  iovlens = args[5:]
+  length = sum(iovlens)
+  
+  controlmsg = struct_pack("<B", 0)*controllen # control message currently not supported
+  
+  print flags, msgflags
+  
+  try:
+    result = recvfrom_syscall(sockfd, length, flags)
+  except SyscallError, e:
+    return ErrorResponseBuilder("net_recvfrom", e[1], e[2])
+  sockaddr = pack_struct_sockaddr(AF_INET, result[0], result[1])
+  
+  iov = break_into_vectors(result[2], iovlens)
+  
+  result_str = pack_multiarg(controlmsg, sockaddr, *iov)
+  
+  return SuccessResponseBuilder("net_recvmsg", len(result[2]), result_str)
+  
+def lind_safe_net_recvmsg(args):
+  return lind_net_recvmsg(args)

@@ -11,7 +11,7 @@ include struct.repy
 VERSION = "$Rev$"
 
 
-SILENT = True # Try to produce output as close as the OS would
+SILENT = False # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
 TRACE = True  # Trace system calls? (somewhat like strace) 
@@ -148,9 +148,13 @@ include net_send.repy
 
 include net_sendto.repy
 
+include net_sendmsg.repy
+
 include net_recv.repy
 
 include net_recvfrom.repy
+
+include net_recvmsg.repy
 
 include net_connect.repy
 
@@ -228,12 +232,12 @@ def LindSyscall(call_num, args):
   comp_num = 1
   response = None
   if TRACE:
-    strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call_num]).split(" ")[1]), str(args)[:128], " = "]
+    strace_msg = [ "[lind_server][trace]", str(call_num)+':'+str(str(curr_comp()[SYSCALL][call_num]).split(" ")[1]), str(args)[:128], " = "]
   mycontext[LOCK].acquire(True)
   mycontext[COMP] = comp_num
   try:
     response = dispatch_syscall(call_num, args)
-  except Exception, e:
+  except BaseException, e:
     response = ErrorResponseBuilder("LindSyscall", "ENOSYS", str(e))
   except:
     response = ErrorResponseBuilder("LindSyscall", "ENOSYS", "Internal Syscall Error")

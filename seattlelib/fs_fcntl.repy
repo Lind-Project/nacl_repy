@@ -28,7 +28,7 @@ def lind_fs_fcntl(args):
     handle = args[0]
     cmd = args[1]
 
-    if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN:
+    if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN or cmd == F_DUPFD or cmd == F_DUPFD_CLOEXEC:
         arg = args[2]
         try:
             result = fcntl_syscall(handle, cmd, arg)
