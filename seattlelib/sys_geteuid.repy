@@ -32,8 +32,8 @@ def lind_sys_geteuid(args):
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_geteuid", 'EINVAL', str(e))
 
-    data = struct_pack("<i", result)
-    return SuccessResponseBuilder("sys_geteuid", len(data), data)
+    # data = struct_pack("<i", result)
+    return SuccessResponseBuilder("sys_geteuid", len(data))
 
 
 def lind_safe_sys_geteuid(args):
@@ -47,6 +47,6 @@ def lind_safe_sys_geteuid(args):
     """
 
     result = lind_sys_geteuid(args)
-    assert len(result.data) == 4, "we return a sinlge int"
+    # assert len(result.data) == 4, "we return a sinlge int"
 
     return result

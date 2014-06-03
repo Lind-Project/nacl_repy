@@ -36,6 +36,8 @@ COMP_MODE = "component_mode"
 TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
 RX_BUF_MAX = (4096 * 4)
 
+FILE_MAP = {}
+
 
 if not TRACE:
   def log(arg):
@@ -503,3 +505,12 @@ def finalize():
   log("Persisting metadata: ...\n")
   persist_metadata(DEFAULT_METADATA_FILENAME)
   log("Done persisting metadata.\n")
+  
+
+def map_native_to_lind(native, lind):
+    FILE_MAP[lind] = native
+    print "in map_native_to_lind, native =",native, "lind =",lind
+    
+def map_lind_to_native(lind):
+    print "in map_lind_to_native, lind =",lind
+    return FILE_MAP[lind]
