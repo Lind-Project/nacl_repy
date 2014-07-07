@@ -24,10 +24,10 @@ def lind_fs_open(args):
 
     Pack the single int returned, or error.
     """
+    file_name = args[0]
+    flags = args[1]
+    mode = args[2]
 
-    flags = args[0]
-    mode = args[1]
-    file_name = args[2]
     try:
         result_fd = open_syscall(file_name, flags, mode)
     except SyscallError, e:
@@ -51,9 +51,10 @@ def lind_safe_fs_open(args):
     O_WRONLY = 01
     O_RDWR = 02
 
-    flags = args[0]
-    mode = args[1]
-    file_name = args[2]
+    file_name = args[0]
+    flags = args[1]
+    mode = args[2]
+    
 
     assert isinstance(flags, int), "the flags should be an int"
     assert isinstance(mode, int), "the mode should be an int"

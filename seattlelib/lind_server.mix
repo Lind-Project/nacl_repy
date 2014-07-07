@@ -309,7 +309,7 @@ def NaclRPCServer(nacl_instance, comp_num):
       [magic, call, frmt_len, payload_size, seq_num, valid] = struct_unpack(format, header)
     except Exception, err:
       log("[ERROR][RPC] Error unmarshaling header" + str(type(err)) + ":" + str(err) + "\n")
-      continue
+           continue
     # validate the header
     if magic != -2:
       raise Exception("Protocol Error: Magic number not found." + \
