@@ -102,6 +102,8 @@ include lind_net_calls.py
 
 include fs_open.repy
 
+include fs_openat.repy
+
 include fs_write.repy
 
 include fs_fstatfs.repy
@@ -137,6 +139,8 @@ include fs_getdents.repy
 include fs_dup.repy
 
 include fs_dup2.repy
+
+include fs_dup3.repy
 
 include fs_fcntl.repy
 
@@ -505,7 +509,9 @@ def finalize():
   log("Persisting metadata: ...\n")
   persist_metadata(DEFAULT_METADATA_FILENAME)
   log("Done persisting metadata.\n")
-  
+
+for fd in (0, 1, 2):
+    FILE_MAP[fd] = fd
 
 def map_native_to_lind(native, lind):
     FILE_MAP[lind] = native

@@ -19,6 +19,7 @@
   without unpacking / repacking.
 
 """
+from fcntl import FD_CLOEXEC
   
 # At a conceptual level, the system works like this:
 #   1) Files are written and managed by my program.   The actual name on disk
@@ -335,7 +336,10 @@ def _rebuild_fastinodelookuptable():
 
 # private helper function that converts a relative path or a path with things
 # like foo/../bar to a normal path.
-def _get_absolute_path(path):
+def _get_absolute_path(path, parent=None):
+
+  if not parent:
+    parent = fs_calls_context['currentworkingdirectory']
   
   # should raise an ENOENT error...
   if path == '':
@@ -343,7 +347,7 @@ def _get_absolute_path(path):
 
   # If it's a relative path, prepend the CWD...
   if path[0] != '/':
-    path = fs_calls_context['currentworkingdirectory'] + '/' + path
+    path = parent + '/' + path
 
 
   # now I'll split on '/'.   This gives a list like: ['','foo','bar'] for 
@@ -1141,6 +1145,32 @@ def open_syscall(path, flags, mode):
     filesystemmetadatalock.release()
 
 
+##### OPENAT #####
+
+def openat_syscall(dir_fd, pathname, flags, mode):
+
+  try:
+    if pathname[0] != '/' and dir_fd != AT_FDCWD:
+        #convert path to abs path relative to dir_fd
+       if dir_fd not in filedescriptortable:
+           raise SyscallError("openat_syscall","EBADF","Invalid dir file descriptor.")
+       inode = filedescriptortable[dir_fd]['inode']
+       if not IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
+           raise SyscallError("openat_syscall","EBADF","Invalid dir file descriptor.")
+       for parent in fastinodelookuptable:
+           if fastinodelookuptable[parent] == inode:
+               break
+       pathname = _get_absolute_parent_path(pathname, parent)  
+       
+    return open_syscall(pathname, flags, mode)
+  
+  except SyscallError, e:
+    # If it's a system call error, return our call name instead.
+    assert(e[0]=='open_syscall')
+    
+    raise SyscallError('openat_syscall',e[1],e[2])
+  
+
 
 
 
@@ -1547,6 +1577,61 @@ def _dup2_helper(oldfd,newfd):
 
   return newfd
 
+
+##### DUP3  #####
+
+
+# private helper that allows this to be used by dup
+def _dup3_helper(oldfd, newfd, flags):
+
+  # if the new file descriptor is too low or too high
+  # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
+  #      The Lind code may pass me descriptors less than STARTINGFD
+  if newfd >= MAX_FD or newfd < 0 or flags < 0:
+    # BUG: the STARTINGFD isn't really too low.   It's just lower than we
+    # support
+    raise SyscallError("dup3_syscall","EBADF","Invalid new file descriptor.")
+
+  # if they are equal, return them
+  if newfd == oldfd:
+    return newfd
+
+  # okay, they are different.   If the new fd exists, close it.
+  if newfd in filedescriptortable:
+    # should not result in an error.   This only occurs on a bad fd 
+    _close_helper(newfd)
+
+
+  # Okay, we need the new and old to point to the same thing.
+  # NOTE: I am not making a copy here!!!   They intentionally both
+  # refer to the same instance because manipulating the position, etc.
+  # impacts both.
+  filedescriptortable[newfd] = filedescriptortable[oldfd]
+
+  return newfd
+
+
+
+def dup3_syscall(oldfd, newfd, flags):
+  """ 
+    http://linux.die.net/man/2/dup3
+  """
+
+  # check the fd
+  if oldfd not in filedescriptortable:
+    raise SyscallError("dup3_syscall","EBADF","Invalid old file descriptor.")
+
+  # Acquire the fd lock...
+  filedescriptortable[oldfd]['lock'].acquire(True)
+
+
+  # ... but always release it...
+  try:
+    return _dup3_helper(oldfd, newfd, flags)
+
+  finally:
+    # ... release the lock
+    filedescriptortable[oldfd]['lock'].release()
 
 
 
