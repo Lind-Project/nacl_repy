@@ -2,24 +2,23 @@
 def lind_net_getsockname(args):
   """
   """
-  
   sockfd = args[0]
   addrlen = args[1]
 
   try:
     ip, port = getsockname_syscall(sockfd)
+	
   except SyscallError,e:
     return ErrorResponseBuilder("net_getsockname", e[1], e[2])
     
   data = pack_struct_sockaddr(AF_INET, ip, port)
-  
   return SuccessResponseBuilder("net_getsockname", 0, data)
 
 
 def lind_safe_net_getsockname(args):
   """
   """
-  result = lind_net_getsockname(args)
 
+  result = lind_net_getsockname(args)
   return result
 

@@ -476,14 +476,6 @@ def fstatfs_syscall(fd):
 
 
 
-
-
-
-
-
-
-
-
 ##### STATFS  #####
 
 
@@ -917,6 +909,36 @@ def stat_syscall(path):
 
    
 
+##### LSTAT  #####
+
+
+def lstat_syscall(path):
+  """ 
+    http://linux.die.net/man/2/lstat
+  """
+  # in an abundance of caution, I'll grab a lock...
+  filesystemmetadatalock.acquire(True)
+
+  # ... but always release it...
+  try:
+    truepath = _get_absolute_path(path)
+
+    # is the path there?
+    if truepath not in fastinodelookuptable:
+      raise SyscallError("lstat_syscall","ENOENT","The path does not exist.")
+
+    thisinode = fastinodelookuptable[truepath]
+    
+    # If its a character file, call the helper function.
+    if IS_CHR(filesystemmetadata['inodetable'][thisinode]['mode']):
+      return _istat_helper_chr_file(thisinode)
+   
+    return _istat_helper(thisinode)
+
+  finally:
+    #persist_metadata(METADATAFILENAME)
+    filesystemmetadatalock.release()
+
 
 ##### FSTAT  #####
 
@@ -985,21 +1007,26 @@ def _istat_helper(inode):
 
 
 
-
-
-
 ##### OPEN  #####
 
+import random
 
 # get the next free file descriptor
 def get_next_fd():
-  # let's get the next available fd number.   The standard says we need to 
+  # let's get the next available fd number.   The standard says we need to
   # return the lowest open fd number.
-  for fd in range(STARTINGFD, MAX_FD):
+  fds_to_consider = range(STARTINGFD, MAX_FD)
+
+  # DO RANDOM SHUFFLE SO THAT WE SEE WHICH FDS MAP TO WHICH CALLS
+  random.shuffle(fds_to_consider)
+  #print "RANDOM!!!!!!!"
+
+  for fd in fds_to_consider:
     if not fd in filedescriptortable:
       return fd
-
+  
   raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
+
   
 
 def open_syscall(path, flags, mode):
@@ -1844,7 +1871,7 @@ def getdents_syscall(fd, quantity):
     for entryname,entryinode in list(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems())[startposition:]:
       # getdents returns the mode also (at least on Linux)...
       entrytype = get_direnttype_from_mode(filesystemmetadata['inodetable'][entryinode]['mode'])
-
+      
       # Get the size of each entry, the size should be a multiple of 8.
       # The size of each entry is determined by sizeof(struct linux_dirent) which is 20 bytes plus the length of name of the file.
       # So, size of each entry becomes : 21 => 24, 26 => 32, 32 => 32.

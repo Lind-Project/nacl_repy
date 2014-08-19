@@ -52,9 +52,14 @@ def lind_safe_net_socket(args):
     protocol = args[2]
 
     assert (isinstance(domain, int)), "domain must be an int"
+	
+    
     if domain != PF_INET:
         log( "Warning: only internet domain supported right " \
               "now d=%d\n" % (domain))
+    
+    if _type == SOCK_RAW:
+        raise SyscallError("socket_syscall","ESOCKTNOSUPPORT","unimplemented")
 
     result = lind_net_socket(args)
 

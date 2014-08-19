@@ -20,4 +20,3 @@ def lind_safe_fs_unlink(args):
     else:
       print result.message
     return result
-

@@ -24,10 +24,10 @@ def lind_fs_lseek(args):
 
     Pack the int returned, or error.
     """
-
+    
+    offset = args[0]
     handle = args[1]
     whence = args[2]
-    offset = args[0]
 
     try:
         result = lseek_syscall(handle, offset, whence)
@@ -49,9 +49,9 @@ def lind_safe_fs_lseek(args):
     """
 
     offset = args[0]
-    whence = args[2]
     handle = args[1]
-
+    whence = args[2]
+    
     assert isinstance(offset, int) or isinstance(offset, long), "offset should be a int"
     assert isinstance(whence, int), "whence should be a int"
 
