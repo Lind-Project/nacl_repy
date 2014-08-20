@@ -1743,7 +1743,11 @@ def fcntl_syscall(fd, cmd, *args):
       if len(args) > 0:
         raise SyscallError("fcntl_syscall", "EINVAL", "Argument is more than\
           maximun allowable value.")
-      return int((filedescriptortable[fd]['flags'] & FD_CLOEXEC) != 0)
+
+      if (filedescriptortable[fd]['flags'] & FD_CLOEXEC):
+        return 1
+      else:
+        return 0
 
     # set the flags...
     elif cmd == F_SETFD:
