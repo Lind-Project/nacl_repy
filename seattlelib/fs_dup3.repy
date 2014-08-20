@@ -6,8 +6,8 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Dup3 hadler pulls out the arguments, does any mandatory checking
-then calls the repy posix library dup3 system call.  Then packs
+Dup3 handler pulls out the arguments, does any mandatory checking
+then calls the Repy POSIX library dup3 system call.  Then packs
 the result back up.
 
 """
@@ -61,12 +61,3 @@ def lind_safe_fs_dup3(args):
     check_valid_fd_handle(handle3)
 
     return lind_fs_dup3(args)
-
-
-def set_on_close(fd):
-    flags = fcntl_syscalls(fd, F_GETFL)
-    
-    if flags < 0 or fcntl_syscalls(fd, F_SETFL, flags | FD_CLOEXEC) < 0:
-        return ErrorResponseBuilder("fs_dup3","EBADF","Invalid new file descriptor.")
-        
-    return SuccessResponseBuilder("fs_dup3", result)

@@ -19,7 +19,6 @@
   without unpacking / repacking.
 
 """
-from fcntl import FD_CLOEXEC
   
 # At a conceptual level, the system works like this:
 #   1) Files are written and managed by my program.   The actual name on disk
@@ -1160,9 +1159,15 @@ def open_syscall(path, flags, mode):
 
     # TODO handle read / write locking, etc.
 
+    # Need to translate the O_CLOEXEC flag to FD_CLOEXEC for fcntl
+    if O_CLOEXEC & flags:
+      # I'm doing this mathematically so that I don't lose the other flags (RDWR)
+      flags = (flags & (~O_CLOEXEC)) | FD_CLOEXEC
+      
     # Add the entry to the table!
 
-    filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
+    filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&(O_RDWRFLAGS|FD_CLOEXEC)}
+
 
     # Done!   Let's return the file descriptor.
     return thisfd
@@ -1572,37 +1577,6 @@ def close_syscall(fd):
 
 
 
-##### DUP2  #####
-
-
-# private helper that allows this to be used by dup
-def _dup2_helper(oldfd,newfd):
-
-  # if the new file descriptor is too low or too high
-  # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
-  #      The Lind code may pass me descriptors less than STARTINGFD
-  if newfd >= MAX_FD or newfd < 0:
-    # BUG: the STARTINGFD isn't really too low.   It's just lower than we
-    # support
-    raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
-
-  # if they are equal, return them
-  if newfd == oldfd:
-    return newfd
-
-  # okay, they are different.   If the new fd exists, close it.
-  if newfd in filedescriptortable:
-    # should not result in an error.   This only occurs on a bad fd 
-    _close_helper(newfd)
-
-
-  # Okay, we need the new and old to point to the same thing.
-  # NOTE: I am not making a copy here!!!   They intentionally both
-  # refer to the same instance because manipulating the position, etc.
-  # impacts both.
-  filedescriptortable[newfd] = filedescriptortable[oldfd]
-
-  return newfd
 
 
 ##### DUP3  #####
@@ -1619,21 +1593,24 @@ def _dup3_helper(oldfd, newfd, flags):
     # support
     raise SyscallError("dup3_syscall","EBADF","Invalid new file descriptor.")
 
-  # if they are equal, return them
-  if newfd == oldfd:
-    return newfd
+  if flags != 0 and flags != FD_CLOEXEC:
+    raise InternalError("Should be impossible to get an invalid flags setting in _dup3_helper")
 
   # okay, they are different.   If the new fd exists, close it.
   if newfd in filedescriptortable:
     # should not result in an error.   This only occurs on a bad fd 
     _close_helper(newfd)
-
-
+    
+    
   # Okay, we need the new and old to point to the same thing.
   # NOTE: I am not making a copy here!!!   They intentionally both
   # refer to the same instance because manipulating the position, etc.
   # impacts both.
   filedescriptortable[newfd] = filedescriptortable[oldfd]
+  
+  # BUG: This only makes sense if they share flags.  This is not supposed to be true.
+  filedescriptortable[newfd]['flags'] = flags
+
 
   return newfd
 
@@ -1643,11 +1620,24 @@ def dup3_syscall(oldfd, newfd, flags):
   """ 
     http://linux.die.net/man/2/dup3
   """
-
+  
   # check the fd
   if oldfd not in filedescriptortable:
     raise SyscallError("dup3_syscall","EBADF","Invalid old file descriptor.")
 
+
+  if flags != 0 and flags != O_CLOEXEC:
+    raise SyscallError("dup3_syscall","EINVAL","Invalid flag value '"+str(flags)+"'.")
+
+  if flags == O_CLOEXEC:
+    # The flags are stored as FD_CLOEXEC for fcntl compat, despite being called as O_CLOEXEC.  I will pass FD_CLOEXEC in
+    flags = FD_CLOEXEC
+
+  # according to the man page, if oldfd == newfd, raise EINVAL
+  if oldfd == newfd:
+    raise SyscallError("dup3_syscall","EINVAL","Cannot have oldfd == newfd in dup3.")
+      
+  
   # Acquire the fd lock...
   filedescriptortable[oldfd]['lock'].acquire(True)
 
@@ -1677,7 +1667,7 @@ def dup2_syscall(oldfd,newfd):
 
   # ... but always release it...
   try:
-    return _dup2_helper(oldfd, newfd)
+    return _dup3_helper(oldfd, newfd,0)
 
   finally:
     # ... release the lock
@@ -1713,7 +1703,7 @@ def dup_syscall(fd):
   
     # this does the work.   It should _never_ raise an exception given the
     # checks we've made...
-    return _dup2_helper(fd, nextfd)
+    return _dup3_helper(fd, nextfd, 0)
   
   finally:
     # ... release the lock
@@ -1804,7 +1794,7 @@ def fcntl_syscall(fd, cmd, *args):
                                                                 
       # this does the work.   It should _never_ raise an exception given the
       # checks we've made...
-      return _dup2_helper(fd, nextfd)
+      return _dup3_helper(fd, nextfd,0)
                                                                             
 
     else:
