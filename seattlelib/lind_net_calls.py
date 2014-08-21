@@ -1574,6 +1574,22 @@ def epoll_create_syscall(size):
     raise SyscallError("epoll_create_syscall","EINVAL","size argument is not positive")
   return _epoll_object_allocator()
 
+
+def epoll_create1_syscall(flags):
+  if flags < 0:
+    raise SyscallError("epoll_create1_syscall","EINVAL","size argument is not positive")
+  # If  flags is 0, then, other than the fact that the obsolete size argument is dropped, 
+  # epoll_create1() is the same as epoll_create().
+  if (flag == 0):
+    return _epoll_object_allocator()
+  
+  # Set the close-on-exec (FD_CLOEXEC) flag on the new file descriptor. 
+  if (flag == FD_CLOEXEC):
+    flag = EPOLL_CLOEXEC  
+    
+  return _epoll_object_allocator()
+
+
 def epoll_ctl_syscall(epfd, op, fd, event):
   if not IS_EPOLL_FD(epfd):
     raise SyscallError("epoll_ctl_syscall","EBADF","epfd is not a valid FD")

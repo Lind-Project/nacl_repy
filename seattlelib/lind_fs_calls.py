@@ -135,6 +135,15 @@ fileobjecttable = {}
 # without using global, which is blocked by RepyV2
 fs_calls_context = {}
 
+# This tracks which file descriptors point to stdin.  This is not handled well now, but should be specially handled
+filedescriptorsforstdin = set([0])
+
+# This tracks which file descriptors point to stdout.  This is used to know when to print to the log
+filedescriptorsforstdout = set([1])
+
+# This tracks which file descriptors point to stderr.  Stderr is also printed to the log
+filedescriptorsforstderr = set([2])
+
 # Where we currently are at...
 
 fs_calls_context['currentworkingdirectory'] = '/'
@@ -1380,7 +1389,8 @@ def write_syscall(fd, data):
   if fd not in filedescriptortable:
     raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
-  if filedescriptortable[fd]['inode'] in [1,2]:
+  # If we should write it to the log, do so and return
+  if filedescriptortable[fd]['inode'] in filedescriptorsforstdout or filedescriptortable[fd]['inode'] in filedescriptorsforstderr:
     log(data)
     return len(data)
 
@@ -1551,11 +1561,22 @@ def close_syscall(fd):
   # check the fd
   if fd not in filedescriptortable:
     raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
-  try:
-    if filedescriptortable[fd]['inode'] in [0,1,2]:
-      return 0
-  except KeyError:
-    pass
+
+  # Need to remove from the appropriate list if it's stdout, stderr, or stdin
+  if fd in filedescriptorsforstdin:
+    filedescriptorsforstdin.remove(fd)
+    return 0
+
+  # Need to remove from the appropriate list if it's stdout, stderr, or stdin
+  if fd in filedescriptorsforstdout:
+    filedescriptorsforstdout.remove(fd)
+    return 0
+
+  # Need to remove from the appropriate list if it's stdout, stderr, or stdin
+  if fd in filedescriptorsforstderr:
+    filedescriptorsforstderr.remove(fd)
+    return 0
+
   # Acquire the fd lock, if there is one.
   if 'lock' in filedescriptortable[fd]:
     filedescriptortable[fd]['lock'].acquire(True)
@@ -1592,21 +1613,19 @@ def _dup3_helper(oldfd, newfd, flags):
     # BUG: the STARTINGFD isn't really too low.   It's just lower than we
     # support
     raise SyscallError("dup3_syscall","EBADF","Invalid new file descriptor.")
-
-  if flags != 0 and flags != FD_CLOEXEC:
-    raise InternalError("Should be impossible to get an invalid flags setting in _dup3_helper")
-
+  
   # okay, they are different.   If the new fd exists, close it.
-  if newfd in filedescriptortable:
+  if (newfd in filedescriptortable) and (not newfd in [0,1,2]):
     # should not result in an error.   This only occurs on a bad fd 
-    _close_helper(newfd)
+    close_helper(newfd)
     
     
   # Okay, we need the new and old to point to the same thing.
   # NOTE: I am not making a copy here!!!   They intentionally both
   # refer to the same instance because manipulating the position, etc.
   # impacts both.
-  filedescriptortable[newfd] = filedescriptortable[oldfd]
+  if (not newfd in [0,1,2]):
+    filedescriptortable[newfd] = filedescriptortable[oldfd]
   
   # BUG: This only makes sense if they share flags.  This is not supposed to be true.
   filedescriptortable[newfd]['flags'] = flags
@@ -1624,6 +1643,17 @@ def dup3_syscall(oldfd, newfd, flags):
   # check the fd
   if oldfd not in filedescriptortable:
     raise SyscallError("dup3_syscall","EBADF","Invalid old file descriptor.")
+  if flags != 0 and flags != FD_CLOEXEC:
+    raise InternalError("Should be impossible to get an invalid flags setting in _dup3_helper")
+
+  if (oldfd == 0) and not (newfd in filedescriptorsforstdin):
+    filedescriptorsforstdin.add(newfd)
+ 
+  if (oldfd == 1) and not (newfd in filedescriptorsforstdout):
+    filedescriptorsforstdout.add(newfd)
+    
+  if (oldfd == 2) and not (newfd in filedescriptorsforstderr):
+    filedescriptorsforstderr.add(newfd)
 
 
   if flags != 0 and flags != O_CLOEXEC:
@@ -1660,6 +1690,18 @@ def dup2_syscall(oldfd,newfd):
   # check the fd
   if oldfd not in filedescriptortable:
     raise SyscallError("dup2_syscall","EBADF","Invalid old file descriptor.")
+
+  if flags != 0 and flags != FD_CLOEXEC:
+    raise InternalError("Should be impossible to get an invalid flags setting in _dup3_helper")
+
+  if (oldfd == 0) and not (newfd in filedescriptorsforstdin):
+    filedescriptorsforstdin.add(newfd)
+ 
+  if (oldfd == 1) and not (newfd in filedescriptorsforstdout):
+    filedescriptorsforstdout.add(newfd)
+    
+  if (oldfd == 2) and not (newfd in filedescriptorsforstderr):
+    filedescriptorsforstderr.add(newfd)
 
   # Acquire the fd lock...
   filedescriptortable[oldfd]['lock'].acquire(True)

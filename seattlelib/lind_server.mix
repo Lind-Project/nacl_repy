@@ -515,7 +515,7 @@ for fd in (0, 1, 2):
 
 def map_native_to_lind(native, lind):
     FILE_MAP[lind] = native
-    #print "map_native_to_lind, native =",native, "lind =", lind
+    print "map_native_to_lind, native =",native, "lind =", lind
     
 def get_lind_map_to_native(lind):
 
@@ -525,7 +525,7 @@ def get_lind_map_to_native(lind):
   if len(FILE_MAP) < 4:
     return lind
   	  
-  #print "get_lind_map_to_native, lind =",lind , "native=", FILE_MAP[lind]
+  print "get_lind_map_to_native, lind =",lind , "native=", FILE_MAP[lind]
   	
   return FILE_MAP[lind]
   
