@@ -1551,7 +1551,9 @@ EPOLL_CTL_ADD = 1
 EPOLL_CTL_DEL = 2
 EPOLL_CTL_MOD = 3
 
-def _epoll_object_allocator():
+EPOLL_CLOEXEC = 02000000
+
+def _epoll_object_allocator(flag):
   # get a file descriptor
   newfd = get_next_fd()
   
@@ -1562,7 +1564,7 @@ def _epoll_object_allocator():
       'lock':createlock(),
       'registered_fds':{},
       'errno':0,
-      'flags':0,
+      'flags':flag,
   }
   return newfd
   
@@ -1572,22 +1574,22 @@ def _epoll_object_deallocator(efd):
 def epoll_create_syscall(size):
   if not size>0:
     raise SyscallError("epoll_create_syscall","EINVAL","size argument is not positive")
-  return _epoll_object_allocator()
+  return _epoll_object_allocator(0)
 
 
 def epoll_create1_syscall(flags):
   if flags < 0:
-    raise SyscallError("epoll_create1_syscall","EINVAL","size argument is not positive")
+    raise SyscallError("epoll_create1_syscall","EINVAL","flags argument is not positive")
   # If  flags is 0, then, other than the fact that the obsolete size argument is dropped, 
   # epoll_create1() is the same as epoll_create().
-  if (flag == 0):
+  if (flags == 0):
     return _epoll_object_allocator()
   
   # Set the close-on-exec (FD_CLOEXEC) flag on the new file descriptor. 
-  if (flag == FD_CLOEXEC):
-    flag = EPOLL_CLOEXEC  
+  if (flags == EPOLL_CLOEXEC):
+    flags = FD_CLOEXEC
     
-  return _epoll_object_allocator()
+  return _epoll_object_allocator(flags)
 
 
 def epoll_ctl_syscall(epfd, op, fd, event):

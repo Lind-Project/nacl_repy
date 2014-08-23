@@ -63,6 +63,9 @@ def setup_dispatcher(comp_num):
     60:lind_safe_net_recvmsg,
     61:lind_safe_fs_openat,
     62:lind_fs_dup3,
+    #63:LIND_safe_fs_readv,
+    #64:LIND_safe_fs_wrtiev,
+    65:lind_net_epoll_create1,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -127,7 +130,10 @@ def setup_dispatcher(comp_num):
     60:lind_net_recvmsg,
     61:lind_fs_openat,
     62:lind_fs_dup3,
-
+    #63:LIND_safe_fs_readv,
+    #64:LIND_safe_fs_wrtiev,
+    65:lind_net_epoll_create1,
+    
     
     105:lind_comp_cia,
     106:lind_comp_call,
