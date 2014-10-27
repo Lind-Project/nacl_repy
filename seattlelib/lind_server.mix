@@ -1,9 +1,16 @@
 """
+
 The Lind OS Server.  This module services system calls coming from glibc
 <Author>
   Chris Matthews (cmatthew@cs.uvic.ca)
 <Start Date>
   Dececmber 2010
+
+<Revised by>
+  Yiwen Li (liyiwen@nyu.edu)
+<Revise Date>
+  October 2014
+
 """
 
 include struct.repy
@@ -37,10 +44,12 @@ TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
 RX_BUF_MAX = (4096 * 4)
 
 
-if not TRACE:
-  def log(arg):
-    """Turn off logging"""
-    pass
+
+def is_trace():
+  if not TRACE:
+    def log(arg):
+      """Turn off logging"""
+      pass
 
 
 def warning(*msg):
@@ -48,7 +57,6 @@ def warning(*msg):
     for part in msg:
       print part,
     print
-
 
 
 def assert_warning(logic, message):
@@ -381,14 +389,14 @@ def NaclRPCServer(nacl_instance, comp_num):
   # print_times(times)
 
 
-def main():
-  code_loc = curr_comp()[PROGRAM]
-  nacl = safelyexecutenativecode(code_loc, curr_comp()[CMD_LINE])
-
-  if nacl != None:
-    NaclRPCServer(nacl, 1)
-  else:
-    print "Error: Safe Binary mode must be switched on for this program to work."
+#def main():
+#  code_loc = curr_comp()[PROGRAM]
+#  nacl = safelyexecutenativecode(code_loc, curr_comp()[CMD_LINE])
+#
+#  if nacl != None:
+#    NaclRPCServer(nacl, 1)
+#  else:
+#    print "Error: Safe Binary mode must be switched on for this program to work."
 
 
 def launch_helper(instance, num):
@@ -483,19 +491,21 @@ def parse_commandline():
   # print curr_comp()[PROGRAM]
 
 
-
-if callfunc == "initialize":
-  log( "Lind v0." + VERSION[6:-2] + "Last commit:" + "$Date$"[7:-2]+"\n")
-  parse_commandline()
-  lind_factory()
-
-  #main()
-
-  #log("Persisting metadata: ...\n")
-  #persist_metadata(DEFAULT_METADATA_FILENAME)
-  #log("Done persisting metadata.\n")
-
 def finalize():
   log("Persisting metadata: ...\n")
   persist_metadata(DEFAULT_METADATA_FILENAME)
   log("Done persisting metadata.\n")
+
+
+def main():
+  is_trace()
+
+  if callfunc == "initialize":
+    log( "Lind v0." + VERSION[6:-2] + "Last commit:" + "$Date$"[7:-2]+"\n")
+    parse_commandline()
+    lind_factory()
+
+
+main()
+
+
