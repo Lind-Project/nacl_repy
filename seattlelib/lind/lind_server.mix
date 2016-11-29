@@ -97,111 +97,63 @@ def check_valid_fd_handle(num):
 
 
 include errno.repy
-
 include lind_net_constants.py
-
 include serialize.repy
-
 include lind_fs_calls.py
-
 include lind_net_calls.py
-
-include fs_open.repy
-
-include fs_write.repy
-
-include fs_fstatfs.repy
-
-include fs_statfs.repy
-
 include comp.repy
 
+include fs_open.repy
+include fs_write.repy
+include fs_fstatfs.repy
+include fs_statfs.repy
 include fs_access.repy
-
 include fs_read.repy
-
 include fs_fstat.repy
-
 include fs_close.repy
-
 include fs_lseek.repy
-
 include fs_mkdir.repy
-
 include fs_rmdir.repy
-
 include fs_chdir.repy
-
 include fs_link.repy
-
 include fs_unlink.repy
-
 include fs_xstat.repy
-
 include fs_getdents.repy
-
 include fs_dup.repy
-
 include fs_dup2.repy
-
 include fs_fcntl.repy
+include fs_flock.repy
+include fs_rename.repy
 
 include sys_getpid.repy
 
 include net_socket.repy
-
 include net_bind.repy
-
 include net_send.repy
-
 include net_sendto.repy
-
 include net_recv.repy
-
 include net_recvfrom.repy
-
 include net_connect.repy
-
 include net_listen.repy
-
 include net_accept.repy
-
 include net_getpeername.repy
-
 include net_getsockname.repy
-
 include net_getsockopt.repy
-
 include net_setsockopt.repy
-
 include net_shutdown.repy
-
 include net_select.repy
-
 include net_getifaddrs.repy
-
 include net_poll.repy
-
 include net_epoll.repy
-
 include net_socketpair.repy
 
 include sys_getuid.repy
-
 include sys_geteuid.repy
-
 include sys_getgid.repy
-
 include sys_getegid.repy
 
-include fs_flock.repy
-
-include fs_rename.repy
-
 include debug.repy
-
 include unimplemented_syscalls.repy
-
 include dispatcher.repy
 
 
