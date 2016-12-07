@@ -47,6 +47,6 @@ def lind_safe_sys_getegid(args):
     """
 
     result = lind_sys_getegid(args)
-    assert len(result.data) == 4, "we return a sinlge int"
+    #assert len(result.data) == 4, "we return a sinlge int"
 
     return result

@@ -88,6 +88,7 @@ F_GETSIG = 11
 F_SETLEASE = 1024
 F_GETLEASE = 1025
 F_NOTIFY = 1026
+F_DUPFD_CLOEXEC = 1030
 
 # for fcntl to manipulate file descriptor flags..
 FD_CLOEXEC = 02000000

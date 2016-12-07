@@ -1,0 +1,34 @@
+
+def lind_net_sendmsg(args):
+
+
+#  sockfd, msg->msg_name, msg->msg_namelen, final_message, msg->msg_iovlen,msg->msg_control, msg->msg_controllen, msg->msg_flags, flags
+    
+  sockfd = args[0]
+  
+  # message name which is the actual destination
+  msg_name = args[1]
+  
+  # joined elements of iovec 
+  buf = args[2]
+  
+  flags = args[8]
+  
+  ipaddr=""
+  port=0
+  
+  print "name =", repr(msg_name)
+  
+  if name:
+    family, port, ip, pad = parse_sockaddr_struct(msg_name)
+    ipaddr = inet_ntoa(struct_pack("<I", ip))
+  
+  try:
+    result = sendto_syscall(sockfd, buf, ipaddr, port, flags)
+  except SyscallError,e:
+    return ErrorResponseBuilder("net_sendmsg", e[1], e[2])
+  
+  return SuccessResponseBuilder("net_sendmsg", result)
+  
+def lind_safe_net_sendmsg(args):
+  return lind_net_sendmsg(args)

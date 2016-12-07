@@ -86,7 +86,7 @@ class CompositeTCPSocket:
 
   def getconnection(self):
     try:
-     conn = self.c1.getconnection()
+      conn = self.c1.getconnection()
     except SocketWouldBlockError, e:
       conn = self.c2.getconnection()
     return conn
@@ -254,7 +254,8 @@ def _socket_initializer(domain,socktype,protocol, blocking=False, cloexec=False)
       'state':NOTCONNECTED, # we start without any connection
       'lock':createlock(),
       'flags':flags,
-      'errno':0
+      'errno':0,
+      'msgqueue':[]
 # We don't set the ip / ports or socketobjectid because they are unknown now.
   }
   return newfd
@@ -366,7 +367,7 @@ def bind_syscall(fd,localip,localport):
   # error later....   I think I'll wait.
   if not intent_to_rebind:
     (ret, localport) = _reserve_localport(localport, filedescriptortable[fd]['protocol'])
-    assert ret
+    #assert ret
   # If this is a UDP interface, then we should listen for udp datagrams
   # (there is no 'listen' so the time to start now)...
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
@@ -528,7 +529,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
 
     # If unspecified, use a new local port / the local ip
-    if 'localip' not in filedescriptortable[fd]:
+    if 'localip' not in filedescriptortable[fd] or filedescriptortable[fd]['localip'] == '0.0.0.0':
       localip = getmyip()
       localport = _get_available_udp_port()
     else:
@@ -622,9 +623,10 @@ def send_syscall(fd, message, flags):
     
 
     
+# ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);
 
-
-
+def sendmsg_syscall(sockfd, flags, name, control, msgflags, *iov):
+    pass
 
 
 # ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
@@ -649,10 +651,11 @@ def recvfrom_syscall(fd,length,flags):
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("recvfrom_syscall","ENOTSOCK","The descriptor is not a socket.")
 
+  blocking = ((filedescriptortable[fd]['flags'] & O_NONBLOCK) == 0) and ((flags & O_NONBLOCK) == 0)
 
   # What I do depends on the protocol...
   if filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
-
+    
     # includes NOTCONNECTED and LISTEN
     if filedescriptortable[fd]['state'] != CONNECTED:
       raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected."+str(filedescriptortable[fd]['state']))
@@ -678,7 +681,7 @@ def recvfrom_syscall(fd,length,flags):
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
         if IS_NONBLOCKING(filedescriptortable[fd]['flags'], flags):
-          raise e
+          raise SyscallError("recvfrom_syscall","EWOULDBLOCK","operation would block")
         if peek == '':
           sleep(RETRYWAITAMOUNT)
           continue
@@ -712,6 +715,7 @@ def recvfrom_syscall(fd,length,flags):
     # BUG / HELP!!!: Calling this with UDP and without binding does something I
     # don't really understand...   It seems to block but I don't know what is 
     # happening.   The socket isn't bound to a valid inode,etc from what I see.
+    
     if 'localip' not in filedescriptortable[fd]:
       raise UnimplementedError("BUG / FIXME: Should bind before using UDP to recv / recvfrom")
     
@@ -719,17 +723,26 @@ def recvfrom_syscall(fd,length,flags):
     # get the udpsocket object...
     udpsockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
 
-
+    if filedescriptortable[fd]['msgqueue']:
+      remoteip, remoteport, ret_data = filedescriptortable[fd]['msgqueue'][0]
+      filedescriptortable[fd]['msgqueue'].pop(0)
+      return remoteip, remoteport, ret_data[:length]
 
     # keep trying to get something until it works in most cases...
     while True:
       try:
-        return udpsockobj.getmessage()
+        remoteip, remoteport, ret_data = udpsockobj.getmessage()
+        if (flags & MSG_PEEK) != 0:
+          filedescriptortable[fd]['msgqueue'].append((remoteip, remoteport, ret_data));
+        return remoteip, remoteport, ret_data[:length]
 
       # sleep and retry!
       # If O_NONBLOCK was set, we should re-raise this here...
       except SocketWouldBlockError, e:
-        sleep(RETRYWAITAMOUNT)
+        if blocking:
+          sleep(RETRYWAITAMOUNT)
+        else:
+          raise SyscallError("recvfrom_syscall","EWOULDBLOCK","operation would block")
 
 
 
@@ -763,9 +776,10 @@ def recv_syscall(fd, length, flags):
 
     
 
+# ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);
 
-
-
+def recvmsg_syscall(fd, flags, name, control, msgflags, *iovlen):
+    pass
 
 
 # int getsockname(int sockfd, struct sockaddr *addrsocklen_t *" addrlen);
@@ -951,7 +965,7 @@ def accept_syscall(fd, flags=0):
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("accept_syscall","ENOTSOCK","The descriptor is not a socket.")
 
-  blocking = (flags & SOCK_NONBLOCK) != 0
+  blocking = (filedescriptortable[fd]['flags'] & O_NONBLOCK) == 0
   cloexec = (flags & SOCK_CLOEXEC) != 0
 
   # If UDP, raise an exception
@@ -977,7 +991,10 @@ def accept_syscall(fd, flags=0):
 
       # sleep and retry
       except SocketWouldBlockError, e:
-        sleep(RETRYWAITAMOUNT)
+        if blocking:
+          sleep(RETRYWAITAMOUNT)
+        else:
+          raise SyscallError("accept_syscall","EWOULDBLOCK","operation would block")
       else:
 
         newfd = _socket_initializer(filedescriptortable[fd]['domain'],filedescriptortable[fd]['type'],filedescriptortable[fd]['protocol'], blocking, cloexec)
@@ -1015,6 +1032,7 @@ STOREDSOCKETOPTIONS = [ SO_LINGER, # ignored
                         SO_RCVLOWAT, # ignored
                         SO_REUSEPORT, # used to allow duplicate binds...
                         SO_REUSEADDR,
+                        SO_TIMESTAMP,
                       ]
 
 
@@ -1090,7 +1108,10 @@ def getsockopt_syscall(fd, level, optname):
 
 
     raise UnimplementedError("Unknown option in getsockopt(). option = %s"%(oct(optname)))
-
+  
+  elif level == SOL_IP:
+    warning("SOL_IP ignored")
+    return 0
   else:
     raise UnimplementedError("Unknown level in getsockopt(). level = %s"%(oct(level)))
 
@@ -1170,9 +1191,13 @@ def setsockopt_syscall(fd, level, optname, optval):
       # I can only handle this being true...
       assert(optval == 1), "Optval must be true"
       return 0
-
+    
+    if optname == SO_BSDCOMPAT:
+      return 0 #fix for named
     raise UnimplementedError("Unknown option in setsockopt()" + str(optname))
-
+  elif level == SOL_IP:
+    warning("SOL_IP ignored")
+    return 0
   else:
     raise UnimplementedError("Unknown level in setsockopt()")
 
@@ -1183,7 +1208,10 @@ def setsockopt_syscall(fd, level, optname, optval):
 def _cleanup_socket(fd, partial = False):
   if 'socketobjectid' in filedescriptortable[fd]:
     thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-    thesocket.close(partial)
+    if filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
+      thesocket.close(partial)
+    else:
+      thesocket.close()
     localport = filedescriptortable[fd]['localport']
     _release_localport(localport, filedescriptortable[fd]['protocol'])
     if not partial:
@@ -1248,7 +1276,7 @@ def _nonblock_peek_read(fd):
   except SocketWouldBlockError, e:
     return False
   except SyscallError, e:
-    if e[1] == 'ENOTCONN':
+    if e[1] == 'ENOTCONN' or e[1] == 'EWOULDBLOCK':
       return False
     else:
       raise e
@@ -1275,7 +1303,6 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time):
   # if read fails with would block
   #   mark false
   # if read works, do it as a peek, so next time it won't block
-
   retval = 0
   
   # the bit vectors only support 1024 file descriptors, also lower FDs are not supported
@@ -1318,7 +1345,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time):
         #If the socket is not a listener, then it should be able to read data from socket.
         else:
         #sockets might block, lets check by doing a non-blocking peek read
-          if filedescriptortable[fd]['protocol'] == IPPROTO_UDP or _nonblock_peek_read(fd):
+          if _nonblock_peek_read(fd):
             new_readfds.append(fd)
             retval += 1
 
@@ -1524,7 +1551,9 @@ EPOLL_CTL_ADD = 1
 EPOLL_CTL_DEL = 2
 EPOLL_CTL_MOD = 3
 
-def _epoll_object_allocator():
+EPOLL_CLOEXEC = 02000000
+
+def _epoll_object_allocator(flag):
   # get a file descriptor
   newfd = get_next_fd()
   
@@ -1535,7 +1564,7 @@ def _epoll_object_allocator():
       'lock':createlock(),
       'registered_fds':{},
       'errno':0,
-      'flags':0,
+      'flags':flag,
   }
   return newfd
   
@@ -1545,7 +1574,23 @@ def _epoll_object_deallocator(efd):
 def epoll_create_syscall(size):
   if not size>0:
     raise SyscallError("epoll_create_syscall","EINVAL","size argument is not positive")
-  return _epoll_object_allocator()
+  return _epoll_object_allocator(0)
+
+
+def epoll_create1_syscall(flags):
+  if flags < 0:
+    raise SyscallError("epoll_create1_syscall","EINVAL","flags argument is not positive")
+  # If  flags is 0, then, other than the fact that the obsolete size argument is dropped, 
+  # epoll_create1() is the same as epoll_create().
+  if (flags == 0):
+    return _epoll_object_allocator()
+  
+  # Set the close-on-exec (FD_CLOEXEC) flag on the new file descriptor. 
+  if (flags == EPOLL_CLOEXEC):
+    flags = FD_CLOEXEC
+    
+  return _epoll_object_allocator(flags)
+
 
 def epoll_ctl_syscall(epfd, op, fd, event):
   if not IS_EPOLL_FD(epfd):

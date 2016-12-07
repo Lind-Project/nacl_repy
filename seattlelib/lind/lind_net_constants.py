@@ -31,6 +31,9 @@ SOCK_NONBLOCK = 0x4000
 
 # Address families...
 
+# NB: These constants are for Darwin, most of them are different
+# on Linux
+
 AF_UNSPEC = 0        # unspecified
 AF_UNIX = 1          # local to host (pipes)
 AF_LOCAL = AF_UNIX   # backward compatibility
@@ -74,6 +77,9 @@ pseudo_AF_HDRCMPLT = 35 # Used by BPF to not rewrite headers in interface output
 AF_RESERVED_36 = 36  # Reserved for internal usage
 AF_IEEE80211 = 37    # IEEE 802.11 protocol
 AF_MAX = 38
+
+# Linux specific
+AF_NETLINK = 16
 
 # protocols...
 
@@ -234,7 +240,7 @@ PF_NETBIOS = AF_NETBIOS
 PF_PPP = AF_PPP
 PF_RESERVED_36 = AF_RESERVED_36
 PF_MAX = AF_MAX
-
+PF_NETLINK = AF_NETLINK
 
 
 #################### max listen value
@@ -384,6 +390,8 @@ TCP_RXT_FINDROP = 0x100      # When set, a connection is dropped after 3 FINs
 SOL_SOCKET = 1
 SOL_TCP = IPPROTO_TCP
 SOL_UDP = IPPROTO_UDP
+
+SOL_IP = 0
 
 
 POLLIN = 01  # There is data to read.

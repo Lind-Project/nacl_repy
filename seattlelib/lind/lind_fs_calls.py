@@ -135,6 +135,15 @@ fileobjecttable = {}
 # without using global, which is blocked by RepyV2
 fs_calls_context = {}
 
+# This tracks which file descriptors point to stdin.  This is not handled well now, but should be specially handled
+filedescriptorsforstdin = set([0])
+
+# This tracks which file descriptors point to stdout.  This is used to know when to print to the log
+filedescriptorsforstdout = set([1])
+
+# This tracks which file descriptors point to stderr.  Stderr is also printed to the log
+filedescriptorsforstderr = set([2])
+
 # Where we currently are at...
 
 fs_calls_context['currentworkingdirectory'] = '/'
@@ -179,6 +188,7 @@ def load_fs(name=METADATAFILENAME):
   except FileNotFoundError, e:
     warning("Note: No filesystem found, building a fresh one.")
     _blank_fs_init()
+    load_fs_special_files()
   else:
     f.close()
     try:
@@ -334,7 +344,10 @@ def _rebuild_fastinodelookuptable():
 
 # private helper function that converts a relative path or a path with things
 # like foo/../bar to a normal path.
-def _get_absolute_path(path):
+def _get_absolute_path(path, parent=None):
+
+  if not parent:
+    parent = fs_calls_context['currentworkingdirectory']
   
   # should raise an ENOENT error...
   if path == '':
@@ -342,7 +355,7 @@ def _get_absolute_path(path):
 
   # If it's a relative path, prepend the CWD...
   if path[0] != '/':
-    path = fs_calls_context['currentworkingdirectory'] + '/' + path
+    path = parent + '/' + path
 
 
   # now I'll split on '/'.   This gives a list like: ['','foo','bar'] for 
@@ -467,14 +480,6 @@ def fstatfs_syscall(fd):
   
   # if so, return the information...
   return _istatfs_helper(filedescriptortable[fd]['inode'])
-
-
-
-
-
-
-
-
 
 
 
@@ -912,6 +917,36 @@ def stat_syscall(path):
 
    
 
+##### LSTAT  #####
+
+
+def lstat_syscall(path):
+  """ 
+    http://linux.die.net/man/2/lstat
+  """
+  # in an abundance of caution, I'll grab a lock...
+  filesystemmetadatalock.acquire(True)
+
+  # ... but always release it...
+  try:
+    truepath = _get_absolute_path(path)
+
+    # is the path there?
+    if truepath not in fastinodelookuptable:
+      raise SyscallError("lstat_syscall","ENOENT","The path does not exist.")
+
+    thisinode = fastinodelookuptable[truepath]
+    
+    # If its a character file, call the helper function.
+    if IS_CHR(filesystemmetadata['inodetable'][thisinode]['mode']):
+      return _istat_helper_chr_file(thisinode)
+   
+    return _istat_helper(thisinode)
+
+  finally:
+    #persist_metadata(METADATAFILENAME)
+    filesystemmetadatalock.release()
+
 
 ##### FSTAT  #####
 
@@ -980,21 +1015,26 @@ def _istat_helper(inode):
 
 
 
-
-
-
 ##### OPEN  #####
 
+import random
 
 # get the next free file descriptor
 def get_next_fd():
-  # let's get the next available fd number.   The standard says we need to 
+  # let's get the next available fd number.   The standard says we need to
   # return the lowest open fd number.
-  for fd in range(STARTINGFD, MAX_FD):
+  fds_to_consider = range(STARTINGFD, MAX_FD)
+
+  # DO RANDOM SHUFFLE SO THAT WE SEE WHICH FDS MAP TO WHICH CALLS
+  random.shuffle(fds_to_consider)
+  #print "RANDOM!!!!!!!"
+
+  for fd in fds_to_consider:
     if not fd in filedescriptortable:
       return fd
-
+  
   raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
+
   
 
 def open_syscall(path, flags, mode):
@@ -1128,9 +1168,15 @@ def open_syscall(path, flags, mode):
 
     # TODO handle read / write locking, etc.
 
+    # Need to translate the O_CLOEXEC flag to FD_CLOEXEC for fcntl
+    if O_CLOEXEC & flags:
+      # I'm doing this mathematically so that I don't lose the other flags (RDWR)
+      flags = (flags & (~O_CLOEXEC)) | FD_CLOEXEC
+      
     # Add the entry to the table!
 
-    filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
+    filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&(O_RDWRFLAGS|FD_CLOEXEC)}
+
 
     # Done!   Let's return the file descriptor.
     return thisfd
@@ -1139,6 +1185,32 @@ def open_syscall(path, flags, mode):
     #persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
+
+##### OPENAT #####
+
+def openat_syscall(dir_fd, pathname, flags, mode):
+
+  try:
+    if pathname[0] != '/' and dir_fd != AT_FDCWD:
+        #convert path to abs path relative to dir_fd
+       if dir_fd not in filedescriptortable:
+           raise SyscallError("openat_syscall","EBADF","Invalid dir file descriptor.")
+       inode = filedescriptortable[dir_fd]['inode']
+       if not IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
+           raise SyscallError("openat_syscall","EBADF","Invalid dir file descriptor.")
+       for parent in fastinodelookuptable:
+           if fastinodelookuptable[parent] == inode:
+               break
+       pathname = _get_absolute_parent_path(pathname, parent)  
+       
+    return open_syscall(pathname, flags, mode)
+  
+  except SyscallError, e:
+    # If it's a system call error, return our call name instead.
+    assert(e[0]=='open_syscall')
+    
+    raise SyscallError('openat_syscall',e[1],e[2])
+  
 
 
 
@@ -1317,7 +1389,8 @@ def write_syscall(fd, data):
   if fd not in filedescriptortable:
     raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
-  if filedescriptortable[fd]['inode'] in [1,2]:
+  # If we should write it to the log, do so and return
+  if filedescriptortable[fd]['inode'] in filedescriptorsforstdout or filedescriptortable[fd]['inode'] in filedescriptorsforstderr:
     log(data)
     return len(data)
 
@@ -1410,7 +1483,7 @@ def IS_SOCK_DESC(fd):
     return False
 
 
-
+'''
 # BAD this is copied from net_calls, but there is no way to get it
 def _cleanup_socket(fd):
   if 'socketobjectid' in filedescriptortable[fd]:
@@ -1425,8 +1498,8 @@ def _cleanup_socket(fd):
     del filedescriptortable[fd]['socketobjectid']
     
     filedescriptortable[fd]['state'] = NOTCONNECTED
-    return 0
-
+  return 0
+'''
 
 
 
@@ -1488,11 +1561,22 @@ def close_syscall(fd):
   # check the fd
   if fd not in filedescriptortable:
     raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
-  try:
-    if filedescriptortable[fd]['inode'] in [0,1,2]:
-      return 0
-  except KeyError:
-    pass
+
+  # Need to remove from the appropriate list if it's stdout, stderr, or stdin
+  if fd in filedescriptorsforstdin:
+    filedescriptorsforstdin.remove(fd)
+    return 0
+
+  # Need to remove from the appropriate list if it's stdout, stderr, or stdin
+  if fd in filedescriptorsforstdout:
+    filedescriptorsforstdout.remove(fd)
+    return 0
+
+  # Need to remove from the appropriate list if it's stdout, stderr, or stdin
+  if fd in filedescriptorsforstderr:
+    filedescriptorsforstderr.remove(fd)
+    return 0
+
   # Acquire the fd lock, if there is one.
   if 'lock' in filedescriptortable[fd]:
     filedescriptortable[fd]['lock'].acquire(True)
@@ -1514,38 +1598,87 @@ def close_syscall(fd):
 
 
 
-##### DUP2  #####
+
+
+##### DUP3  #####
 
 
 # private helper that allows this to be used by dup
-def _dup2_helper(oldfd,newfd):
+def _dup3_helper(oldfd, newfd, flags):
 
   # if the new file descriptor is too low or too high
   # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
   #      The Lind code may pass me descriptors less than STARTINGFD
-  if newfd >= MAX_FD or newfd < 0:
+  if newfd >= MAX_FD or newfd < 0 or flags < 0:
     # BUG: the STARTINGFD isn't really too low.   It's just lower than we
     # support
-    raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
-
-  # if they are equal, return them
-  if newfd == oldfd:
-    return newfd
-
+    raise SyscallError("dup3_syscall","EBADF","Invalid new file descriptor.")
+  
   # okay, they are different.   If the new fd exists, close it.
-  if newfd in filedescriptortable:
+  if (newfd in filedescriptortable) and (not newfd in [0,1,2]):
     # should not result in an error.   This only occurs on a bad fd 
-    _close_helper(newfd)
-
-
+    close_helper(newfd)
+    
+    
   # Okay, we need the new and old to point to the same thing.
   # NOTE: I am not making a copy here!!!   They intentionally both
   # refer to the same instance because manipulating the position, etc.
   # impacts both.
-  filedescriptortable[newfd] = filedescriptortable[oldfd]
+  if (not newfd in [0,1,2]):
+    filedescriptortable[newfd] = filedescriptortable[oldfd]
+  
+  # BUG: This only makes sense if they share flags.  This is not supposed to be true.
+  filedescriptortable[newfd]['flags'] = flags
+
 
   return newfd
 
+
+
+def dup3_syscall(oldfd, newfd, flags):
+  """ 
+    http://linux.die.net/man/2/dup3
+  """
+  
+  # check the fd
+  if oldfd not in filedescriptortable:
+    raise SyscallError("dup3_syscall","EBADF","Invalid old file descriptor.")
+  if flags != 0 and flags != FD_CLOEXEC:
+    raise InternalError("Should be impossible to get an invalid flags setting in _dup3_helper")
+
+  if (oldfd == 0) and not (newfd in filedescriptorsforstdin):
+    filedescriptorsforstdin.add(newfd)
+ 
+  if (oldfd == 1) and not (newfd in filedescriptorsforstdout):
+    filedescriptorsforstdout.add(newfd)
+    
+  if (oldfd == 2) and not (newfd in filedescriptorsforstderr):
+    filedescriptorsforstderr.add(newfd)
+
+
+  if flags != 0 and flags != O_CLOEXEC:
+    raise SyscallError("dup3_syscall","EINVAL","Invalid flag value '"+str(flags)+"'.")
+
+  if flags == O_CLOEXEC:
+    # The flags are stored as FD_CLOEXEC for fcntl compat, despite being called as O_CLOEXEC.  I will pass FD_CLOEXEC in
+    flags = FD_CLOEXEC
+
+  # according to the man page, if oldfd == newfd, raise EINVAL
+  if oldfd == newfd:
+    raise SyscallError("dup3_syscall","EINVAL","Cannot have oldfd == newfd in dup3.")
+      
+  
+  # Acquire the fd lock...
+  filedescriptortable[oldfd]['lock'].acquire(True)
+
+
+  # ... but always release it...
+  try:
+    return _dup3_helper(oldfd, newfd, flags)
+
+  finally:
+    # ... release the lock
+    filedescriptortable[oldfd]['lock'].release()
 
 
 
@@ -1558,13 +1691,25 @@ def dup2_syscall(oldfd,newfd):
   if oldfd not in filedescriptortable:
     raise SyscallError("dup2_syscall","EBADF","Invalid old file descriptor.")
 
+  if flags != 0 and flags != FD_CLOEXEC:
+    raise InternalError("Should be impossible to get an invalid flags setting in _dup3_helper")
+
+  if (oldfd == 0) and not (newfd in filedescriptorsforstdin):
+    filedescriptorsforstdin.add(newfd)
+ 
+  if (oldfd == 1) and not (newfd in filedescriptorsforstdout):
+    filedescriptorsforstdout.add(newfd)
+    
+  if (oldfd == 2) and not (newfd in filedescriptorsforstderr):
+    filedescriptorsforstderr.add(newfd)
+
   # Acquire the fd lock...
   filedescriptortable[oldfd]['lock'].acquire(True)
 
 
   # ... but always release it...
   try:
-    return _dup2_helper(oldfd, newfd)
+    return _dup3_helper(oldfd, newfd,0)
 
   finally:
     # ... release the lock
@@ -1600,7 +1745,7 @@ def dup_syscall(fd):
   
     # this does the work.   It should _never_ raise an exception given the
     # checks we've made...
-    return _dup2_helper(fd, nextfd)
+    return _dup3_helper(fd, nextfd, 0)
   
   finally:
     # ... release the lock
@@ -1640,7 +1785,11 @@ def fcntl_syscall(fd, cmd, *args):
       if len(args) > 0:
         raise SyscallError("fcntl_syscall", "EINVAL", "Argument is more than\
           maximun allowable value.")
-      return int((filedescriptortable[fd]['flags'] & FD_CLOEXEC) != 0)
+
+      if (filedescriptortable[fd]['flags'] & FD_CLOEXEC):
+        return 1
+      else:
+        return 0
 
     # set the flags...
     elif cmd == F_SETFD:
@@ -1673,7 +1822,26 @@ def fcntl_syscall(fd, cmd, *args):
       # this would almost certainly say our PID (if positive) or our process
       # group (if negative).   Either way, we do nothing and return success.
       return 0
+    
+    elif cmd == F_DUPFD or cmd == F_DUPFD_CLOEXEC:
+      assert(len(args) == 1)
+      assert(type(args[0]) == int or type(args[0]) == long)
+      if fd not in filedescriptortable:
+        raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
 
+      # get the next available file descriptor
+      try:
+        nextfd = get_next_fd()
+      except SyscallError, e:
+            # If it's an error getting the fd, return our call name instead.
+        assert(e[0]=='open_syscall')
+                                                            
+        raise SyscallError('dup_syscall',e[1],e[2])
+                                                                
+      # this does the work.   It should _never_ raise an exception given the
+      # checks we've made...
+      return _dup3_helper(fd, nextfd,0)
+                                                                            
 
     else:
       # This is either unimplemented or malformed.   Let's raise
@@ -1739,7 +1907,7 @@ def getdents_syscall(fd, quantity):
     for entryname,entryinode in list(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems())[startposition:]:
       # getdents returns the mode also (at least on Linux)...
       entrytype = get_direnttype_from_mode(filesystemmetadata['inodetable'][entryinode]['mode'])
-
+      
       # Get the size of each entry, the size should be a multiple of 8.
       # The size of each entry is determined by sizeof(struct linux_dirent) which is 20 bytes plus the length of name of the file.
       # So, size of each entry becomes : 21 => 24, 26 => 32, 32 => 32.

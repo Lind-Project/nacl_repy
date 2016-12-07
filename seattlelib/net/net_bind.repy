@@ -28,7 +28,7 @@ def lind_net_bind(args):
     addr = args[2]
     family, port, ip, pad = parse_sockaddr_struct(addr)
     ipaddr = inet_ntoa(struct_pack("<I", ip))
-
+	
     try:
         result = bind_syscall(fd, ipaddr, port)
     except SyscallError, e:
@@ -54,5 +54,5 @@ def lind_safe_net_bind(args):
     addr = args[2]
     assert(len(addr) == length)
     result = lind_net_bind(args)
-
+	
     return result

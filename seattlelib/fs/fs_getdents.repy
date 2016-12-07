@@ -2,12 +2,12 @@
 
 Handlers for the getdents system call.
 
-Called from dispatcher.repy
+Called from dispatcher.Repy
 
 Safe version checks all parameters, then calls real handler.
 
-Getdents hadler pulls out the arguments, does any manditory checking
-then calls the repy posix library getdents system call.  Then packs
+Getdents handler pulls out the arguments, does any mandatory checking
+then calls the Repy POSIX library getdents system call.  Then packs
 the result back up.
 
 """
@@ -15,8 +15,8 @@ the result back up.
 
 def pack_dirent(dir_tuple, my_start):
     """
-    Given the python tuple produced by the repy posix library, build the
-    corrosponding C struct.  This is tricky because it has offsets from
+    Given the Pyhton tuple produced by the Repy POSIX library, build the
+    corresponding C struct.  This is tricky because it has offsets from
     the previous entries.
 
     See man 2 getdnents for the struct format is wrong. See below
@@ -40,20 +40,35 @@ def pack_dirent(dir_tuple, my_start):
     #    unsigned long long d_ino
     #    signed long long offset
     #    unsigned short reclen
-    #    char type
     #    char[] d_name
+	#    char pad
+    #    char type
 
-    format = "<Q<q<H<B" + str(len(d_name)) + "s<B"
-    dirent_len = struct_calcsize(format)
-    d_off = my_start + dirent_len
-    dirent = struct_pack(format, d_ino, d_off, dirent_len, d_type, d_name, 0)
+    # We want to double word align this because C does so for the dirent structure.  This is meant to make any code that assumes this is true work
+    # better, even though we are justified in not doing so by the specification.
+
+    # compute the size w/o the padding byte first
+    formatwopadding = "<Q<q<H" + str(len(d_name)) + "s<B"
+
+    nopaddirent_len = struct_calcsize(formatwopadding)
+    # This will double word align it...
+    paddingsize = 8-(nopaddirent_len % 8)
+     
+    # Now actually build the format string...
+    format = "<Q<q<H" + str(len(d_name)) + "s"+str(paddingsize)+"s<B"
+    actual_dirent_len = struct_calcsize(format)
+    d_off = my_start + actual_dirent_len
+        
+    # and then pack things in...
+    dirent = struct_pack(format, d_ino, d_off, actual_dirent_len, d_name, "\0"*paddingsize, d_type)
+    
     return (d_off, dirent)
 
 
 def lind_fs_getdents(args):
     """ getdents calls are dispatched to this function.
 
-    See dispatcher.repy for details.
+    See dispatcher.Repy for details.
 
     Given the file handle and max_bytes, return
     up to the dirents that fit in that space.
@@ -65,11 +80,10 @@ def lind_fs_getdents(args):
 
     #max bytes
     count = args[1]
-
+	    
     try:
         py_result = getdents_syscall(handle, count)
     except SyscallError, e:
-        print "ERROR!", e
         return ErrorResponseBuilder("fs_getdents", e[1], e[2])
 
     if not py_result:
@@ -81,17 +95,18 @@ def lind_fs_getdents(args):
         (off_delta, str_ent) = pack_dirent(ent, offset_cur)
         offset_cur = off_delta
         final_structs.append(str_ent)
-
+	
     result = ''.join(final_structs)
+
     return SuccessResponseBuilder("fs_getdents", len(result), result)
 
 
 def lind_safe_fs_getdents(args):
     """ Safely wrap the getdents call.
 
-    See dispatcher.repy for details.
+    See dispatcher. Repy for details.
 
-    Check the handle and count for consistancy,
+    Check the handle and count for consistency,
     then call the real getdents dispatcher.
 
     """
@@ -100,9 +115,10 @@ def lind_safe_fs_getdents(args):
 
     check_valid_fd_handle(handle)
     assert isinstance(count, int)
-
+	
+	 
     result = lind_fs_getdents(args)
-
+	
     if result.is_error == False:
         #assert(len(result.data) <= TX_BUF_MAX), \
         #    "returning data larger than transmission buffer."

@@ -6,8 +6,8 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Socket hadler pulls out the arguments, does any manditory checking
-then calls the repy posix library socket system call.  Then packs
+Socket handler pulls out the arguments, does any mandatory checking
+then calls the Repy POSIX library socket system call.  Then packs
 the result back up.
 
 """
@@ -43,7 +43,7 @@ def lind_safe_net_socket(args):
 
     See dispatcher.repy for details.
 
-    Check the socket domain, socket type and protcol for consistancy,
+    Check the socket domain, socket type and protocol for consistency,
     then call the real socket dispatcher.
 
     """
@@ -52,9 +52,14 @@ def lind_safe_net_socket(args):
     protocol = args[2]
 
     assert (isinstance(domain, int)), "domain must be an int"
+	
+    
     if domain != PF_INET:
         log( "Warning: only internet domain supported right " \
               "now d=%d\n" % (domain))
+    
+    if _type == SOCK_RAW:
+        raise SyscallError("socket_syscall","ESOCKTNOSUPPORT","unimplemented")
 
     result = lind_net_socket(args)
 

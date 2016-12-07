@@ -1,7 +1,7 @@
 def lind_fs_write(args):
-    size = args[1]
+    #size = args[1]
     fd = args[0]
-    buffer = args[2]
+    buffer = args[1]
     if IS_SOCK_DESC(fd):
         try:
             result = send_syscall(fd, buffer, 0)
@@ -17,12 +17,12 @@ def lind_fs_write(args):
 
 
 def lind_safe_fs_write(args):
-    size = args[1]
+    #size = args[1]
     fd = args[0]
-    buffer = args[2]
+    buffer = args[1]
 
-    assert size == len(buffer), "write size does not match buffer size"
+    #assert size == len(buffer), "write size does not match buffer size"
     check_valid_fd_handle(fd)
-
-    lind_fs_write(args)
+    #lind_fs_write(args)
+    size = lind_fs_write(args)
     return SuccessResponseBuilder("fs_write", size)

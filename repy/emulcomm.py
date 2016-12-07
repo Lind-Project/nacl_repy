@@ -1553,7 +1553,7 @@ def listenforconnection(localip, localport):
       else:
         sock.listen(5)
 
-    except Exception, e:
+    except (Exception, socket.error), e:
       nanny.tattle_remove_item('insockets',identity)
 
       # Check if this an already in use error
@@ -2151,13 +2151,13 @@ class UDPServerSocket:
       # we acquire the lock because it is possible that the
       # socket was closed/re-opened or that it was set to None,
       # etc.
-      socket = OPEN_SOCKET_INFO[self.identity][1]
+      sock = OPEN_SOCKET_INFO[self.identity][1]
       if socket is None:
         raise KeyError # Indicates socket is closed
 
       # Try to get a message of any size.   (64K is the max that fits in the 
       # UDP header)
-      message, addr = socket.recvfrom(65535)
+      message, addr = sock.recvfrom(65535)
       remote_ip, remote_port = addr
 
       # Do some resource accounting

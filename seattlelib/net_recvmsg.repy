@@ -1,0 +1,39 @@
+
+def break_into_vectors(msg, iovlens):
+  iov = []
+  start = 0;
+  for length in iovlens:
+    iov.append(msg[start:start+length])
+    start = start+length
+  return iov            
+            
+def lind_net_recvmsg(args):
+  
+#sockfd, msg->msg_name, msg->msg_namelen, final_message, msg->msg_iovlen,
+# msg->msg_control, msg->msg_controllen, msg->msg_flags, flags
+             
+  sockfd = args[0]
+  name = args[1]
+  iovlens = args[4]
+  controllen = args[6]
+  msgflags = args[7]
+  flags = args[8]
+  
+  controlmsg = struct_pack("<B", 0) * controllen    
+  
+  print flags, msgflags
+  
+  try:
+    result = recvfrom_syscall(sockfd, len(final_message), flags)
+  except SyscallError, e:
+    return ErrorResponseBuilder("net_recvfrom", e[1], e[2])
+  sockaddr = pack_struct_sockaddr(AF_INET, result[0], result[1])
+  
+  iov = break_into_vectors(result[2], iovlens)
+  
+  result_str = pack_multiarg(controlmsg, sockaddr, *iov)
+  
+  return SuccessResponseBuilder("net_recvmsg", len(result[2]), result_str)
+  
+def lind_safe_net_recvmsg(args):
+  return lind_net_recvmsg(args)

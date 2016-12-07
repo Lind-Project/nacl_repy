@@ -34,8 +34,8 @@ def lind_sys_getpid(args):
     """
     
     DEFAULT_PID = 1000
-    result = struct_pack("<i", DEFAULT_PID)
-    return SuccessResponseBuilder("sys_getpid", 0, result)
+    # result = struct_pack("<i", DEFAULT_PID)
+    return SuccessResponseBuilder("sys_getpid", DEFAULT_PID)
 
 
 def lind_safe_sys_getpid(args):
@@ -49,6 +49,6 @@ def lind_safe_sys_getpid(args):
     """
 
     result = lind_sys_getpid(args)
-    assert len(result.data) == 4, "we return a sinlge int"
+    # assert len(result.data) == 4, "we return a sinlge int"
 
     return result

@@ -59,6 +59,13 @@ def setup_dispatcher(comp_num):
     56:lind_safe_net_epoll_create,
     57:lind_safe_net_epoll_ctl,
     58:lind_safe_net_epoll_wait,
+    59:lind_safe_net_sendmsg,
+    60:lind_safe_net_recvmsg,
+    61:lind_safe_fs_openat,
+    62:lind_fs_dup3,
+    #63:LIND_safe_fs_readv,
+    #64:LIND_safe_fs_wrtiev,
+    65:lind_net_epoll_create1,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -90,7 +97,7 @@ def setup_dispatcher(comp_num):
     25:lind_fs_dup2,
     26:lind_fs_statfs,
     28:lind_fs_fcntl,
-
+    
     31:lind_sys_getpid,
       
     32:lind_net_socket,
@@ -119,7 +126,15 @@ def setup_dispatcher(comp_num):
     56:lind_net_epoll_create,
     57:lind_net_epoll_ctl,
     58:lind_net_epoll_wait,
-
+    59:lind_net_sendmsg,
+    60:lind_net_recvmsg,
+    61:lind_fs_openat,
+    62:lind_fs_dup3,
+    #63:LIND_safe_fs_readv,
+    #64:LIND_safe_fs_wrtiev,
+    65:lind_net_epoll_create1,
+    
+    
     105:lind_comp_cia,
     106:lind_comp_call,
     107:lind_comp_accept,
@@ -148,5 +163,4 @@ def dispatch_syscall(call, args):
   assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
   
   return syscall_response
-
-
+  

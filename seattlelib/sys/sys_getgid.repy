@@ -31,8 +31,8 @@ def lind_sys_getgid(args):
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_getgid", 'EINVAL', str(e))
 
-    data = struct_pack("<i", result)
-    return SuccessResponseBuilder("sys_getgid", len(data), data)
+    #data = struct_pack("<i", result)
+    return SuccessResponseBuilder("sys_getgid", result)
 
 def lind_safe_sys_getgid(args):
     """ Safely wrap the getgid call.
@@ -45,6 +45,6 @@ def lind_safe_sys_getgid(args):
     """
     
     result = lind_sys_getgid(args)
-    assert len(result.data) == 4, "we return a sinlge int"
+   #assert len(result.data) == 4, "we return a sinlge int"
 
     return result

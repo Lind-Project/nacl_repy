@@ -6,8 +6,8 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Poll hadler pulls out the arguments, does any manditory checking
-then calls the repy posix library poll system call.  Then packs
+Poll handler pulls out the arguments, does any mandatory checking
+then calls the Repy posix library poll system call.  Then packs
 the result back up.
 
 """
@@ -32,7 +32,38 @@ def pack_struct_epollfds(epfd_list):
     return struct_pack(format, *elements)
     
 
+def lind_net_epoll_create1(args):
+    """ epoll_create1 calls are dispatched to this function.
 
+    See dispatcher.repy for details.
+
+    Pack the single int returned, or error.
+    """
+
+    flags = args[0]
+    result = 0
+    try:
+        result = epoll_create1_syscall(flags)
+    except SyscallError, e:
+        return ErrorResponseBuilder("net_epoll_create", e[1], e[2])
+
+    return SuccessResponseBuilder("net_epoll_create", result)
+
+
+def lind_safe_net_epoll_create1(args):
+    """ Safely wrap the epoll_create call.
+
+    See dispatcher.repy for details.
+
+    Check the file descriptor length and flags for consistancy,
+    then call the real epoll_create dispatcher.
+
+    """
+
+    result = lind_net_epoll_create1(args)
+
+    return result
+    
 def lind_net_epoll_create(args):
     """ epoll_create calls are dispatched to this function.
 

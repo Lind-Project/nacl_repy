@@ -1,0 +1,77 @@
+"""
+
+Handlers for the open system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Open hadler pulls out the arguments, does any manditory checking
+then calls the repy posix library open system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_fs_openat(args):
+    """ open calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the flags, mode and file name in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+    dir_fd= args[0]
+    file_name = args[1]
+    flags = args[2]
+    mode = args[3]
+
+    try:
+        result_fd = openat_syscall(dir_fd, file_name, flags, mode)
+    except SyscallError, e:
+        message = "Could not find file: " + file_name + ":\n" + str(e[2]) + "\n"
+        return ErrorResponseBuilder("fs_open", e[1], message)
+    return SuccessResponseBuilder("fs_open", result_fd)
+
+
+def lind_safe_fs_openat(args):
+    """ Safely wrap the openat call.
+
+    See dispatcher.repy for details.
+
+    Check the mode flags and file for consistancy,
+    then call the real openat dispatcher.
+
+    """
+    #constants pulled from standard lib
+    MASK = 3
+    O_RDONLY = 00
+    O_WRONLY = 01
+    O_RDWR = 02
+    
+    dir_fd= args[0]
+    file_name = args[1]
+    flags = args[2]
+    mode = args[3]
+    
+
+    assert isinstance(dir_fd, int), "the dir_fd should be an int"
+    assert isinstance(flags, int), "the flags should be an int"
+    assert isinstance(mode, int), "the mode should be an int"
+    assert isinstance(file_name, str), "filename should be a string"
+    assert ((flags & MASK) == O_RDONLY or
+            (flags & MASK) == O_WRONLY or
+            (flags & MASK) == O_RDWR), \
+            "the flags to not seem to be one of the expected. %o" % (flags)
+
+    result = lind_fs_openat(args)
+
+    assert isinstance(result, Response), \
+           "wrong return type %s" % (str(type(result)))
+    if not result.is_error:
+        assert (-1 <= result.return_code <= MAX_FD), "Must return a valid FD."
+
+    return result

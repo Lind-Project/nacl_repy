@@ -6,8 +6,8 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Geteuid hadler pulls out the arguments, does any manditory checking
-then calls the repy posix library geteuid system call.  Then packs
+Geteuid handler pulls out the arguments, does any mandatory checking
+then calls the Repy POSIX library geteuid system call.  Then packs
 the result back up.
 
 """
@@ -32,8 +32,8 @@ def lind_sys_geteuid(args):
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_geteuid", 'EINVAL', str(e))
 
-    data = struct_pack("<i", result)
-    return SuccessResponseBuilder("sys_geteuid", len(data), data)
+    #data = struct_pack("<i", result)
+    return SuccessResponseBuilder("sys_geteuid", result)
 
 
 def lind_safe_sys_geteuid(args):
@@ -41,12 +41,12 @@ def lind_safe_sys_geteuid(args):
 
     See dispatcher.repy for details.
 
-    Check the paths for consistancy,
+    Check the paths for consistency,
     then call the real geteuid dispatcher.
 
     """
 
     result = lind_sys_geteuid(args)
-    assert len(result.data) == 4, "we return a sinlge int"
+    # assert len(result.data) == 4, "we return a sinlge int"
 
     return result

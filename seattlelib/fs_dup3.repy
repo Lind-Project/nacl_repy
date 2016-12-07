@@ -1,0 +1,63 @@
+"""
+
+Handlers for the dup3 system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Dup3 handler pulls out the arguments, does any mandatory checking
+then calls the Repy POSIX library dup3 system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_fs_dup3(args):
+    """ dup3 calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given two file handles in a list,
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+
+    For now, low file handles are still used for nacl,
+    so if we see them here, that is a problem, so
+    print a warning.
+    """
+    handle = args[0]
+    handle2 = args[1]
+    handle3 = args[2]
+    
+    if handle <= STARTINGFD or handle2 <= STARTINGFD or handle3 < 0:
+        print "Warning: low file handles are not supported in Lind dup3(", \
+              handle, handle2, handle3, ")"
+
+    try:
+        result = dup3_syscall(handle, handle2, handle3)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_dup3", e[1], e[2])
+    return SuccessResponseBuilder("fs_dup3", result)
+
+
+def lind_safe_fs_dup3(args):
+    """ Safely wrap the dup2 call.
+
+    See dispatcher.repy for details.
+
+    Check the two file handles for consistency,
+    then call the real dup3 dispatcher.
+
+    """
+
+    handle = args[0]
+    handle2 = args[1]
+    handle3 = args[2]
+    check_valid_fd_handle(handle)
+    check_valid_fd_handle(handle2)
+    check_valid_fd_handle(handle3)
+
+    return lind_fs_dup3(args)

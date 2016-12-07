@@ -138,7 +138,7 @@ def parse_timeval(timeval_str):
     @return a float in seceonds, then each sec and usec member
     """
     
-    tv_sec, tv_usec = struct_unpack("<Q<Q",timeval_str)
+    tv_sec, tv_usec, unused = struct_unpack("<Q<I<I",timeval_str)
     return ((tv_sec + (SEC_PER_MICROSEC * tv_usec)), tv_sec, tv_usec)
 
 
