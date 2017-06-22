@@ -21,7 +21,7 @@ VERSION = "$Rev$"
 SILENT = True # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
-TRACE = True  # Trace system calls? (somewhat like strace) 
+TRACE = False  # Trace system calls? (somewhat like strace) 
 
 
 
@@ -232,7 +232,11 @@ def print_times(times):
           "%f" % (exec_stop) + ", " + "%f" % (exec_before) + ", " + \
           "%f" % (exec_after) + ", \"" + str(call_args) + "\""
           
+
 def LindSyscall(call_num, args):
+
+  # log("We have entered LindSyscall\n")
+
   comp_num = 1
   response = None
   if TRACE:
@@ -254,7 +258,10 @@ def LindSyscall(call_num, args):
     raise Exception()
   return response
 
+
 def GetHostFdFromLindFd(lind_fd):
+  # log("We have entered GetHostFdFromLindFd\n")
+
   assert isinstance(lind_fd, int)
   if lind_fd < 0:
     return -1
@@ -267,136 +274,6 @@ def GetHostFdFromLindFd(lind_fd):
   fobj = fileobjecttable[inode].fobj
   return fobj.fileno()
 
-
-def NaclRPCServer(nacl_instance, comp_num):
-  #timer =  mycontext["wallclocktime"]
-  #times = []
-  format = "<i<I<I<I<i<i"
-  header_size = struct_calcsize(format)
-  max_recv = 16384
-  # the expceted message sequence number
-  FIRST_SEQ_NUM = -10
-  expected_seq_num = FIRST_SEQ_NUM
-  booting = True
-  while True:
-    start = 0
-    stop = 0
-    response = "Failed with Exception."
-
-    # step 1: pull out the header
-    try:
-     # pre = timer()
-      message = nacl_instance.recv(max_recv)
-     # start = timer()
-    except exceptions.Exception:
-      log("[ERROR][RPC] " + "Exception on receive\n")
-      break
-
-    #log("[info][RPC] " +  "Raw Message: "+ message +"\n")
-    # assert( len(message) == header_size), "wrong header size"
-    if message == "EOT":
-      break
-
-    header = message[0:header_size]
-
-    # now parse the header
-    magic = 0
-    call = 0
-    frmt_len = 0
-    valid = 0
-    payload_size = 0
-    seq_num = 0
-
-    try:
-      [magic, call, frmt_len, payload_size, seq_num, valid] = struct_unpack(format, header)
-    except Exception, err:
-      log("[ERROR][RPC] Error unmarshaling header" + str(type(err)) + ":" + str(err) + "\n")
-      continue
-    # validate the header
-    if magic != -2:
-      raise Exception("Protocol Error: Magic number not found." + \
-                      " Was expecting -2, got " + str(magic))
-    # We probably dont need this in the future, but for now:
-    checksum = magic + call + frmt_len
-
-    # what happens is that libc overwrites the counter pretty early on
-    # for that first, but once that has happened, keep a constat counter.
-    if booting:
-      if (seq_num != expected_seq_num):
-        expected_seq_num = FIRST_SEQ_NUM
-        booting = False
-        log("Booted")
-    elif (seq_num != expected_seq_num):
-      pass
-#      print "Out of order seq_num %d != %d for call %d" % \
-#           (seq_num, expected_seq_num, call)
-
-    expected_seq_num += 1
-    if valid != checksum:
-      raise Exception("ProtocolError: Validation number not found. We got " + \
-                      str(valid) + ", expected " + str(checksum))
-
-
-    if frmt_len == 0:
-      args = []
-    else:
-      data_start = header_size + frmt_len + 1  # one extra for null char at end of frmt string
-      # the part of the string which is the format string
-      message_format = message[header_size:data_start-1]
-      # print "message format: ", message_format
-      try:
-        trimmed_string = message[data_start:]
-        assert len(trimmed_string) == payload_size, "Reported (%d) payload does not match actual payload (%d)" % (len(trimmed_string), payload_size)
-        # print "Args: ",trimmed_string
-        args = struct_unpack(message_format, trimmed_string)
-        # print "Parsed Args", args
-      except ValueError as e:
-        log("Unpacking Error: " + str(e) + "\n")
-        log("Message was: " + message_format + "\n")
-        log("Args len=" + str(len(trimmed_string)) + "\n")
-        log("Args String=" + trimmed_string + "\n")
-        log("Syscall was=" + str(call) + "\n")
-        call = NOOP_CALL_NUM # continue on with eno_sys
-    if TRACE:
-      strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call]).split(" ")[1]), str(args)[:128], " = "]
-
-    # before_call = timer()
-    mycontext[LOCK].acquire(True)
-    mycontext[COMP] = comp_num
-    try:
-      response = dispatch_syscall(call, args)
-    finally:
-      if TRACE:
-        strace_msg.append(str(response)[:128])
-        log( ''.join(strace_msg))
-    mycontext[LOCK].release()
-    if response == None:
-      raise Exception()
-
-    retcode_buffer = response.make_struct()
-
-    try:
-      # post = timer()
-      got = nacl_instance.send(retcode_buffer, "")
-      # stop = timer()
-    except:
-      log("[info][RPC] " + "Exception on Send. Stopping\n")
-      break
-    if got == 0:
-      log("[ERROR][RPC] " + "failed to send\n")
-      exitall()
-  #print "Lind Server ", mycontext[comp_num][PROGRAM], " Shutting Down."
-  # print_times(times)
-
-
-#def main():
-#  code_loc = curr_comp()[PROGRAM]
-#  nacl = safelyexecutenativecode(code_loc, curr_comp()[CMD_LINE])
-#
-#  if nacl != None:
-#    NaclRPCServer(nacl, 1)
-#  else:
-#    print "Error: Safe Binary mode must be switched on for this program to work."
 
 
 def launch_helper(instance, num):
@@ -427,6 +304,7 @@ def _check_file(name):
 
 def new_compoent():
   """add a new compoent to the system"""
+  
   mycontext[2] = {}
   code_loc = "liblind/com2.nexe"
   mycontext[2][PROGRAM] = code_loc
@@ -488,7 +366,6 @@ def parse_commandline():
   else:
     curr_comp()[PROGRAM] = callargs[0]
     curr_comp()[CMD_LINE] = callargs[1:]
-  # print curr_comp()[PROGRAM]
 
 
 def finalize():
