@@ -21,7 +21,7 @@ VERSION = "$Rev$"
 SILENT = True # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
-TRACE = True  # Trace system calls? (somewhat like strace) 
+TRACE = False  # Trace system calls? (somewhat like strace) 
 
 
 
