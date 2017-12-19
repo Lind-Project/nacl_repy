@@ -246,9 +246,14 @@ def _blank_fs_init():
   persist_metadata(METADATAFILENAME)
 
 
-
-# These are used to initialize and stop the system
+# stubbing out persist_metadata for now.  Should call the true_persist_metadata
+# when the program exits
 def persist_metadata(metadatafilename):
+  # do nothing for now...  Could call true_persist_metadata
+  pass
+
+# This is the file system metadata that is needed to initialize the file system
+def true_persist_metadata(metadatafilename):
 
   metadatastring = serializedata(filesystemmetadata)
 
