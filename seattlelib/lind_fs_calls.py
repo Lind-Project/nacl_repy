@@ -876,7 +876,8 @@ def unlink_syscall(path):
     return 0
 
   finally:
-    persist_metadata(METADATAFILENAME)
+    # yiwen: for rm in lindfs, need to persist metadata
+    true_persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
 
@@ -1508,7 +1509,8 @@ def close_syscall(fd):
 
   finally:
     # ... release the lock, if there is one
-    #persist_metadata(METADATAFILENAME)
+    # yiwen: for cp in lindfs, need to persist metadata
+    true_persist_metadata(METADATAFILENAME)
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].release()
     del filedescriptortable[fd]
