@@ -21,7 +21,7 @@ VERSION = "$Rev$"
 SILENT = False # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
-TRACE = True  # Trace system calls? (somewhat like strace) 
+TRACE = True  # Trace system calls? (somewhat like strace)
 
 
 
@@ -185,7 +185,7 @@ def print_times(times):
           "%f" % (exec_start) + ", " + "%f" % (exec_post) + ", " + \
           "%f" % (exec_stop) + ", " + "%f" % (exec_before) + ", " + \
           "%f" % (exec_after) + ", \"" + str(call_args) + "\""
-          
+
 
 def LindSyscall(call_num, args):
 
@@ -253,16 +253,16 @@ def _check_file(name):
   except FileNotFoundError:
     print "File not found:", name
     exitall()
-    
+
 
 
 def new_compoent():
   """add a new compoent to the system"""
-  
+
   mycontext[2] = {}
   code_loc = "liblind/com2.nexe"
   mycontext[2][PROGRAM] = code_loc
-  
+
   mycontext[2][CMD_LINE] = []
   setup_dispatcher(2)
   setup_filetable(2)
@@ -312,7 +312,7 @@ def lind_factory():
 def parse_commandline():
   mycontext[COMP] = 1
   mycontext[1] = {}
-  
+
   if callargs[0] == "--fast":
     curr_comp()[PROGRAM] = callargs[1]
     curr_comp()[CMD_LINE] = callargs[2:]
@@ -327,8 +327,6 @@ def finalize():
   persist_metadata(DEFAULT_METADATA_FILENAME)
   log("Done persisting metadata.\n")
 
-<<<<<<< HEAD:seattlelib/lind/lind_server.mix
-
 def main():
   is_trace()
 
@@ -337,28 +335,22 @@ def main():
     parse_commandline()
     lind_factory()
 
-
-main()
-
-
-=======
-for fd in (0, 1, 2):
+  for fd in (0, 1, 2):
     FILE_MAP[fd] = fd
 
 def map_native_to_lind(native, lind):
     FILE_MAP[lind] = native
     print "map_native_to_lind, native =",native, "lind =", lind
-    
+
 def get_lind_map_to_native(lind):
 
   if lind  < 0:
-    return -1	    
-  
+    return -1
+
   if len(FILE_MAP) < 4:
     return lind
-  	  
+
   print "get_lind_map_to_native, lind =",lind , "native=", FILE_MAP[lind]
-  	
+
   return FILE_MAP[lind]
-  
->>>>>>> master:seattlelib/lind_server.mix
+
