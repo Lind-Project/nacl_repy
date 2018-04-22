@@ -7,12 +7,12 @@
   Start Date: Feb 28th, 2012
   Modified: Sept 27th, 2013 (Sai Teja Peddinti)
 
-  I want to make a few basic utilities for manipulating a lind fs.   My 
+  I want to make a few basic utilities for manipulating a lind fs.   My
   goal here isn't to make a perfect, production-ready tool, but instead to
   make something that is good enough for us to use in normal cases.   Thus,
   my focus is on baseline functionality.   Very trivial things, like creating
-  directories or changing file permissions, can be handled with the 
-  appropriate system call directly and thus will not be used here.  More 
+  directories or changing file permissions, can be handled with the
+  appropriate system call directly and thus will not be used here.  More
   complex things can be handled via fuse and / or added later.
 
   This module may be used directly from the command line or imported.
@@ -37,17 +37,17 @@ def _mirror_stat_data(posixfn, lindfn):
   # it to have similar metadata to a posixfn.   This includes perms, uid, gid
 
   statdata = os.stat(posixfn)
-  
-  # I only want the file perms, not things like 'IS_DIR'.  
+
+  # I only want the file perms, not things like 'IS_DIR'.
   # BUG (?): I think this ignores SETUID, SETGID, sticky bit, etc.
   lind_test_server.chmod_syscall(lindfn, S_IRWXA & statdata[0])
 
   # Note: chown / chgrp aren't implemented!!!   We would call them here.
   #lind_test_server.chown_syscall(lindfn, statdata[4])
   #lind_test_server.chgrp_syscall(lindfn, statdata[5])
-  
+
 def update_dir_into_lind(fullfilename, rootpath='.'):
-  
+
   if fullfilename.startswith(os.pathsep):
     fullfilename = '.'+fullfilename
   posixfn = os.path.join(rootpath,fullfilename)
@@ -58,7 +58,7 @@ def update_dir_into_lind(fullfilename, rootpath='.'):
       return
     else:
       raise IOError("Cannot locate file on POSIX FS: '"+posixfn+"'")
-    
+
   if os.path.isfile(posixfn):
     update_into_lind(fullfilename, rootpath)
   elif os.path.isdir(posixfn):
@@ -67,10 +67,10 @@ def update_dir_into_lind(fullfilename, rootpath='.'):
       update_dir_into_lind(os.path.join(fullfilename, child), rootpath)
 
 def update_into_lind(fullfilename, rootpath='.'):
-  
+
   if fullfilename.startswith(os.pathsep):
     fullfilename = '.'+fullfilename
-    
+
   # check for the file.
   posixfn = os.path.join(rootpath,fullfilename)
   host_time = 0
@@ -81,17 +81,17 @@ def update_into_lind(fullfilename, rootpath='.'):
   lind_content = ""
   lind_exists = False
   lind_isfile = False
-  
+
   print "looking at \""+posixfn+"\""
-  
+
   if not os.path.exists(posixfn):
     print posixfn+" does not exist, skipping"
     return
-  
+
   if not os.path.isfile(posixfn):
     print posixfn+" is not regular file, skipping"
     return
-  
+
   try:
     host_statinfo = os.stat(posixfn)
   except OSError, e:
@@ -100,7 +100,7 @@ def update_into_lind(fullfilename, rootpath='.'):
   else:
     host_time = host_statinfo.st_mtime
     host_size = host_statinfo.st_size
-  
+
   try:
     lind_statinfo = lind_test_server.stat_syscall(fullfilename)
   except lind_test_server.SyscallError, e:
@@ -110,45 +110,45 @@ def update_into_lind(fullfilename, rootpath='.'):
     lind_time = lind_statinfo[12]
     lind_isfile = IS_REG(lind_statinfo[2])
     lind_size = lind_statinfo[7]
-  
+
   #always false because lind uses fake time
   if host_time<=lind_time:
     print "lind file is newer than host file, skipping"
     return
-  
+
   if lind_exists and not lind_isfile:
     print fullfilename+" on lind file system is not a regular file, skipping"
     return
-  
+
   samefile = True
   if host_size == lind_size:
-  
+
     fd = open(posixfn, "rb")
     host_content = fd.read()
     fd.close()
-    
+
     lindfd = lind_test_server.open_syscall(fullfilename, O_RDONLY, 0)
     lind_content = lind_test_server.read_syscall(lindfd, lind_size)
     lind_test_server.close_syscall(lindfd)
-    
+
     samefile = (host_content == lind_content)
   else:
     samefile = False
-  
+
   if not samefile:
     if lind_exists:
       print "removing "+fullfilename
       lind_test_server.unlink_syscall(fullfilename)
-    
+
     cp_into_lind(fullfilename, rootpath, True)
   else:
     print "same file, skipping"
-  
-  
-  
-  
+
+
+
+
 def cp_dir_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
-  
+
   if fullfilename.startswith(os.pathsep):
     fullfilename = '.'+fullfilename
   posixfn = os.path.join(rootpath,fullfilename)
@@ -159,7 +159,7 @@ def cp_dir_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
       return
     else:
       raise IOError("Cannot locate file on POSIX FS: '"+posixfn+"'")
-    
+
   if os.path.isfile(posixfn):
     cp_into_lind(fullfilename, rootpath, createmissingdirs)
   elif os.path.isdir(posixfn):
@@ -171,23 +171,23 @@ def cp_dir_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
 def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   """
    <Purpose>
-      Copies a file from POSIX into the Lind FS.   It takes the abs path to 
-      the file ('/etc/passwd') and looks for it in the POSIX FS off of the 
+      Copies a file from POSIX into the Lind FS.   It takes the abs path to
+      the file ('/etc/passwd') and looks for it in the POSIX FS off of the
       root path.   For example, rootpath = '/foo' -> '/foo/etc/passwd'.
       If the file exists, it is overwritten...
 
    <Arguments>
-      fullfilename: The location the file should live in the Lind FS.  
+      fullfilename: The location the file should live in the Lind FS.
           This must be an absolute path (from the root).
 
       rootpath: The directory in the POSIX fs to start looking for that file.
           Note: it must be in the directory structure specified by fullfilename
-   
+
       createmissingdirs:  Should missing dirs in the path be created?
 
    <Exceptions>
       IOError: If the file does not exist, the directory can't be created
-          (for example, if there is a file of the same name), or 
+          (for example, if there is a file of the same name), or
           createmissingdirs is False, but the path is invalid.
 
    <Side Effects>
@@ -196,7 +196,7 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
    <Returns>
       None
   """
-    
+
   # check for the file.
   posixfn = os.path.join(rootpath,fullfilename)
 
@@ -209,7 +209,7 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   # now, we should check / make intermediate dirs if needed...
   # we will walk through the components of the dir and look for them...
 
-  # this removes '.', '///', and similar.   
+  # this removes '.', '///', and similar.
   # BUG: On Windows, this converts '/' -> '\'.   I don't think lind FS handles
   # '\'...
 
@@ -228,19 +228,19 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
       if IS_DIR(lind_test_server.stat_syscall(currentdir)[2]):
         # all is well
         continue
-      # otherwise, it exists, but isn't a dir...   
+      # otherwise, it exists, but isn't a dir...
       raise IOError("LIND FS path exists and isn't a dir: '"+currentdir+"'")
 
     except lind_test_server.SyscallError, e:
       # must be missing dir or else let the caller see this!
-      if e[1] != "ENOENT":   
+      if e[1] != "ENOENT":
         raise
 
       # okay, do I create it?
       if not createmissingdirs:
         raise IOError("LIND FS path does not exist but should not be created: '"+currentdir+"'")
 
-      # otherwise, make it ...  
+      # otherwise, make it ...
       lind_test_server.mkdir_syscall(currentdir,S_IRWXA)
       # and copy over the perms, etc.
       _mirror_stat_data(os.path.join(rootpath,currentdir),currentdir)
@@ -257,12 +257,12 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   # should write all at once...
   datalen = lind_test_server.write_syscall(lindfd, filecontents)
   assert(datalen == len(filecontents))
-  
+
   inode = lind_test_server.fstat_syscall(lindfd)[1]
 
   lind_test_server.close_syscall(lindfd)
-  
-  
+
+
   print "Copied "+posixfn+" as "+fullfilename+"("+str(inode)+")"
 
    # fix stat, etc.
@@ -296,9 +296,9 @@ def deltree_lind(dirname):
     # to loop forever.
     if dent[1]=='.' or dent[1]=='..':
       continue
-   
+
     thisitem = (dent[0], dirname+'/'+dent[1])
-    
+
     print "deleting",thisitem[1]
 
     # if it's a directory, recurse...
@@ -308,7 +308,7 @@ def deltree_lind(dirname):
       lind_test_server.unlink_syscall(thisitem[1])
 
   lind_test_server.rmdir_syscall(dirname)
-  return  
+  return
 
   #for dirname in args:
   #    lind_test_server.rmdir_syscall(dirname)
@@ -319,7 +319,7 @@ def deltree_lind(dirname):
 
 def _find_all_paths_recursively(startingpath):
   # helper for list_all_lind_paths.   It recursively looks at all child dirs
-  
+
   knownitems = []
 
   # I need to open the dir to use getdents...
@@ -349,7 +349,7 @@ def _find_all_paths_recursively(startingpath):
     # to loop forever.
     if dent[1]=='.' or dent[1]=='..':
       continue
-   
+
     thisitem = (dent[0], startingpath+'/'+dent[1])
 
     # add it...
@@ -361,7 +361,7 @@ def _find_all_paths_recursively(startingpath):
       knownitems = knownitems + _find_all_paths_recursively(thisitem[1])
 
   return knownitems
-    
+
 
 
 
@@ -384,7 +384,7 @@ def list_all_lind_paths(startingdir='/'):
       A list of strings that correspond to absolute names.   For example:
       ['/','/etc/','/etc/passwd']
   """
-  
+
   # BUG: This code may need to be revisited with symlinks...
 
   # this will throw exceptions when given bad data...
@@ -393,7 +393,7 @@ def list_all_lind_paths(startingdir='/'):
   return _find_all_paths_recursively(startingdir)
 
 
-  
+
 
 
 def print_usage():
@@ -402,18 +402,23 @@ Usage: lind_fs_utils.py [commandname] [options...]
 
 Where commandname is one of the following:
 
-help                       : print this message
-usage                      : print this message
-mkdir dir1 [dir2...]       : create a directory
-cp root file1 [file2...]   : copies files from the root into the lindfs.   For
-                             example, cp bar /etc/passwd /bin/ls will copy
-                             bar/etc/passwd, bar/bin/ls as /etc/passwd, /bin/ls
-find [startingpath]        : print the names of all files / paths in the fs
-                             This is much like 'find startingpath'
-format                     : make a new blank fs, removing the current one.
-deltree dirname            : delete a directory and all it contains
-rm file1 [file2...]        : delete a file
-rmdir dir1 [dir2...]       : delete a directory
+help                           : Print this message.
+usage                          : Print this message.
+mkdir dir1 [dir2...]           : Create a directory.
+cp root file1 [file2...]       : Copies files from the root into the lindfs.
+                                 For example, cp bar /etc/passwd /bin/ls will
+                                 copy bar/etc/passwd, bar/bin/ls as /etc/passwd,
+                                 /bin/ls.
+update root file1 [file2...]   : Copies files from the root into the lindfs if
+                                 they are different.  cp bar /etc/passwd /bin/ls
+                                 will copy bar/etc/passwd, bar/bin/ls as
+                                 /etc/passwd, /bin/ls.
+find [startingpath]            : Print the names of all files / paths in the
+                                 fs.  This is much like 'find startingpath'.
+format                         : Make a new blank fs, removing the current one.
+deltree dirname                : Delete a directory and all it contains.
+rm file1 [file2...]            : Delete a file.
+rmdir dir1 [dir2...]           : Delete a directory.
 """
 
 
@@ -478,7 +483,7 @@ def main():
       startingpath = '/'
     elif len(args)==1:
       startingpath = args[0]
-      
+
     allpathlist = list_all_lind_paths(startingdir=startingpath)
     # want to print this more cleanly than as a list
     #for thispath in allpathlist:
@@ -497,7 +502,7 @@ def main():
     if len(args)!= 1:
       print 'deltree takes exactly one argument, the dir to remove'
       return
- 
+
     deltree_lind(args[0])
 
 #rm file1 [file2...]        : delete a file
