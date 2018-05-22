@@ -32,8 +32,8 @@ def lind_sys_getpid(args):
 
     @TODO(cmatthew) this should be moved with the other sys calls.
     """
-    
-    DEFAULT_PID = 5000
+
+    DEFAULT_PID = 42
     result = struct_pack("<i", DEFAULT_PID)
     return SuccessResponseBuilder("sys_getpid", 0, result)
 
