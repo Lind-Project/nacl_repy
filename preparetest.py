@@ -66,7 +66,7 @@ def process_mix(script_path):
   for file_path in mix_files:
     #generate a .py file for the .mix file specified by file_path
     processed_file_path = (os.path.basename(file_path)).replace(".mix",".py")
-    (theout, theerr, rc) =  exec_command("python " + script_path + " " + file_path + " " + processed_file_path)
+    (theout, theerr, rc) =  exec_command("python2 " + script_path + " " + file_path + " " + processed_file_path)
 
     if rc != 0:
       print theout.rstrip()
@@ -103,7 +103,7 @@ def exec_command(command):
   return (theout, theerr, rc)
 
 
-helpstring = """python preparetest.py [-t] <foldername>"""
+helpstring = """python2 preparetest.py [-t] <foldername>"""
 
 # Prints the given error message and the help string, then exits
 def help_exit(errMsg):
@@ -115,7 +115,7 @@ def help_exit(errMsg):
 def setup_lind_tests(target):
   """ This copies over serialize to be a py file."""
 
-  # need to copy over serialize.repy to be a python file so it can be imported
+  # need to copy over serialize.repy to be a python2 file so it can be imported
   shutil.copyfile(target+'/serialize.repy',target +"/serialize.py")
 
 
