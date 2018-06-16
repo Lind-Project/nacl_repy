@@ -1,8 +1,8 @@
 """
 <Author>
   Cosmin Barsan
-  
-  Edited to add an optional argument to also copy the repy tests by 
+
+  Edited to add an optional argument to also copy the repy tests by
   Brent Couvrette on November 13, 2008.
 
   Conrad Meyer, Thu Nov 26 2009: Move dynamic ports code from run_tests.py
@@ -62,17 +62,17 @@ def copy_to_target(file_expr, target):
 #the working directory must be set to the directory containing the preprocessor script prior to executing this function.
 def process_mix(script_path):
   mix_files = glob.glob("*.mix")
- 
+
   for file_path in mix_files:
     #generate a .py file for the .mix file specified by file_path
     processed_file_path = (os.path.basename(file_path)).replace(".mix",".py")
-    (theout, theerr, rc) =  exec_command("python " + script_path + " " + file_path + " " + processed_file_path)
-    
+    (theout, theerr, rc) =  exec_command("python2 " + script_path + " " + file_path + " " + processed_file_path)
+
     if rc != 0:
       print theout.rstrip()
       print "Error: could not preprocess", file_path, "Stopping."
       sys.exit(1)
- 
+
 
 def exec_command(command):
 # Windows does not like close_fds and we shouldn't need it so...
@@ -81,7 +81,7 @@ def exec_command(command):
   # get the output and close
   theout = p.stdout.read()
   p.stdout.close()
-  
+
   # get the errput and close
   theerr = p.stderr.read()
   p.stderr.close()
@@ -91,7 +91,7 @@ def exec_command(command):
   if len(theout.split('\n')) > 1 and theout.split('\n')[-2].strip() == 'Terminated':
     # lose the last line
     theout = '\n'.join(theout.split('\n')[:-2])
-    
+
     # however we threw away an extra '\n' if anything remains, let's replace it
     if theout != '':
       theout = theout + '\n'
@@ -103,7 +103,7 @@ def exec_command(command):
   return (theout, theerr, rc)
 
 
-helpstring = """python preparetest.py [-t] <foldername>"""
+helpstring = """python2 preparetest.py [-t] <foldername>"""
 
 # Prints the given error message and the help string, then exits
 def help_exit(errMsg):
@@ -115,7 +115,7 @@ def help_exit(errMsg):
 def setup_lind_tests(target):
   """ This copies over serialize to be a py file."""
 
-  # need to copy over serialize.repy to be a python file so it can be imported
+  # need to copy over serialize.repy to be a python2 file so it can be imported
   shutil.copyfile(target+'/serialize.repy',target +"/serialize.py")
 
 
@@ -124,7 +124,7 @@ def main():
   RANDOMPORTS = False
   force_install = False
   clean_install = False
-	
+
   target_dir = None
   for arg in sys.argv[1:]:
     # -t means we will copy repy tests
@@ -134,11 +134,11 @@ def main():
     # The user wants us to fill in the port numbers randomly.
     elif arg == '-randomports':
       RANDOMPORTS = True
-      
+
     # Force install if target_dir does not exists
     elif arg == '-f':
       force_install = True
-      
+
     elif arg == '-clean':
       clean_install = True
 
@@ -156,29 +156,29 @@ def main():
   # Make sure they gave us a valid directory
   if not os.path.isdir(target_dir) and not force_install:
     help_exit("given foldername is not a directory")
-  
+
   # Remove existing file
   if os.path.isfile(target_dir):
     os.remove(target_dir)
-  
+
   # Make target directory
   if not os.path.exists(target_dir):
     os.mkdir(target_dir)
-  
+
   if clean_install:
     #set working directory to the test folder
-    os.chdir(target_dir)	
+    os.chdir(target_dir)
     files_to_remove = glob.glob("*")
-  
+
     #clean the test folder
-    for f in files_to_remove: 
+    for f in files_to_remove:
       if os.path.isdir(f):
-        shutil.rmtree(f)		
+        shutil.rmtree(f)
       else:
         os.remove(f)
 
   #go back to root project directory
-  os.chdir(current_dir) 
+  os.chdir(current_dir)
 
   #now we copy the necessary files to the test folder
   copy_to_target("repy/*", target_dir)
@@ -200,7 +200,7 @@ def main():
   copy_to_target("tools/*", target_dir)
   # The license must be included in anything we distribute.
   copy_to_target("LICENSE.TXT", target_dir)
-  
+
   if repytest:
     # Only copy the tests if they were requested.
     copy_to_target("repy/tests/restrictions.*", target_dir)
@@ -221,7 +221,7 @@ def main():
 
   #insatll lind test files
   setup_lind_tests(target_dir)
-  
+
   #set working directory to the test folder
   os.chdir(target_dir)
 
@@ -234,7 +234,7 @@ def main():
     portstouseasstr = []
     for portint in portstouseasints:
       portstouseasstr.append(str(portint))
-    
+
     print "Randomly chosen ports: ",portstouseasstr
     testportfiller.replace_ports(portstouseasstr, portstouseasstr)
   else:
@@ -242,7 +242,7 @@ def main():
     testportfiller.replace_ports(['12345','12346','12347'], ['12345','12346','12347'])
 
   #go back to root project directory
-  os.chdir(current_dir) 
+  os.chdir(current_dir)
 
 
 if __name__ == '__main__':
