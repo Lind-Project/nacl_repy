@@ -15,13 +15,12 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 include struct.repy
 
-VERSION = "$Rev$"
+VERSION = "$0.9-alpha$"
 
-
-SILENT = True # Try to produce output as close as the OS would
+SILENT = False # Try to produce output as close as the OS would
                # this means no debug/error messages!
 
-TRACE = False  # Trace system calls? (somewhat like strace) 
+TRACE = False  # Trace system calls? (somewhat like strace)
 
 
 
@@ -231,7 +230,7 @@ def print_times(times):
           "%f" % (exec_start) + ", " + "%f" % (exec_post) + ", " + \
           "%f" % (exec_stop) + ", " + "%f" % (exec_before) + ", " + \
           "%f" % (exec_after) + ", \"" + str(call_args) + "\""
-          
+
 
 def LindSyscall(call_num, args):
 
@@ -299,16 +298,16 @@ def _check_file(name):
   except FileNotFoundError:
     print "File not found:", name
     exitall()
-    
+
 
 
 def new_compoent():
   """add a new compoent to the system"""
-  
+
   mycontext[2] = {}
   code_loc = "liblind/com2.nexe"
   mycontext[2][PROGRAM] = code_loc
-  
+
   mycontext[2][CMD_LINE] = []
   setup_dispatcher(2)
   setup_filetable(2)
@@ -358,7 +357,7 @@ def lind_factory():
 def parse_commandline():
   mycontext[COMP] = 1
   mycontext[1] = {}
-  
+
   if callargs[0] == "--fast":
     curr_comp()[PROGRAM] = callargs[1]
     curr_comp()[CMD_LINE] = callargs[2:]
@@ -378,7 +377,7 @@ def main():
   is_trace()
 
   if callfunc == "initialize":
-    log( "Lind v0." + VERSION[6:-2] + "Last commit:" + "$Date$"[7:-2]+"\n")
+    log( "Lind v0." + VERSION[3:-1] + "\n" + "Last commit:" + "$Date$"[7:-2] + "\n")
     parse_commandline()
     lind_factory()
 
