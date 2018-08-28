@@ -15,7 +15,7 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 include struct.repy
 
-VERSION = "$0.10-beta$"
+VERSION = "$0.10-rc1$"
 
 SILENT = False # Try to produce output as close as the OS would
                # this means no debug/error messages!
@@ -377,7 +377,7 @@ def main():
   is_trace()
 
   if callfunc == "initialize":
-    log( "Lind v" + VERSION[2:-1] + "\n" + "Last commit:" + "$Date$"[7:-2] + "\n")
+    log( "Lind v" + VERSION[2:-1] + "\n" + "Last commit:" + "$0.10-rc1$"[7:-2] + "\n")
     parse_commandline()
     lind_factory()
 
