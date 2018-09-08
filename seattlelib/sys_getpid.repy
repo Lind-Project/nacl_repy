@@ -1,20 +1,20 @@
 """
 
-Handlers for the getepid system call.
+Handlers for the getpid system call.
 
 Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Getepid hadler pulls out the arguments, does any manditory checking
-then calls the repy posix library getepid system call.  Then packs
+getpid handler pulls out the arguments, does any mandatory checking
+then calls the repy posix library getpid system call.  Then packs
 the result back up.
 
 """
 
 
 def lind_sys_getpid(args):
-    """ getepid calls are dispatched to this function.
+    """ getpid calls are dispatched to this function.
 
     See dispatcher.repy for details.
 
@@ -24,13 +24,13 @@ def lind_sys_getpid(args):
 
     Pack the int returned, or error.
 
-    For now we dont want processes to know they are different than each other
+    For now we don't want processes to know they are different than each other
 
-    maybe this could be a lind specific counter in the future?
+    Maybe this could be a lind specific counter in the future?
 
-    what is the impact of doing this?
+    What is the impact of doing this?
 
-    @TODO(cmatthew) this should be moved with the other sys calls.
+    @TODO(cmatthew) this should be moved with the other syscalls.
     """
 
     DEFAULT_PID = 42
@@ -39,12 +39,12 @@ def lind_sys_getpid(args):
 
 
 def lind_safe_sys_getpid(args):
-    """ Safely wrap the getepid call.
+    """ Safely wrap the getpid call.
 
     See dispatcher.repy for details.
 
     Check the paths for consistancy,
-    then call the real getepid dispatcher.
+    then call the real getpid dispatcher.
 
     """
 

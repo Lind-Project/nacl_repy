@@ -57,8 +57,8 @@ def struct_pack(formatstring, *args):
       Puts data in a structure that is convenient to pass to C.
 
    <Arguments>
-      formatstring: The format string (See the python docs).   Caveat, if 
-           integer, etc.  types are used they *must* contain an endianness 
+      formatstring: The format string (See the python docs).   Caveat, if
+           integer, etc.  types are used they *must* contain an endianness
            character
 
       args: argument tuple for the formatstring
@@ -91,7 +91,7 @@ def struct_pack(formatstring, *args):
     #### Get the endianness! ###
 
     endianness = "none"
-    
+
     # Let's figure out the endianness
     if currentformatstring[0] == '>' or currentformatstring[0] == '!':
       endianness = "big"
@@ -110,11 +110,11 @@ def struct_pack(formatstring, *args):
     while currentformatstring[0] in '1234567890':
       repeatcountstring += currentformatstring[0]
       currentformatstring = currentformatstring[1:]
-    
+
     # there is!   Let's set it...
     if repeatcountstring:
       repeatcount = int(repeatcountstring)
-    
+
 
 
     #### Handle the type! ###
@@ -144,7 +144,7 @@ def struct_pack(formatstring, *args):
 
         if len(thisarg) != repeatcount:
           raise TypeError("String format argument does not match length of argument "+str(len(thisarg))+" != "+str(repeatcount))
-      
+
         retstring += thisarg
         # add the string all at once...
         break
@@ -158,7 +158,7 @@ def struct_pack(formatstring, *args):
 
         if type(thisarg) != int and type(thisarg) != long:
           raise TypeError("1-byte int format argument not a long or int")
-  
+
         # let's check the ranges
         if typetopack == 'b':
           if not (thisarg >= -(2**7) and thisarg < 2**7):
@@ -174,11 +174,11 @@ def struct_pack(formatstring, *args):
 
         # okay, so now we have the big-endian description...
         thisargstring = _convert_number_to_big_endian_string(thisarg,1)
- 
+
         # if it's little-endian, let's reverse it!
         if endianness == "little":
           thisargstring = thisargstring[::-1]
-          
+
         # and append it.
         retstring += thisargstring
 
@@ -193,7 +193,7 @@ def struct_pack(formatstring, *args):
 
         if type(thisarg) != int and type(thisarg) != long:
           raise TypeError("2-byte int format argument not a long or int")
-  
+
         # let's check the ranges
         if typetopack == 'h':
           if not (thisarg >= -(2**15) and thisarg < 2**15):
@@ -209,11 +209,11 @@ def struct_pack(formatstring, *args):
 
         # okay, so now we have the big-endian description...
         thisargstring = _convert_number_to_big_endian_string(thisarg,2)
- 
+
         # if it's little-endian, let's reverse it!
         if endianness == "little":
           thisargstring = thisargstring[::-1]
-          
+
         # and append it.
         retstring += thisargstring
 
@@ -226,7 +226,7 @@ def struct_pack(formatstring, *args):
 
         if type(thisarg) != int and type(thisarg) != long:
           raise TypeError("4-byte int format argument not a long or int")
-  
+
         # let's check the ranges
         if typetopack == 'i':
           if not (thisarg >= -(2**31) and thisarg < 2**31):
@@ -238,18 +238,18 @@ def struct_pack(formatstring, *args):
         if typetopack == 'i' and thisarg < 0:
           # if signed let's do a conversion to an unsigned!
           # Magic code!   Add UINT_MAX + 1!
-          thisarg = thisarg + 2**32 
+          thisarg = thisarg + 2**32
 
         # okay, so now we have the big-endian description...
         thisargstring = _convert_number_to_big_endian_string(thisarg,4)
- 
+
         # if it's little-endian, let's reverse it!
         if endianness == "little":
           thisargstring = thisargstring[::-1]
-          
+
         # and append it.
         retstring += thisargstring
-        
+
 
 
 
@@ -260,7 +260,7 @@ def struct_pack(formatstring, *args):
 
         if type(thisarg) != int and type(thisarg) != long:
           raise TypeError("8-byte int format argument not a long or int")
-  
+
         # let's check the ranges
         if typetopack == 'q':
           if not (thisarg >= -(2**63) and thisarg < 2**63):
@@ -276,18 +276,18 @@ def struct_pack(formatstring, *args):
 
         # okay, so now we have the big-endian description...
         thisargstring = _convert_number_to_big_endian_string(thisarg,8)
- 
+
         # if it's little-endian, let's reverse it!
         if endianness == "little":
           thisargstring = thisargstring[::-1]
-          
+
         # and append it.
         retstring += thisargstring
 
 
       else:
         raise TypeError("Unknown format type '"+typetopack+"'")
-    
+
 
   #### Return the result! ###
 
@@ -316,8 +316,8 @@ def struct_unpack(formatstring, packedstring):
       Puts data in a structure that is convenient to pass to C.
 
    <Arguments>
-      formatstring: The format string (See the python docs).   Caveat, if 
-           integer, etc.  types are used they *must* contain an endianness 
+      formatstring: The format string (See the python docs).   Caveat, if
+           integer, etc.  types are used they *must* contain an endianness
            character
 
       packedstring: the string of packed data...
@@ -342,7 +342,7 @@ def struct_unpack(formatstring, packedstring):
   # let's check the size and see if this matches.   We also check the format
   # and endianness at the same time.
   expectedpackedstringlength = struct_calcsize(formatstring)
-  
+
   if expectedpackedstringlength != len(packedstring):
     raise ValueError("Expected packed string of length "+str(expectedpackedstringlength)+", got "+str(len(packedstring)))
 
@@ -359,7 +359,7 @@ def struct_unpack(formatstring, packedstring):
     #### Get the endianness! ###
 
     endianness = "none"
-    
+
     # Let's figure out the endianness
     if currentformatstring[0] == '>' or currentformatstring[0] == '!':
       endianness = "big"
@@ -378,13 +378,13 @@ def struct_unpack(formatstring, packedstring):
     while currentformatstring[0] in '1234567890':
       repeatcountstring += currentformatstring[0]
       currentformatstring = currentformatstring[1:]
-    
+
     # there is!   Let's set it...
     if repeatcountstring:
       repeatcount = int(repeatcountstring)
-    
 
- 
+
+
 
 
     #### Handle the type! ###
@@ -409,7 +409,7 @@ def struct_unpack(formatstring, packedstring):
         # strings should be reconstructed as a string, not a list of bytes...
         retlist.append(currentpackedstring[:repeatcount])
         currentpackedstring = currentpackedstring[repeatcount:]
-     
+
         # ... so exit!
         break
 
@@ -420,7 +420,7 @@ def struct_unpack(formatstring, packedstring):
         # shouldn't happen because we checked above
         assert(endianness != "none")
         assert(len(currentpackedstring) >= 1)
-  
+
         # flip the endianness to big (if applicable)
         thisnumberstring = currentpackedstring[:1]
         if endianness == "little":
@@ -430,7 +430,7 @@ def struct_unpack(formatstring, packedstring):
 
         # okay, so now we have the big-endian description...
         thisnumber = _convert_big_endian_string_to_number(thisnumberstring)
- 
+
 
         if typetounpack == 'b' and thisnumber >= 2**7:
           # if signed let's do a conversion to an unsigned!
@@ -439,7 +439,7 @@ def struct_unpack(formatstring, packedstring):
 
         # and append it.
         retlist.append(thisnumber)
-        
+
 
 
       # it's a signed or unsigned short (2 byte)!   Must have endianness!!!
@@ -447,7 +447,7 @@ def struct_unpack(formatstring, packedstring):
         # shouldn't happen because we checked above
         assert(endianness != "none")
         assert(len(currentpackedstring) >= 2)
-  
+
         # flip the endianness to big (if applicable)
         thisnumberstring = currentpackedstring[:2]
         if endianness == "little":
@@ -457,7 +457,7 @@ def struct_unpack(formatstring, packedstring):
 
         # okay, so now we have the big-endian description...
         thisnumber = _convert_big_endian_string_to_number(thisnumberstring)
- 
+
 
         if typetounpack == 'h' and thisnumber >= 2**15:
           # if signed let's do a conversion to an unsigned!
@@ -466,7 +466,7 @@ def struct_unpack(formatstring, packedstring):
 
         # and append it.
         retlist.append(thisnumber)
-        
+
 
 
       # it's a signed or unsigned integer (4 byte)!   Must have endianness!!!
@@ -474,7 +474,7 @@ def struct_unpack(formatstring, packedstring):
         # shouldn't happen because we checked above
         assert(endianness != "none")
         assert(len(currentpackedstring) >= 4)
-  
+
         # flip the endianness to big (if applicable)
         thisnumberstring = currentpackedstring[:4]
         if endianness == "little":
@@ -484,23 +484,23 @@ def struct_unpack(formatstring, packedstring):
 
         # okay, so now we have the big-endian description...
         thisnumber = _convert_big_endian_string_to_number(thisnumberstring)
- 
+
 
         if typetounpack == 'i' and thisnumber >= 2**31:
           # if signed let's do a conversion to an unsigned!
           # Magic code!   Subtract UINT_MAX - 1!
-          thisnumber = thisnumber - 2**32 
+          thisnumber = thisnumber - 2**32
 
         # and append it.
         retlist.append(thisnumber)
-        
+
 
       # it's a signed or unsigned integer (8 byte)!   Must have endianness!!!
       elif typetounpack == 'q' or typetounpack == 'Q':
         # shouldn't happen because we checked above
         assert(endianness != "none")
         assert(len(currentpackedstring) >= 8)
-  
+
         # flip the endianness to big (if applicable)
         thisnumberstring = currentpackedstring[:8]
         if endianness == "little":
@@ -510,7 +510,7 @@ def struct_unpack(formatstring, packedstring):
 
         # okay, so now we have the big-endian description...
         thisnumber = _convert_big_endian_string_to_number(thisnumberstring)
- 
+
 
         if typetounpack == 'q' and thisnumber >= 2**63:
           # if signed let's do a conversion to an unsigned!
@@ -525,10 +525,10 @@ def struct_unpack(formatstring, packedstring):
         # shouldn't happen because we checked above
         assert(endianness == "none")
         assert(len(currentpackedstring) >= 4)
-  
- 
+
+
         thisnumberstring = currentpackedstring[:4]
- 
+
         currentpackedstring = currentpackedstring[4:]
 
         # okay, so now we have the big-endian description...
@@ -539,10 +539,10 @@ def struct_unpack(formatstring, packedstring):
           retlist.append(None)
         else:
           retlist.append(hex(thisnumber))
- 
+
       else:
         raise TypeError("Unknown format type '"+typetounpack+"'")
-    
+
 
   #### Return the result! ###
 
@@ -568,11 +568,11 @@ remains: %s"%(currentformatstring))
 def struct_calcsize(formatstring):
   """
    <Purpose>
-      Given a formatstring, indicates the correct packed string size.   
+      Given a formatstring, indicates the correct packed string size.
 
    <Arguments>
-      formatstring: The format string (See the python docs).   Caveat, if 
-           integer, etc.  types are used they *must* contain an endianness 
+      formatstring: The format string (See the python docs).   Caveat, if
+           integer, etc.  types are used they *must* contain an endianness
            character
 
    <Exceptions>
@@ -588,10 +588,10 @@ def struct_calcsize(formatstring):
   if type(formatstring) != str:
     raise TypeError("Format string must have type str, not '"+str(type(formatstring))+"'")
 
-  
+
   currentlength = 0
 
-  # this will hold the position inside of the formatstring.   It's what we 
+  # this will hold the position inside of the formatstring.   It's what we
   # move along to make progress.
   position = 0
 
@@ -613,11 +613,11 @@ def struct_calcsize(formatstring):
     while formatstring[position] in '1234567890':
       repeatcountstring += formatstring[position]
       position = position + 1
-    
+
     # there is!   Let's set it...
     if repeatcountstring:
       repeatcount = int(repeatcountstring)
-    
+
 
 
     #### Handle the type! ###
@@ -631,7 +631,7 @@ def struct_calcsize(formatstring):
 
       if specifiesendianness:
         raise ValueError("A string cannot have endianness specified! (position "+str(position)+" of '"+formatstring+"')")
-      
+
       # add the size of a char + the number of chars
       currentlength += 1 * repeatcount
 

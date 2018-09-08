@@ -11,7 +11,7 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 
 def NaclRPCServer(nacl_instance):
-  #todo these should come in the context  
+  #todo these should come in the context
   #(recv_socket,send_socket) = nacl_instance.get_comm_channels()
   #print "Sockets are:", str(recv_socket), str(send_socket)
   while True:
@@ -19,9 +19,9 @@ def NaclRPCServer(nacl_instance):
     print "[Trace]", message
     if message == "EOT":
       break
-       
+
 def main():
-  code_loc = "/home/cmatthew/lind/native_client/scons-out/nacl-x86-64-glibc/staging/hello_world.nexe"
+  code_loc = "$HOME/lind_project/native_client/scons-out/nacl-x86-64-glibc/staging/hello_world.nexe"
   nacl = safelyexecutenativecode(code_loc, ["1","2"])
   if nacl != None:
     NaclRPCServer(nacl)
