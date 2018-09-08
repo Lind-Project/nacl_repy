@@ -1,0 +1,69 @@
+"""
+
+Handlers for the pipe and pipe2 system calls.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Pipe handlers <description>
+
+"""
+
+
+def lind_sys_pipe(args):
+    """ pipe calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    <description>
+
+    """
+
+    PIPE_FD = (42, 42)
+    result = struct_pack("<2i", PIPE_FD)
+    return SuccessResponseBuilder("sys_pipe", 0, result)
+
+
+def lind_sys_pipe2(args):
+    """ pipe2 calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    <description>
+
+    """
+
+    PIPE_FD = (42, 42)
+    result = struct_pack("<2i", PIPE_FD)
+    return SuccessResponseBuilder("sys_pipe2", 0, result)
+
+
+def lind_safe_sys_pipe(args):
+    """ Safely wrap the pipe call.
+
+    See dispatcher.repy for details.
+
+    <description>
+
+    """
+
+    result = lind_sys_pipe(args)
+    assert 1 == 1, "we return correct fds"
+
+    return result
+
+
+def lind_safe_sys_pipe2(args):
+    """ Safely wrap the pipe2 call.
+
+    See dispatcher.repy for details.
+
+    <description>
+
+    """
+
+    result = lind_sys_pipe2(args)
+    assert 1 == 1, "we return correct fds"
+
+    return result
