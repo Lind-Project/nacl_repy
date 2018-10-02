@@ -343,7 +343,7 @@ def do_actual_test(testtype, restrictionfn, testname, is_python_test):
   # any out, no err...
   elif testtype == 'n':
     if is_python_test:
-      (testout, testerr) = exec_command("python " + testname)
+      (testout, testerr) = exec_command(sys.executable + " " + testname)
     else:
       (testout, testerr) = exec_repy_script(testname, restrictionfn, {'status':'foo'})
     
@@ -360,7 +360,7 @@ def do_actual_test(testtype, restrictionfn, testname, is_python_test):
   # any err, no out...
   elif testtype == 'e':
     if is_python_test:
-      (testout, testerr) = exec_command("python " + testname)
+      (testout, testerr) = exec_command(sys.executable + " " + testname)
     else:
       (testout, testerr) = exec_repy_script(testname, restrictionfn, {'status':'foo'})
     
@@ -377,7 +377,7 @@ def do_actual_test(testtype, restrictionfn, testname, is_python_test):
   # no err, no out...
   elif testtype == 'z':
     if is_python_test:
-      (testout, testerr) = exec_command("python " + testname)
+      (testout, testerr) = exec_command(sys.executable + " " + testname)
     else:
       (testout, testerr) = exec_repy_script(testname, restrictionfn, {'status':'foo'})
     
@@ -392,7 +392,7 @@ def do_actual_test(testtype, restrictionfn, testname, is_python_test):
   # any err, any out...
   elif testtype == 'b':
     if is_python_test:
-      (testout, testerr) = exec_command("python " + testname)
+      (testout, testerr) = exec_command(sys.executable + " " + testname)
     else:
       (testout, testerr) = exec_repy_script(testname, restrictionfn, {'status':'foo'})
     
@@ -608,7 +608,7 @@ def do_oddballtests():
   elif nonportable.ostype == 'Windows' or nonportable.ostype == 'WindowsCE':
     # this is much easier because we don't worry about the path or have 
     # children to worry about.
-    p = subprocess.Popen("python repy.py restrictions.default killp_writetodisk.py".split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    p = subprocess.Popen(sys.executable + " repy.py restrictions.default killp_writetodisk.py".split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
     pid = p.pid
     
@@ -893,10 +893,10 @@ if len(sys.argv) > 1 and sys.argv[1] == "-nm-network":
   import runonce
   
   # First run nmminit
-  exec_command("python nminit.py")
+  exec_command(sys.executable + " nminit.py")
   
   # Pre-process our helper file
-  exec_command("python repypp.py helper_uploadstartprintlog.repy helper_uploadstartprintlog.py")
+  exec_command(sys.executable + " repypp.py helper_uploadstartprintlog.repy helper_uploadstartprintlog.py")
   
   # We need getmyip()
   import misc
@@ -931,7 +931,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "-nm-network":
     # Override the configuration
     injectconfig.inject(NET_KEY, config, "nodeman.cfg")
     # Start the NM
-    p =  subprocess.Popen("python nmmain.py", shell=True)
+    p =  subprocess.Popen(sys.executable + " nmmain.py", shell=True)
     # Wait a bit for everything to settle
     time.sleep(3)
   

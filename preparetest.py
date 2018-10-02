@@ -66,7 +66,7 @@ def process_mix(script_path):
   for file_path in mix_files:
     #generate a .py file for the .mix file specified by file_path
     processed_file_path = (os.path.basename(file_path)).replace(".mix",".py")
-    (theout, theerr, rc) =  exec_command("python2 " + script_path + " " + file_path + " " + processed_file_path)
+    (theout, theerr, rc) =  exec_command(sys.executable + " " + script_path + " " + file_path + " " + processed_file_path)
 
     if rc != 0:
       print theout.rstrip()
