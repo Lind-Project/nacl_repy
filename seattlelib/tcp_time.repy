@@ -19,13 +19,14 @@
 
 """
 
-include time_interface.repy
+time_interface = dy_import_module('time_interface.repy')
 
-include advertise.repy
+advertise = dy_import_module('advertise.repy')
 
-include random.repy
+random = dy_import_module('random.repy')
 
-include sockettimeout.repy
+sockettimeout = dy_import_module('sockettimeout.repy')
+
 
 
 
@@ -59,64 +60,65 @@ def tcp_time_updatetime(localport):
 
 """
 
-  # Get the ips and ports of servers hosting time_server.repy, retrying nine
-  # times if there is an exception.
-  gotval = False
-  attemptretrieval = 0
-  while attemptretrieval < 2:
+  # Get the ips and ports of servers hosting time_server.repy.
+  # Retry if there is an exception.
+
+  # We raise the following string if lookups succeeded but only 
+  # return empty lists. (In this case, there are no exceptions we 
+  # could inform the caller of.)
+  exceptionslist = ["advertise_lookup did not reveal any node advertising 'time_server'"]
+  for attempt in range(2):
     try:
-      serveraddresses = advertise_lookup("time_server")
-    except Exception:
-      attemptretrieval = attemptretrieval + 1
-      sleep(2)                 # Look up the value again in 10 seconds
+      serveraddresses = advertise.advertise_lookup("time_server")
+    except Exception, e:
+      # Log and retry
+      exceptionslist.append((type(e), str(e)))
+      sleep(2)
     else:
       if serveraddresses != [] and serveraddresses[0] != '':
-        gotval = True	        # Successfully obtained the value
         break
-      else:
-        attemptretrieval = attemptretrieval + 1
-
-
-  if not gotval:
-    raise Exception("Unable to locate any servers running time_server.repy")
+  else:
+    # We never broke out of the for loop. This indicates a problem.
+    raise time_interface.TimeError("tcp_time could not find any servers running time_server.repy using advertise_lookup. Errors: " + str(exceptionslist))
 
 
   timelength = 25  # Max length of string, representing the time, to be received
-  shuffledserveraddresses = random_sample(serveraddresses,min(len(serveraddresses),5))
+  # XXX Shuffling takes excessively long (10s on a list of 20 servers)!
+  shuffledserveraddresses = random.random_sample(serveraddresses,min(len(serveraddresses),5))
 
-  # Open a connection with a random server hosting time_server.repy
-  timeobtained = False
+  # Try to obtain a timestamp from one of at most five 
+  # random servers hosting time_server.repy
+  exceptionslist = []
   serverindex = 0
-  while serverindex < len(shuffledserveraddresses):
-    remoteaddress = shuffledserveraddresses[serverindex].split(':')
+  for server_ip_and_port in shuffledserveraddresses:
+    remoteaddress = server_ip_and_port.split(':')
     remoteip = remoteaddress[0]
     remoteport = int(remoteaddress[1])
 
     try:
-      sockobject = timeout_openconn(remoteip,remoteport)
-    except Exception:
-      serverindex +=1
+      sockobject = sockettimeout.timeout_openconnection(remoteip, remoteport, 
+        getmyip(), localport, timeout=10)
+    except Exception, e:
+      exceptionslist.append((server_ip_and_port, type(e), str(e)))
     else:
-      timeobtained = True
       break
+  else:
+    # Didn't break out of the loop. Tried all time servers to no avail.
+    raise time_interface.TimeError("tcp_time could not contact any of the ",len(shuffledserveraddresses)," servers running time_server.repy. Errors encountered: " + str(exceptionslist))
 
 
-  if not timeobtained:
-    raise Exception("Unable to open connection with any of the ",len(shuffledserveraddresses),"servers running time_server.repy.")
-
-
-  currenttime =''
+  currenttime = ''
   while '$' not in currenttime:
     currenttime += sockobject.recv(20)
   sockobject.close()
   currenttime = float(currenttime[:-1])
 
   # finally, set the time
-  time_settime(currenttime)
+  time_interface.time_settime(currenttime)
   
 
 
 
 
 #register the update method
-time_register_method('tcp',tcp_time_updatetime)
+time_interface.time_register_method('tcp', tcp_time_updatetime)

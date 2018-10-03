@@ -24,22 +24,30 @@ def session_recvmessage(socketobj):
   messagesizestring = ''
   # first, read the number of characters...
   for junkcount in range(sessionmaxdigits):
-    currentbyte = socketobj.recv(1)
+    while True:
+      try:
+        currentbyte = socketobj.recv(1)
+        break
+      except SocketWouldBlockError:
+        sleep(0.01)
 
     if currentbyte == '\n':
       break
     
     # not a valid digit
     if currentbyte not in '0123456789' and messagesizestring != '' and currentbyte != '-':
-      raise ValueError, "Bad message size"
+      raise ValueError, "Incorrect value in message size header. Found character '%s' in the header." % str(currentbyte)
      
     messagesizestring = messagesizestring + currentbyte
 
   else:
     # too large
-    raise ValueError, "Bad message size"
+    raise ValueError, "The header message size exceeds the maximum limit of %d." % sessionmaxdigits
 
-  messagesize = int(messagesizestring)
+  try:
+    messagesize = int(messagesizestring)
+  except ValueError:
+    raise ValueError, "Unable to convert the message size '%s' to int." % messagesizestring
   
   # nothing to read...
   if messagesize == 0:
@@ -47,17 +55,20 @@ def session_recvmessage(socketobj):
 
   # end of messages
   if messagesize == -1:
-    raise SessionEOF, "Connection Closed"
+    raise SessionEOF, "Connection Closed. Received a messagesize of -1"
 
   if messagesize < 0:
-    raise ValueError, "Bad message size"
+    raise ValueError, "Received a negative message size '%d'" % messagesize
 
   data = ''
   while len(data) < messagesize:
-    chunk =  socketobj.recv(messagesize-len(data))
-    if chunk == '': 
-      raise SessionEOF, "Connection Closed"
-    data = data + chunk
+    try:
+      chunk =  socketobj.recv(messagesize-len(data))
+      if chunk == '': 
+        raise SessionEOF, "Received an empty string when performing socketobj.recv(). Socket possibly closed."
+      data = data + chunk
+    except SocketWouldBlockError:
+      sleep(0.01)
 
   return data
 
@@ -67,24 +78,24 @@ def session_sendhelper(socketobj,data):
   # if I'm still missing some, continue to send (I could have used sendall
   # instead but this isn't supported in repy currently)
   while sentlength < len(data):
-    thissent = socketobj.send(data[sentlength:])
-    sentlength = sentlength + thissent
-
+    try:
+      thissent = socketobj.send(data[sentlength:])
+      sentlength = sentlength + thissent
+    except SocketWouldBlockError:
+      sleep(0.01)
 
 
 # send the message 
 def session_sendmessage(socketobj,data):
   header = str(len(data)) + '\n'
-
-  fulldata = header + data
-
-  session_sendhelper(socketobj, fulldata)
-
-  # This was used before. For some reason, it causes a "Bad Message Size"
-  # failure on most queries sent over a network with realistic latency. (>5ms)
+  # Sending these piecemeal does not accomplish anything, and can contribute 
+  # to timeout issues when run by constantly overloaded machines.
   # session_sendhelper(socketobj,header)
+
+  # Concatenate the header and data, rather than sending both separately.
+  complete_packet = header + data
 
   # session_sendhelper(socketobj,data)
 
-
+  session_sendhelper(socketobj, complete_packet)
 

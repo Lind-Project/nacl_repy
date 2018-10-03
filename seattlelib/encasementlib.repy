@@ -125,15 +125,11 @@ def _layer_context(caller_context, context_def):
     # Offset the list by 1
     offset_args = caller_context["callargs"][1:]
 
-    # Check each entry is a string
-    all_string = True
+    # If they are all strings, copy over
     for elem in offset_args:
       if type(elem) is not str:
-        all_string = False
         break
-
-    # If they are all strings, copy over
-    if all_string:
+    else:
       wrapped_context["callargs"] = offset_args
 
   # Generate a new CHILD_CONTEXT_DEF

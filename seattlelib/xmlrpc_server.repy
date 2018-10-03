@@ -14,9 +14,9 @@
   is possible with RePy.
 """
 
-include xmlparse.repy
-include xmlrpc_common.repy
-include urllib.repy
+dy_import_module_symbols('xmlparse.repy')
+dy_import_module_symbols('xmlrpc_common.repy')
+dy_import_module_symbols('urllib.repy')
 
 def _xmlrpc_server_lookup_ip(hostname):
   # Looks up an ip address for a given hostmask.  Throws an exception for

@@ -21,9 +21,6 @@ import time
 # needed to get a lock
 import threading
 
-# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
-threading.hasattr = hasattr
-
 # needed for listdir...
 import os
 

@@ -1,0 +1,7 @@
+"""
+Define an exception for portability_testlib2.repy.
+Helper library for ut_portability_catch_nestedimported_exception.py.
+"""
+class Lib1Error(Exception):
+  """The exception the portability unit test is trying to catch."""
+

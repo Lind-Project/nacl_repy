@@ -431,7 +431,7 @@ class md5py_MD5:
       result.append("%02x" % element)
     d = result
     
-    d = ''.join(d, '') 
+    d = ''.join(d) 
 
     return d 
 

@@ -35,9 +35,23 @@ math_pi = 3.1415926535897931
 # Python's math.log(4.5,4)  == 1.0849625007211563
 # I'll assume this is okay.
 def math_log(X, base=math_e, epsilon=1e-16):
+  # Make sure all arguments are floats, otherwise
+  # * for integer X and base, the divisions below will truncate all
+  #   decimals and the results will be wrong
+  # * for complex epsilon, the greater-than test fails
+  X = float(X)
+  base = float(base)
+  epsilon = float(epsilon)
+
   # JMC: The domain of the log function is {n | n > 0)
   if X <= 0:
     raise ValueError, "log function domain error"
+
+  # log to the base 1 is undefined for X != 1, and has infinitely
+  # many results for X == 1. Emulate Python's math.log's behavior,
+  # though peculiar.
+  if base == 1:
+    raise ZeroDivisionError("float division by zero")
 
   # log is logarithm function with the default base of e
   integer = 0

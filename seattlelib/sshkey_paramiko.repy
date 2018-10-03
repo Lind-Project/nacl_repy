@@ -48,11 +48,11 @@
 
 """
 
-include sshkey.repy
-include base64.repy
-include md5py.repy
-include pyDes.repy
-include binascii.repy
+dy_import_module_symbols('sshkey.repy')
+dy_import_module_symbols('base64.repy')
+dy_import_module_symbols('md5py.repy')
+dy_import_module_symbols('pydes.repy')
+dy_import_module_symbols('binascii.repy')
 
 
 class sshkey_paramiko_BERException (Exception):
@@ -416,7 +416,7 @@ def _sshkey_paramiko_decode_private_key(tag, file, password=None):
   
   """
   _CIPHER_TABLE = {
-        'DES-EDE3-CBC': { 'cipher': pyDes_triple_des, 'keysize': 24, 'blocksize': 8, 'mode': pyDes_CBC }
+        'DES-EDE3-CBC': { 'cipher': pydes_triple_des, 'keysize': 24, 'blocksize': 8, 'mode': pydes_CBC }
   }
   
   lines = file.readlines()
@@ -486,8 +486,8 @@ def _sshkey_paramiko_decode_private_key(tag, file, password=None):
   key = _sshkey_paramiko_generate_key_bytes(salt, password, keysize)
   #key = generate_key_bytes(MD5, salt, password, keysize)
   
-  # Anthony - modified to use pyDes instead of pycrypto DES3
-  temp_des_obj = pyDes_triple_des(key, mode, salt)
+  # Anthony - modified to use pydes instead of pycrypto DES3
+  temp_des_obj = pydes_triple_des(key, mode, salt)
   decrypted = temp_des_obj.decrypt(data)
   #decrypted = cipher.new(key, mode, salt).decrypt(data)
   

@@ -10,40 +10,45 @@
   Konstantin Pik
 
 <Purpose>
-  Helper file that provides several functions to check for command line
-  arguments. Similar to getopt()/getopts().
+  Parse command line arguments.
+  Arguments may be bool (True if the option is given),
+      int (name followed by value), or
+      str (name followed by value).
+  Option names are case-sensitive, free-form string words, e.g.
+      --gnu-option, -xoption, anoption
+
+  The default value for missing variables is False, which you may override.
+
+<Note>
+  Handling of default values and exceptions is very ad-hoc, and 
+  should rather follow the examples of Python's argparse, getopt, etc.
 
 <Sample Usage>
-  argparse_scan_str(callargs, '-ip')
-    returns False if no -ip flag
-    returns string containing ip (parameter following -ip flag)
   argparse_scan_bool(callargs, '--local')
     returns False if no --local flag is set
     returns True if --local flag is set
+  argparse_scan_str(callargs, '-ip')
+    returns False if no -ip flag
+    returns string containing ip (parameter following -ip flag)
   argparse_scan_int(callargs, '/port')
     returns False if no /port flag is set
-    returns a string (ensures castable to int) following the
-    
-  Note: False is the default return value for all the functions if a
-    default return value is not specified on function call.
-  Note: See individual functions for detailed information.
-
+    returns the int following the flag (if any)
 """
 
-def argparse_scan_bool(args_array, flag_name, default_value = False):
+class ArgparseError(RepyException):
+  """This is raised when we encounter logical errors while parsing"""
+
+
+
+def argparse_scan_bool(args_list, option, default_value=False):
   """
   <Purpose>
-    This function checks to see if a FLAG (flag_name) was passed as an
-    argument.
-
-    Note: Careful that another parameter will not have the same name as the
-    flag you're looking for.
+    Check if an option was passed as an argument.
 
   <Arguments>
-    args_array:     Complete array of arguments.
-    flag_name:      Flag we're looking for. Can have any naming format,
-                      e.g.: --local or /local or -local
-    default_value:  'False' if not specified. The default value.
+    args_list: List of arguments
+    option: The option we are looking for
+    default_value: The desired default value, initialized to False.
     
   <Exceptions>
     None known.
@@ -52,124 +57,100 @@ def argparse_scan_bool(args_array, flag_name, default_value = False):
     None.
 
   <Returns>
-    Returns True if the flag_name was found in the list of arguments.
+    Returns True if the option was found in the list of arguments.
     Returns default_value if it was not.
 
   <Sample Usage>
-    if scan_bool(callargs, '--local'): # we have the argument!
+    if argparse_scan_bool(callargs, '--local'): # we have the argument!
       ... your code ...
   """
-  for i in range(0, len(args_array)):
-    if args_array[i].lower() == flag_name:
-      return True
-  return default_value # should technically always be False
+  if option in args_list:
+    return True
+  else:
+    return default_value
 
-def argparse_scan_str(args_array, flag_name, default_value = False):
+
+
+def argparse_scan_str(args_list, option, default_value=False):
   """
   <Purpose>
-    This function checks to see if a FLAG (flag_name) exists, and then takes
-    the very next "word" and returns it as the argument.
-
-    Note: Careful that another parameter will not have the same name as the
-    flag you're looking for.
+    Return the value for the given option, or default_value if 
+    option is not present.
+    Note: The first occurrence of the option takes precedence!
 
   <Arguments>
-    args_array:     Complete array of arguments.
-    flag_name:      Flag we're looking for. Can have any naming format,
-                      e.g.: --local or /local or -local
-    default_value:  'False' if not specified. The default value.
+    args_list: List of arguments
+    option: The option we are looking for
+    default_value: The default value, initialized to False.
     
   <Exceptions>
-    Exception is raised if there is an array out of bounds error, or some
-    unexpected formatting error (just in case?)
+    ArgparseError if the option value is missing after the option name.
 
   <Side Effects>
     None.
 
   <Returns>
-    If the flag exists, then the value directly following it will be returned
-    as a string. If the value does not exist, then the function returns the 
-    default_value.
+    If the option exists, return the value directly following it.
+    Otherwise, return the default_value.
 
   <Sample Usage>
-    temp_ip = scan_str(callargs, '--ip'):
-    if temp_ip: # we have an IP!
-      ip = temp_ip
+    ip = argparse_scan_str(callargs, '--ip'):
+    if ip: # we have an IP!
       ... your code ...
   """
-  for i in range(0, len(args_array)):
-    if args_array[i].lower() == flag_name:
-      try:
-        return_value = str(callargs[i + 1])
-      except IndexError, e:
-        # This means we're expecting a value and there isn't one..
-        log(e,'\n')
-        raise Exception("Expected value for argument '"+callargs[i]+"'")
-      except Exception, e:
-        # Some other type of error
-        log(e,'\n')
-        raise Exception("Invalid value ("+str(callargs[i + 1])+") specified"+ \
-          " for parameter "+flag_name)
-      else:
-        return return_value
-  return default_value
+  if option not in args_list:
+    return default_value
 
-def argparse_scan_int(args_array, flag_name, default_value = False):
+  # Find the first occurrence of option in the args list
+  position = args_list.index(option)
+
+  try:
+    return args_list[position+1]
+  except IndexError:
+    raise ArgparseError("Value missing after option '" + option + "'")
+
+
+
+def argparse_scan_int(args_list, option, default_value=False):
   """
   <Purpose>
-    This function checks to see if a FLAG (flag_name) exists, and then takes
-    the very next "word" and returns it as the argument. This function is
-    different from scan_str as it will expect an integer to follow the
-    flag name, and will raise an error if the value following is NOT an
-    integer.
-
-    Note: Careful that another parameter will not have the same name as the
-    flag you're looking for.
+    Return the int value for the given option, or default_value if 
+    option is missing.
 
   <Arguments>
-    args_array:     Complete array of arguments.
-    flag_name:      Flag we're looking for. Can have any naming format,
-                      e.g.: --local or /local or -local
-    default_value:  'False' if not specified. The default value.
+    args_list: List of arguments
+    option: The option we are looking for
+    default_value: The default value, initialized to False
     
   <Exceptions>
-    Exception is raised if there is an array out of bounds error, or the value
-    following directly after the flag is not an integer.
+    ArgparseError if the option value is missing after the option name, 
+    or cannot be parsed as an int.
 
   <Side Effects>
     None.
 
   <Returns>
-    If the flag exists, then the value directly following it will be returned
-    as a string (but guarantee to be able to cast to integer type). If the
-    value does not exist, then the function returns default_value.
+    If the option exists, return the value directly following it, 
+    as an int. Otherwise, return the default_value.
 
   <Sample Usage>
-    temp_port = scan_port(callargs, '/port'):
+    temp_port = argparse_scan_port(callargs, 'port'):
     if temp_port: # we have a port!
       port = temp_port
       ... your code ...
   """
-  # scan through all the arguments
-  for i in range(0, len(args_array)):
-    # case insensitive compare the flag to what we're looking
-    if args_array[i].lower() == flag_name:
-      # the try loop checks that it's capable of being cast to an int
-      try:
-        return_value = int(callargs[i + 1])
-      except IndexError, e:
-        # Expected value, but there are no more values left in args_array
-        log(e,'\n')
-        raise Exception("Expected value for argument '"+callargs[i]+"'")
-      except Exception, e:
-        # If we get here, it typically means the value is not castable to int
-        # as we expect, and so we error out.
-        log(e,'\n')
-        raise Exception("Invalid value ("+str(callargs[i + 1])+") specified"+ \
-          " for parameter "+flag_name)
-      else:
-        # return callargs[X] and not return_value because we say we return a
-        # string from this function.
-        return callargs[i + 1]
-  return default_value
+  # int options look like str options (``--OPTION VALUE''). 
+  # We'll cast VALUE to int later.
+  possible_result = argparse_scan_str(args_list, option, default_value=None)
+
+  if possible_result is None:
+    return default_value
+
+  # possible_result maybe contains an int now
+  try:
+    return int(possible_result)
+  except ValueError:
+    # Couldn't parse to int.
+    raise ArgparseError("Option '" + option + "' was followed by '" + 
+        str(possible_result) + "' which did not parse as an int.")
 

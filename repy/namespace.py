@@ -105,6 +105,7 @@
       it should result in termination of the running program (see the except blocks
       in NamespaceAPIFunctionWrapper.wrapped_function).
 """
+
 import types
 
 # To check if objects are thread.LockType objects.
@@ -114,13 +115,11 @@ import emulcomm
 import emulfile
 import emulmisc
 import emultimer
-import safebinary
 import nonportable
 import safe # Used to get SafeDict
 import tracebackrepy
 import virtual_namespace
 
-#from naclimc import * 
 from exception_hierarchy import *
 
 # Save a copy of a few functions not available at runtime.
@@ -183,8 +182,6 @@ tcp_socket_object_wrapped_functions_dict = {}
 tcp_server_socket_object_wrapped_functions_dict = {}
 udp_server_socket_object_wrapped_functions_dict = {}
 virtual_namespace_object_wrapped_functions_dict = {}
-binary_object_wrapped_functions_dict = {}
-
 
 def _prepare_wrapped_functions_for_object_wrappers():
   """
@@ -198,10 +195,7 @@ def _prepare_wrapped_functions_for_object_wrappers():
                     (TCP_SOCKET_OBJECT_WRAPPER_INFO, tcp_socket_object_wrapped_functions_dict),
                     (TCP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, tcp_server_socket_object_wrapped_functions_dict),
                     (UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, udp_server_socket_object_wrapped_functions_dict),
-                    (VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO, virtual_namespace_object_wrapped_functions_dict),
-                    (BINARY_OBJECT_WRAPPER_INFO, binary_object_wrapped_functions_dict),
-                    
-]
+                    (VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO, virtual_namespace_object_wrapped_functions_dict)]
 
   for description_dict, wrapped_func_dict in objects_tuples:
     for function_name in description_dict:
@@ -333,20 +327,6 @@ class Int(ValueProcessor):
       raise RepyArgumentError("Min value is %s." % self.min)
 
 
-
-
-
-class Imc(ObjectProcessor):
-  """Allows NaclIMC descriptors."""
-
-  def check(self, val):
-    # Help! I can't get this to check for Imc Sockets
-    if not _is_in(type(val), [naclimc.NaclDesc]):
-      raise RepyArgumentError("Invalid type %s" % type(val))
-
-
-
-
 class NoneOrInt(ValueProcessor):
   """Allows a NoneType or an int. This doesn't enforce min limit on the
   ints."""
@@ -367,6 +347,16 @@ class StrOrInt(ValueProcessor):
   def check(self, val):
     if not _is_in(type(val), [int, long, str, unicode]):
       raise RepyArgumentError("Invalid type %s" % type(val))
+
+
+
+
+class StrOrNone(ValueProcessor):
+  """Allows str, unicode, or None."""
+
+  def check(self, val):
+    if val is not None:
+      Str().check(val)
 
 
 
@@ -413,6 +403,28 @@ class ListOfStr(ValueProcessor):
 
     for item in val:
       Str().check(item)
+
+
+
+
+
+class List(ValueProcessor):
+  """Allows lists. The list may contain anything."""
+  
+  def check(self, val):
+    if not type(val) is list:
+      raise RepyArgumentError("Invalid type %s" % type(val))
+
+
+
+
+
+class Dict(ValueProcessor):
+  """Allows dictionaries. The dictionaries may contain anything."""
+
+  def check(self, val):
+    if not type(val) is dict:
+      raise RepyArgumentError("Invalid type %s" % type(val))
 
 
 
@@ -542,21 +554,6 @@ class TCPSocket(ObjectProcessor):
 
 
 
-class NaClRuntime(ObjectProcessor):
-  """Allows TCPSocket objects."""
-
-  def check(self, val):
-    if val == None:
-      return
-    if not isinstance(val, safebinary.NaClRuntime):
-      raise RepyArgumentError("Invalid type %s" % type(val))
-
-
-  def wrap(self, val):
-    return NamespaceObjectWrapper("binary", val, binary_object_wrapped_functions_dict)
-
-
-
 
 class VirtualNamespace(ObjectProcessor):
   """Allows VirtualNamespace objects."""
@@ -575,7 +572,7 @@ class VirtualNamespace(ObjectProcessor):
 
 
 
-class SafeDict(ObjectProcessor):
+class SafeDict(ValueProcessor):
   """Allows SafeDict objects."""
 
   # TODO: provide a copy function that won't actually copy so that
@@ -588,14 +585,14 @@ class SafeDict(ObjectProcessor):
 
 
 
-class DictOrSafeDict(ObjectProcessor):
+class DictOrSafeDict(ValueProcessor):
   """Allows SafeDict objects or regular dict objects."""
 
   # TODO: provide a copy function that won't actually copy so that
   # references are maintained.
   def check(self, val):
     if type(val) is not dict:
-      SafeDict(val).check()
+      SafeDict().check(val)
 
 
 
@@ -672,10 +669,6 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emultimer.sleep,
        'args' : [Float()],
        'return' : None},
-  'safelyexecutenativecode' :
-      {'func' : safebinary.safelyexecutenativecode,
-       'args' : [Str(),ListOfStr()],
-       'return' : NaClRuntime()},
   'log' :
       {'func' : emulmisc.log,
        'args' : [NonCopiedVarArgs()],
@@ -691,7 +684,11 @@ USERCONTEXT_WRAPPER_INFO = {
   'getresources' :
       {'func' : nonportable.get_resources,
        'args' : [],
-       'return' : (DictOfStrOrInt(), DictOfStrOrInt())},
+       'return' : (Dict(), Dict(), List())},
+  'getlasterror' :
+      {'func' : emulmisc.getlasterror,
+       'args' : [],
+       'return' : StrOrNone()},
 }
 
 FILE_OBJECT_WRAPPER_INFO = {
@@ -712,7 +709,7 @@ FILE_OBJECT_WRAPPER_INFO = {
 TCP_SOCKET_OBJECT_WRAPPER_INFO = {
   'close' :
       {'func' : emulcomm.EmulatedSocket.close,
-       'args' : [Bool()],
+       'args' : [],
        'return' : Bool()},
   'recv' :
       {'func' : emulcomm.EmulatedSocket.recv,
@@ -721,7 +718,7 @@ TCP_SOCKET_OBJECT_WRAPPER_INFO = {
   'send' :
       {'func' : emulcomm.EmulatedSocket.send,
        'args' : [Str()],
-       'return' : Int(min=1)},
+       'return' : Int(min=0)},
 }
 
 # TODO: Figure out which real object should be wrapped. It doesn't appear
@@ -745,7 +742,7 @@ UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO = {
   'getmessage' :
       {'func' : emulcomm.UDPServerSocket.getmessage,
        'args' : [],
-       'return' : (Str(), Int(), Str())}
+       'return' : (Str(), Int(), Str())},
 }
 
 LOCK_OBJECT_WRAPPER_INFO = {
@@ -771,34 +768,6 @@ VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO = {
       {'func' : 'evaluate',
        'args' : [DictOrSafeDict()],
        'return' : SafeDict()},
-}
-
-BINARY_OBJECT_WRAPPER_INFO = {
-  'isalive' :
-      {'func' : 'isalive',
-       'args' : [],
-       'return' : Bool()},
-
-  'send' :
-      {'func' : 'send',
-       'args' : [Str(),Str()],
-       'return' : Int()},
-  
-  'recv' :
-      {'func' : 'recv',
-       'args' : [Int()],
-       'return' :Str()},
-  
-
-  
-  # This does not work? Why not?
-  # '__str__' :
-  #     {'func' : '__str__',
-  #      'args' : [],
-  #      'return' : Str()},
-  
-
-  
 }
 
 
@@ -991,10 +960,6 @@ class NamespaceObjectWrapper(object):
 
       return __do_func_call
 
-    #TODO: temperory hack
-    elif name == 'fobj':
-      return self._wrapped__object.fobj
-    
     else:
       # This is the standard way of handling "it doesn't exist as far as we
       # are concerned" in __getattr__() methods.
@@ -1161,11 +1126,12 @@ class NamespaceAPIFunctionWrapper(object):
 
 
   def _process_retval(self, retval):
+
     try:
       # Allow the return value to be a tuple of processors.
       if type(retval) is tuple:
         if len(retval) != len(self.__return):
-          raise InternalRepyError("Returned tuple of wrong size: %s" % retval)
+          raise InternalRepyError("Returned tuple of wrong size: %s" % str(retval))
         tempretval = []
         for index in range(len(retval)):
           tempitem = self._process_retval_helper(self.__return[index], retval[index])
@@ -1178,6 +1144,7 @@ class NamespaceAPIFunctionWrapper(object):
       raise InternalRepyError(
           "Function '" + self.__func_name + "' returned with unallowed return type " +
           str(type(retval)) + " : " + str(e))
+
 
     return tempretval
 
@@ -1220,8 +1187,9 @@ class NamespaceAPIFunctionWrapper(object):
 
       if len(args_to_check) != len(self.__args):
         if not self.__args or not isinstance(self.__args[-1:][0], NonCopiedVarArgs):
-          raise RepyArgumentError("Wrong number of arguments (%s) when calling %s." %
-                                  (len(args_to_check), self.__func_name))
+          raise RepyArgumentError("Function '" + self.__func_name + 
+              "' takes " + str(len(self.__args)) + " arguments, not " + 
+              str(len(args_to_check)) + " as you provided.")
 
       args_copy = self._process_args(args_to_check)
 
@@ -1249,7 +1217,7 @@ class NamespaceAPIFunctionWrapper(object):
           args_to_use = [args[0]] + args_copy
         else:
           args_to_use = args_copy
-
+      
       retval = func_to_call(*args_to_use)
 
       return self._process_retval(retval)
@@ -1261,6 +1229,17 @@ class NamespaceAPIFunctionWrapper(object):
       raise
 
     except:
-      # Any other exception is unexpected and thus is a programming error on
+      # Code evaluated inside a `VirtualNamespace` may raise arbitrary
+      # errors, including plain Python exceptions. Reraise these errors
+      # so that the calling user code sees them.
+      # (Otherwise, things like `NameError`s in a virtual namespace
+      # crash the sandbox despite being wrapped in `try`/`except`,
+      # see SeattleTestbed/repy_v2#132.)
+      if type(args[0]) == virtual_namespace.VirtualNamespace:
+        raise
+
+      # Non-`RepyException`s outside of `VirtualNamespace` methods
+      # are unexpected and indicative of a programming error on
       # our side, so we terminate.
       _handle_internalerror("Unexpected exception from within Repy API", 843)
+

@@ -1,10 +1,13 @@
+#!python
 """
 
 <Author>
   Eric Kimbrel kimbrl@cs.washington.edu
+  Monzur Muhammad
 
 <Start Date>
   Jan 29 2010
+  Last Edited: 2/7/2014
 
 <Purpose>
   Provied 2 objects to make more efficent use of resouces when using advertising
@@ -35,8 +38,8 @@
 """
 
 
-
-dy_import_module_symbols('advertise')
+dy_import_module_symbols('time.repy')
+dy_import_module_symbols('advertise.repy')
 
 
 
@@ -54,7 +57,7 @@ class LookupCache():
     self.refresh_time = refresh_time
 
   
-  def lookup(self,key, maxvals=100, lookuptype=['central','opendht','DOR'], \
+  def lookup(self,key, maxvals=100, lookuptype=['central','central_v2','UDP'], \
                             concurrentevents=2, graceperiod=10, timeout=60):    
     """
     <Purpose>
@@ -69,8 +72,9 @@ class LookupCache():
     <Returns>
       a list of unique values advertised at the key
 
-    <Excpetions>
+    <Exceptions>
       see advertise_lookup from advertise.repy
+      These will result in the values not being changed
     """ 
     
     if key not in self.cache:
@@ -78,34 +82,99 @@ class LookupCache():
       results = advertise_lookup(key, maxvals, lookuptype,concurrentevents,
                               graceperiod, timeout)
       
-      if len(results) > 0 and results[0] != '':
+      if len(results) > 0:
         # don't cache results of a failed lookup
-        self.cache[key] = {'results':results,'time':getruntime()}
+        self.cache[key] = {'results':results[:],'time':getruntime()}
 
-      return results
-
+      return self.sort_advertisement(results)
     else:
       # if the key is in the cache see how old it is
       time_expired = getruntime() - self.cache[key]['time']
       if time_expired > self.refresh_time or time_expired < 0:
-        # refresh the cache value if its old or the time doesnt make since
+        # refresh the cache value if it is old or the time does not make sense
         results = advertise_lookup(key, maxvals, lookuptype,concurrentevents,
                                             graceperiod, timeout)
-        if len(results) > 0 and results[0] != '':
+        if len(results) > 0:
           # don't cache failed results
-          self.cache[key]['results'] = results
+          self.cache[key]['results'] = results[:]
           self.cache[key]['time'] = getruntime()
 
-        return results      
+	# Sort the results before returning.
+        return self.sort_advertisement(results)      
 
 
       else:
         # return the cache results without a lookup
-        return self.cache[key]['results']
+	return self.sort_advertisement(self.cache[key]['results'][:])
+    
 
 
 
+  def sort_advertisement(self, lookup_list):
+    """
+    <Purpose>
+      The purpose of this function is to sort the advertisement 
+      lookup according to the timestamp. If there is no timestamp
+      than, the original order will be returned.
 
+    <Arguments>
+      The list of lookup results that we are trying to sort.
+
+    <Exceptions>
+      None
+
+    <Return>
+      A sorted list according to the timestamp.
+    """
+
+    # Used to hold items that do not have timestamp.
+    legacy_list = []
+    return_result = []
+    temp_list = []
+
+    # Go through the list and extract the timestamp and
+    # value from each item.
+    for cur_lookup in lookup_list:
+      try:
+        time_str, value = cur_lookup.split(':', 1)
+        time_float = float(time_str)
+      except ValueError:
+        # If we get a value error when trying to split
+        # than the item is a legacy lookup item.
+        legacy_list.append(cur_lookup)
+        continue
+    
+      # If we are able to properly split the timestamp, we
+      # add the tuple of the timestamp and value to a temporary
+      # list.
+      temp_list.append((time_float, value))
+    
+    
+    # Now we are going to sort the temporary list according to 
+    # the timestamp.
+    temp_list.sort()
+
+    # Now that we have sorted the list, we are going to create
+    # the return result list, starting with the legacy items.
+    return_result.extend(legacy_list)
+
+    for timestamp, sorted_item in temp_list:
+      # Make sure the list is unique. When we add in items
+      # We remove any old copies of the item as if we see
+      # the item later on in the list, we want to make sure
+      # that it is lower down in the list. Last advertised
+      # should be last in list.
+      if sorted_item in return_result:
+        return_result.remove(sorted_item)
+      return_result.append(sorted_item)
+
+
+
+    # Return a list that has unique elements.
+    return return_result
+
+           
+                
 
 
 class AdvertisePipe():
@@ -117,6 +186,18 @@ class AdvertisePipe():
   state_lock = createlock()
   ttlv = 240
   redo = 120
+  advertise_thread_count = 0
+
+  def __init__(self):
+    # Setup ntp time.
+    for portnum in range(63100,63180):
+      try:
+        time_updatetime(portnum)
+        break
+      except:
+        continue
+
+
 
 
   def _advertise_thread(self):
@@ -146,8 +227,13 @@ class AdvertisePipe():
       # now wait until redo time has expired
       # if run has gone to false we want to stop sleeping and kill the thread
       while getruntime() - start < self.redo and self.state['run']:
-        sleep(10)
-          
+        sleep(1)
+       
+      # When we are about to exit, lower the thread count.
+      self.state_lock.acquire(True)
+      self.advertise_thread_count -= 1
+      self.state_lock.release()
+
 
 
   def add(self,key,value):
@@ -165,17 +251,23 @@ class AdvertisePipe():
       Possible exception from settimer if the advertise thread 
       can not be started
     """ 
-    
+    # Record the time the user added the key:value
+    # and add it to the beginning of the value.
+    current_timestamp = str(time_gettime())
+    timed_value = str(current_timestamp) + ':' + value
+
     # create a unique handle
     handle = object() 
-    self.advertise_dict[handle]=(key,value)
+    self.advertise_dict[handle]=(key,timed_value)
+
+    # Do an initial advertisement.
+    advertise_announce(key,timed_value,self.ttlv)
     
     # if the advertise thread is not running start it
-    self.state_lock.acquire(True)
-    if not self.state['run']:
-      self.state['run'] = True
-      createthread(self._advertise_thread)
-    self.state_lock.release()    
+    # MMM: Could there be any potential bug with race
+    # condition? I am using locks for both start and
+    # stop methods.
+    self.start()
     
     # return the handle
     return handle
@@ -206,4 +298,28 @@ class AdvertisePipe():
        self.state['run'] = False
      self.state_lock.release()
     
-  
+
+
+  def start(self):
+    # Start up the advertisement thread.
+    self.state_lock.acquire(True)
+    if not self.state['run']:
+      self.state['run'] = True
+      
+      # Only start up a new thread if there aren't any
+      # running at the moment.
+      if self.advertise_thread_count == 0:
+        createthread(self._advertise_thread)
+
+    self.state_lock.release()
+
+
+
+  def stop(self):
+    # Stops all advertisement and ends the running
+    # thread from advertising.
+    self.state_lock.acquire(True)
+    self.state['run'] = False
+    self.state_lock.release()
+
+

@@ -1,6 +1,6 @@
 """
 <Program Name>
-  random.repy
+  rsa.repy
 
 <Started>
   2008-04-23
@@ -22,8 +22,7 @@
     
 """
 
-include random.repy
-include pycryptorsa.repy
+pycryptorsa = dy_import_module('pycryptorsa.repy')
     
      
         
@@ -51,7 +50,7 @@ def rsa_gen_pubpriv_keys(bitsize):
     rsa_validate can use to preform their tasts.
   """
 
-  rsa_implementation = RSA_RSAImplementation()
+  rsa_implementation = pycryptorsa.RSA_RSAImplementation()
   
   # The key returned is of type RSA_RSAobj which is derived 
   # from pubkey_pubkey, and wraps a _slowmath_RSAKey object
@@ -127,7 +126,7 @@ def _rsa_keydict_to_keyobj(publickey = None, privatekey = None):
   if 'e' in publickey: 
     e = long(publickey['e'])
   
-  rsa_implementation = RSA_RSAImplementation()
+  rsa_implementation = pycryptorsa.RSA_RSAImplementation()
   rsa_key = rsa_implementation.construct((n,e,d,p,q))
   
   return rsa_key
@@ -327,9 +326,9 @@ def _rsa_chopstring(message, key, function):
     
       maxstring = chr(1) + chr(255)*126
       minstring = chr(1) + chr(0)
-      number_bytes_to_long(maxstring) 
+      pycryptorsa.number_bytes_to_long(maxstring) 
       => 2**1009 - 1
-      number_bytes_to_long(minstring)
+      pycryptorsa.number_bytes_to_long(minstring)
       => 256
     
     Given the large exponent used by default (65537)
@@ -469,7 +468,7 @@ def rsa_is_valid_privatekey(key):
     if type(key[item]) is not int and type(key[item]) is not long:
       return False
 
-  if number_isPrime(key['p']) and number_isPrime(key['q']):
+  if pycryptorsa.number_isPrime(key['p']) and pycryptorsa.number_isPrime(key['q']):
     # Seems valid...
     return True
   else:

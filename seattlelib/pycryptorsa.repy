@@ -24,7 +24,7 @@
 
 """
 
-include random.repy
+random = dy_import_module('random.repy')
 
 #
 #   pubkey.py : Internal functions for public key operations
@@ -771,7 +771,7 @@ def number_getPrime(N, randfunc=None):
     # includes a function to get a random N bit number
     # that can be used instead.
     #number = random_randint(2**(N-1), 2**N - 1) | 1
-    number = random_nbit_int(N) | 1
+    number = random.random_nbit_int(N) | 1
     
     number |= 2L ** (N-1) # ensure high bit is set 
     

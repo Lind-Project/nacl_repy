@@ -30,13 +30,17 @@
 """
 
 
-include time_interface.repy
+time_interface = dy_import_module('time_interface.repy')
 
 # Use for random sampling...
-include random.repy
+random = dy_import_module('random.repy')
 
 
 
+timeservers = ["time-a.nist.gov", "time-b.nist.gov", 
+    "time-a.timefreq.bldrdoc.gov", "time-b.timefreq.bldrdoc.gov", 
+    "time-c.timefreq.bldrdoc.gov", "utcnist.colorado.edu", "time.nist.gov", 
+    "nist.netservicesgroup.com"]
 
 
 
@@ -56,49 +60,54 @@ def ntp_time_updatetime(localport):
     respond.
 
    <Side Effects>
-    time_settime(currenttime) is called as the subprocess of a subprocess, which
+    time_interface.time_settime(currenttime) is called as the subprocess of a subprocess, which
     adjusts the current time.
 
    <Returns>
     None.
   """
 
-  try:
-    ip = getmyip()
-  except Exception, e:
-    raise TimeError, str(e)
+  ip = getmyip()
 
-  timeservers = ["time-a.nist.gov", "time-b.nist.gov", "time-a.timefreq.bldrdoc.gov", "time-b.timefreq.bldrdoc.gov", "time-c.timefreq.bldrdoc.gov", "utcnist.colorado.edu", "time.nist.gov", "time-nw.nist.gov", "nist1.symmetricom.com", "nist1-dc.WiTime.net", "nist1-ny.WiTime.net", "nist1-sj.WiTime.net", "nist1.aol-ca.symmetricom.com", "nist1.aol-va.symmetricom.com", "nist1.columbiacountyga.gov", "nist.expertsmi.com", "nist.netservicesgroup.com"]
+  socketobj = listenformessage(ip, localport)
 
-  listenhandle = recvmess(ip,localport, _time_decode_NTP_packet)
-  mycontext['ntp_time_got_time'] = False
   # always close the handle before returning...
   try: 
-    # try five random servers times...
-    for servername in random_sample(timeservers,5):
+    # try five random servers, and send requests to all of the servers and 
+    # then wait for a response from any server for atmost 5 seconds. This way
+    # the total wait time is reduced to 5 seconds, since any one of the server's
+    # is guaranteed to give a response.
+    for servername in random.random_sample(timeservers,5):
 
       # this sends a request, version 3 in "client mode"
       ntp_request_string = chr(27)+chr(0)*47
-      try: 
-        sendmess(servername,123, ntp_request_string, ip, localport) # 123 is the NTP port
-      except Exception:
-        # most likely a lookup error...
-        continue
+      try:
+        sendmessage(gethostbyname(servername), 123, ntp_request_string,\
+          ip, localport) # 123 is the NTP port
+      except NetworkAddressError:
+        # gethostbyname couldn't resolve servername, try with next name
+        pass
 
-      # wait for 5 seconds for a response before retrying
-      for junkiterations in range(10):
-        sleep(.5)
+    # Wait for 5 seconds to get a response from any of the 5 servers that was
+    # requested above.
+    starttime = getruntime()
+    responsetime = 5.0
 
-        if mycontext['ntp_time_got_time']:
-          # If we've had a response, we're done!
-          return
-    
+    while (getruntime() - starttime) < responsetime:
+      try:
+        (remoteip, remoteport, mess) = socketobj.getmessage()
+      except SocketWouldBlockError:
+        sleep(0.05) # Retry amount time...
+      else:
+        # XXX Check for matching address/port, #1268
+        time_interface.time_settime(_time_convert_timestamp_to_float(mess[40:48]))
+        return
     
   finally:
-    stopcomm(listenhandle)
+    socketobj.close()
 
   # Failure, tried servers without luck...
-  raise TimeError, "Time Server update failed.  Perhaps retry later..."
+  raise time_interface.TimeError, "Time Server update failed.  Perhaps retry later..."
 
 
 
@@ -112,11 +121,5 @@ def _time_convert_timestamp_to_float(timestamp):
   return integerpart + floatpart / float(2**32)
 
 
-def _time_decode_NTP_packet(ip, port, mess, ch):
-  time_settime(_time_convert_timestamp_to_float(mess[40:48]))
-  mycontext['ntp_time_got_time'] = True
-  stopcomm(ch)
-
-
 #register the update method
-time_register_method('ntp',ntp_time_updatetime)
+time_interface.time_register_method('ntp',ntp_time_updatetime)

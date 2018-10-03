@@ -22,9 +22,9 @@ socket.setattr = setattr
 
 # needed to set threads for recvmess and waitforconn
 import threading
+# threading in python2.7 uses hasattr. It needs to be made available.
+threading.hasattr = hasattr
 
-# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
-threading.hasattr = hasattr 
 
 # So I can exit all threads when an error occurs or do select
 import harshexit
@@ -36,6 +36,7 @@ import nonportable
 import tracebackrepy
 
 # accounting
+# id(sock) will be used to register and unregister sockets with nanny 
 import nanny
 
 # give me uniqueIDs for the comminfo table
@@ -55,51 +56,16 @@ from exception_hierarchy import *
 
 ###### Module Data
 
-# This is a library of all currently bound sockets. Since multiple 
+# This is a dictionary of all currently bound sockets. Since multiple 
 # UDP bindings on a single port is hairy, we store bound sockets 
 # here, and use them for both sending and receiving if they are 
 # available. This feels slightly byzantine, but it allows us to 
-# avoid modifying the repy API.
+# avoid modifying the repy API. See also SeattleTestbed/repy_v2#9.
 #
 # Format of entries is as follows:
 # Key - 3-tuple of ("UDP", IP, Port)
 # Val - Bound socket object
-_BOUND_SOCKETS = {} # Ticket = 1015 (Resolved)
-
-# This dictionary holds all of the open sockets, and
-# is used to catalog all the used network tuples.
-#
-# The key to each entry is an identity tuple:
-# (Type, Local IP, Local Port, Remote IP, Remote Port)
-# Type is a string, either "TCP" or "UDP"
-# Remote IP and Remote Port are None for listening socket
-# This identity tuple is what should be used to register the
-# socket with nanny.
-#
-# The value associated with each key is a tuple:
-# (lock, socket)
-# The lock object is used to serialize access to the socket,
-# and should be acquired before doing anything else.
-# The socket is an actual Python socket object.
-# 
-OPEN_SOCKET_INFO = {}
-
-# This set holds all of the sockets which
-# are pending to open.
-#
-# Each entry is like the keys in OPEN_SOCKET_INFO,
-# acting like an identity tuple which uniquely identifies
-# each socket.
-#
-# Operations should check for another pending operation
-# before continuing, and removing their entry when finished.
-#
-# Access to the set should be serialized via the
-# PENDING_SOCKETS_LOCK.
-#
-PENDING_SOCKETS = set([])
-PENDING_SOCKETS_LOCK = threading.Lock()
-
+_BOUND_SOCKETS = {}
 
 # If we have a preference for an IP/Interface this flag is set to True
 user_ip_interface_preferences = False
@@ -117,6 +83,26 @@ user_specified_ip_interface_list = []
 # if it is not specified explicitly by the user
 allowediplist = []
 cachelock = threading.Lock()  # This allows only a single simultaneous cache update
+
+# Trying to send a UDP datagram of more than MAX_ALLOWABLE_DGRAM_SIZE
+# bytes will generate uncatchable exceptions on Mac OS X, see
+# SeattleTestbed/repy_v2#113.
+#
+# On most platforms, UDP over IPv4 can possibly handle: 65,507 bytes =
+# 65,535 bytes (per its 16 bit "length" field)
+#    - 8 bytes for the UDP header
+#    -20 bytes for the IPv4 header.
+#
+# The limit on OS X is instead 9216, which you can see by executing
+#    `sysctl net.inet.udp.maxdgram`
+# on an OS X system. Because we value consistency across platforms
+# and think that behavior should be indistinguishable across platforms,
+# we apply this limitation to all platforms, so 9217 and above should
+# fail via RepyArgumentError from sendmessage.
+#
+# IPv6 jumbograms allow for UDP datagrams larger than that, but we ignore
+# this for now. For reference, see Section 4 of RFC 2675.
+MAX_ALLOWABLE_DGRAM_SIZE = 9216
 
 
 ##### Internal Functions
@@ -363,6 +349,45 @@ def _is_conn_refused_exception(exceptionobj):
   return (errname in refused_errors)
 
 
+
+def _is_conn_aborted_exception(exceptionobj):
+  """
+    <Purpose>
+    Determines if a given error number indicates that a
+    connection abort on the socket occurred.
+
+    <Arguments>
+    An exception object from a network call.
+
+    <Returns>
+    True if connection aborted, false otherwise
+    """
+  # Get the type
+  exception_type = type(exceptionobj)
+
+  # Only continue if the type is socket.error
+  if exception_type is not socket.error:
+    return False
+
+  # Get the error number
+  errnum = exceptionobj[0]
+
+
+  # Store a list of error messages meaning we are connected
+  aborted_errors = ["ECONNABORTED", "WSAECONNABORTED"]
+
+  # Convert the errno to and error string name
+  try:
+    errname = errno.errorcode[errnum]
+  except Exception,e:
+    # The error is unknown for some reason...
+    errname = None
+
+  # Return if the error name is in our white list
+  return (errname in aborted_errors)
+
+
+
 def _is_network_down_exception(exceptionobj):
   """
   <Purpose>
@@ -385,8 +410,11 @@ def _is_network_down_exception(exceptionobj):
   # Get the error number
   errnum = exceptionobj[0]
 
-  # Store a list of error messages meaning we are disconnected
-  net_down_errors = ["ENETDOWN","ENETUNREACH","WSAENETDOWN", "WSAENETUNREACH"]
+  # These error messages mean we are disconnected.
+  # (The "WSA" ones are the Windows Sockets API's renditions of 
+  # the Linux/BSD errno.h preprocessor macros).
+  net_down_errors = ["ENETDOWN", "EHOSTUNREACH", "ENETUNREACH", 
+      "WSAENETDOWN", "WSAEHOSTUNREACH", "WSAENETUNREACH"] 
 
   # Convert the errno to and error string name
   try:
@@ -567,13 +595,12 @@ def _is_loopback_ipaddr(host):
   if len(host.split('.')) != 4:
     return False
 
-  for number in host.split('.'):
-    for char in number:
-      if char not in '0123456789':
-        return False
-
+  octets = host.split('.')
+  if len(octets) != 4:
+    return False
+  for octet in octets:
     try:
-      if int(number) > 255 or int(number) < 0:
+      if int(octet) > 255 or int(octet) < 0:
         return False
     except ValueError:
       return False
@@ -650,7 +677,8 @@ def gethostbyname(name):
 def getmyip():
   """
    <Purpose>
-      Provides the external IP of this computer.   Does some clever trickery.
+      Provides the IP of this computer on its public facing interface.  
+      Does some clever trickery. 
 
    <Arguments>
       None
@@ -737,7 +765,7 @@ def _get_localIP_to_remoteIP(connection_type, external_ip, external_port=80):
   sockobj = socket.socket(socket.AF_INET, connection_type)
 
   # Make sure that the socket obj doesn't hang forever in 
-  # case connect() is blocking. Fix to #1003
+  # case connect() is blocking. Fix to SeattleTestbed/repy_v2#7.
   sockobj.settimeout(1.0)
 
   try:
@@ -764,7 +792,7 @@ def _get_localIP_to_remoteIP(connection_type, external_ip, external_port=80):
 RETRY_INTERVAL = 0.2 # In seconds
 
 
-def _cleanup_socket(identity, partial=False):
+def _cleanup_socket(self):
   """
   <Purpose>
     Internal cleanup method for open sockets. The socket
@@ -772,11 +800,9 @@ def _cleanup_socket(identity, partial=False):
     calling.
 
   <Arguments>
-    identity: An identity tuple for the socket to cleanup
-
+    None
   <Side Effects>
-    The entry in OPEN_SOCKET_INFO will be removed. The socket will
-    be closed, and a insocket/outsocket handle will be released.
+    The insocket/outsocket handle will be released.
 
   <Exceptions>
     InternalRepyError is raised if the socket lock is not held
@@ -785,31 +811,17 @@ def _cleanup_socket(identity, partial=False):
   <Returns>
     None
   """
-  # Get the socket lock
-  #print 'in _cleanup_socket: partial = '+str(partial)
-  try:
-    socket_lock = OPEN_SOCKET_INFO[identity][0]
-  except KeyError:
-    # Socket is already closed, ignore
-    return
-
+  sock = self.socketobj
+  socket_lock = self.sock_lock
   # Make sure the lock is already acquired
-  acquired = socket_lock.acquire(False)
-  if acquired:
+  # BUG: We don't know which thread exactly acquired the lock.
+  if socket_lock.acquire(False):
     socket_lock.release()
     raise InternalRepyError("Socket lock should be acquired before calling _cleanup_socket!")
 
-  try:
-    # De-compose and get the socket
-    sock = OPEN_SOCKET_INFO[identity][1]
-  except KeyError:
+  if (sock == None):  
     # Already cleaned up
     return
-
-  type, localip, localport, remoteip, remoteport = identity
-  listening_sock = remoteip is None # Check if this is a listening sock
-  is_tcp = type == "TCP" # Check if it is TCP
-
   # Shutdown the socket for writing prior to close
   # to unblock any threads that are writing
   try:
@@ -817,33 +829,16 @@ def _cleanup_socket(identity, partial=False):
   except:
     pass
 
-  if(not partial):
-    # Close the socket
-    try:
-      sock.close()
-    except:
-      pass
-  
-    # Re-store resources
-    if listening_sock:
-      nanny.tattle_remove_item('insockets', identity)
-  
-      # Loop until the socket no longer exists
-      # BUG: There exists a potential race condition here. The problem is that
-      # the socket may be cleaned up and then before we are able to check for it again
-      # another process binds to the ip/port we are checking. This would cause us to detect
-      # the socket from the other process and we would block indefinately while that socket
-      # is open.
-      while nonportable.os_api.exists_listening_network_socket(localip, localport, is_tcp):
-        time.sleep(RETRY_INTERVAL)
-  
-    else:
-      nanny.tattle_remove_item('outsockets', identity)
-  
-    # Cleanup the socket
-    #print 'clean up '+str(identity)
-    del OPEN_SOCKET_INFO[identity]
-
+  # Close the socket
+  try:
+    sock.close()
+  except:
+    pass
+  # socket id is used to unregister socket with nanny
+  sockid = id(sock)
+  # Re-store resources
+  nanny.tattle_remove_item('insockets', sockid)
+  nanny.tattle_remove_item('outsockets', sockid)
 
 
 ####################### Message sending #############################
@@ -858,12 +853,12 @@ def sendmessage(destip, destport, message, localip, localport):
 
    <Arguments>
       destip:
-         The host to send a message to
+         The IP to send the message to
       destport:
          The port to send the message to
       message:
          The message to send
-      localhost:
+      localip:
          The local IP to send the message from 
       localport:
          The local port to send the message from
@@ -875,8 +870,8 @@ def sendmessage(destip, destport, message, localip, localport):
       ResourceForbiddenError (descends ResourceException?) when the local
         port isn't allowed
 
-      RepyArgumentError when the local IP and port aren't valid types
-        or values
+      RepyArgumentError when the IPs, ports, and message aren't valid types
+        or values, or the message is longer than 9,216 bytes
 
       AlreadyListeningError if there is an existing listening UDP socket
       on the same local IP and port.
@@ -933,32 +928,10 @@ def sendmessage(destip, destport, message, localip, localport):
   if not _is_allowed_localport("UDP", localport):
     raise ResourceForbiddenError("Provided localport is not allowed! Port: "+str(localport))
 
-
-  # Check if the tuple is in use
-  identity = ("UDP", localip, localport, destip, destport)
-  listen_identity = ("UDP", localip, localport, None, None)
-
-  # This check was necessary before _BOUND_SOCKETS was implemented.
-  """
-  if identity in OPEN_SOCKET_INFO:
-    raise DuplicateTupleError("The provided localip and localport are already in use!")
-  elif listen_identity in OPEN_SOCKET_INFO:
-    raise AlreadyListeningError("The provided localip and localport are being listened on!")
-  """
-
-  # Check if the tuple is pending
-  PENDING_SOCKETS_LOCK.acquire()
-  try:
-    if identity in PENDING_SOCKETS:
-      raise DuplicateTupleError("Concurrent sendmessage with the localip and localport in progress!")
-    elif listen_identity in PENDING_SOCKETS:
-      raise AlreadyListeningError("Concurrent listenformessage with the localip and localport in progress!")
-    else:
-      # No pending operation, add us to the pending list
-        PENDING_SOCKETS.add(identity)
-  finally:
-    PENDING_SOCKETS_LOCK.release()
-
+  # Fix SeattleTestbed/repy_v2#113, large UDP datagrams crash the sandbox
+  if len(message) > MAX_ALLOWABLE_DGRAM_SIZE:
+    raise RepyArgumentError("Provided message is too long for UDP datagrams on"
+      " some platforms. Maximum length is 9216 bytes.")
 
   # Wait for netsend
   if _is_loopback_ipaddr(destip):
@@ -967,58 +940,50 @@ def sendmessage(destip, destport, message, localip, localport):
     nanny.tattle_quantity('netsend', 0)
 
   try:
-    # Register this identity with nanny
-    nanny.tattle_add_item("outsockets", identity)
+    sock = None
 
+    if ("UDP", localip, localport) in _BOUND_SOCKETS:
+      sock = _BOUND_SOCKETS[("UDP", localip, localport)]       
+    else:
+      # Get the socket
+      sock = _get_udp_socket(localip, localport)      
+      # Register this socket with nanny
+      nanny.tattle_add_item("outsockets", id(sock))
+    # Send the message
+    bytessent = sock.sendto(message, (destip, destport))
+
+    # Account for the resources
+    if _is_loopback_ipaddr(destip):
+      nanny.tattle_quantity('loopsend', bytessent + 64)
+    else:
+      nanny.tattle_quantity('netsend', bytessent + 64)
+
+    return bytessent
+
+  except Exception, e:
+        
     try:
-      sock = None
+      # If we're borrowing the socket, closing is not appropriate.
+      if not ("UDP", localip, localport) in _BOUND_SOCKETS:
+        sock.close()
+    except:
+      pass
 
-      if ("UDP", localip, localport) in _BOUND_SOCKETS:
-        sock = _BOUND_SOCKETS[("UDP", localip, localport)]
-        nanny.tattle_remove_item("outsockets", identity) 
-      else:
-        # Get the socket
-        sock = _get_udp_socket(localip, localport)
-
-      # Send the message
-      bytessent = sock.sendto(message, (destip, destport))
-
-      # Account for the resources
-      if _is_loopback_ipaddr(destip):
-        nanny.tattle_quantity('loopsend', bytessent + 64)
-      else:
-        nanny.tattle_quantity('netsend', bytessent + 64)
-
-      return bytessent
-
-    except Exception, e:
-      nanny.tattle_remove_item("outsockets", identity)
-
-      # Try to close the socket
-      try:
-        # If we're borrowing the socket, closing is not appropriate.
-        if not ("UDP", localip, localport) in _BOUND_SOCKETS:
-          sock.close()
-      except:
-        pass
-
-      # Check if this an already in use error
-      if _is_addr_in_use_exception(e):
-        raise DuplicateTupleError("Provided Local IP and Local Port is already in use!")
+    # Check if address is already in use
+    if _is_addr_in_use_exception(e):
+      raise DuplicateTupleError("Provided Local IP and Local Port is already in use!")
  
-      # Check if this is a binding error
-      if _is_addr_unavailable_exception(e):
-        raise AddressBindingError("Cannot bind to the specified local ip, invalid!")
+    if _is_addr_unavailable_exception(e):
+      raise AddressBindingError("Cannot bind to the specified local ip, invalid!")
+    # Complain if the network is down for UDP, too
+    # (See SeattleTestbed/repy_v2#80 for details)
+    if _is_network_down_exception(e):
+      raise InternetConnectivityError("The network is down or cannot be reached from the local IP!")
 
-      # Unknown error...
-      else:
-        raise
+    # Unknown error...
+    else:
+      raise
 
-  finally:
-    # Remove us from the pending operations list
-    PENDING_SOCKETS_LOCK.acquire()
-    PENDING_SOCKETS.remove(identity)
-    PENDING_SOCKETS_LOCK.release()
 
 
 
@@ -1082,81 +1047,57 @@ def listenformessage(localip, localport):
 
   if not _is_allowed_localport("UDP", localport):
     raise ResourceForbiddenError("Provided localport is not allowed! Port: "+str(localport))
-
-
-  # Check if the tuple is in use
+  # This identity tuple will be used to check for an existing connection with same identity
   identity = ("UDP", localip, localport, None, None)
-  if identity in OPEN_SOCKET_INFO:
-    raise AlreadyListeningError("The provided localip and localport are already in use!")
 
-  # Check if the tuple is pending
-  PENDING_SOCKETS_LOCK.acquire()
   try:
-    if identity in PENDING_SOCKETS:
-      raise AlreadyListeningError("Concurrent listenformessage with the localip and localport in progress!")
+    # Check if localip is on loopback
+    on_loopback = _is_loopback_ipaddr(localip) 
+
+    # Get the socket
+    sock = _get_udp_socket(localip,localport)
+    
+    # Register this socket as an insocket
+    nanny.tattle_add_item('insockets',id(sock))
+
+    # Add the socket to _BOUND_SOCKETS so that we can 
+    # preserve send functionality on this port.
+    _BOUND_SOCKETS[("UDP", localip, localport)] = sock
+
+  except Exception, e:    
+
+    # Check if this an already in use error
+    if _is_addr_in_use_exception(e):  
+    # Call _conn_cleanup_check to determine if this is because
+    # the socket is being cleaned up or if it is actively being used or
+    # if there is an existing listening socket 
+    # This will always raise DuplicateTupleError or
+    # CleanupInProgressError or AlreadyListeningError  
+      _conn_cleanup_check(identity)
+
+    # Check if this is a binding error
+    if _is_addr_unavailable_exception(e):
+      raise AddressBindingError("Cannot bind to the specified local ip, invalid!")
+
+    # Unknown error...
     else:
-      # No pending operation, add us to the pending list
-      PENDING_SOCKETS.add(identity)
-  finally:
-    PENDING_SOCKETS_LOCK.release()
-
-
-
-  try:
-    # Register this identity as an insocket
-    nanny.tattle_add_item('insockets',identity)
-
-    try:
-      # Get the socket
-      sock = _get_udp_socket(localip,localport)
-
-      # Add the socket to _BOUND_SOCKETS so that we can 
-      # preserve send functionality on this port.
-      _BOUND_SOCKETS[("UDP", localip, localport)] = sock
-
-    except Exception, e:
-      nanny.tattle_remove_item('insockets',identity)
-
-      # Check if this an already in use error
-      if _is_addr_in_use_exception(e):
-        raise DuplicateTupleError("Provided Local IP and Local Port is already in use!")
+      raise
  
-      # Check if this is a binding error
-      if _is_addr_unavailable_exception(e):
-        raise AddressBindingError("Cannot bind to the specified local ip, invalid!")
+  # Create a UDPServerSocket
+  server_sock = UDPServerSocket(sock, on_loopback)
 
-      # Unknown error...
-      else:
-        raise
-
-    # Create entry with a lock and the socket object
-    OPEN_SOCKET_INFO[identity] = (threading.Lock(), sock)
-
-    # Create a UDPServerSocket
-    server_sock = UDPServerSocket(identity)
-
-    # Return the UDPServerSocket
-    return server_sock
-
-  finally:
-    # Remove us from the pending operations list
-    PENDING_SOCKETS_LOCK.acquire()
-    PENDING_SOCKETS.remove(identity)
-    PENDING_SOCKETS_LOCK.release()
-
-
-
+  # Return the UDPServerSocket
+  return server_sock
+  
 
 
 ####################### Connection oriented #############################
-
-
-def _conn_cleanup_check(identity):
+def _conn_alreadyexists_check(identity):
   """
   <Purpose>
     This private function checks if a socket that
     got EADDRINUSE is because the socket is active,
-    or because the socket is being cleaned up.
+    or not
 
   <Arguments>
     identity: A tuple to check for cleanup
@@ -1164,16 +1105,13 @@ def _conn_cleanup_check(identity):
   <Exceptions>
     Raises DuplicateTupleError if the socket is actively being used.
 
-    Raises CleanupInProgressError if the socket is being cleaned up
-    or if the socket does not appear to exist. This is because there
-    may be a race between getting EADDRINUSE and the call to this
-    function.
+    Raises AddressBindingError if the binding is not allowed 
 
   <Returns>
     None
   """
   # Decompose the tuple
-  type, localip, localport, desthost, destport = identity
+  family, localip, localport, desthost, destport = identity
   
   # Check the sockets status
   (exists, status) = nonportable.os_api.exists_outgoing_network_socket(localip,localport,desthost,destport)
@@ -1187,17 +1125,65 @@ def _conn_cleanup_check(identity):
     raise DuplicateTupleError("There is a duplicate connection which conflicts with the request!")
 
   # Otherwise, the socket is being cleaned up
-  raise CleanupInProgressError("The socket is being cleaned up by the operating system!")
+  raise AddressBindingError("Cannot bind to the specified local ip, invalid!")
 
 
-def _timed_conn_initialize(identity, timeout):
+def _conn_cleanup_check(identity):
+  """
+  <Purpose>
+    This private function checks if a socket that
+    got EADDRINUSE is because the socket is active,
+    or because the socket is listening or 
+    because the socket is being cleaned up.
+
+  <Arguments>
+    identity: A tuple to check for cleanup
+
+  <Exceptions>
+    Raises DuplicateTupleError if the socket is actively being used.
+
+    Raises AlreadyListeningError if the socket is listening.   
+
+    Raises CleanupInProgressError if the socket is being cleaned up
+    or if the socket does not appear to exist. This is because there
+    may be a race between getting EADDRINUSE and the call to this
+    function.
+
+  <Returns>
+    None
+  """
+  # Decompose the tuple
+  family, localip, localport, desthost, destport = identity
+  
+  # Check the sockets status
+  (exists, status) = nonportable.os_api.exists_outgoing_network_socket(localip,localport,desthost,destport)
+
+  # Check if the socket is actively being used
+  # If the socket is these states:
+  #  ESTABLISHED : Connection is active
+  #  CLOSE_WAIT : Connection is closed, but waiting on local program to close
+  #  SYN_SENT (SENT) : Connection is just being established
+  if exists and ("ESTABLISH" in status or "CLOSE_WAIT" in status or "SENT" in status):
+    raise DuplicateTupleError("There is a duplicate connection which conflicts with the request!")
+  else:
+    # Checking if a listening TCP or UDP socket exists with given local address
+    # The third argument is True if socket type is TCP,False if socket type is UDP 
+    if (nonportable.os_api.exists_listening_network_socket(localip, localport, (family == "TCP"))):
+      raise AlreadyListeningError("There is a listening socket on the provided localip and localport!")
+      # Otherwise, the socket is being cleaned up
+    else:
+      raise CleanupInProgressError("The socket is being cleaned up by the operating system!")
+
+
+def _timed_conn_initialize(localip,localport,destip,destport, timeout):
   """
   <Purpose> 
     Tries to initialize an outgoing socket to match
-    the given identity.
+    the given address parameters.
 
   <Arguments>
-    identity: The socket to create
+    localip,localport: The local address of the socket
+    destip,destport: The destination address to which socket has to be connected  
     timeout: Maximum time to try
 
   <Exceptions>
@@ -1212,14 +1198,16 @@ def _timed_conn_initialize(identity, timeout):
     A Python socket object connected to the dest,
     from the specified local tuple.
   """
-  # Decompose the tuple
-  type, localip, localport, destip, destport = identity
 
   # Store our start time
   starttime = nonportable.getruntime()
 
   # Get a TCP socket bound to the local ip / port
   sock = _get_tcp_socket(localip, localport)
+  # Limit the socket buffer size, see SeattleTestbed/repy_v2#88
+  sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 10000)
+  sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 10000)
+
   sock.settimeout(timeout)
 
   try:
@@ -1233,7 +1221,8 @@ def _timed_conn_initialize(identity, timeout):
       except Exception, e:
         # Check if we are already connected
         if _is_already_connected_exception(e):
-          connected = True
+          connected = True     
+          raise DuplicateTupleError("There is a duplicate connection which conflicts with the request!")
           break
 
         # Check if the network is down
@@ -1243,6 +1232,10 @@ def _timed_conn_initialize(identity, timeout):
         # Check if the connection was refused
         if _is_conn_refused_exception(e):
           raise ConnectionRefusedError("The connection was refused!") 
+
+        # Check for ECONNABORTED due to a server-sent RST
+        if _is_conn_aborted_exception(e):
+          raise ConnectionRefusedError("The remote side hung up before the connection was established.")
 
         # Check if this is recoverable (try again, timeout, etc)
         elif not _is_recoverable_network_exception(e):
@@ -1307,7 +1300,8 @@ def openconnection(destip, destport,localip, localport, timeout):
       still being cleaned up by the OS.
 
       ConnectionRefusedError (descends NetworkError) if the connection cannot 
-      be established because the destination port isn't being listened on.
+      be established because the destination port isn't being listened on,
+      or an ECONNABORTED error is encountered.
 
       TimeoutError (common to all API functions that timeout) if the 
       connection times out
@@ -1371,30 +1365,8 @@ def openconnection(destip, destport,localip, localport, timeout):
 
 
 
-  # Check if the tuple is in use
+  # use this tuple during connection clean up check
   identity = ("TCP", localip, localport, destip, destport)
-  listen_identity = ("TCP", localip, localport, None, None)
-
-  if identity in OPEN_SOCKET_INFO:
-    raise DuplicateTupleError("There is a duplicate connection which conflicts with the request!")
-
-  # Check for a listening socket on the same ip/port
-  if listen_identity in OPEN_SOCKET_INFO:
-    raise AlreadyListeningError("There is a listening socket on the provided localip and localport!")
-
-  # Check if the tuple is pending
-  PENDING_SOCKETS_LOCK.acquire()
-  try:
-    if identity in PENDING_SOCKETS:
-      raise DuplicateTupleError("Concurrent openconnection with the same parameters in progress!")
-    elif listen_identity in PENDING_SOCKETS:
-      raise AlreadyListeningError("Concurrent listenforconnection with the localip and localport in progress!")
-    else:
-      # No pending operation, add us to the pending list
-      PENDING_SOCKETS.add(identity)
-  finally:
-    PENDING_SOCKETS_LOCK.release()
-
   
   # Wait for netsend / netrecv
   if _is_loopback_ipaddr(destip):
@@ -1405,57 +1377,47 @@ def openconnection(destip, destport,localip, localport, timeout):
     nanny.tattle_quantity('netrecv', 0)
 
   try:
-    # Register this identity as an outsocket
-    nanny.tattle_add_item('outsockets',identity)
+    # To Know if remote IP is on loopback or not
+    on_loopback = _is_loopback_ipaddr(destip)
 
-    try:
-      # Get the socket
-      sock = _timed_conn_initialize(identity, timeout)
+    # Get the socket
+    sock = _timed_conn_initialize(localip,localport,destip,destport, timeout)
+    
+    # Register this socket as an outsocket
+    nanny.tattle_add_item('outsockets',id(sock))
+  except Exception, e:
 
-    except Exception, e:
-      nanny.tattle_remove_item('outsockets',identity)
-
-      # Check if this an already in use error
-      if _is_addr_in_use_exception(e):
-        # Call _conn_cleanup_check to determine if this is because
-        # the socket is being cleaned up or if it is actively being used
-        # This will always raise DuplicateTupleError or
-        # CleanupInProgressError
-        _conn_cleanup_check(identity)
+    # Check if this an already in use error
+    if _is_addr_in_use_exception(e):
+      # Call _conn_cleanup_check to determine if this is because
+      # the socket is being cleaned up or if it is actively being used
+      # This will always raise DuplicateTupleError or
+      # CleanupInProgressError or AlreadyListeningError
+      _conn_cleanup_check(identity)
  
-      # Check if this is a binding error
-      if _is_addr_unavailable_exception(e):
-        raise AddressBindingError("Cannot bind to the specified local ip, invalid!")
+    # Check if this is a binding error
+    if _is_addr_unavailable_exception(e):
+      # Call _conn_alreadyexists_check to determine if this is because
+      # the connection is active or not
+      _conn_alreadyexists_check(identity)
+      
 
-      # Unknown error...
-      else:
-        raise
-
-    # Create entry with a lock and the socket object
-    OPEN_SOCKET_INFO[identity] = (threading.Lock(), sock)
-
-    # Create an EmulatedSocket
-    emul_sock = EmulatedSocket(identity)
-
-    # Tattle the resources used
-    if _is_loopback_ipaddr(destip):
-      nanny.tattle_quantity('loopsend', 128)
-      nanny.tattle_quantity('looprecv', 64)
+    # Unknown error...
     else:
-      nanny.tattle_quantity('netsend', 128)
-      nanny.tattle_quantity('netrecv', 64)
+      raise
 
-    # Return the EmulatedSocket
-    return emul_sock
+  emul_sock = EmulatedSocket(sock, on_loopback)
 
-  finally:
-    # Remove us from the pending operations list
-    PENDING_SOCKETS_LOCK.acquire()
-    PENDING_SOCKETS.remove(identity)
-    PENDING_SOCKETS_LOCK.release()
+  # Tattle the resources used
+  if _is_loopback_ipaddr(destip):
+    nanny.tattle_quantity('loopsend', 128)
+    nanny.tattle_quantity('looprecv', 64)
+  else:
+    nanny.tattle_quantity('netsend', 128)
+    nanny.tattle_quantity('netrecv', 64)
 
-
-
+  # Return the EmulatedSocket
+  return emul_sock
 
 
 def listenforconnection(localip, localport):
@@ -1514,75 +1476,51 @@ def listenforconnection(localip, localport):
   if not _is_allowed_localport("TCP", localport):
     raise ResourceForbiddenError("Provided localport is not allowed! Port: "+str(localport))
 
+  # This is used to check if there is an existing connection with the same identity
+  identity = ("TCP", localip, localport, None, None) 
 
-
-  # Check if the tuple is in use
-  identity = ("TCP", localip, localport, None, None)
-  if identity in OPEN_SOCKET_INFO:
-    raise AlreadyListeningError("The provided localip and localport are already in use!")
-
-  # Check if the tuple is pending
-  PENDING_SOCKETS_LOCK.acquire()
   try:
-    if identity in PENDING_SOCKETS:
-      raise AlreadyListeningError("Concurrent listenforconnection with the localip and localport in progress!")
+    # Check if localip is on loopback
+    on_loopback = _is_loopback_ipaddr(localip)
+    # Get the socket
+    sock = _get_tcp_socket(localip,localport)     
+    # Limit the socket buffer size, see SeattleTestbed/repy_v2#88
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 10000)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 10000)
+    nanny.tattle_add_item('insockets',id(sock))
+    # Get the maximum number of outsockets
+    max_outsockets = nanny.get_resource_limit("outsockets")        
+    # If we have restrictions, then we want to set the outsocket
+    # limit
+    if max_outsockets:
+      # Set the backlog to be the maximum number of outsockets
+      sock.listen(max_outsockets)
     else:
-      # No pending operation, add us to the pending list
-      PENDING_SOCKETS.add(identity)
-  finally:
-    PENDING_SOCKETS_LOCK.release()
+      sock.listen(5)
 
-
-
-  try:
-    # Register this identity as an insocket
-    nanny.tattle_add_item('insockets',identity)
-
-    try:
-      # Get the socket
-      sock = _get_tcp_socket(localip,localport)
-
-      # Get the maximum number of outsockets
-      max_outsockets = nanny.get_resource_limit("outsockets")
-
-      # If we have restrictions, then we want to set the outsocket
-      # limit
-      if max_outsockets:
-        # Set the backlog to be the maximum number of outsockets
-        sock.listen(max_outsockets)
-      else:
-        sock.listen(5)
-
-    except Exception, e:
-      nanny.tattle_remove_item('insockets',identity)
-
-      # Check if this an already in use error
-      if _is_addr_in_use_exception(e):
-        raise DuplicateTupleError("Provided Local IP and Local Port is already in use!")
+  except Exception, e:
+    
+    # Check if this an already in use error
+    if _is_addr_in_use_exception(e): 
+      # Call _conn_cleanup_check to determine if this is because
+      # the socket is being cleaned up or if it is actively being used
+      # This will always raise DuplicateTupleError or
+      # CleanupInProgressError or AlreadyListeningError   
+      _conn_cleanup_check(identity)
  
-      # Check if this is a binding error
-      if _is_addr_unavailable_exception(e):
-        raise AddressBindingError("Cannot bind to the specified local ip, invalid!")
-
-      # Unknown error...
-      else:
+    # Check if this is a binding error
+    if _is_addr_unavailable_exception(e):
+      # Call _conn_alreadyexists_check to determine if this is because
+      # the connection is active or not      
+      _conn_alreadyexists_check(identity)
+    # Unknown error...
+    else:
         raise
 
-    # Create entry with a lock and the socket object
-    OPEN_SOCKET_INFO[identity] = (threading.Lock(), sock)
+  server_sock = TCPServerSocket(sock, on_loopback)
 
-    # Create a TCPServerSocket
-    server_sock = TCPServerSocket(identity)
-
-    # Return the TCPServerSocket
-    return server_sock
-
-  finally:
-    # Remove us from the pending operations list
-    PENDING_SOCKETS_LOCK.acquire()
-    PENDING_SOCKETS.remove(identity)
-    PENDING_SOCKETS_LOCK.release()
-
+  # Return the TCPServerSocket
+  return server_sock
 
 
 # Private method to create a TCP socket and bind
@@ -1590,8 +1528,7 @@ def listenforconnection(localip, localport):
 # 
 def _get_tcp_socket(localip, localport):
   # Create the TCP socket
-  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
   # Reuse the socket if it's "pseudo-availible"
   s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -1602,9 +1539,7 @@ def _get_tcp_socket(localip, localport):
       # don't leak sockets
       s.close()
       raise
-
   return s
-
 
 
 # Private method to create a UDP socket and bind
@@ -1613,6 +1548,9 @@ def _get_tcp_socket(localip, localport):
 def _get_udp_socket(localip, localport):
   # Create the UDP socket
   s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  # Limit the socket buffer size, see SeattleTestbed/repy_v2#88
+  s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 66000)
+  s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 66000)
 
   if localip and localport:
     try:
@@ -1621,7 +1559,6 @@ def _get_udp_socket(localip, localport):
       # don't leak sockets
       s.close()
       raise
-
   return s
 
 
@@ -1695,28 +1632,29 @@ class EmulatedSocket:
   operation would result in blocking behavior.
   """
   # Fields:
-  # identity: This is a tuple which is our identity in the
-  #           OPEN_SOCKET_INFO dictionary. We use this to
-  #           perform the look-up for our info.
+  # socket: This is a TCP Socket  
   #
   # send_buffer_size: The size of the send buffer. We send less than
   #                  this to avoid a bug.
   #
   # on_loopback: true if the remote ip is a loopback address.
   #              this is used for resource accounting.
-  #
-  __slots__ = ["identity", "send_buffer_size", "on_loopback"]
+  # sock_lock: Threading Lock on socket object used for 
+  #            synchronization.
+  __slots__ = ["socketobj", "send_buffer_size", "on_loopback", "sock_lock"]
 
   
-  def __init__(self, identity):
+  def __init__(self, sock, on_loopback):
     """
     <Purpose>
       Initializes a EmulatedSocket object.
 
     <Arguments>
-      identity: An identity tuple identifing the socket.
-                An entry should already exist for this socket.
+      sock: A TCP Socket
 
+      on_loopback: True/False based on whether remote IP is
+                   on loopback oe not
+      
     <Exceptions>
       InteralRepyError is raised if there is no table entry for
       the socket.
@@ -1724,30 +1662,19 @@ class EmulatedSocket:
     <Returns>
       A EmulatedSocket object.
     """
-    # Store the identity tuple
-    self.identity = identity
+    # Store the parameters tuple
+    self.socketobj = sock
+    self.on_loopback = on_loopback
+    self.sock_lock = threading.Lock()
+    
+    # Store the socket send buffer size and set to non-blocking
+    self.send_buffer_size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+    # locking should be unnecessary because there isn't another external
+    # reference here yet
+    sock.setblocking(0)
 
-    # Get the socket
-    try:
-      sock_lock, sock = OPEN_SOCKET_INFO[self.identity]
-
-      # Store the socket send buffer size and set to non-blocking
-      sock_lock.acquire()
-      
-      self.send_buffer_size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
-      sock.setblocking(0)
-
-      sock_lock.release()
-
-      # Check if we are on loopback, check the remote ip
-      self.on_loopback = _is_loopback_ipaddr(self.identity[3])
-   
-    # Shouldn't happen because my caller should create the table entry first
-    except KeyError:
-      raise InteralRepyError("Internal Error. No table entry for new socket!")
-
-
-  def _close(self, partial=False):
+    
+  def _close(self):
     """
     <Purpose>
       Private close method. Called when socket lock is held.
@@ -1764,14 +1691,13 @@ class EmulatedSocket:
       None
     """
     # Clean up the socket
-    _cleanup_socket(self.identity, partial)
+    _cleanup_socket(self)
 
-    # Replace the identity
-    if not partial:
-      self.identity = None
+    # Replace the socket
+    self.socketobj = None
 
 
-  def close(self, partial):
+  def close(self):
     """
       <Purpose>
         Closes a socket.   Pending remote recv() calls will return with the 
@@ -1795,16 +1721,10 @@ class EmulatedSocket:
         True if this is the first close call to this socket, False otherwise.
     """
     # Get the socket lock
-    #print 'EmulatedSocket::close'
-    try:
-      #print self.identity
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
-    except KeyError:
-      # Socket is already closed, ignore
-      #print 'already closed'
-      return False
+    socket_lock = self.sock_lock
    
-
+    if (self.socketobj == None):
+      return False
     # Wait for resources
     if self.on_loopback:
       nanny.tattle_quantity('looprecv', 0)
@@ -1813,13 +1733,11 @@ class EmulatedSocket:
       nanny.tattle_quantity('netrecv', 0)
       nanny.tattle_quantity('netsend', 0)
 
-
     # Acquire the lock
     socket_lock.acquire()
     try:
       # Internal close
-      #print 'internal close'
-      self._close(partial)
+      self._close()
 
       # Tattle the resources
       if self.on_loopback:
@@ -1864,12 +1782,7 @@ class EmulatedSocket:
         the other side has closed the socket and no more data will arrive.
     """
     # Get the socket lock
-    try:
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
-    except KeyError:
-      # Closed
-      raise SocketClosedLocal("The socket is closed!")
-
+    socket_lock = self.sock_lock
     # Wait if already oversubscribed
     if self.on_loopback:
       nanny.tattle_quantity('looprecv',0)
@@ -1883,7 +1796,7 @@ class EmulatedSocket:
     socket_lock.acquire()
     try:
       # Get the socket
-      sock = OPEN_SOCKET_INFO[self.identity][1]
+      sock = self.socketobj
       if sock is None:
         raise KeyError # Socket is closed locally
 
@@ -1895,7 +1808,6 @@ class EmulatedSocket:
       
       # Raise an exception if there was no data
       if data_length == 0:
-        #self._close()
         raise SocketClosedRemote("The socket has been closed remotely!")
 
       if self.on_loopback:
@@ -1960,12 +1872,7 @@ class EmulatedSocket:
         complete amount!
     """
     # Get the socket lock
-    try:
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
-    except KeyError:
-      # Closed
-      raise SocketClosedLocal("The socket is closed!")
-
+    socket_lock = self.sock_lock
     # Wait if already oversubscribed
     if self.on_loopback:
       nanny.tattle_quantity('loopsend',0)
@@ -1982,9 +1889,22 @@ class EmulatedSocket:
     socket_lock.acquire()
     try:
       # Get the socket
-      sock = OPEN_SOCKET_INFO[self.identity][1]
+      sock = self.socketobj
       if sock is None:
         raise KeyError # Socket is closed locally
+ 
+      # Detect Socket Closed Remote
+      # Fixes SeattleTestbed/repy_v2#4.
+      (readable, writable, exception) = select.select([sock],[],[],0)
+      # check if socket is readable.   This is true if the remote end closed.
+      if readable:
+
+         # if socket is readable but there was no data this means the remote end
+         # has closed the socket.   We peek so that we don't consume a character.
+         data_peeked = sock.recv(1,socket.MSG_PEEK)
+         if len(data_peeked) == 0:
+            # remote socket is closed
+            raise SocketClosedRemote("The socket has been closed by the remote end!")
 
       # Try to send the data
       bytes_sent = sock.send(message)
@@ -2002,7 +1922,8 @@ class EmulatedSocket:
 
     except KeyError:
       raise SocketClosedLocal("The socket is closed!")
-  
+    except RepyException:
+      raise # pass up from inner block
     except Exception, e:
       # Check if this a recoverable error
       if _is_recoverable_network_exception(e):
@@ -2024,16 +1945,9 @@ class EmulatedSocket:
 
 
   def __del__(self):
-    # this ensures that during interpreter cleanup, that the order of 
-    # freed memory doesn't matter.   If we don't have this, then 
-    # OPEN_SOCKET_INFO and other objects might get cleaned up first and cause
-    # the close call below to print an exception
-    if OPEN_SOCKET_INFO == None:
-      return
-
     # Get the socket lock
     try:
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
+      socket_lock = self.sock_lock
     except KeyError:
       # Closed, done
       return
@@ -2061,18 +1975,15 @@ class UDPServerSocket:
   operation would result in blocking behavior.
   """
   # Fields:
-  # identity: This is a tuple which is our identity in the
-  #           OPEN_SOCKET_INFO dictionary. We use this to
-  #           perform the look-up for our info.
-  #
+  # sock: This is a listening UDP socket  
   # on_loopback: True if the local IP is a loopback address.
   #              This is used for resource accounting.
-  #
-  __slots__ = ["identity", "on_loopback"]
-
+  # sock_lock: Threading Lock on socket object used for 
+  #            synchronization.
+  __slots__ = ["socketobj", "on_loopback", "sock_lock"]
 
   # UDP listening socket interface
-  def __init__(self, identity):
+  def __init__(self, sock, on_loopback):
     """
     <Purpose>
       Initializes the UDPServerSocket. The socket
@@ -2080,34 +1991,25 @@ class UDPServerSocket:
       prior to calling the initializer.
 
     <Arguments>
-      identity: The identity tuple.
-
+      
+      socketobj : The listening socket
+      on_loopback : True/False based on whether the local IP 
+                    is a loopback address or not 
     <Exceptions>
       None
 
     <Returns>
       A UDPServerSocket
     """
-    # Store our identity
-    self.identity = identity
-
-    # Get the socket
-    try:
-      sock_lock, sock = OPEN_SOCKET_INFO[self.identity]
-
-      # Set the socket to non-blocking
-      sock_lock.acquire()
-      sock.setblocking(0)
-      sock_lock.release()
-
-      # Check if we are on loopback, check the local ip
-      self.on_loopback = _is_loopback_ipaddr(self.identity[1])
-
-    # Shouldn't happen because my caller should create the table entry first
-    except KeyError:
-      raise InteralRepyError("Internal Error. No table entry for new socket!")
-
-
+    # Store the parameters
+    self.socketobj = sock
+    self.on_loopback = on_loopback
+    self.sock_lock = threading.Lock()
+    
+    # Set the socket to non-blocking
+    # locking should be unnecessary because there isn't another external
+    # reference here yet
+    sock.setblocking(0)
 
   def getmessage(self):
     """
@@ -2132,12 +2034,8 @@ class UDPServerSocket:
 
     """
     # Get the socket lock
-    try:
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
-    except KeyError:
-      # Socket closed
-      raise SocketClosedLocal("The socket has been closed!")
-
+    
+    socket_lock = self.sock_lock
     # Wait for netrecv resources
     if self.on_loopback:
       nanny.tattle_quantity('looprecv',0)
@@ -2151,13 +2049,13 @@ class UDPServerSocket:
       # we acquire the lock because it is possible that the
       # socket was closed/re-opened or that it was set to None,
       # etc.
-      socket = OPEN_SOCKET_INFO[self.identity][1]
-      if socket is None:
+      mysocketobj = self.socketobj
+      if mysocketobj is None:
         raise KeyError # Indicates socket is closed
 
       # Try to get a message of any size.   (64K is the max that fits in the 
       # UDP header)
-      message, addr = socket.recvfrom(65535)
+      message, addr = mysocketobj.recvfrom(65535)
       remote_ip, remote_port = addr
 
       # Do some resource accounting
@@ -2184,8 +2082,7 @@ class UDPServerSocket:
 
       else: 
         # Unexpected, close the socket, and then raise SocketClosedLocal
-        _cleanup_socket(self.identity)
-        self.identity = None
+        _cleanup_socket(self)       
         raise SocketClosedLocal("Unexpected error, socket closed!")
 
     finally:
@@ -2194,7 +2091,7 @@ class UDPServerSocket:
 
 
 
-  def close(self, partial=False):
+  def close(self):
     """
     <Purpose>
         Closes a socket that is listening for messages.
@@ -2217,24 +2114,16 @@ class UDPServerSocket:
         True if this is the first close call to this socket, False otherwise.
 
     """
-    # Get the socket lock
-    #print 'UDPServerSocket::close'
-    try:
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
-    except KeyError:
-      # Socket is already closed, ignore
-      return False
-
+    # Get the socket lock    
+    socket_lock = self.sock_lock
     # Acquire the lock
     socket_lock.acquire()
     try:
       # Clean up the socket
-      _cleanup_socket(self.identity)
+      _cleanup_socket(self)
+      # Replace the socket
+      self.socketobj = None
 
-      # Replace the identity
-      self.identity = None
-
-      # Done
       return True
 
     finally:
@@ -2242,13 +2131,6 @@ class UDPServerSocket:
  
 
   def __del__(self):
-    # this ensures that during interpreter cleanup, that the order of 
-    # freed memory doesn't matter.   If we don't have this, then 
-    # OPEN_SOCKET_INFO and other objects might get cleaned up first and cause
-    # the close call below to print an exception
-    if OPEN_SOCKET_INFO == None:
-      return
-
     # Clean up global resources on garbage collection.
     self.close()
 
@@ -2266,16 +2148,15 @@ class TCPServerSocket (object):
   operation would result in blocking behavior.
   """
   # Fields:
-  # identity: This is a tuple which is our identity in the
-  #           OPEN_SOCKET_INFO dictionary. We use this to
-  #           perform the look-up for our info.
-  #
+  # socket: This is a listening TCP socket  
+  # sock_lock: Threading Lock on socket object used for 
+  #            synchronization.
   # on_loopback: true if the remote ip is a loopback address.
   #              this is used for resource accounting.
   #
-  __slots__ = ["identity", "on_loopback"]
 
-  def __init__(self, identity):
+  __slots__ = ["socketobj", "on_loopback", "sock_lock"]
+  def __init__(self, sock, on_loopback):
     """
     <Purpose>
       Initializes the TCPServerSocket. The socket
@@ -2283,33 +2164,27 @@ class TCPServerSocket (object):
       prior to calling the initializer.
 
     <Arguments>
-      identity: The identity tuple.
-
+      socketobj: The TCP listening socket
+      
+      on_loopback: True/False based on whether local IP
+                   is on loopback or not
+      
     <Exceptions>
       None
 
     <Returns>
       A TCPServerSocket
     """
-    # Store our identity
-    self.identity = identity
+    # Store the parameters
+    self.socketobj = sock
+    self.sock_lock = threading.Lock()
+    self.on_loopback = on_loopback     
 
-    # Get the socket
-    try:
-      sock_lock, sock = OPEN_SOCKET_INFO[self.identity]
-
-      # Set the socket to non-blocking
-      sock_lock.acquire()
-      sock.setblocking(0)
-      sock_lock.release()
-
-      # Check if we are on loopback, check the local ip
-      self.on_loopback = _is_loopback_ipaddr(self.identity[1])
-
-    # Shouldn't happen because my caller should create the table entry first
-    except KeyError:
-      raise InteralRepyError("Internal Error. No table entry for new socket!")
-
+    # Set the socket to non-blocking
+    # locking should be unnecessary because there isn't another external
+    # reference here yet
+    sock.setblocking(0)
+        
 
 
   def getconnection(self):
@@ -2322,7 +2197,8 @@ class TCPServerSocket (object):
 
     <Exceptions>
       Raises SocketClosedLocal if close() has been called.
-      Raises SocketWouldBlockError if the operation would block.
+      Raises SocketWouldBlockError if the operation would block, or
+          an ECONNABORTED was encountered.
       Raises ResourcesExhaustedError if there are no free outsockets.
 
     <Resource Consumption>
@@ -2334,12 +2210,7 @@ class TCPServerSocket (object):
       A tuple containing: (remote ip, remote port, socket object)
     """
     # Get the socket lock
-    
-    try:
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
-    except KeyError:
-      # Socket closed
-      raise SocketClosedLocal("The socket has been closed!")
+    socket_lock = self.sock_lock
 
     # Wait for netsend and netrecv resources
     if self.on_loopback:
@@ -2356,15 +2227,18 @@ class TCPServerSocket (object):
       # we acquire the lock because it is possible that the
       # socket was closed/re-opened or that it was set to None,
       # etc.
-      socket = OPEN_SOCKET_INFO[self.identity][1]
+      socket = self.socketobj
       if socket is None:
         raise KeyError # Indicates socket is closed
 
       # Try to accept
       new_socket, remote_host_info = socket.accept()
       remote_ip, remote_port = remote_host_info
-      new_identity = ("TCP", self.identity[1], self.identity[2], remote_ip, remote_port)
-
+      
+      # Get new_socket id to register new_socket with nanny
+      new_sockid = id(new_socket)
+      # Check if remote_ip is on loopback
+      is_on_loopback = _is_loopback_ipaddr(remote_ip)
       # Do some resource accounting
       if self.on_loopback:
         nanny.tattle_quantity('looprecv', 128)
@@ -2374,17 +2248,13 @@ class TCPServerSocket (object):
         nanny.tattle_quantity('netsend', 64)
 
       try:
-        nanny.tattle_add_item('outsockets', new_identity)
+        nanny.tattle_add_item('outsockets', new_sockid)
       except ResourceExhaustedError:
         # Close the socket, and raise
         new_socket.close()
         raise
 
-      # Create an entry for the socket
-      OPEN_SOCKET_INFO[new_identity] = (threading.Lock(), new_socket)
-
-      # Wrap the socket
-      wrapped_socket = EmulatedSocket(new_identity)
+      wrapped_socket = EmulatedSocket(new_socket, is_on_loopback)
 
       # Return everything
       return (remote_ip, remote_port, wrapped_socket)
@@ -2402,10 +2272,13 @@ class TCPServerSocket (object):
       if _is_recoverable_network_exception(e):
         raise SocketWouldBlockError("No connections currently available!")
 
+      # Check for ECONNABORTED due to client-sent RST
+      elif _is_conn_aborted_exception(e):
+        raise SocketWouldBlockError("The remote side hung up before the connection was established.")
+
       else: 
         # Unexpected, close the socket, and then raise SocketClosedLocal
-        _cleanup_socket(self.identity)
-        self.identity = None
+        _cleanup_socket(self)       
         raise SocketClosedLocal("Unexpected error, socket closed!")
 
     finally:
@@ -2413,7 +2286,7 @@ class TCPServerSocket (object):
       socket_lock.release()
 
 
-  def close(self, partial=False):
+  def close(self):
     """
     <Purpose>
       Closes the listening TCP socket.
@@ -2435,22 +2308,15 @@ class TCPServerSocket (object):
       False otherwise.
     """
     # Get the socket lock
-    #print 'TCPServerSocket::close'
-    try:
-      socket_lock = OPEN_SOCKET_INFO[self.identity][0]
-    except KeyError:
-      # Socket is already closed, ignore
-      return False
-
+    socket_lock = self.sock_lock
+    
     # Acquire the lock
     socket_lock.acquire()
     try:
       # Clean up the socket
-      _cleanup_socket(self.identity)
-
-      # Replace the identity
-      self.identity = None
-
+      _cleanup_socket(self)
+      # Replace the socket
+      self.socketobj = None      
       # Done
       return True
 
@@ -2459,13 +2325,6 @@ class TCPServerSocket (object):
  
 
   def __del__(self):
-    # this ensures that during interpreter cleanup, that the order of 
-    # freed memory doesn't matter.   If we don't have this, then 
-    # OPEN_SOCKET_INFO and other objects might get cleaned up first and cause
-    # the close call below to print an exception
-    if OPEN_SOCKET_INFO == None:
-      return
-
     # Close the socket
     self.close()
 

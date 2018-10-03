@@ -24,7 +24,7 @@ thread pools can be utilized with minimal effort.
 ##### Imports
 
 # Get a run loop
-librunloop = dy_import_module("librepyrunloop")
+librunloop = dy_import_module("librepyrunloop.repy")
 
 ##### Module Data
 
@@ -117,9 +117,9 @@ def _err_delegate(type, localip, localport, errstr):
   <Returns>
     None
   """
-  print "Unexpected error while listening on a network socket!"
-  print "Listening for: "+type+" on IP: "+localip+" Port: "+str(localport)
-  print "Debug string:\n"+errstr
+  log("Unexpected error while listening on a network socket!\n")
+  log("Listening for: "+type+" on IP: "+localip+" Port: "+str(localport), '\n')
+  log("Debug string:\n"+errstr, '\n')
 
 
 ##### Public Methods
@@ -139,9 +139,6 @@ def get_connports(localip=None):
   <Returns>
     A list of valid connports for localport
   """
-  # Check if the IP is valid
-  if localip is not None and not _is_valid_ip_address(localip):
-    raise RepyArgumentError("Invalid IP address specified!")
 
   # Resolve the IP
   if localip is None:
@@ -360,7 +357,7 @@ def recvmess(localport, func, localip=None, thread_pool=None, check_intv=0.1, er
     ---
 
     def incoming(remoteip, remoteport, mess):
-      print "Got a message! Stop listening."
+      log("Got a message! Stop listening.\n")
       stop_func()
 
     stop_func = recvmess(12345, incoming)
@@ -371,7 +368,7 @@ def recvmess(localport, func, localip=None, thread_pool=None, check_intv=0.1, er
     ---
 
     def incoming(remoteip, remoteport, mess):
-      print "Got a message!"
+      log("Got a message!\n")
 
     # This pool has 2 threads minimum, 4 threads maximum,
     # and adds a thread for every 3 connections
@@ -615,7 +612,7 @@ def openconn(host, port, localip=None, localport=None, timeout=60):
   return wrapped_sock
 
 
-def waitforconn(localport, func, localip=None, thread_pool=None, check_intv=0.1, err_delegate=None):
+def waitforconn(localip, localport, func, thread_pool=None, check_intv=0.1, err_delegate=None):
   """
   <Purpose>
     Listens for incoming connections to the local machine and triggers
@@ -658,7 +655,7 @@ def waitforconn(localport, func, localip=None, thread_pool=None, check_intv=0.1,
     ---
 
     def incoming(sock):
-      print "Got a connection! Stop listening."
+      log("Got a connection! Stop listening.\n")
       stop_func()
 
     stop_func = waitforconn(12345, incoming)
@@ -669,7 +666,7 @@ def waitforconn(localport, func, localip=None, thread_pool=None, check_intv=0.1,
     ---
 
     def incoming(sock):
-      print "Got a connection!"
+      log("Got a connection!\n")
 
     # This pool has 2 threads minimum, 4 threads maximum,
     # and adds a thread for every 3 connections
@@ -684,9 +681,8 @@ def waitforconn(localport, func, localip=None, thread_pool=None, check_intv=0.1,
 
     ----
   """
+
   # Check the args
-  if localip is not None and not _is_valid_ip_address(localip):
-    raise RepyArgumentError("Invalid Local IP address specified!")
   if thread_pool is not None and "ThreadPool" not in str(type(thread_pool)):
     raise RepyArgumentError("Invalid object provided for the thread pool!")
   if type(check_intv) not in [int, float]:
@@ -724,7 +720,7 @@ def waitforconn(localport, func, localip=None, thread_pool=None, check_intv=0.1,
         # Define a wrapper function to invoke
         def callback():
           try:
-            func(wrapped_sock)
+            func(remoteip, remoteport, wrapped_sock, real_sock, listen_sock)
           except:
             # Generate an error string
             error_str = "Uncaught exception invoking callback for TCP listener!\n"
@@ -823,7 +819,7 @@ class RepySocket (object):
   # remoteip : Remote Host IP
   # remoteport : Remote Host Port
 
-  def __init__(self, underlying, localip, localport, remoteip, remoteport, timeout=None, poll_intv=0.1):
+  def __init__(self, underlying, localip, localport, remoteip, remoteport, timeout=None, poll_intv=0.005):
     """
     <Purpose>
       Initializes the RepySocket.
@@ -868,6 +864,8 @@ class RepySocket (object):
     self.settimeout(timeout)
     self.setpollinterval(poll_intv)
 
+  def willblock(self):
+    return False, False
 
   def settimeout(self, timeout):
     """

@@ -14,9 +14,6 @@ import os
 # for Lock
 import threading
 
-# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
-threading.hasattr = hasattr
-
 # I need to rename file so that the checker doesn't complain...
 myfile = file
 

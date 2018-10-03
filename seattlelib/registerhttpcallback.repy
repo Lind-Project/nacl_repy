@@ -19,11 +19,11 @@
 """
 
 
-include urllib.repy
-include urlparse.repy  
-include sockettimeout.repy
+dy_import_module_symbols('urllib.repy')
+dy_import_module_symbols('urlparse.repy')
+dy_import_module_symbols('sockettimeout.repy')
 # used for hierarchy exception 
-include http_hierarchy_error.repy
+dy_import_module_symbols('http_hierarchy_error.repy')
 
 
 

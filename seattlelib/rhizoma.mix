@@ -1,4 +1,5 @@
 """
+# JAC: OBSOLETE!!!   NOT PORTED / TESTED
   <Author>
     richard@jordan.ham-radio-op.net
  
@@ -40,9 +41,10 @@ import socket # switch to repy
 # from autograder; thanks Alper!
 import nm_remote_api
 
+
 # seattle libs
-include centralizedadvertise.repy
-include rsa.repy
+dy_import_module_symbols('centralizedadvertise.repy')
+dy_import_module_symbols('rsa.repy')
 
 # it's the bizarrest thing; beraber works but 
 # satya.cs refuses to accept a socket connection

@@ -54,14 +54,13 @@ FUNC_TYPE = type(_func)
 METHOD_TYPE = type(_noop.noop)
 INSTANCE_TYPE = type(_junk)
 CLASS_TYPE = type(_noop)
-TYPE_TYPE = type(CLASS_TYPE)
 
 
 # These are the types that are not copied, but are just returned as the same
 # instance. These should all be immutable.
 NON_COPIED_TYPES = set((str, unicode, int, long, float, complex, bool,
                     frozenset, NONE_TYPE, FUNC_TYPE, METHOD_TYPE,
-                    INSTANCE_TYPE, CLASS_TYPE, TYPE_TYPE))
+                    INSTANCE_TYPE, CLASS_TYPE))
 
 # Optimization
 LIST_TUPLE_SET = set([list, tuple, set])

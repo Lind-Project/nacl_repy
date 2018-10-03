@@ -23,18 +23,15 @@ import tracebackrepy
 # Used to get a lock object
 import threading
 
-# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
-threading.hasattr = hasattr
-
 # Get access to the current working directory
 import repy_constants
 
 # Import all the exceptions
 from exception_hierarchy import *
 
-# Fix for ticket #983. By retaining a reference to unicode, we prevent
-# os.path.abspath from failing in some versions of python when the unicode
-# builtin is overwritten.
+# Fix for SeattleTestbed/attic#983.
+# By retaining a reference to unicode, we prevent os.path.abspath from
+# failing in some versions of python when the unicode builtin is overwritten.
 os.path.unicode = unicode
 
 # Store a reference to open, so that we retain access
@@ -47,7 +44,7 @@ safe_open = open
 MAX_FILENAME_LENGTH = 120
 
 # This is the set of characters which are allowed in a file name
-ALLOWED_FILENAME_CHAR_SET = set('abcdefghijklmnopqrstuvwxyz0123456789._-+')
+ALLOWED_FILENAME_CHAR_SET = set('abcdefghijklmnopqrstuvwxyz0123456789._-')
 
 # This is the set of filenames which are forbidden.
 ILLEGAL_FILENAMES = set(["", ".", ".."])
@@ -90,7 +87,6 @@ def listfiles():
   files = os.listdir(repy_constants.REPY_CURRENT_DIR)
 
 
-
   # Return the files
   return files
 
@@ -102,7 +98,7 @@ def removefile(filename):
 
    <Arguments>
       filename: the name of the file to remove.   It must not contain 
-      characters other than 'a-zA-Z0-9.-_' and cannot be '.', '..' or
+      characters other than 'a-z0-9.-_' and cannot start with a period or
       the empty string.
 
    <Exceptions>
@@ -186,7 +182,6 @@ def emulated_open(filename, create):
 
 ##### Private functions
 
-
 def _assert_is_allowed_filename(filename):
   """
   <Purpose>
@@ -224,6 +219,9 @@ def _assert_is_allowed_filename(filename):
   if filename.startswith('.'):
     raise RepyArgumentError("Filename starts with a period, this is not allowed!")
 
+
+# make a copy of the function.
+check_repy_filename = _assert_is_allowed_filename
 
 
 ##### Class Definitions
@@ -304,9 +302,8 @@ class emulated_file (object):
       # Add the filename to the open files
       OPEN_FILES.add(filename)
 
-      # Get the file's size, seek to the end.
-      self.fobj.seek(0, os.SEEK_END)
-      self.filesize = self.fobj.tell()
+      # Get the file's size
+      self.filesize = os.path.getsize(self.abs_filename)
 
     except RepyException:
       # Restore the file handle we tattled
@@ -516,6 +513,7 @@ class emulated_file (object):
     # the close call below to print an exception
     if OPEN_FILES_LOCK == None:
       return
+
 
     # Make sure we are closed
     try:

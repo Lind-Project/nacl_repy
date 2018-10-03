@@ -1,0 +1,16 @@
+# BUG: How do we come up with these values dynamically?
+resource cpu .002
+resource memory 1000000   # 1 MiB
+resource diskused 100000 # .1 MiB
+resource events 2
+resource filewrite 1000
+resource fileread 1000 
+resource filesopened 1 
+resource insockets 0
+resource outsockets 0
+resource netsend 0
+resource netrecv 0
+resource loopsend 0  # would change with prompt functionality (?)
+resource looprecv 0
+resource lograte 100 # the monitor might log something
+resource random 0    # Shouldn't generate random numbers on our own

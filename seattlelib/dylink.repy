@@ -2,18 +2,21 @@
 Author: Armon Dadgar
 Description:
   This module is designed to help dynamically link against other modules,
-  and to provide a import like functionality in repy.
+  and to provide a import like functionality in Repy.
 
-  Its main mechanisms are dy_import_module, dy_import_module_symbols and dy_dispatch_module.
-  dy_import_module_symbols allows importing directly into the current context (ala from X import *)
-  and dy_import_module allows importing as an encapsulated module (ala import X as Y).
+  Its main mechanisms are dy_import_module, dy_import_module_symbols, and 
+  dy_dispatch_module.
+  dy_import_module_symbols allows importing directly into the current 
+  context (ala from X import *) and dy_import_module allows importing as 
+  an encapsulated module (ala import X as Y).
 
-  dy_dispatch_module is a convenience for programs that want to behavior as "modules".
-  These are behavior altering programs, that don't execute any code, but provide
-  new code or alter behavior of builtin calls. These types of modules expect to be
-  chained and to recursively call into the next module in the chain. dy_dispatch_module
-  will take the globally defined CHILD_CONTEXT and evaluate the next module in that
-  context. Modules are free to alter CHILD_CONTEXT prior to calling dy_dispatch_module.
+  dy_dispatch_module is a convenience for programs that want to behavior 
+  as "modules". These are behavior altering programs, that don't execute 
+  any code, but provide new code or alter behavior of builtin calls. These 
+  types of modules expect to be chained and to recursively call into the 
+  next module in the chain. dy_dispatch_module will take the globally 
+  defined CHILD_CONTEXT and evaluate the next module in that context. 
+  Modules are free to alter CHILD_CONTEXT prior to calling dy_dispatch_module.
 
   Modules being imported are called with callfunc set to "import" to
   allow modules to have special behavior. If the module performs some
@@ -28,108 +31,35 @@ if callfunc == "initialize":
   CHILD_CONTEXT["_context"] = CHILD_CONTEXT
   CHILD_CONTEXT["mycontext"] = {}
 
+
+  # This holds the set of already imported modules.   The key is the module
+  # name and the value is the module object.
+  IMPORTED_MODULE_CACHE = {}
+
   # This cache maps a module name -> a VirtualNamespace object
+  # JAC: This caches the "code" *only* for modules.   If the same file is
+  # imported twice, this will not cause the references to be saved and reused
+  # (See #1320 for why this is a problem.)   
   MODULE_CACHE = {}
 
-  # This cache maps a module name -> a VirtualNamespace object for binding attributes
+  # This cache maps a module name to a VirtualNamespace object for 
+  # binding attributes
   MODULE_BIND_CACHE = {}
 
-  # These extensions will be tried when looking for a module to import
-  COMMON_EXTENSIONS = ["", ".py", ".repy",".py.repy", ".pp"]
 
   # These are the functions in the "stock" repy API,
-  STOCK_API = set(["gethostbyname","getmyip","sendmessage","listenformessage","openconnection","listenforconnection",
-             "openfile","listfiles","removefile","exitall","createlock","getruntime","randombytes","createthread",
-                   "sleep","log","createvirtualnamespace","getthreadname","getresources","dy_import_module","getlasterror",
-                   "dy_import_module_symbols","dy_dispatch_module"])
+  STOCK_API = set(['createlock', 'createthread', 'createvirtualnamespace', 
+      'dy_dispatch_module', 'dy_import_module', 'dy_import_module_symbols', 
+      'exitall', 'gethostbyname', 'getlasterror', 'getmyip', 'getresources', 
+      'getruntime', 'getthreadname', 'listenforconnection', 
+      'listenformessage', 'listfiles', 'log', 'openconnection', 'openfile', 
+      'randombytes', 'removefile', 'sendmessage', 'sleep'])
 
-  # Controls if we run the code preprocessor
-  # If True, we will replace the old "include" directive, but this will cause a speed penalty
-  # We also replace old style "print" statements with log()
-  RUN_PRE_PROCESS = True
 
   # This is the maximum number of bytes we will try to read in for a file.
   # Anything larger and we abort
   MAX_FILE_SIZE = 200000
 
-#### Code Pre-processor ####
-
-# Pre-processes the code, prior to creating the virtual namespace
-def _preprocess_code(code):
-  # Replace old include's
-  code = _replace_include(code)
-
-  # Replace the print statements
-  code = _replace_print(code)
-
-  # Return the modified code
-  return code
-
-# Replace's the old "include module.py" clause with
-# dy_import_module_symbols which should have the same effect
-def _replace_include(code):
-  # Find the initial include
-  index = code.find("\ninclude ")
-  
-  # While there are more include statements, we will continue to run
-  while index > -1:
-    # Find the next new line
-    new_line_index = code.find("\n",index+1)
-
-    # Read the module name
-    module_name = code[index+9:new_line_index]
-
-    # Replace this occurrence with dy_import_module_symbols
-    code = code[:index+1] + "dy_import_module_symbols('"+module_name+"', callfunc)" + code[new_line_index:]
-
-    # Add 30 to the index, since we just added more characters
-    index += 30
-
-    # Find the next occurence of include
-    index = code.find("\ninclude ",index)
-
-  # Return the modified code
-  return code
-
-
-# Replace's the old "print" statement with
-# the new log() for Repy V2
-def _replace_print(code):
-  # Find the initial include
-  index = code.find("print ")
-  
-  # While there are more print statements, we will continue to run
-  while index > -1:
-    # Find the next new line
-    new_line_index = code.find("\n",index+1)
-
-    # Get the argument to print
-    print_argument = code[index+6:new_line_index]
-    
-    # Check for ">>", this indicates they are trying to write
-    # to a pipe / file, this is not supported.
-    if print_argument.startswith(">>"):
-      raise Exception("Dylink cannot re-write print statements that use redirection! Unsupported statement: print "+print_argument)
-
-    # Check if we should add a new-line
-    if print_argument[-1] != ",":
-      log_arg = print_argument + ",'\\n'"
-    else:
-      log_arg = print_argument
-
-    # Replace this occurrence with log
-    code = code[:index] + "log("+log_arg+")" + code[new_line_index:]
-
-    # Adjust the index since we just added more characters
-    # The number of characters we are now using is 5 for log() plus the arguments
-    # We user using 6 for 'print ' and the arguments for print
-    index += (5 + len(log_arg)) - (6 + len(print_argument))
-
-    # Find the next occurence of include
-    index = code.find("print ",index)
-
-  # Return the modified code
-  return code
 
 
 #### Helper functions ####
@@ -154,12 +84,6 @@ def _default_context(import_context, additional_globals=[]):
   return new_context
 
 
-# Strips the common extensions to get the actual module name
-def _dy_module_name(module):
-  # Strip the module name of all extensions
-  for extension in COMMON_EXTENSIONS:
-    module = module.replace(extension, "")
-  return module
 
 
 # Constructs the VirtualNamespace that is used to bind the attributes
@@ -204,37 +128,29 @@ def _dy_module_code(module):
   else:
     # Try to get a file handle to the module
     fileh = None
-    for extension in COMMON_EXTENSIONS:
-      try:
-        fileh = openfile(module + extension,False)
-        break
-      except FileNotFoundError:
-        pass
-      except ResourceExhaustedError:
-        raise
+    try:
+      fileh = openfile(module, False)
+    except FileNotFoundError, err:
+      raise RepyImportError("Failed to locate the module! Module: '" + 
+              module + "' " + str(err))
+    except ResourceExhaustedError:
+      raise
 
-    # Was the file found?
-    if fileh is None:
-      raise Exception, "Failed to locate the module! Module: '" + module + "'"
 
     # Read in the code
     code = fileh.readat(MAX_FILE_SIZE, 0)
     fileh.close()
     if len(code) == MAX_FILE_SIZE:
-      log("Failed to read all of module ("+module+")! File size exceeds 100K characters!")
+      log("Failed to read all of module (" + module + 
+          ")! File size exceeds " + str(MAX_FILE_SIZE) + " characters!\n")
 
-    # Pre-process the code
-    if RUN_PRE_PROCESS:
-      try:
-        code = _preprocess_code(code)
-      except Exception, e:
-        raise Exception, "Failed to pre-process the module ("+module+")! Got the following exception: '" + str(e) +"'"
 
     # Create a new virtual namespace
     try:
       virt = DylinkNamespace(code,module)
     except Exception, e:
-      raise Exception, "Failed to initialize the module ("+module+")! Got the following exception: '" + str(e) + "'"
+      raise Exception("Failed to initialize the module (" + module + 
+          ")! Got the following exception: '" + repr(e) + "'")
     
     # Cache the module
     MODULE_CACHE[module] = virt
@@ -260,7 +176,7 @@ class ImportedModule:
     module_bind_space = _dy_bind_code(name, context)
 
     # Create the binding context
-    module_bind_context = {"c":context,"m":self}
+    module_bind_context = {"c": context, "m": self}
 
     # Perform the binding
     module_bind_space.evaluate(module_bind_context)
@@ -280,96 +196,156 @@ class ImportedModule:
 def dylink_import_global(module, module_context,new_callfunc="import"):
   """
   <Purpose>
-    Dynamically link in new modules at runtime.
+    This function performs the equivalent of "from X import *".   It first
+    does an import, and then remaps symbols from the module object into the
+    provided module_context.
 
   <Arguments>
     module:
-            The name of a module to import. This should be excluding extensions,
-            but may be the full name. e.g. for module foo.py use "foo"
+      The filename of a module to import. This must include file extensions 
+      (thus making "mylib.py" and "mylib.repy" distinct modules).
 
     module_context: 
-            The context to evaluate the module in. If you want to do a global import,
-            you can evaluate in the current global context. For a bundled module,
-            see dylink_import_module.
+      The context to evaluate the module in. If you want to do a global import,
+      you can evaluate in the current global context. For a bundled module,
+      see dylink_import_module.
 
     new_callfunc:
-            The value to use for callfunc during the import.
-            Defaults to "import".
+      The value to use for callfunc during the import.
+      Defaults to "import".
 
   <Exceptions>
-    Raises an exception if the module cannot be found, or if there is a problem
-    initializing a VirtualNamespace around the module. See VirtualNamespace.
+    Raises RepyImportError if the module cannot be found, or if there 
+    is a problem initializing a VirtualNamespace around the module. 
+    See VirtualNamespace.
   
   <Side Effects>
     module_context will likely be modified.  
   """
-  # Get the actual module name
-  module = _dy_module_name(module)
 
-  # Get the code for the module
-  virt = _dy_module_code(module)
+  # let's do a normal import of this first.   Much like Python, even if one 
+  # does "from X import *" multiple times, it only gets initialized once
 
-  # Store the original callfunc
-  orig_callfunc = (False, None)
-  if "callfunc" in module_context:
-    orig_callfunc = (True, module_context["callfunc"])
-  
-  # Set the callfunc
-  module_context["callfunc"] = new_callfunc
+  # JAC: Potential bug, I do not fully understand why we need 
+  # "additional_globals", but I do not believe it was used by this module.   
+  # I think it only matters for import.   I am setting to []
+  module_object = dylink_import_module(module, module_context, new_callfunc, [])
 
-  # Try to evaluate the module
-  try:
-    virt.evaluate(module_context)
-  except Exception, e:
-    debug_str = getlasterror()
-    raise Exception, "Caught exception while initializing module ("+module+")! Debug String: "+debug_str
+  # Now remap the symbols.   Python overwrites symbols, so if a module X 
+  # defines z=2, and Y looks like:
+  # """
+  # z=1
+  # from X import *
+  # log(str(z))
+  # """
+  # 
+  # it will print 2.   I replicate this behavior.
+  for symbolname in module_object._context:
 
-  # Restore the original callfunc
-  if orig_callfunc[0]:
-    module_context["callfunc"] = orig_callfunc[1]
+    # It is critical to avoid overwriting things like _context, callfunc,
+    # and dy_import_module because these are specific to the containing 
+    # module
+    if symbolname not in SYMBOLS_TO_IGNORE_WHEN_FROM_X_IMPORT:
+      module_context[symbolname] = module_object._context[symbolname]
 
 
+  # That should be all!
+
+
+
+
+
+# This is a list of modules that are currently being imported.   It is used
+# to prevent circular imports from causing an infinite loop (#1379).  
+imports_in_progress = []
 
 # Packages the module being imported into a module like object
-def dylink_import_module(module,import_context, new_callfunc="import", additional_globals=[]):
+def dylink_import_module(module, import_context, new_callfunc="import", additional_globals=[]):
   """
   <Purpose>
-    Imports modules dynamically into a bundles module like object.
+    Imports modules dynamically into a bundles module like object.   This is
+    much like "import" in python, except it actually returns the module
+    itself.   Use it like: 
+       time = dylink_import_module('time.repy',callercontext)
 
   <Arguments>
     module:
-          The module to import.
+      The filename of a module to import. This must include file extensions 
+      (thus making "mylib.py" and "mylib.repy" distinct modules).
 
     import_context:
-          The context of the caller, e.g. the context of who is importing.
+      The context of the caller, e.g. the context of who is importing.
+      JAC: I believe this is needed to map in the appropriate calls
+      like readat, randombytes, etc.
 
     new_callfunc:
-          The value to use for callfunc during the import.
-          Defaults to "import".
+      The value to use for callfunc during the import.
+      Defaults to "import".
 
     additional_globals:
-          An array of string globals which will be provided to the imported module.
-          E.g. if the current context defines "foo" and this should be made available
-          in addition to the Stock repy API, this can be provided as ["foo"]
+      An array of string globals which will be provided to the imported 
+      module. E.g. if the current context defines "foo" and this should 
+      be made available in addition to the Stock repy API, this can be 
+      provided as ["foo"]
 
   <Exceptions>
-    Raises an exception if the module cannot be found, or if there is a problem
-    initializing a VirtualNamespace around the module. See VirtualNamespace. See dylink_import_global. 
+    Raises RepyImportError if the module cannot be found, or if there is 
+    a problem initializing a VirtualNamespace around the module. 
+    See VirtualNamespace. See dylink_import_global. 
 
   <Returns>
     A module like object.
   """
-  # Get the actual module name
-  module_name = _dy_module_name(module)
+  # Need to prevent circular imports from causing an infinite loop (#1379).  
+  # To do this, Python associates an empty namespace with any module that is
+  # being imported.   We will do the same.
+  if module in imports_in_progress:
+    return ImportedModule(module, {})
 
-  # Construct a new context
-  new_context = _default_context(import_context, additional_globals)
+  imports_in_progress.append(module)
+  # always clean up this entry from imports_in_progress...
+  try:
 
-  # Populate the context
-  dylink_import_global(module_name, new_context, new_callfunc)
+    # I need to remap the context's items like readat, etc. correctly...
+    # The rationale is that a security layer may use a module, like time. 
+    # If untrusted code imports time, it should not get the security layer's 
+    # call for sendmessage, writeat, etc.
+    # I will clear the IMPORTED_MODULE_CACHE upon dispatch
 
-  # Create a "module" object
-  return ImportedModule(module_name, new_context)
+    # We will keep a cache of imported modules so that we only import each
+    # module once (see #1320).   This mimics Python's behavior
+    if module in IMPORTED_MODULE_CACHE:
+      return IMPORTED_MODULE_CACHE[module]
+
+    # Okay, we'll need to load it in.  Construct a new context.   By testing
+    # python this is what it seems to do in all cases (even "from X import *")
+    new_context = _default_context(import_context, additional_globals)
+
+    # Get the code for the module
+    virt = _dy_module_code(module)
+
+    # Set callfunc
+    new_context["callfunc"] = new_callfunc
+
+    # Try to evaluate the module.   This is where things like code safety checks
+    # and syntax errors will fail.
+    try:
+      virt.evaluate(new_context)
+    except Exception, e:
+      debug_str = getlasterror()
+      # JAC: BUG?   Not sure why we are not just raising the true error...
+      raise Exception("Caught exception while initializing module (" + 
+          module + ")! Debug String: " + debug_str)
+
+    # Place the item in the cache so we do not import it more than once (#1320)
+    IMPORTED_MODULE_CACHE[module] = ImportedModule(module, new_context)
+
+    return IMPORTED_MODULE_CACHE[module]
+
+  finally:
+    # there must always be exactly one or this is an internal error (and
+    # merits an exception)
+    imports_in_progress.remove(module)
 
 
 #### Support for recursive modules ####
@@ -407,8 +383,13 @@ def dylink_dispatch(eval_context, caller_context):
   # Get the specified module
   module = caller_context["callargs"][0]
 
-  # Get the actual module name
-  module = _dy_module_name(module)
+  # I need to remap the context's items like readat, etc. correctly...
+  # The rationale is that a security layer may use a module, like time.
+  # If untrusted code imports time, it should not get the security layer's 
+  # call for sendmessage, writeat, etc.
+  # A sane way to do this may be to simply clear the IMPORTED_MODULE_CACHE
+  # upon dispatch
+  IMPORTED_MODULE_CACHE = {}
 
   # Get the code for the module
   virt = _dy_module_code(module)
@@ -437,11 +418,11 @@ def init_dylink(import_context, child_context):
 
   <Arguments>
     import_context:
-            The context to initialize in.
+      The context to initialize in.
     
     child_context:
-            A copy of the import_context that is used for dy_dispatch_module
-            to pass to the child namespace.
+      A copy of the import_context that is used for dy_dispatch_module
+      to pass to the child namespace.
 
   <Side Effects>
     dy_* will be defined in the context.
@@ -468,6 +449,21 @@ def init_dylink(import_context, child_context):
   import_context["dy_import_module_symbols"] = _dy_import_global
   import_context["dy_dispatch_module"] = _dylink_dispatch
 
+  # NOTE: Any context items must be added below or they will overwrite
+  # the caller's items!
+
+
+# It is critical to avoid replacing the caller's version of some symbols,
+# such as the below.   These are setup by dylink and should not be remapped
+# or else the caller will effective be stuck with some parts of the callee's 
+# state.   
+# 
+# This is placed here because it needs to be updated when the functions
+# above and below this change.
+SYMBOLS_TO_IGNORE_WHEN_FROM_X_IMPORT = ['CHILD_CONTEXT', '_context', 
+    'callfunc', 'dy_dispatch_module', 'dy_import_module', 
+    'dy_import_module_symbols', "HAS_DYLINK", 'mycontext']
+
 
 # Wrap around VirtualNamespace
 class DylinkNamespace(object):
@@ -491,7 +487,7 @@ class DylinkNamespace(object):
     
     # Explicitly remove dylink_* calls if disabled
     if not enable_dylink:
-      calls = ["dy_import_module","dy_import_module_symbols","dy_dispatch_module"]
+      calls = ["dy_import_module", "dy_import_module_symbols", "dy_dispatch_module"]
       for call in calls:
         if call in context:
           del context[call]
@@ -512,6 +508,9 @@ class DylinkNamespace(object):
     # Inform the module if dylink is available
     context["HAS_DYLINK"] = enable_dylink
 
+    # NOTE: Any context items must be added above or they will overwrite
+    # the caller's items!
+
     # Set this as the last evaluated context
     self._eval_context = context
 
@@ -521,6 +520,16 @@ class DylinkNamespace(object):
     # Return the context
     return context
     
+
+
+class RepyImportError(Exception):
+  """
+  Define a new error for when we are able to import
+  a module properly.
+  """
+  pass
+
+
 
 # Functional wrapper around DylinkNamespace
 def get_DylinkNamespace(*args,**kwargs):

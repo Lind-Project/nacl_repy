@@ -1,26 +1,27 @@
 """
-Author: Justin Cappos
+<Program Name>
+  advertise.repy
 
-Start Date: October 14, 2008
+<Started>
+  October 14, 2008
 
-Description:
-A stub that allows different announcement types.   I'd make this smarter, but
-the user won't configure it, right?
+<Author>
+  Justin Cappos
 
-
-Raises an AdvertiseError exception if there is a problem advertising with either service
-
+<Purpose>
+  Module which allows clients to send advertise queries to various servers.
 """
 
-include listops.repy
-include openDHTadvertise.repy
-include centralizedadvertise.repy
-include DORadvertise.repy
-include parallelize.repy
+listops = dy_import_module("listops.repy")
+centralizedadvertise = dy_import_module("centralizedadvertise.repy")
+centralizedadvertise_v2 = dy_import_module("centralizedadvertise_v2.repy")
+parallelize = dy_import_module("parallelize.repy")
+udp_centralizedadvertise = dy_import_module("udpcentralizedadvertise.repy")
 
 
 # All the names of services we can support.
-_advertise_all_services = ("central", "DHT", "DOR")
+# As of January 2012, openDHT is no longer a default service.
+_advertise_all_services = ("central", "central_v2", "UDP")
 
 
 nodemanager_announce_context = {}
@@ -38,8 +39,51 @@ class AdvertiseError(Exception):
 
 
 def _try_advertise_announce(args):
-  # Helper function used by advertise_announce(). This is the worker process
-  # run in parallel for DHT and central announces.
+  """
+  <Purpose>
+    Helper function to be used in parallel with other advertise requests. 
+    This is the function we pass to parallelize to perform simultaneous 
+    queries.
+
+  <Arguments>
+    args (tuple)
+      A tuple containing the following:
+        which_service (string)
+          The service we should use to advertise, such as "central" or "UDP".
+        key (string)
+          The advertisement key. For most nodes, this will be a public key.
+        value (string)
+          The advertisement value to be assigned to key.
+        ttlval (int)
+          Time To Live for this advertisement, in seconds.
+        exceptions (List reference, should literally be [''])
+          An empty list reference which will be have exception data in its zero 
+          index if something goes wrong. Due to this method's parallelized nature, 
+          we cannot simply return this data; it is not invoked by this module.
+        finishedref (List with boolean in zero index)
+          This function sets finishedref[0] = true when it has completed 
+          successfully. This is used as a flag so that we know when to return 
+          advertise data to the client later.
+
+  <Exceptions>
+    AdvertiseError
+      If an invalid service type is specified, this exception will be raised.
+    ValueError
+      Too many, or too few values passed in the args tuple.
+
+  <Side Effects>
+    Contingent on the side effects of the modules invoked for different 
+    services, this consumes an outsocket and insocket on use. Therefore, 
+    invoking too many instances of these in parallel can lead to crashing 
+    if the application exceeds its allotted socket count.
+
+    The number of sockets permitted to an application is determined by 
+    its associated restrictions file.
+
+  <Returns>
+    None
+  """
+  # ValueError if there are too many or too few values.
   which_service, key, value, ttlval, exceptions, finishedref = args
 
   if which_service not in _advertise_all_services:
@@ -47,13 +91,17 @@ def _try_advertise_announce(args):
 
   try:
     if which_service == "central":
-      centralizedadvertise_announce(key, value, ttlval)
-    elif which_service == "DOR":
-      DORadvertise_announce(key, value, ttlval)
+      centralizedadvertise.centralizedadvertise_announce(key, value, ttlval)
+    elif which_service == "central_v2":
+      centralizedadvertise_v2.v2centralizedadvertise_announce(key, value, ttlval)
+    elif which_service == "UDP":
+      udp_centralizedadvertise.udpcentralizedadvertise_announce(key, value, ttlval)
     else:
-      openDHTadvertise_announce(key, value, ttlval)
+      # This should be redundant with the previous explicit AdvertiseError.
+      # One cannot (usually) be too careful.
+      raise AdvertiseError("Did not understand service type.")
 
-    finishedref[0] = True     # Signal that at least one service has finished.
+    finishedref[0] = True     # Indicate that this instance has finished.
     
     nodemanager_announce_context_lock.acquire(True)
     try:
@@ -76,43 +124,58 @@ def _try_advertise_announce(args):
 
 
 
-def advertise_announce(key, value, ttlval, concurrentevents=2, \
-    graceperiod=10, timeout=60):
+def advertise_announce(key, value, ttlval, concurrentevents=4, 
+    graceperiod=5, timeout=30):
   """
   <Purpose>
-    Announce (PUT) a value at the given key in the central advertise service,
-    openDHT, or both.
+    Announce (PUT) a key : value pair to all default advertise services.
 
   <Arguments>
-    key:
-            The key to store the value at.
+    key (string)
+      The key for our advertise dictionary entry.
 
-    value:
-            The value to store.
+    value (string)
+      The value for our advertise dictionary entry.
 
-    ttlval:
-            Time in seconds to persist the associated key<->value pair.
+    ttlval (int)
+      Time in seconds to persist the associated key<->value pair.
     
-    concurrentevents (optional, defaults to 2):
-            How many services to announce on in parallel.
+    concurrentevents (int) (optional)
+      How many services to announce on in parallel.
 
-    graceperiod (optional, defaults to 10):
-            After this many seconds (can be a float or int type), if we have
-            successfully announced on at least one service, return.
+    graceperiod (float) (optional)
+      Amount of time to wait before returning, provided at least one of the 
+      parallel attempts has finished.
 
-    timeout (optional, defaults to 60):
-            After this many seconds (can be a float or int type), give up.
+      Note that even when this method returns, parallelized announce attempts may
+      still be running. These will terminate in relatively short order, but be 
+      aware of this. It could be a problem, for example, if you tried to set graceperiod 
+      very low to send rapid-fire queries to the advertise servers. This would 
+      probably cause you to exceed your allotted outsockets. (This is only 
+      possible if your timeout value is greater than your graceperiod value.)
+
+      In short, graceperiod is a "soft" timeout. Provided at least one query has 
+      been confirmed, the method will return after graceperiod seconds at most.
+      If none return, this could run all the way till timeout.
+
+    timeout (int) (optional)
+      Absolute allowed time before returning. Provided the method has not 
+      returned by now, successful or not, it will terminate after timeout seconds.
 
   <Exceptions>
     AdvertiseError if something goes wrong.
 
   <Side Effects>
     Spawns as many worker events as concurrentevents specifies, limited by the
-    number of services available (currently 2).
+    number of services available (currently 2). Each worker event consumes one 
+    insocket and one outsocket until it is finished.
 
   <Returns>
     None.
   """
+  # convert different types to strings to avoid type conversion errors #874
+  key = str(key)
+  value = str(value)
 
   # Wrapped in an array so we can modify the reference (python strings are immutable).
   exceptions = [''] # track exceptions that occur and raise them at the end
@@ -122,35 +185,43 @@ def advertise_announce(key, value, ttlval, concurrentevents=2, \
 
   onefinished = [False]
 
+  # Populate parallel jobs list.
   for service_type in _advertise_all_services:
     if nodemanager_announce_context["skip" + service_type] == 0:
-      parallize_worksets.append((service_type, key, value, ttlval, \
+      parallize_worksets.append((service_type, key, value, ttlval, 
           exceptions, onefinished))
-
     else:
       nodemanager_announce_context_lock.acquire(True)
       try:
-        nodemanager_announce_context["skip" + service_type] = \
-            nodemanager_announce_context["skip" + service_type] - 1
+        nodemanager_announce_context["skip" + service_type] -= 1
       finally:
         nodemanager_announce_context_lock.release()
 
-  ph = parallelize_initfunction(parallize_worksets, _try_advertise_announce, \
-      concurrentevents=concurrentevents)
+  # Begin parallel jobs, instructing parallelize to run no more than 
+  # concurrentevents at once.
+  ph = parallelize.parallelize_initfunction(parallize_worksets, 
+      _try_advertise_announce, concurrentevents=concurrentevents)
 
-  while not parallelize_isfunctionfinished(ph):
-    sleep(0.1)
+  # Once we have either timed out or exceeded graceperiod with at least one 
+  # service reporting, return whatever data we have. Remaining threads will 
+  # be forsaken and allowed to terminate at their leisure.
+  while not parallelize.parallelize_isfunctionfinished(ph):
+    sleep(0.015)
     if getruntime() - start_time > timeout or \
         (getruntime() - start_time > graceperiod and onefinished[0]):
-      parallelize_abortfunction(ph)
+      parallelize.parallelize_abortfunction(ph)
       break
 
-  # Note: closefunction() doesn't actually abort future functions like
-  # it says it will.
-  parallelize_closefunction(ph)
+  # This does not terminate all parallel threads; do not assume it does.
+  parallelize.parallelize_closefunction(ph)
 
+  # check to see if any successfully returned 
+  if onefinished == [False]:
+    raise AdvertiseError("None of the advertise services could be contacted")
+
+  # if we got an error, indicate it
   if exceptions[0] != '':
-    raise AdvertiseError, exceptions
+    raise AdvertiseError(str(exceptions))
 
   return None
 
@@ -158,8 +229,26 @@ def advertise_announce(key, value, ttlval, concurrentevents=2, \
 
 
 def _try_advertise_lookup(args):
-  # Helper function used by advertise_lookup(). This is the worker process
-  # run in parallel for DHT and central lookups.
+  """
+  <Purpose>
+    Helper function for advertise lookups. This is the instance function for 
+    parallel lookups which is passed to and managed by parallelize. Each 
+    execution of this method will perform one lookup and return whatever 
+    it is able to get.
+
+  <Arguments>
+    args (4-tuple)
+      which_service (string)
+        The service on which to perform a lookup. This must match one of the 
+        values in _advertise_all_services.
+      key (string)
+        The key to retrieve a value for.
+      maxvals (int)
+        The maximum number of entries to retrieve from the server.
+      finishedref (Array reference with a boolean at index zero)
+        The state of the function instance. If it completes successfully,
+        this boolean will be set to True.
+  """
   which_service, key, maxvals, finishedref = args
 
   if which_service not in _advertise_all_services:
@@ -167,11 +256,13 @@ def _try_advertise_lookup(args):
 
   try:
     if which_service == "central":
-      results = centralizedadvertise_lookup(key, maxvals)
-    elif which_service == "DOR":
-      results = DORadvertise_lookup(key, maxvals=maxvals)
+      results = centralizedadvertise.centralizedadvertise_lookup(key, maxvals)
+    elif which_service == "central_v2":
+      results = centralizedadvertise_v2.v2centralizedadvertise_lookup(key, maxvals)
+    elif which_service == "UDP":
+      results = udp_centralizedadvertise.udpcentralizedadvertise_lookup(key, maxvals)
     else:
-      results = openDHTadvertise_lookup(key, maxvals)
+      raise AdvertiseError("Did not understand service type!")
 
     finishedref[0] = True
     return results
@@ -182,35 +273,42 @@ def _try_advertise_lookup(args):
 
 
 
-def advertise_lookup(key, maxvals=100, lookuptype=['central','opendht','DOR'], \
-    concurrentevents=2, graceperiod=10, timeout=60):
+def advertise_lookup(key, maxvals=100, lookuptype=None, 
+    concurrentevents=4, graceperiod=5, timeout=60):
   """
   <Purpose>
     Lookup (GET) (a) value(s) stored at the given key in the central advertise
-    server, openDHT, or both.
+    server, central advertise server V2, UDP, or all.
 
   <Arguments>
-    key:
-            The key used to lookup values.
+    key
+      The key used to lookup values.
 
     maxvals (optional, defaults to 100):
-            Maximum number of values to return.
+      Maximum number of values to return.
 
-    lookuptype (optional, defaults to ['central', 'opendht', 'DOR']):
-            Which services to employ looking up values.
+    lookuptype (optional, defaults to ['central', 'central_v2', 'UDP']):
+      Which services to employ looking up values.
     
     concurrentevents (optional, defaults to 2):
-            How many services to lookup on in parallel.
+      How many services to lookup on in parallel.
 
     graceperiod (optional, defaults to 10):
-            After this many seconds (can be a float or int type), return the
-            results if one service was reached successfully.
+      After this many seconds (can be a float or int type), return the
+      results if one service was reached successfully.
 
     timeout (optional, defaults to 60):
-            After this many seconds (can be a float or int type), give up.
+      After this many seconds (can be a float or int type), give up.
 
   <Exceptions>
-    AdvertiseError if something goes wrong.
+    TimeoutError if no service returns an answer and at least one service
+    has a timeout.
+
+    AdvertiseError if something goes wrong with *all* services, such as a bad 
+    argument.  *** THIS DOES NOT HAPPEN NOW IN ALL CASES. SEE #1329. ***
+
+    If some services timeout and others have different errors, a TimeoutError
+    will be raised.  If one succeeds, no exception is raised.
 
   <Side Effects>
     Spawns as many worker events as concurrentevents specifies, limited by the
@@ -219,39 +317,72 @@ def advertise_lookup(key, maxvals=100, lookuptype=['central','opendht','DOR'], \
   <Returns>
     All unique values stored at the key.
   """
+  # convert different types to strings to avoid type conversion errors #874
+  key = str(key)
+
+  # As of January 2012, DHT is no longer a default service.
+  if lookuptype is None:
+    lookuptype = ['central', 'central_v2', 'UDP']
 
   parallel_worksets = []
   start_time = getruntime()
 
   onefinished = [False]
 
-  for type in lookuptype:
-    if type == "central":
+  # Populate parallel jobs list.
+  for servicetype in lookuptype:
+    if servicetype == "central":
       parallel_worksets.append(("central", key, maxvals, onefinished))
-    elif type == "DOR":
-      parallel_worksets.append(("DOR", key, maxvals, onefinished))
-    elif type == "opendht":
-      parallel_worksets.append(("DHT", key, maxvals, onefinished))
+    elif servicetype == "central_v2":
+      parallel_worksets.append(("central_v2", key, maxvals, onefinished))
+    elif servicetype == "UDP":
+      parallel_worksets.append(("UDP", key, maxvals, onefinished))
     else:
-      raise AdvertiseError("Incorrect service type '" + type + "' passed to advertise_lookup().")
+      raise AdvertiseError("Incorrect service type '" + servicetype + "' passed to advertise_lookup().")
 
-  ph = parallelize_initfunction(parallel_worksets, _try_advertise_lookup, \
-      concurrentevents=concurrentevents)
+  # Start parallel jobs.
+  ph = parallelize.parallelize_initfunction(parallel_worksets, 
+      _try_advertise_lookup, concurrentevents=concurrentevents)
 
-  while not parallelize_isfunctionfinished(ph):
-    sleep(0.1)
-    if getruntime() - start_time > timeout or \
-        (getruntime() - start_time > graceperiod and onefinished[0]):
-      parallelize_abortfunction(ph)
+  # Wait until either timeout or graceperiod with at least one service 
+  # success, and then continue.
+  while not parallelize.parallelize_isfunctionfinished(ph):
+    sleep(0.015)
+    if getruntime() - start_time > timeout:
+      # This timed out.   Time to abort.   Fix for #1329.
+      parallelize.parallelize_abortfunction(ph)
+      raise TimeoutError("Advertise lookup timed out without contacting any service")
+    if (getruntime() - start_time > graceperiod and onefinished[0]):
+      # This hit the grace period.   (At least one service worked, but not
+      # as many as were requested.)
+      parallelize.parallelize_abortfunction(ph)
       break
 
-  parallel_results = parallelize_getresults(ph)['returned']
+
+  all_parallel_results = parallelize.parallelize_getresults(ph)
+  parallel_results = all_parallel_results['returned']
   results = []
 
+  atleastonecorrectresult = False
+
+  # Construct a list of return results
   for parallel_result in parallel_results:
-    _, return_value = parallel_result
-    results += return_value
+    requestinfo, return_value = parallel_result
+    # Did this succeed?
+    if requestinfo[3] == [True]:
+      atleastonecorrectresult = True
 
-  parallelize_closefunction(ph)
+      results += return_value
 
-  return listops_uniq(results)
+  parallelize.parallelize_closefunction(ph)
+
+  if atleastonecorrectresult:
+    # Filter results and return.
+    return listops.listops_uniq(results)
+
+  else:
+    # JAC: I should check the errors here and raise TimeoutError only if
+    # timeout was actually the issue.   However with the way this is written 
+    # with the helper function, all exception information is lost.   
+    raise TimeoutError('Error performing lookup.   No services succeeded.')
+ 

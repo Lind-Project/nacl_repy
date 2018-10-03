@@ -29,23 +29,23 @@ CHECK_RL_SHUTDOWN = 1
 #
 
 # Import the sub-library, librepyrunloop
-librunloop = dy_import_module("librepyrunloop")
+librunloop = dy_import_module("librepyrunloop.repy")
 LIBREPY_EXPORTS.append("librunloop")
 
 # Import the sub-library, librepyfile
-libfile = dy_import_module("librepyfile")
+libfile = dy_import_module("librepyfile.repy")
 LIBREPY_EXPORTS.append("libfile")
 
 # Import the sub-library, librepyrandom
-librandom = dy_import_module("librepyrandom")
+librandom = dy_import_module("librepyrandom.repy")
 LIBREPY_EXPORTS.append("librandom")
 
 # Import the sub-library, librepythread
-libthread = dy_import_module("librepythread")
+libthread = dy_import_module("librepythread.repy")
 LIBREPY_EXPORTS.append("libthread")
 
 # Import the sub-library, librepysocket
-libsocket = dy_import_module("librepysocket")
+libsocket = dy_import_module("librepysocket.repy")
 LIBREPY_EXPORTS.append("libsocket")
 
 # Override the imported version of librunloop to use a unified run-loop

@@ -41,12 +41,12 @@
       binascii_a2b_hex      
     Repy Library Used:
       base64_b64decode
-      pyDes
+      pydes
       md5py      
 
 """
 
-include sshkey_paramiko.repy
+dy_import_module_symbols('sshkey_paramiko.repy')
 
 
 class sshkey_SSHException(Exception):

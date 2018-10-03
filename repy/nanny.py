@@ -8,11 +8,11 @@
 
    Description:
 
-   This module handles the policy decisions and accounting to detect if there 
+   This module handles the policy decisions and accounting to detect if there
    is a resource violation.  The actual "stopping", etc. is done in the
    nonportable module.
 
-   Note: this module was heavily revised in Dec 2010.   However, these changes 
+   Note: this module was heavily revised in Dec 2010.   However, these changes
    are not sufficient to support GACKS style resource trading and sharing.
    This is a more major change than I wanted to do at this point.
 """
@@ -37,8 +37,7 @@ import resource_constants
 
 import threading
 
-# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
-threading.hasattr = hasattr
+
 
 # I'm going to global information about the resources allowed and used...
 # These will be initialized when the nanny is started.
@@ -54,7 +53,7 @@ _resources_consumed_dict = None
 
 
 
-# Updates the values in the consumption table (taking the current time into 
+# Updates the values in the consumption table (taking the current time into
 # account)
 def _update_resource_consumption_table(resource, resource_allowed_dict, consumed_resource_dict):
 
@@ -73,7 +72,7 @@ def _update_resource_consumption_table(resource, resource_allowed_dict, consumed
 
   # Remove the charge
   reduction = elapsedtime * resource_allowed_dict[resource]
-    
+
   if reduction > consumed_resource_dict[resource]:
 
     # It would reduce it below zero (so put it at zero)
@@ -91,7 +90,7 @@ def _sleep_until_resource_drains(resource, resourcesalloweddict, resourcesuseddi
   # It'll never drain!
   if resourcesalloweddict[resource] == 0:
     raise InternalRepyError, "Resource '"+resource+"' limit set to 0, won't drain!"
-    
+
 
   # We may need to go through this multiple times because other threads may
   # also block and consume resources.
@@ -115,7 +114,7 @@ def _create_resource_consumption_dict():
 
    <Arguments>
       None.
-         
+
    <Exceptions>
       InternalRepyError is raised if a resource is specified as both quantity and item based.
 
@@ -169,16 +168,16 @@ def _create_resource_consumption_dict():
 def _tattle_quantity(resource, quantity, resourcesalloweddict, resourcesuseddict):
   """
    <Purpose>
-      Notify the nanny of the consumption of a renewable resource.   A 
-      renewable resource is something like CPU or network bandwidth that is 
+      Notify the nanny of the consumption of a renewable resource.   A
+      renewable resource is something like CPU or network bandwidth that is
       speficied in quantity per second.
 
    <Arguments>
       resource:
-         A string with the resource name.   
+         A string with the resource name.
       quantity:
-         The amount consumed.   This can be zero (to indicate the program 
-         should block if the resource is already over subscribed) but 
+         The amount consumed.   This can be zero (to indicate the program
+         should block if the resource is already over subscribed) but
          cannot be negative
 
    <Exceptions>
@@ -196,14 +195,14 @@ def _tattle_quantity(resource, quantity, resourcesalloweddict, resourcesuseddict
   if quantity < 0:
     # This will cause the program to exit and log things if logging is
     # enabled. -Brent
-    tracebackrepy.handle_internalerror("Resource '" + resource + 
+    tracebackrepy.handle_internalerror("Resource '" + resource +
         "' has a negative quantity " + str(quantity) + "!", 132)
-    
+
   # get the lock for this resource
   resourcesuseddict['renewable_locks'][resource].acquire()
-  
+
   # release the lock afterwards no matter what
-  try: 
+  try:
     # update the resource counters based upon the current time.
     _update_resource_consumption_table(resource, resourcesalloweddict, resourcesuseddict)
 
@@ -212,18 +211,18 @@ def _tattle_quantity(resource, quantity, resourcesalloweddict, resourcesuseddict
       # Should never have a quantity tattle for a non-renewable resource
       # This will cause the program to exit and log things if logging is
       # enabled. -Brent
-      tracebackrepy.handle_internalerror("Resource '" + resource + 
+      tracebackrepy.handle_internalerror("Resource '" + resource +
           "' is not renewable!", 133)
-  
+
 
     resourcesuseddict[resource] = resourcesuseddict[resource] + quantity
     # I'll block if I'm over...
     _sleep_until_resource_drains(resource, resourcesalloweddict, resourcesuseddict)
-  
+
   finally:
     # release the lock for this resource
     resourcesuseddict['renewable_locks'][resource].release()
-    
+
 
 
 
@@ -232,17 +231,17 @@ def _tattle_quantity(resource, quantity, resourcesalloweddict, resourcesuseddict
 def _tattle_add_item(resource, item, resourcesalloweddict, resourcesuseddict):
   """
    <Purpose>
-      Let the nanny know that the process is trying to consume a fungible but 
+      Let the nanny know that the process is trying to consume a fungible but
       non-renewable resource.
 
    <Arguments>
       resource:
-         A string with the resource name.   
+         A string with the resource name.
       item:
          A unique identifier that specifies the resource.   It is used to
          prevent duplicate additions and removals and so must be unique for
          each item used.
-         
+
    <Exceptions>
       InternalRepyError is raised if the consumption of the resource has exceded the limit.
       ResourceExhaustedError is raised if the resource is currently at the usage limit.
@@ -257,7 +256,7 @@ def _tattle_add_item(resource, item, resourcesalloweddict, resourcesuseddict):
   resourcesuseddict['fungible_locks'][resource].acquire()
 
   # always unlock as we exit...
-  try: 
+  try:
 
     # It's already acquired.   This is always allowed.
     if item in resourcesuseddict[resource]:
@@ -276,24 +275,24 @@ def _tattle_add_item(resource, item, resourcesalloweddict, resourcesuseddict):
   finally:
     resourcesuseddict['fungible_locks'][resource].release()
 
-    
+
 
 
 
 def _tattle_remove_item(resource, item, resourcesalloweddict, resourcesuseddict):
   """
    <Purpose>
-      Let the nanny know that the process is releasing a fungible but 
+      Let the nanny know that the process is releasing a fungible but
       non-renewable resource.
 
    <Arguments>
       resource:
-         A string with the resource name.   
+         A string with the resource name.
       item:
          A unique identifier that specifies the resource.   It is used to
          prevent duplicate additions and removals and so must be unique for
          each item used.
-         
+
    <Exceptions>
       None.
 
@@ -307,8 +306,8 @@ def _tattle_remove_item(resource, item, resourcesalloweddict, resourcesuseddict)
   resourcesuseddict['fungible_locks'][resource].acquire()
 
   # always unlock as we exit...
-  try: 
-    
+  try:
+
     try:
       resourcesuseddict[resource].remove(item)
     except KeyError:
@@ -328,12 +327,12 @@ def _is_item_allowed(resource, item, resourcesalloweddict, resourcesuseddict):
 
    <Arguments>
       resource:
-         A string with the resource name.   
+         A string with the resource name.
       item:
          A unique identifier that specifies the resource.   It has some
-         meaning to the caller (like a port number for TCP or UDP), but is 
-         opaque to the nanny.   
-         
+         meaning to the caller (like a port number for TCP or UDP), but is
+         opaque to the nanny.
+
    <Exceptions>
       None.
 
@@ -370,7 +369,7 @@ def start_resource_nanny(resourcefilename):
    <Arguments>
       resourcefilename: the file that contains the set of resources we will
       use.
-         
+
    <Exceptions>
       ResourceParseError if the resource file is invalid
 
@@ -383,7 +382,7 @@ def start_resource_nanny(resourcefilename):
 
   global _resources_allowed_dict
 
-  global _resources_consumed_dict 
+  global _resources_consumed_dict
 
   # get the resource information from disk
   _resources_allowed_dict = resourcemanipulation.read_resourcedict_from_file(resourcefilename)
@@ -391,11 +390,11 @@ def start_resource_nanny(resourcefilename):
   # this sets up a dictionary with the correct locks, etc. for tracking
   # resource use.
   _resources_consumed_dict = _create_resource_consumption_dict()
-  
+
 
 def tattle_quantity(resource, quantity):
   return _tattle_quantity(resource, quantity, _resources_allowed_dict, _resources_consumed_dict)
-  
+
 
 def tattle_add_item(resource, item):
   return _tattle_add_item(resource, item, _resources_allowed_dict, _resources_consumed_dict)
@@ -444,7 +443,7 @@ def calculate_cpu_sleep_interval(cpulimit, percentused, elapsedtime):
   """
   <Purpose>
     Calculates proper CPU sleep interval to best achieve target cpulimit.
-  
+
   <Arguments>
     cpulimit:
       The target cpu usage limit
@@ -452,10 +451,10 @@ def calculate_cpu_sleep_interval(cpulimit, percentused, elapsedtime):
       The percentage of cpu used in the interval between the last sample of the process
     elapsedtime:
       The amount of time elapsed between last sampling the process
-  
+
   <Exceptions>
     ZeroDivisionError if elapsedtime is 0.
-  
+
   <Side Effects>
     None, this just does math
 
@@ -468,7 +467,7 @@ def calculate_cpu_sleep_interval(cpulimit, percentused, elapsedtime):
   # Return 0 if elapsedtime is non-positive
   if elapsedtime <= 0:
     return 0
-    
+
   # Calculate Stoptime
   #  Mathematically Derived from:
   #  (PercentUsed * TotalTime) / ( TotalTime + StopTime) = CPULimit
@@ -490,13 +489,13 @@ def get_resource_information():
   """
   <Purpose>
     Returns information about how many resources have been used.
-  
+
   <Arguments>
     None
-  
+
   <Exceptions>
     None
-  
+
   <Side Effects>
     None
 
@@ -509,11 +508,11 @@ def get_resource_information():
   # the resources we are allowed to use is easy.   We just copy this...
   resource_limit_dict = _resources_allowed_dict.copy()
 
-  
+
   # from the other dict, we only take the resource information.   (this omits
   # locks and timing information that isn't needed)
 
-  # first, let's do the easy thing, the quantity resources.   These are just 
+  # first, let's do the easy thing, the quantity resources.   These are just
   # floats
   resource_use_dict = {}
   for resourcename in resource_constants.quantity_resources:

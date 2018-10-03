@@ -7,6 +7,7 @@ Description:
 
 """
 
+    
 import servicelogger
 
 # This allows us to get the system thread count
@@ -14,7 +15,6 @@ import nonportable
 
 # This allows us to access the NM configuration
 import persist
-
 import nmAPI
 
 # needed to read and write resource files
@@ -28,29 +28,26 @@ HARD_MIN = 1 # Minimum number of events
 DEFAULT_NOOP_THRESHOLD = .10
 NOOP_CONFIG_KEY = "threaderr_noop_thres" # The key used in the NM config file
 
-
-      
-# BUG: I make the assumption that there isn't a race condition with the worker
-# thread!!!   This should only really matter if splits / joins are happening.
+# BUG: I make the assumption that there isn't a race condition with the worker 
+# thread!!!   This should only really matter if splits / joins are happening. 
 def handle_threading_error():
   """
-  <Purpose>
     Handles a repy node failing with ThreadErr. If repy is allowed to use
     more than 10% of the current threads, reduce the global thread count by 50%
     and stop all existing vessels
+ 
+    <Arguments>
+      None
 
-  <Arguments>
-    None
-  
-  <Exceptions>
-    None
-
-  <Side Effects>
-    May re-write all resource files and stop all vessels
-
-  <Returns>
-    None
-  """
+   <Exceptions>
+     None
+ 
+   <Side Effects>
+     May re-write all resource files and stop all vessels
+ 
+   <Returns>
+     None
+   """
   # Make a log of this
   servicelogger.log("[ERROR]:A Repy vessel has exited with ThreadErr status. Checking to determine next step")
 
@@ -62,7 +59,6 @@ def handle_threading_error():
   resourcedicts = {}
   for vesselname in vesselnamelist:
     resourcedicts[vesselname] = resourcemanipulation.read_resourcedict_from_file('resource.'+vesselname)
-  
   # Get the number of threads Repy has allocated
   allowedthreadcount = 0
   for vesselname in vesselnamelist:
@@ -93,8 +89,6 @@ def handle_threading_error():
   
   servicelogger.log("[ERROR]:Reducing number of system threads!")
 
-
-
   #### We are above the threshold!   Let's cut everything by 1/2
 
   # First, update the resource files
@@ -103,9 +97,6 @@ def handle_threading_error():
     resourcedicts[vesselname]['events'] = resourcedicts[vesselname]['events'] / 2
     # write out the new resource files...
     resourcemanipulation.write_resourcedict_to_file(resourcedicts[vesselname], 'resource.'+vesselname)
-  
-
-  
   
   # Create the stop tuple, exit code 57 with an error message
   stoptuple = (57, "Fatal system-wide threading error! Stopping all vessels.")

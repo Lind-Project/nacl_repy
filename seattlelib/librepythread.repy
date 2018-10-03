@@ -39,7 +39,7 @@ scaling to maximize flexibility.
 ##### Imports
 
 # Get a run loop
-librunloop = dy_import_module("librepyrunloop")
+librunloop = dy_import_module("librepyrunloop.repy")
 
 
 ##### Public methods
@@ -762,7 +762,7 @@ class ThreadPool (object):
         next_task()
       except:
         if self.print_tb:
-          print getlasterror()
+          log(getlasterror()+"\n")
 
       # Check if this worker should quit
       if self._should_worker_quit():

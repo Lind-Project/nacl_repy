@@ -9,56 +9,170 @@ Advertisements to a central server (similar to openDHT)
 
 """
 
-include session.repy
+session = dy_import_module('session.repy')
 # I'll use socket timeout to prevent hanging when it takes a long time...
-include sockettimeout.repy
-servername = "satya.cs.washington.edu"
-serverport = 10101
+sockettimeout = dy_import_module('sockettimeout.repy')
+serialize = dy_import_module('serialize.repy')
+
+
+# Hmm, perhaps I should make an initialization call instead of hardcoding this?
+# I suppose it doesn't matter since one can always override these values
+servername = "advertiseserver.poly.edu"
+# This port is updated to use the new port (legacy port is 10101)
+serverport = 10102
+
+
+
+class CentralAdvertiseError(Exception):
+  """Error when advertising a value to the central advertise service."""
 
 def centralizedadvertise_announce(key, value, ttlval):
-  # Escape commas because they have a special meaning. Encoding scheme:
-  # , -> \c
-  # \ -> \\
-  value = value.replace("\\", "\\\\")
-  value = value.replace(",", "\\c")
+  """
+   <Purpose>
+     Announce a key / value pair into the CHT.
 
-  sockobj = timeout_openconn(servername,serverport, timeout=10)
+   <Arguments>
+     key: the key to put the value under. This will be converted to a string.
+
+     value: the value to store at the key. This is also converted to a string.
+
+     ttlval: the amount of time until the value expires.   Must be an integer
+
+   <Exceptions>
+     TypeError if ttlval is of the wrong type.
+
+     ValueError if ttlval is not positive 
+
+     CentralAdvertiseError is raised the server response is corrupted
+
+     Various network and timeout exceptions are raised by timeout_openconn
+     and session_sendmessage / session_recvmessage
+
+   <Side Effects>
+     The CHT will store the key / value pair.
+
+   <Returns>
+     None
+  """
+  # do basic argument checking / munging
+  key = str(key)
+  value = str(value)
+
+  if not type(ttlval) is int and not type(ttlval) is long:
+    raise TypeError("Invalid type '"+str(type(ttlval))+"' for ttlval.")
+
+  if ttlval < 1:
+    raise ValueError("The argument ttlval must be positive, not '"+str(ttlval)+"'")
+
+  
+  # build the tuple to send, then convert to a string because only strings
+  # (bytes) can be transmitted over the network...
+  datatosend = ('PUT',key,value,ttlval)
+  datastringtosend = serialize.serialize_serializedata(datatosend)
+
+  
+  # send the data over a timeout socket using the session library, then
+  # get a response from the server.
+  sockobj = sockettimeout.timeout_openconnection(gethostbyname(servername), serverport, 
+    timeout=10)
   try:
-    session_sendmessage(sockobj, "PUT|"+str(key)+"|"+str(value)+"|"+str(ttlval))
-    response = session_recvmessage(sockobj)
-    if response != 'OK':
-      raise Exception, "Centralized announce failed '"+response+"'"
+    session.session_sendmessage(sockobj, datastringtosend)
+    rawresponse = session.session_recvmessage(sockobj)
   finally:
     # BUG: This raises an error right now if the call times out ( #260 )
     # This isn't a big problem, but it is the "wrong" exception
     sockobj.close()
   
-  return True
+  # We should check that the response is 'OK'
+  try:
+    response = serialize.serialize_deserializedata(rawresponse)
+    if response != 'OK':
+      raise CentralAdvertiseError("Centralized announce failed with '"+response+"'")
+  except ValueError, e:
+    raise CentralAdvertiseError("Received unknown response from server '"+rawresponse+"'")
       
 
 
 
 def centralizedadvertise_lookup(key, maxvals=100):
-  sockobj = timeout_openconn(servername,serverport, timeout=10)
-  try:
-    session_sendmessage(sockobj, "GET|"+str(key)+"|"+str(maxvals))
-    recvdata = session_recvmessage(sockobj)
-    # worked
-    if recvdata.endswith('OK'):
-      # Decode the values (unescape commas).
-      encoded_values = recvdata[:-len('OK')].split(',')
-      values = []
-      for encoded_value in encoded_values:
-        value = encoded_value.replace("\\c", ",")
-        value = value.replace("\\\\", "\\")
-        values.append(value)
+  """
+   <Purpose>
+     Returns a list of valid values stored under a key
 
-      return values
-    raise Exception, "Centralized lookup failed"
+   <Arguments>
+     key: the key to put the value under. This will be converted to a string.
+
+     maxvals: the maximum number of values to return.   Must be an integer
+
+   <Exceptions>
+     TypeError if maxvals is of the wrong type.
+
+     ValueError if maxvals is not a positive number
+
+     CentralAdvertiseError is raised the server response is corrupted
+
+     Various network and timeout exceptions are raised by timeout_openconn
+     and session_sendmessage / session_recvmessage
+
+   <Side Effects>
+     None
+
+   <Returns>
+     The list of values
+  """
+
+  # do basic argument checking / munging
+  key = str(key)
+
+  if not type(maxvals) is int and not type(maxvals) is long:
+    raise TypeError("Invalid type '"+str(type(maxvals))+"' for ttlval.")
+
+  if maxvals < 1:
+    raise ValueError("The argument ttlval must be positive, not '"+str(ttlval)+"'")
+
+  # build the tuple to send, then convert to a string because only strings
+  # (bytes) can be transmitted over the network...
+  messagetosend = ('GET',key,maxvals)
+  messagestringtosend = serialize.serialize_serializedata(messagetosend)
+
+  # send the data over a timeout socket using the session library, then
+  # get a response from the server.
+  sockobj = sockettimeout.timeout_openconnection(gethostbyname(servername), serverport, 
+    timeout=10)
+  try:
+    session.session_sendmessage(sockobj, messagestringtosend)
+    rawreceiveddata = session.session_recvmessage(sockobj)
   finally:
     # BUG: This raises an error right now if the call times out ( #260 )
     # This isn't a big problem, but it is the "wrong" exception
     sockobj.close()
+
+
+  try:
+    responsetuple = serialize.serialize_deserializedata(rawreceiveddata)
+  except ValueError, e:
+    raise CentralAdvertiseError("Received unknown response from server '"+rawresponse+"'")
+
+  # For a set of values, 'a','b','c',  I should see the response: 
+  # ('OK', ['a','b','c'])    Anything else is WRONG!!!
+  
+  if not type(responsetuple) is tuple:
+    raise CentralAdvertiseError("Received data is not a tuple '"+rawresponse+"'")
+
+  if len(responsetuple) != 2:
+    raise CentralAdvertiseError("Response tuple did not have exactly two elements '"+rawresponse+"'")
+  if responsetuple[0] != 'OK':
+    raise CentralAdvertiseError("Central server returns error '"+str(responsetuple)+"'")
+
+  
+  if not type(responsetuple[1]) is list:
+    raise CentralAdvertiseError("Received item is not a list '"+rawresponse+"'")
+
+  for responseitem in responsetuple[1]:
+    if not type(responseitem) is str:
+      raise CentralAdvertiseError("Received item '"+str(responseitem)+"' is not a string in '"+rawresponse+"'")
+
+  # okay, we *finally* seem to have what we expect...
+
+  return responsetuple[1]
       
-
-

@@ -1,0 +1,10 @@
+"""
+Raise the exception defined in portability_testlib1.repy.
+Helper library for ut_portability_catch_nestedimported_exception.py.
+"""
+
+lib1 = dy_import_module("portability_testlib1.repy")
+
+def raise_lib1error():
+  raise lib1.Lib1Error
+

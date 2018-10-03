@@ -13,6 +13,9 @@ import platform
 # printing to sys.stderr
 import sys
 
+# need to know where to create the file
+import tempfile
+
 # returns a process lock (True) or if the lock is held returns the PID of the 
 # process holding the lock
 # NOTE: one must call stillhaveprocesslock periodically to guard against a user
@@ -71,7 +74,7 @@ pidendpadding = "      "
 def getprocesslockflock(lockname):
   global oldfiledesc
   # the file we'll use
-  lockfn = "/tmp/runoncelock."+lockname
+  lockfn = tempfile.gettempdir()+"/runoncelock."+lockname
     
   try:
     # Use 0666 in octal (rw-rw-rw-).   This is needed because if a different

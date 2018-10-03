@@ -1,4 +1,4 @@
-""" 
+"""
 <Author>
   Justin Cappos
   Ivan Beschastnikh (12/24/08) -- added usage
@@ -50,7 +50,7 @@ import sys
 import getopt
 
 #this needs to be early on since it changes the python path
-import repy_constants   
+import repy_constants
 import lind
 #lind must get some stuff in the python path before things really start up.
 repy_constants.NACL_ENV = lind.setup_nacl_path(repy_constants.NACL_PATH)
@@ -85,10 +85,10 @@ import emulfile
 import emulmisc
 import emultimer
 
-# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly.
 threading.hasattr = hasattr
 
-# This block allows or denies different actions in the safe module.   I'm 
+# This block allows or denies different actions in the safe module.   I'm
 # doing this here rather than the natural place in the safe module because
 # I want to keep that module unmodified to make upgrading easier.
 
@@ -115,9 +115,6 @@ safe._BUILTIN_OK.append("issubclass")
 safe._BUILTIN_OK.append("ord")
 safe._BUILTIN_OK.append("chr")
 safe._BUILTIN_OK.append("__import__")
-# should not be used!   Use exitall instead.
-safe._BUILTIN_OK.remove("exit")
-safe._BUILTIN_OK.remove("quit")
 
 safe._STR_OK.append("__repr__")
 safe._STR_OK.append("__str__")
@@ -132,7 +129,7 @@ def nonSafe_fork():
   return val
 
 # Only override fork if it exists (e.g. Windows)
-if "fork" in dir(os):  
+if "fork" in dir(os):
   __orig_fork = os.fork
   os.fork = nonSafe_fork
 
@@ -140,7 +137,7 @@ idlethreadcount=0
 event_id=""
 
 def init_namespace(resourcefn, program, args):
-  
+
   global idlethreadcount, event_id
 
   # Armon: Initialize the circular logger before starting the nanny
@@ -153,8 +150,8 @@ def init_namespace(resourcefn, program, args):
   else:
     # let's make it so that the output (via print) is always flushed
     sys.stdout = loggingrepy.flush_logger(sys.stdout)
-    
-  # start the nanny up and read the resource file.  
+
+  # start the nanny up and read the resource file.
   nanny.start_resource_nanny(resourcefn)
 
   # now, let's fire up the cpu / disk / memory monitor...
@@ -167,7 +164,7 @@ def init_namespace(resourcefn, program, args):
   # These will be the functions and variables in the user's namespace (along
   # with the builtins allowed by the safe module).
   usercontext = {'mycontext':{}}
-  
+
   # Add to the user's namespace wrapped versions of the API functions we make
   # available to the untrusted user code.
   namespace.wrap_and_insert_api_functions(usercontext)
@@ -193,7 +190,7 @@ def init_namespace(resourcefn, program, args):
   #usercontext["getthreadname"] = emulmisc.getthreadname
   usercontext["createvirtualnamespace"] = virtual_namespace.createvirtualnamespace
   usercontext["getlasterror"] = emulmisc.getlasterror
-      
+
   # grab the user code from the file
   try:
     usercode = file(program).read()
@@ -220,26 +217,26 @@ def init_namespace(resourcefn, program, args):
   # call the initialize function
   usercontext['callfunc'] = 'initialize'
   usercontext['callargs'] = args[:]
- 
+
   event_id = idhelper.getuniqueid()
   try:
     nanny.tattle_add_item('events', event_id)
   except Exception, e:
     tracebackrepy.handle_internalerror("Failed to aquire event for '" + \
               "initialize' event.\n(Exception was: %s)" % e.message, 140)
- 
+
 
   return main_namespace.code, main_namespace.get_safe_context(usercontext)
 
 
-  
+
 def finalize():
   global idlethreadcount, event_id
-  
+
   nanny.tattle_remove_item('events', event_id)
   # I've changed to the threading library, so this should increase if there are
   # pending events
-  
+
 
   while threading.activeCount() > idlethreadcount:
     # do accounting here?
@@ -299,19 +296,19 @@ def repy_main(argv=sys.argv):
 
   # Get the directory repy is in
   repy_directory = os.path.dirname(repy_location)
-  
+
   # Translate into an absolute path
   if os.path.isabs(repy_directory):
     absolute_repy_directory = repy_directory
-  
+
   else:
     # This will join the currect directory with the relative path
     # and then get the absolute path to that location
     absolute_repy_directory = os.path.abspath(os.path.join(os.getcwd(), repy_directory))
-  
+
   # Store the absolute path as the repy startup directory
   repy_constants.REPY_START_DIR = absolute_repy_directory
- 
+
   # For security, we need to make sure that the Python path doesn't change even
   # if the directory does...
   newsyspath = []
@@ -325,7 +322,7 @@ def repy_main(argv=sys.argv):
   # by setting a crazy python path
   sys.path = newsyspath
 
-  
+
   args = argv[1:]
 
   try:
@@ -371,7 +368,7 @@ def repy_main(argv=sys.argv):
 
     elif option == '--iface':
       emulcomm.user_ip_interface_preferences = True
-      
+
       # Append this interface to the list of available ones if it is new
       if (False, value) not in emulcomm.user_specified_ip_interface_list:
         emulcomm.user_specified_ip_interface_list.append((False, value))
@@ -382,7 +379,7 @@ def repy_main(argv=sys.argv):
       emulcomm.user_ip_interface_preferences = True
       # Disable nonspecified IP's
       emulcomm.allow_nonspecified_ips = False
-    
+
     elif option == '--logfile':
       # set up the circular log buffer...
       logfile = value
@@ -402,17 +399,17 @@ def repy_main(argv=sys.argv):
     # Enable logging of internal errors to the service logger.
     elif option == '--servicelog':
       servicelog = True
-    
+
     # Enable safe binary mode
     elif option == '--safebinary':
       safebinary.SAFEBINARY = True
-      
+
   # Update repy current directory
   repy_constants.REPY_CURRENT_DIR = os.path.abspath(os.getcwd())
 
   # Initialize the NM status interface
   nmstatusinterface.init(stopfile, statusfile)
-  
+
   # Write out our initial status
   statusstorage.write_status("Started")
 
@@ -425,7 +422,7 @@ def repy_main(argv=sys.argv):
   # can be found regardless of where we are called from...
   tracebackrepy.initialize(servicelog, absolute_repy_directory)
 
-  
+
   return init_namespace(resourcefn, progname, progargs)
 
 

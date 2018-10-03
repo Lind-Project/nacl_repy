@@ -21,7 +21,7 @@ YOU MUST PUT A LOCK AROUND SUCH ACCESSES.
 
 
 # I use this to get unique identifiers. 
-include uniqueid.repy
+uniqueid = dy_import_module('uniqueid.repy')
 
 
 
@@ -187,7 +187,12 @@ def parallelize_getresults(parallelizehandle):
 
 
 
-      
+#JAC: This is a fix for ticket #1306.   Closures work in odd ways and we 
+# need to move the workercount variable out of scope...
+def _get_function_to_run(parallelizehandle, workercount):
+  def function_to_run():
+    parallelize_execute_function(parallelizehandle, workercount)
+  return function_to_run
 
 
 def parallelize_initfunction(targetlist, callerfunc,concurrentevents=5, *extrafuncargs):
@@ -225,7 +230,7 @@ def parallelize_initfunction(targetlist, callerfunc,concurrentevents=5, *extrafu
       A handle used for status information, etc.
   """
 
-  parallelizehandle = uniqueid_getid()
+  parallelizehandle = uniqueid.uniqueid_getid()
 
   # set up the dict locally one line at a time to avoid a ginormous line
   handleinfo = {}
@@ -249,10 +254,12 @@ def parallelize_initfunction(targetlist, callerfunc,concurrentevents=5, *extrafu
     # this is scheduled without having race conditions
     parallelize_info_dict[parallelizehandle]['runninglist'].append(workercount)
     try:
-      
-      def function_to_run():
-        parallelize_execute_function(parallelizehandle, workercount)
-        
+      # See ticket #1306
+      # It is really important to have this odd call to a helper function.
+      # If you do not do this, the workercount will be in scope of the closure
+      # and it will increment a single workercount variable in the outer scope.
+      function_to_run = _get_function_to_run(parallelizehandle, workercount)
+
       createthread(function_to_run)
       
     except:

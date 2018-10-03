@@ -2,7 +2,7 @@ import subprocess
 import os
 import tempfile
 import pickle
-
+import sys # This is to get the python executable that will launch the external process
 
 
 
@@ -54,7 +54,7 @@ def execute_repy(args):
     Output after execution:
     (Standard Out, Standard Error)
   """
-  python = 'python'
+  python = sys.executable
   repy = 'repy.py'
 
   args = [python, repy] + args
@@ -102,7 +102,7 @@ def kill(identifier):
   """
   <Purpose>
     Given the identifier, this function will search for the corresponding file
-    name, desirialize the file descriptor and kill the corresponding process.
+    name, deserialize the file descriptor and kill the corresponding process.
     
   <Arguments>
     Identifier.

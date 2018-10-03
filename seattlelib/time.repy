@@ -17,6 +17,36 @@
 """
 
 
-include ntp_time.repy
-include tcp_time.repy
+ntp_time = dy_import_module('ntp_time.repy')
+tcp_time = dy_import_module('tcp_time.repy')
+time_interface = dy_import_module("time_interface.repy")
 
+
+####################################################
+# Time public methods:
+# ---------------------
+# The functionalities defined here are implemented
+# in the time_interface.repy file, as they are used
+# by both the ntp_time and tcp_time. We provide a 
+# similar function here, as programmers will be 
+# using the time.repy library rather than the 
+# time_interface.repy library.
+####################################################
+ 
+def time_updatetime(localport):
+  return time_interface.time_updatetime(localport)
+
+
+def time_settime(currenttime):
+  return time_interface.time_settime(currenttime)
+
+
+def time_gettime():
+  return time_interface.time_gettime()
+
+
+def time_getunixtime():
+  return time_interface.time_getunixtime()
+
+
+TimeError = time_interface.TimeError

@@ -7,7 +7,7 @@ Start date: May 15th, 2009
 Purpose: A simple library that provides a semaphore abstration on top of repy's locks...
 """
 
-include uniqueid.repy
+uniqueid = dy_import_module('uniqueid.repy')
 
 
 # this dictionary stores private data about the semaphores.   The format of an
@@ -34,7 +34,7 @@ def semaphore_create():
    <Returns>
       The semaphore handle 
   """
-  thissemhandle = uniqueid_getid()
+  thissemhandle = uniqueid.uniqueid_getid()
   newlock = createlock()
   semaphore_handle_dict[thissemhandle] = {'semcount':0, 'blockedlist':[], 
         'semlock':newlock}

@@ -90,20 +90,20 @@ def time_updatetime(localport):
   # try the 'update' function for each implementation, storing exceptions in
   # case of total failure, and exiting the function when any of the 'update'
   # functions succeed.
-  for update in TIME_IMP_DICT:
+  for implementation_name, update_function in TIME_IMP_DICT.items():
     try:
-      TIME_IMP_DICT[update](localport)
+      update_function(localport)
     except Exception, e:
-      exception_list.append(e)
+      exception_list.append((implementation_name, type(e), str(e)))
     else:
-      return  # exit when we succeed
+      # Exit when we succeed.
+      # Be warned that any error messages are suppressed!
+      return
+  else:
+    raise TimeError("time_updatetime called before time_register_method!")
 
   # we failed
-  ex_str =''
-  for ex in exception_list:
-    ex_str+=str(ex)
-  ex_str = 'ERROR: failed to update ntp time, '+ex_str
-  raise Exception(ex_str)
+  raise TimeError('Error(s) in time_updatetime: ' + str(exception_list))
 
 
 
@@ -169,8 +169,32 @@ def time_gettime():
 
 
 
+def time_getunixtime():
+  """
+   <Purpose>
+    Gives the current time since 1970-01-01 (``The Epoch''), 
+    i.e. Unix time. The returned timestamp can be parsed by 
+    utilities like date, e.g.
+
+    date -d @THETIMESTAMP  # Linux
+    date -r THETIMESTAMP  # the BSDs, Mac OS X
+
+   <Arguments>
+    None.
+
+   <Exceptions>
+    As with time_gettime()
+
+   <Side Effects>
+    None.
+
+   <Returns>
+    Current Unix time in seconds.
+  """
+  return time_gettime() - time_seconds_from_1900_to_1970
+
+
+
+
 # in case you want to change to time since the 1970 (as is common)
 time_seconds_from_1900_to_1970 = 2208988800
-
-
-

@@ -38,7 +38,7 @@
       
 """
 
-include math.repy
+math = dy_import_module('math.repy')
 
 CACHE = {'bytes': ''}
 
@@ -352,7 +352,7 @@ def random_int_below(upper_bound):
   if upper_bound == 1:
     return 0
   
-  k = int(1.00001 + math_log(upper_bound - 1, 2.0))   # 2**k > n-1 > 2**(k-2)
+  k = int(1.00001 + math.math_log(upper_bound - 1, 2.0))   # 2**k > n-1 > 2**(k-2)
   r = random_nbit_int(k)
   while r >= upper_bound:
     r = random_nbit_int(k)
@@ -521,3 +521,15 @@ def random_sample(population, k):
     del newpopulation[pos]
 
   return retlist
+
+
+def random_shuffle(x):
+  """Shuffle list x in place; return None.
+     This is a mostly direct port of Python 2.7.5's random.shuffle 
+     function, only that Repy doesn't allow reversed(), so I construct  
+     the required range ``reversed(xrange(1, len(x)))'' manually."""
+  for i in xrange(len(x)-1, 0, -1):
+    # pick an element in x[:i+1] with which to exchange x[i]
+    j = int(randomfloat() * (i+1))
+    x[i], x[j] = x[j], x[i]
+

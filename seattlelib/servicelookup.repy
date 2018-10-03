@@ -14,7 +14,7 @@
   
 """
 
-include rsa.repy
+dy_import_module_symbols('rsa.repy')
 
 def servicelookup_get_servicevessels(vesseldict, ownerkey, ownerinfo):
   """
