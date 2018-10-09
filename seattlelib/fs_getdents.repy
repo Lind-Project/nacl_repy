@@ -35,7 +35,7 @@ def pack_dirent(dir_tuple, my_start):
         d_type = dir_tuple[2]
     else:
         d_type = DT_UNKNOWN  # TODO: set this
-    
+
     # the format of the dirent struct is:
     #    unsigned long long d_ino
     #    signed long long offset

@@ -1,16 +1,16 @@
 """
   Author: Justin Cappos
   Module: File system calls for Lind.   This is essentially POSIX written in
-          Repy V2.   
+          Repy V2.
 
   Start Date: December 17th, 2011
 
   My goal is to write a simple and relatively accurate implementation of POSIX
   in Repy V2.   This module contains most of the file system calls.   A lind
-  client can execute those calls and they will be mapped into my Repy V2 
+  client can execute those calls and they will be mapped into my Repy V2
   code where I will more or less faithfully execute them.   Since Repy V2
-  does not support permissions, directories, etc., I will fake these.   To 
-  do this I will create a metadata file / dictionary which contains 
+  does not support permissions, directories, etc., I will fake these.   To
+  do this I will create a metadata file / dictionary which contains
   metadata of this sort.   I will persist this metadata and re-read it upon
   initialization.
 
@@ -19,29 +19,29 @@
   without unpacking / repacking.
 
 """
-  
+
 # At a conceptual level, the system works like this:
 #   1) Files are written and managed by my program.   The actual name on disk
 #      will not correspond in any way with the filename.   The name on disk
 #      is chosen by my code and the filename only appears in the metadata.
-#   2) A dictionary exists which stores file data.   Since there may be 
+#   2) A dictionary exists which stores file data.   Since there may be
 #      multiple hard links to a file, the dictionary is keyed by "inode"
 #      instead of filename.   The value of each entry is a dictionary that
-#      contains the file mode data, size, link count, owner, group, and other 
+#      contains the file mode data, size, link count, owner, group, and other
 #      information.
 #   3) The metadata for every directory contains a list of filenames in that
 #      directory and their associated "inodes".
-#   4) "Inodes" are simply unique ids per file and have no other meaning.   
+#   4) "Inodes" are simply unique ids per file and have no other meaning.
 #      They are generated sequentially.
-#   5) Every open file has an entry in the filedescriptortable.   This 
+#   5) Every open file has an entry in the filedescriptortable.   This
 #      is a dictionary that is keyed by fd, with the values consisting of
 #      a dictionary with the position, flags, a lock, and inode keys.
-#      The inode values are used to update / check the file size after writeat 
+#      The inode values are used to update / check the file size after writeat
 #      calls and for calls like fstat.
 #   6) A file's data is mapped the filename FILEDATAPREFIX+str(inode)
 #   7) Open file objects are kept in a separate table, the fileobjecttable that
-#      is keyed by inode.  This makes it easier to support multiple open file 
-#      descriptors that point to the same file. 
+#      is keyed by inode.  This makes it easier to support multiple open file
+#      descriptors that point to the same file.
 #
 # BUG: I created a table which allows one to look up an "inode"
 #      given a filename.   It will break certain things in certain weird corner
@@ -49,14 +49,14 @@
 #      code simpler and faster
 #   I called it: fastinodelookuptable = {}
 #
-#   As with Linux, etc. there is a 'current directory' that calls which take a 
+#   As with Linux, etc. there is a 'current directory' that calls which take a
 #      filename use as the first part of their path.   All other filenames that
 #      do not begin with '/' start from here.
 #
 # Here is how some example calls work at a high level:
-#   unlink: removes filename -> inode map / decrements the link count.  If 
+#   unlink: removes filename -> inode map / decrements the link count.  If
 #           the link count is zero, deletes the file.
-#   link: increments the link count and adds a new filename -> inode map.  
+#   link: increments the link count and adds a new filename -> inode map.
 #   rename: updates the directory's filename -> inode map.
 #   getdents: returns data from the directory's filename -> inode map.
 #   mkdir / rmdir: creates a directory / removes a directory
@@ -83,9 +83,9 @@
 #  'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836}
 # See the stat command for more information about what these mean...
 #
-# 
+#
 # A directory's metadata looks very similar:
-# {'size':1033, 'uid':1000, 'gid':1000, 'mode':16877, 
+# {'size':1033, 'uid':1000, 'gid':1000, 'mode':16877,
 #  'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
 #  'linkcount':4,    # the number of dir entries...
 #  'filename_to_inode_dict': {'foo':1234, '.':102, '..':10, 'bar':2245}
@@ -96,8 +96,8 @@
 #
 #
 # These are all entries in the inode table.   It is keyed by inode and maps
-# to these entries.   The root directory is always at position 
-# ROOTDIRECTORYINODE. 
+# to these entries.   The root directory is always at position
+# ROOTDIRECTORYINODE.
 #
 #
 # At the highest level, the metadata is in a dictionary like this:
@@ -194,7 +194,7 @@ def load_fs_special_files():
   """ If called adds special files in standard locations.
   Specifically /dev/null, /dev/urandom and /dev/random
   """
-  try: 
+  try:
      mkdir_syscall("/dev", S_IRWXA)
   except SyscallError as e:
     warning( "making /dev failed. Skipping",str(e))
@@ -219,7 +219,7 @@ def load_fs_special_files():
 
 
 # To have a simple, blank file system, simply run this block of code.
-# 
+#
 def _blank_fs_init():
 
   # kill all left over data files...
@@ -232,14 +232,14 @@ def _blank_fs_init():
   filesystemmetadata['nextinode'] = 3
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
-  filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0, 
-            'uid':DEFAULT_UID, 'gid':DEFAULT_GID, 
+  filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0,
+            'uid':DEFAULT_UID, 'gid':DEFAULT_GID,
             'mode':S_IFDIR | S_IRWXA, # directory + all permissions
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
             'linkcount':2,    # the number of dir entries...
-            'filename_to_inode_dict': {'.':ROOTDIRECTORYINODE, 
+            'filename_to_inode_dict': {'.':ROOTDIRECTORYINODE,
             '..':ROOTDIRECTORYINODE}}
-    
+
   fastinodelookuptable['/'] = ROOTDIRECTORYINODE
 
   # it makes no sense this wasn't done before...
@@ -252,7 +252,7 @@ def persist_metadata(metadatafilename):
 
   metadatastring = serializedata(filesystemmetadata)
 
-  
+
   # open the file (clobber) and write out the information...
   try:
     removefile(metadatafilename)
@@ -289,10 +289,10 @@ def restore_metadata(metadatafilename):
 
 # I'm already added.
 def _recursive_rebuild_fastinodelookuptable_helper(path, inode):
-  
+
   # for each entry in my table...
   for entryname,entryinode in filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems():
-    
+
     # if it's . or .. skip it.
     if entryname == '.' or entryname == '..':
       continue
@@ -304,7 +304,7 @@ def _recursive_rebuild_fastinodelookuptable_helper(path, inode):
     # and recurse if a directory...
     if 'filename_to_inode_dict' in filesystemmetadata['inodetable'][entryinode]:
       _recursive_rebuild_fastinodelookuptable_helper(entrypurepathname,entryinode)
-    
+
 
 def _rebuild_fastinodelookuptable():
   # first, empty it...
@@ -312,11 +312,11 @@ def _rebuild_fastinodelookuptable():
     del fastinodelookuptable[item]
 
   # now let's go through and add items...
-  
-  # I need to add the root.   
+
+  # I need to add the root.
   fastinodelookuptable['/'] = ROOTDIRECTORYINODE
   # let's recursively do the rest...
-  
+
   _recursive_rebuild_fastinodelookuptable_helper('/', ROOTDIRECTORYINODE)
 
 
@@ -335,7 +335,7 @@ def _rebuild_fastinodelookuptable():
 # private helper function that converts a relative path or a path with things
 # like foo/../bar to a normal path.
 def _get_absolute_path(path):
-  
+
   # should raise an ENOENT error...
   if path == '':
     return path
@@ -345,7 +345,7 @@ def _get_absolute_path(path):
     path = fs_calls_context['currentworkingdirectory'] + '/' + path
 
 
-  # now I'll split on '/'.   This gives a list like: ['','foo','bar'] for 
+  # now I'll split on '/'.   This gives a list like: ['','foo','bar'] for
   # '/foo/bar'
   pathlist = path.split('/')
 
@@ -368,13 +368,13 @@ def _get_absolute_path(path):
       break
 
   # NOTE: This makes '/foo/bar/' -> '/foo/bar'.   I think this is okay.
-  
+
   # for a '..' entry, remove the previous entry (if one exists).   This will
   # only work if we go left to right.
   position = 0
   while position < len(pathlist):
     if pathlist[position] == '..':
-      # if there is a parent, remove it and this entry.  
+      # if there is a parent, remove it and this entry.
       if position > 0:
         del pathlist[position]
         del pathlist[position-1]
@@ -400,7 +400,7 @@ def _get_absolute_path(path):
 # private helper function
 def _get_absolute_parent_path(path):
   return _get_absolute_path(path+'/..')
-  
+
 
 
 
@@ -420,18 +420,18 @@ def _istatfs_helper(inode):
   # I need to compute the amount of disk available / used
   limits, usage, stoptimes = getresources()
 
-  # I'm going to fake large parts of this.   
+  # I'm going to fake large parts of this.
   myfsdata = {}
 
   myfsdata['f_type'] = 0xBEEFC0DE   # unassigned.   New to us...
 
   myfsdata['f_bsize'] = 4096        # Match the repy V2 block size
 
-  myfsdata['f_blocks'] = int(limits['diskused']) / 4096   
+  myfsdata['f_blocks'] = int(limits['diskused']) / 4096
 
-  myfsdata['f_bfree'] = (int(limits['diskused']-usage['diskused'])) / 4096  
+  myfsdata['f_bfree'] = (int(limits['diskused']-usage['diskused'])) / 4096
   # same as above...
-  myfsdata['f_bavail'] = (int(limits['diskused']-usage['diskused'])) / 4096  
+  myfsdata['f_bavail'] = (int(limits['diskused']-usage['diskused'])) / 4096
 
   # file nodes...   I think this is infinite...
   myfsdata['f_files'] = 1024*1024*1024
@@ -445,8 +445,8 @@ def _istatfs_helper(inode):
   myfsdata['f_namelen'] = 254
 
   # same as blocksize...
-  myfsdata['f_frsize'] = 4096 
-  
+  myfsdata['f_frsize'] = 4096
+
   # it's supposed to be 5 bytes...   Let's try null characters...
   #CM: should be 8 bytes by my calc
   myfsdata['f_spare'] = '\x00'*8
@@ -456,7 +456,7 @@ def _istatfs_helper(inode):
 
 
 def fstatfs_syscall(fd):
-  """ 
+  """
     http://linux.die.net/man/2/fstatfs
   """
 
@@ -464,7 +464,7 @@ def fstatfs_syscall(fd):
   if fd not in filedescriptortable:
     raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
 
-  
+
   # if so, return the information...
   return _istatfs_helper(filedescriptortable[fd]['inode'])
 
@@ -483,7 +483,7 @@ def fstatfs_syscall(fd):
 
 
 def statfs_syscall(path):
-  """ 
+  """
     http://linux.die.net/man/2/statfs
   """
   # in an abundance of caution, I'll grab a lock...
@@ -498,7 +498,7 @@ def statfs_syscall(path):
       raise SyscallError("statfs_syscall","ENOENT","The path does not exist.")
 
     thisinode = fastinodelookuptable[truepath]
-      
+
     return _istatfs_helper(thisinode)
 
   finally:
@@ -510,7 +510,7 @@ def statfs_syscall(path):
 
 
 
-    
+
 
 
 
@@ -522,7 +522,7 @@ def access_syscall(path, amode):
     See: http://linux.die.net/man/2/access
   """
 
-  
+
   # lock to prevent things from changing while we look this up...
   filesystemmetadatalock.acquire(True)
 
@@ -535,7 +535,7 @@ def access_syscall(path, amode):
     if truepath not in fastinodelookuptable:
       raise SyscallError("access_syscall","ENOENT","A directory in the path does not exist or file not found.")
 
-    # BUG: This code should really walk the directories instead of using this 
+    # BUG: This code should really walk the directories instead of using this
     # table...   This will have to be fixed for symlinks to work.
     thisinode = fastinodelookuptable[truepath]
 
@@ -566,11 +566,11 @@ def access_syscall(path, amode):
 
 
 def chdir_syscall(path):
-  """ 
+  """
     http://linux.die.net/man/2/chdir
   """
 
-  # Note: I don't think I need locking here.   I don't modify any state and 
+  # Note: I don't think I need locking here.   I don't modify any state and
   # only check the fs state once...
 
   # get the actual name.   Remove things like '../foo'
@@ -582,7 +582,7 @@ def chdir_syscall(path):
 
   # let's update and return success (0)
   fs_calls_context['currentworkingdirectory'] = truepath
-  
+
 
   return 0
 
@@ -592,7 +592,7 @@ def chdir_syscall(path):
 ##### MKDIR  #####
 
 def mkdir_syscall(path, mode):
-  """ 
+  """
     http://linux.die.net/man/2/mkdir
   """
 
@@ -610,8 +610,8 @@ def mkdir_syscall(path, mode):
     if truepath in fastinodelookuptable:
       raise SyscallError("mkdir_syscall","EEXIST","The path exists.")
 
-      
-    # okay, it doesn't exist (great!).   Does it's parent exist and is it a 
+
+    # okay, it doesn't exist (great!).   Does it's parent exist and is it a
     # dir?
     trueparentpath = _get_absolute_parent_path(path)
 
@@ -635,14 +635,14 @@ def mkdir_syscall(path, mode):
     newinode = filesystemmetadata['nextinode']
     filesystemmetadata['nextinode'] += 1
 
-    newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID, 
+    newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID,
             'mode':mode | S_IFDIR,  # DIR+rwxr-xr-x
             # BUG: I'm listing some arbitrary time values.  I could keep a time
             # counter too.
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
             'linkcount':2,    # the number of dir entries...
             'filename_to_inode_dict': {'.':newinode, '..':parentinode}}
-    
+
     # ... and put it in the table..
     filesystemmetadata['inodetable'][newinode] = newinodeentry
 
@@ -653,7 +653,7 @@ def mkdir_syscall(path, mode):
 
     # finally, update the fastinodelookuptable and return success!!!
     fastinodelookuptable[truepath] = newinode
-    
+
     return 0
 
   finally:
@@ -669,7 +669,7 @@ def mkdir_syscall(path, mode):
 ##### RMDIR  #####
 
 def rmdir_syscall(path):
-  """ 
+  """
     http://linux.die.net/man/2/rmdir
   """
 
@@ -683,13 +683,13 @@ def rmdir_syscall(path):
     # Is it the root?
     if truepath == '/':
       raise SyscallError("rmdir_syscall","EINVAL","Cannot remove the root directory.")
-      
+
     # is the path there?
     if truepath not in fastinodelookuptable:
       raise SyscallError("rmdir_syscall","EEXIST","The path does not exist.")
 
     thisinode = fastinodelookuptable[truepath]
-      
+
     # okay, is it a directory?
     if not IS_DIR(filesystemmetadata['inodetable'][thisinode]['mode']):
       raise SyscallError("rmdir_syscall","ENOTDIR","Path is not a directory.")
@@ -719,7 +719,7 @@ def rmdir_syscall(path):
 
     # finally, clean up the fastinodelookuptable and return success!!!
     del fastinodelookuptable[truepath]
-    
+
     return 0
 
   finally:
@@ -738,7 +738,7 @@ def rmdir_syscall(path):
 
 
 def link_syscall(oldpath, newpath):
-  """ 
+  """
     http://linux.die.net/man/2/link
   """
 
@@ -757,11 +757,11 @@ def link_syscall(oldpath, newpath):
     # is oldpath a directory?
     if IS_DIR(filesystemmetadata['inodetable'][oldinode]['mode']):
       raise SyscallError("link_syscall","EPERM","Old path is a directory.")
-  
+
     # TODO: I should check permissions...
 
     # okay, the old path info seems fine...
-    
+
     if newpath == '':
       raise SyscallError("link_syscall","ENOENT","New path does not exist.")
 
@@ -770,8 +770,8 @@ def link_syscall(oldpath, newpath):
     # does the newpath exist?   It shouldn't
     if truenewpath in fastinodelookuptable:
       raise SyscallError("link_syscall","EEXIST","newpath already exists.")
-      
-    # okay, it doesn't exist (great!).   Does it's parent exist and is it a 
+
+    # okay, it doesn't exist (great!).   Does it's parent exist and is it a
     # dir?
     truenewparentpath = _get_absolute_parent_path(newpath)
 
@@ -799,7 +799,7 @@ def link_syscall(oldpath, newpath):
 
     # finally, update the fastinodelookuptable and return success!!!
     fastinodelookuptable[truenewpath] = oldinode
-    
+
     return 0
 
   finally:
@@ -816,7 +816,7 @@ def link_syscall(oldpath, newpath):
 
 
 def unlink_syscall(path):
-  """ 
+  """
     http://linux.die.net/man/2/unlink
   """
 
@@ -832,7 +832,7 @@ def unlink_syscall(path):
       raise SyscallError("unlink_syscall","ENOENT","The path does not exist.")
 
     thisinode = fastinodelookuptable[truepath]
-      
+
     # okay, is it a directory?
     if IS_DIR(filesystemmetadata['inodetable'][thisinode]['mode']):
       raise SyscallError("unlink_syscall","EISDIR","Path is a directory.")
@@ -867,7 +867,7 @@ def unlink_syscall(path):
 
       # TODO: I also would remove the file.   However, I need to do special
       # things if it's open, like wait until it is closed to remove it.
-    
+
     return 0
 
   finally:
@@ -884,7 +884,7 @@ def unlink_syscall(path):
 
 
 def stat_syscall(path):
-  """ 
+  """
     http://linux.die.net/man/2/stat
   """
   # in an abundance of caution, I'll grab a lock...
@@ -899,28 +899,28 @@ def stat_syscall(path):
       raise SyscallError("stat_syscall","ENOENT","The path does not exist.")
 
     thisinode = fastinodelookuptable[truepath]
-    
+
     # If its a character file, call the helper function.
     if IS_CHR(filesystemmetadata['inodetable'][thisinode]['mode']):
       return _istat_helper_chr_file(thisinode)
-   
+
     return _istat_helper(thisinode)
 
   finally:
     #persist_metadata(METADATAFILENAME)
     filesystemmetadatalock.release()
 
-   
+
 
 
 ##### FSTAT  #####
 
 def fstat_syscall(fd):
-  """ 
+  """
     http://linux.die.net/man/2/fstat
   """
-  # TODO: I don't handle socket objects.   I should return something like: 
-  # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20, 
+  # TODO: I don't handle socket objects.   I should return something like:
+  # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
   # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
 
   # is the file descriptor valid?
@@ -988,17 +988,17 @@ def _istat_helper(inode):
 
 # get the next free file descriptor
 def get_next_fd():
-  # let's get the next available fd number.   The standard says we need to 
+  # let's get the next available fd number.   The standard says we need to
   # return the lowest open fd number.
   for fd in range(STARTINGFD, MAX_FD):
     if not fd in filedescriptortable:
       return fd
 
   raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
-  
+
 
 def open_syscall(path, flags, mode):
-  """ 
+  """
     http://linux.die.net/man/2/open
   """
 
@@ -1019,8 +1019,8 @@ def open_syscall(path, flags, mode):
       # did they use O_CREAT?
       if not O_CREAT & flags:
         raise SyscallError("open_syscall","ENOENT","The file does not exist.")
-      
-      # okay, it doesn't exist (great!).   Does it's parent exist and is it a 
+
+      # okay, it doesn't exist (great!).   Does it's parent exist and is it a
       # dir?
       trueparentpath = _get_absolute_parent_path(path)
 
@@ -1040,19 +1040,19 @@ def open_syscall(path, flags, mode):
       newinode = filesystemmetadata['nextinode']
       filesystemmetadata['nextinode'] += 1
 
-      # be sure there aren't extra mode bits...   No errno seems to exist for 
+      # be sure there aren't extra mode bits...   No errno seems to exist for
       # this.
       assert(mode & (S_IRWXA|S_FILETYPEFLAGS) == mode)
 
       effective_mode = (S_IFCHR | mode) if (S_IFCHR & flags) != 0 else (S_IFREG | mode)
 
-      newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID, 
+      newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID,
             'mode':effective_mode,
             # BUG: I'm listing some arbitrary time values.  I could keep a time
             # counter too.
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
             'linkcount':1}
-    
+
       # ... and put it in the table..
       filesystemmetadata['inodetable'][newinode] = newinodeentry
 
@@ -1067,7 +1067,7 @@ def open_syscall(path, flags, mode):
 
       # this file must not exist or it's an internal error!!!
       openfile(FILEDATAPREFIX+str(newinode),True).close()
-      
+
       persist_metadata(METADATAFILENAME)
 
     # if the file did exist, were we told to create with exclusion?
@@ -1092,39 +1092,39 @@ def open_syscall(path, flags, mode):
 
         # always open the file.
         fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
-        
+
         persist_metadata(METADATAFILENAME)
 
 
     # TODO: I should check permissions...
 
-    # At this point, the file will exist... 
+    # At this point, the file will exist...
 
     # Let's find the inode
     inode = fastinodelookuptable[truepath]
 
-    
+
     # get the next fd so we can use it...
     thisfd = get_next_fd()
-  
+
 
     # Note, directories can be opened (to do getdents, etc.).   We shouldn't
     # actually open something in this case...
     # Is it a regular file?
     if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-      # this is a regular file.  If it's not open, let's open it! 
+      # this is a regular file.  If it's not open, let's open it!
       if inode not in fileobjecttable:
         thisfo = openfile(FILEDATAPREFIX+str(inode),False)
         fileobjecttable[inode] = thisfo
 
-    # I'm going to assume that if you use O_APPEND I only need to 
+    # I'm going to assume that if you use O_APPEND I only need to
     # start the pointer in the right place.
     if O_APPEND & flags:
       position = filesystemmetadata['inodetable'][inode]['size']
     else:
       # else, let's start at the beginning
       position = 0
-    
+
 
     # TODO handle read / write locking, etc.
 
@@ -1148,20 +1148,20 @@ def open_syscall(path, flags, mode):
 ##### CREAT  #####
 
 def creat_syscall(pathname, mode):
-  """ 
+  """
     http://linux.die.net/man/2/creat
   """
 
   try:
 
     return open_syscall(pathname, O_CREAT | O_TRUNC | O_WRONLY, mode)
-  
+
   except SyscallError, e:
     # If it's a system call error, return our call name instead.
     assert(e[0]=='open_syscall')
-    
+
     raise SyscallError('creat_syscall',e[1],e[2])
-  
+
 
 
 
@@ -1171,7 +1171,7 @@ def creat_syscall(pathname, mode):
 ##### LSEEK  #####
 
 def lseek_syscall(fd, offset, whence):
-  """ 
+  """
     http://linux.die.net/man/2/lseek
   """
 
@@ -1194,7 +1194,7 @@ def lseek_syscall(fd, offset, whence):
       inode = filedescriptortable[fd]['inode']
     except KeyError:
       raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
-    
+
     # Let's figure out if this has a length / pointer...
     if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       # straightforward if it is a file...
@@ -1207,7 +1207,7 @@ def lseek_syscall(fd, offset, whence):
     else:
       # otherwise we don't know
       raise SyscallError("lseek_syscall","EINVAL","File descriptor does not refer to a regular file or directory.")
-      
+
 
     # Figure out where we will seek to and check it...
     if whence == SEEK_SET:
@@ -1245,7 +1245,7 @@ def lseek_syscall(fd, offset, whence):
 ##### READ  #####
 
 def read_syscall(fd, count):
-  """ 
+  """
     http://linux.die.net/man/2/read
   """
 
@@ -1259,7 +1259,7 @@ def read_syscall(fd, count):
     raise SyscallError("read_syscall","EBADF","Invalid file descriptor.")
 
   # Is it open for reading?
-  if IS_WRONLY(filedescriptortable[fd]['flags']): 
+  if IS_WRONLY(filedescriptortable[fd]['flags']):
     raise SyscallError("read_syscall","EBADF","File descriptor is not open for reading.")
 
   # Acquire the fd lock...
@@ -1278,7 +1278,7 @@ def read_syscall(fd, count):
     # Is it anything other than a regular file?
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
-      
+
 
     # let's do a readat!
     position = filedescriptortable[fd]['position']
@@ -1306,7 +1306,7 @@ def read_syscall(fd, count):
 
 
 def write_syscall(fd, data):
-  """ 
+  """
     http://linux.die.net/man/2/write
   """
 
@@ -1322,7 +1322,7 @@ def write_syscall(fd, data):
     return len(data)
 
   # Is it open for writing?
-  if IS_RDONLY(filedescriptortable[fd]['flags']): 
+  if IS_RDONLY(filedescriptortable[fd]['flags']):
     raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
 
 
@@ -1343,11 +1343,11 @@ def write_syscall(fd, data):
     # Is it anything other than a regular file?
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
       raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
-      
+
 
     # let's get the position...
     position = filedescriptortable[fd]['position']
-    
+
     # and the file size...
     filesize = filesystemmetadata['inodetable'][inode]['size']
 
@@ -1358,7 +1358,7 @@ def write_syscall(fd, data):
     if blankbytecount > 0:
       # let's write the blank part at the end of the file...
       fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
-      
+
 
     # writeat never writes less than desired in Repy V2.
     fileobjecttable[inode].writeat(data,position)
@@ -1370,9 +1370,9 @@ def write_syscall(fd, data):
     if filedescriptortable[fd]['position'] > filesize:
       filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
       persist_metadata(METADATAFILENAME)
-      
+
     # we always write it all, so just return the length of what we were passed.
-    # We do not mention whether we write blank data (if position is after the 
+    # We do not mention whether we write blank data (if position is after the
     # end)
     return len(data)
 
@@ -1402,7 +1402,7 @@ def IS_EPOLL_FD(fd):
   return (fd in filedescriptortable) and ('registered_fds' in filedescriptortable[fd])
 
 
-# is this file descriptor a socket? 
+# is this file descriptor a socket?
 def IS_SOCK_DESC(fd):
   if 'domain' in filedescriptortable[fd]:
     return True
@@ -1423,7 +1423,7 @@ def _cleanup_socket(fd):
       pass
     del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
     del filedescriptortable[fd]['socketobjectid']
-    
+
     filedescriptortable[fd]['state'] = NOTCONNECTED
     return 0
 
@@ -1451,7 +1451,7 @@ def _close_helper(fd):
     # double check that this isn't in the fileobjecttable
     if inode in fileobjecttable:
       raise Exception("Internal Error: non-regular file in fileobjecttable")
-   
+
     # and return success
     return 0
 
@@ -1480,7 +1480,7 @@ def _close_helper(fd):
 
 
 def close_syscall(fd):
-  """ 
+  """
     http://linux.die.net/man/2/close
   """
 
@@ -1534,7 +1534,7 @@ def _dup2_helper(oldfd,newfd):
 
   # okay, they are different.   If the new fd exists, close it.
   if newfd in filedescriptortable:
-    # should not result in an error.   This only occurs on a bad fd 
+    # should not result in an error.   This only occurs on a bad fd
     _close_helper(newfd)
 
 
@@ -1550,7 +1550,7 @@ def _dup2_helper(oldfd,newfd):
 
 
 def dup2_syscall(oldfd,newfd):
-  """ 
+  """
     http://linux.die.net/man/2/dup2
   """
 
@@ -1576,7 +1576,7 @@ def dup2_syscall(oldfd,newfd):
 ##### DUP  #####
 
 def dup_syscall(fd):
-  """ 
+  """
     http://linux.die.net/man/2/dup
   """
 
@@ -1588,24 +1588,24 @@ def dup_syscall(fd):
   # Acquire the fd lock...
   filedescriptortable[fd]['lock'].acquire(True)
 
-  try: 
+  try:
     # get the next available file descriptor
     try:
       nextfd = get_next_fd()
     except SyscallError, e:
       # If it's an error getting the fd, return our call name instead.
       assert(e[0]=='open_syscall')
-    
+
       raise SyscallError('dup_syscall',e[1],e[2])
-  
+
     # this does the work.   It should _never_ raise an exception given the
     # checks we've made...
     return _dup2_helper(fd, nextfd)
-  
+
   finally:
     # ... release the lock
     filedescriptortable[fd]['lock'].release()
-  
+
 
 
 
@@ -1617,7 +1617,7 @@ def dup_syscall(fd):
 
 
 def fcntl_syscall(fd, cmd, *args):
-  """ 
+  """
     http://linux.die.net/man/2/fcntl
   """
   # this call is totally crazy!   I'll just implement the basics and add more
@@ -1634,7 +1634,7 @@ def fcntl_syscall(fd, cmd, *args):
 
   # ... but always release it...
   try:
-    # if we're getting the flags, return them... (but this is just CLO_EXEC, 
+    # if we're getting the flags, return them... (but this is just CLO_EXEC,
     # so ignore)
     if cmd == F_GETFD:
       if len(args) > 0:
@@ -1697,7 +1697,7 @@ def fcntl_syscall(fd, cmd, *args):
 
 
 def getdents_syscall(fd, quantity):
-  """ 
+  """
     http://linux.die.net/man/2/getdents
   """
 
@@ -1729,7 +1729,7 @@ def getdents_syscall(fd, quantity):
     # Is it a directory?
     if not IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
       raise SyscallError("getdents_syscall","EINVAL","File descriptor does not refer to a directory.")
-      
+
     returninodefntuplelist = []
     bufferedquantity = 0
 
@@ -1755,7 +1755,7 @@ def getdents_syscall(fd, quantity):
     # and move the position along.   Go no further than the end...
     filedescriptortable[fd]['position'] = min(startposition + len(returninodefntuplelist),\
       len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict']))
-    
+
     return returninodefntuplelist
 
   finally:
@@ -1820,7 +1820,7 @@ def ftruncate_syscall(fd, new_len):
   """
     http://linux.die.net/man/2/ftruncate
   """
-  
+
 
   # check the fd
   if fd not in filedescriptortable and fd >= STARTINGFD:
@@ -1833,22 +1833,22 @@ def ftruncate_syscall(fd, new_len):
   desc = filedescriptortable[fd]
   desc['lock'].acquire(True)
 
-  try: 
+  try:
 
         # we will need the file size in a moment, but also need to check the type
     try:
       inode = desc['inode']
     except KeyError:
       raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
-    
-    
+
+
     filesize = filesystemmetadata['inodetable'][inode]['size']
 
     if filesize < new_len:
       # we must pad with zeros
-      blankbytecount = new_len - filesize 
+      blankbytecount = new_len - filesize
       fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
-      
+
     else:
       # we must cut
       to_save = fileobjecttable[inode].readat(new_len,0)
@@ -1860,11 +1860,11 @@ def ftruncate_syscall(fd, new_len):
 
       fileobjecttable[inode].writeat(to_save, 0)
 
-      
+
     filesystemmetadata['inodetable'][inode]['size'] = new_len
-        
+
   finally:
-    desc['lock'].release() 
+    desc['lock'].release()
 
   return 0
 
@@ -1892,11 +1892,11 @@ def mknod_syscall(path, mode, dev):
     raise SyscallError("mknod_syscall", "EEXIST", "file already exists.")
 
   # FIXME: mode should also accept user permissions(S_IRWXA)
-  if not mode & S_FILETYPEFLAGS == mode: 
+  if not mode & S_FILETYPEFLAGS == mode:
     raise SyscallError("mknod_syscall", "EINVAL", "mode requested creation\
       of something other than regular file, device special file, FIFO or socket")
 
-  # FIXME: for now, lets just only create character special file 
+  # FIXME: for now, lets just only create character special file
   if not IS_CHR(mode):
     raise UnimplementedError("Only Character special files are supported.")
 
@@ -1912,8 +1912,8 @@ def mknod_syscall(path, mode, dev):
   # properly, instead of putting everything in open_syscall.
   inode = filedescriptortable[fd]['inode']
   filesystemmetadata['inodetable'][inode]['rdev'] = dev
- 
-  # close the file descriptor... 
+
+  # close the file descriptor...
   close_syscall(fd)
   return 0
 
@@ -1929,7 +1929,7 @@ def _read_chr_file(inode, count):
    helper function for reading data from chr_file's.
   """
 
-  # check if it's a /dev/null. 
+  # check if it's a /dev/null.
   if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
     return ''
   # /dev/random
@@ -2017,7 +2017,7 @@ def getegid_syscall():
 
 #### RESOURCE LIMITS  ####
 
-# FIXME: These constants should be specified in a different file, 
+# FIXME: These constants should be specified in a different file,
 # it at all additional support needs to be added.
 NOFILE_CUR = 1024
 NOFILE_MAX = 4*1024
@@ -2029,7 +2029,7 @@ def getrlimit_syscall(res_type):
   """
     http://linux.die.net/man/2/getrlimit
 
-    NOTE: Second argument is deprecated. 
+    NOTE: Second argument is deprecated.
   """
   if res_type == RLIMIT_NOFILE:
     return (NOFILE_CUR, NOFILE_MAX)
@@ -2072,8 +2072,8 @@ def flock_syscall(fd, operation):
     raise UnimplementedError("Shared lock is not yet implemented.")
 
   # check whether its a blocking or non-blocking lock...
-  if operation & LOCK_EX and operation & LOCK_NB: 
-    if filedescriptortable[fd]['lock'].acquire(False): 
+  if operation & LOCK_EX and operation & LOCK_NB:
+    if filedescriptortable[fd]['lock'].acquire(False):
       return 0
     else: # raise an error, if there's another lock already holding this
       raise SyscallError("flock_syscall", "EWOULDBLOCK", "Operation would block.")

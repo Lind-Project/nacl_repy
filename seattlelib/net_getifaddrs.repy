@@ -31,10 +31,10 @@ def _type_to_name(element):
 
     if _type == type(""):
         return str(len(element))+'s'
-    
+
     print "tpye", _type, "not found for", element
     raise Exception("No format for type")
-        
+
 
 def build_struct_format(*args):
     """Given a list with python elements, make the struct package format string for that list"""
@@ -72,7 +72,7 @@ def build_ifaddrs_struct(iplist):
                 iplist[1][NAME] + chr(0),
                 ]
     return struct_pack(build_struct_format(*elements), *elements)
-    
+
 
 
 def lind_net_getifaddrs(args):

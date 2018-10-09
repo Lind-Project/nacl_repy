@@ -5,7 +5,7 @@
 
    Description:
 
-   Miscellaneous functions for the sandbox.   Random, exitall, getruntime, 
+   Miscellaneous functions for the sandbox.   Random, exitall, getruntime,
    etc.
 
    <Modified>
@@ -15,7 +15,7 @@
      create a float of 53bit resolution.
      Modified scheme from the random() function of the SystemRandom class,
      as defined in source code python 2.6.2 Lib/random.py
-     
+
      Anthony - Jun 25 2009, will now use tracebackrepy.handle_internalerror
      to log when os.urandom raises a NotImplementedError.
 """
@@ -29,7 +29,7 @@ import threading        # for Lock()
 import thread           # to catch thread.error
 from exception_hierarchy import *
 
-# threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
+# threading in python2.7 needs hasattr. It needs to be allowed explicitly.
 threading.hasattr = hasattr
 
 ##### Public Functions
@@ -58,7 +58,7 @@ def randombytes():
   nanny.tattle_quantity('random', 0)
 
   # If an OS-specific source of randomness is not a found
-  # a NotImplementedError would be raised. 
+  # a NotImplementedError would be raised.
   # Anthony - a NotImplementedError will be logged as an internal
   # error so that we will hopefully be able to identify the system,
   # the exception is not passed on because the problem was not
@@ -72,7 +72,7 @@ def randombytes():
 
   # Tattle all 1024 now
   nanny.tattle_quantity('random',1024)
- 
+
   return randomdata
 
 
@@ -101,7 +101,7 @@ def exitall():
   """
    <Purpose>
       Allows the user program to stop execution of the program without
-      passing an exit event to the main program. 
+      passing an exit event to the main program.
 
    <Arguments>
       None.
@@ -110,8 +110,8 @@ def exitall():
       None.
 
    <Side Effects>
-      Interactions with timers and connection / message receiving functions 
-      are undefined.   These functions may be called after exit and may 
+      Interactions with timers and connection / message receiving functions
+      are undefined.   These functions may be called after exit and may
       have undefined state.
 
    <Returns>

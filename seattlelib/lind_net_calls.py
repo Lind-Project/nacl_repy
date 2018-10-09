@@ -1,27 +1,27 @@
 """
   Author: Justin Cappos
   Module: Network calls for Lind.   This is essentially POSIX written in
-          Repy V2.   
+          Repy V2.
 
   Start Date: January 14th, 2012
 
   My goal is to write a simple and relatively accurate implementation of POSIX
   in Repy V2.   This module contains most of the network calls.   A lind
-  client can execute those calls and they will be mapped into my Repy V2 
+  client can execute those calls and they will be mapped into my Repy V2
   code where I will more or less faithfully execute them.   Since Repy V2
   does not support some of the socket options, I will fake (or ignore) these.
-  There will also be a few minor parts of the implementation that might 
-  need to interact with the file system portion of the API.   This will be 
+  There will also be a few minor parts of the implementation that might
+  need to interact with the file system portion of the API.   This will be
   for things like getting file descriptors / socket descriptors.
   For Unix domain sockets, etc. we'll use loopback sockets.
 
-  Much like the fs API, rather than do all of the struct packing, etc. here, I 
+  Much like the fs API, rather than do all of the struct packing, etc. here, I
   will do it elsewhere.  This will allow me to test this in Python / Repy
   without unpacking / repacking.
 
 """
 
-# Since Repy does not have a concept of descriptors or binding before 
+# Since Repy does not have a concept of descriptors or binding before
 # connecting, we will fake all of this.   I will determine the usable ports
 # and then choose from them when it's unspecified.
 
@@ -32,8 +32,8 @@
 
 # I'll keep a little metadata for each socket descriptor (in the file
 # descriptor table).   It will look like this:
-# {'domain': AF_INET, 'type': SOCK_STREAM, 'protocol': IPPROTO_TCP, 
-#  'localip': '1.2.3.4', 'localport':12345, 'remoteip': '5.6.7.8', 
+# {'domain': AF_INET, 'type': SOCK_STREAM, 'protocol': IPPROTO_TCP,
+#  'localip': '1.2.3.4', 'localport':12345, 'remoteip': '5.6.7.8',
 #  'remoteport':6789, 'socketobjectid':5, 'mode':S_IFSOCK | 0666, 'options':0,
 #  'sndbuf':131070, 'rcvbuf': 262140, 'state':NOTCONNECTED}
 #
@@ -56,7 +56,7 @@ socketobjecttable = {}
 
 connectedsocket = []
 
-# This is raised to return an error...   It's the same as for the file 
+# This is raised to return an error...   It's the same as for the file
 # system calls
 class SyscallError(Exception):
   """A system call had an error"""
@@ -78,11 +78,11 @@ class CompositeTCPSocket:
     self.port = port
     self.c1 = listenforconnection(ip1, port)
     self.c2 = listenforconnection(ip2, port)
-  
+
   def close(self):
     self.c1.close()
     self.c2.close()
-    
+
 
   def getconnection(self):
     try:
@@ -103,11 +103,11 @@ class CompositeUDPSocket:
     self.port = port
     self.c1 = listenformessage(ip1, port)
     self.c2 = listenformessage(ip2, port)
-  
+
   def close(self):
     self.c1.close()
     self.c2.close()
-    
+
 
   def getmessage(self):
     try:
@@ -142,7 +142,7 @@ def _get_available_udp_port():
     if port not in _usedudpportsset:
       _port_operations_debug.append("suggesting UDP port " + str(port))
       return port
-  
+
   # this is probably the closest syscall.   No buffer space available...
   raise SyscallError("_get_available_udp_port","ENOBUFS","No UDP port available")
 
@@ -154,7 +154,7 @@ def _get_available_tcp_port():
       _port_operations_debug.append("suggesting TCP port " + str(port))
       return port
 
-  
+
   # this is probably the closest syscall.   No buffer space available...
   raise SyscallError("_get_available_tcp_port","ENOBUFS","No TCP port available")
 
@@ -162,7 +162,7 @@ def _get_available_tcp_port():
 def _reserve_localport(port, protocol):
   global _usedtcpportsset
   global _usedudpportsset
-  
+
   _port_list_lock.acquire(True)
   status = True
   _port_operations_debug.append("Reserving port " + str(port))
@@ -239,7 +239,7 @@ def _socket_initializer(domain,socktype,protocol, blocking=False, cloexec=False)
   if cloexec:
     flags = flags | O_CLOEXEC
   newfd = get_next_fd()
-  
+
   # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
   # of the calls I did not change break.
   filedescriptortable[newfd] = {
@@ -258,12 +258,12 @@ def _socket_initializer(domain,socktype,protocol, blocking=False, cloexec=False)
 # We don't set the ip / ports or socketobjectid because they are unknown now.
   }
   return newfd
-      
+
 
 
 # int socket(int domain, int type, int protocol);
 def socket_syscall(domain, socktype, protocol):
-  """ 
+  """
     http://linux.die.net/man/2/socket
   """
   # this code is basically one huge case statement by domain
@@ -281,7 +281,7 @@ def socket_syscall(domain, socktype, protocol):
   # okay, let's do different things depending on the domain...
   if domain == PF_INET:
 
-    
+
     if real_socktype == SOCK_STREAM:
       # If is 0, set to default (IPPROTO_TCP)
       if protocol == 0:
@@ -290,7 +290,7 @@ def socket_syscall(domain, socktype, protocol):
 
       if protocol != IPPROTO_TCP:
         raise UnimplementedError("The only SOCK_STREAM implemented is TCP.  Unknown protocol:"+str(protocol))
-      
+
       return _socket_initializer(domain,real_socktype,protocol, blocking, cloexec)
 
 
@@ -302,7 +302,7 @@ def socket_syscall(domain, socktype, protocol):
 
       if protocol != IPPROTO_UDP:
         raise UnimplementedError("The only SOCK_DGRAM implemented is UDP.  Unknown protocol:"+str(protocol))
-    
+
       return _socket_initializer(domain,real_socktype,protocol)
     else:
       raise UnimplementedError("Unimplemented sockettype: "+str(real_socktype))
@@ -322,7 +322,7 @@ def socket_syscall(domain, socktype, protocol):
 
 
 def bind_syscall(fd,localip,localport):
-  """ 
+  """
     http://linux.die.net/man/2/bind
   """
   if fd not in filedescriptortable:
@@ -350,10 +350,10 @@ def bind_syscall(fd,localip,localport):
     # if the protocol / domain/ type differ, ignore
     if filedescriptortable[otherfd]['domain'] != filedescriptortable[fd]['domain'] or filedescriptortable[otherfd]['type'] != filedescriptortable[fd]['type'] or filedescriptortable[otherfd]['protocol'] != filedescriptortable[fd]['protocol']:
       continue
-    
+
     # if they are already bound to this address / port
     if 'localip' in filedescriptortable[otherfd] and filedescriptortable[otherfd]['localip'] == localip and filedescriptortable[otherfd]['localport'] == localport:
-      # is SO_REUSEPORT in effect on both? I think everyone has to set 
+      # is SO_REUSEPORT in effect on both? I think everyone has to set
       # SO_REUSEPORT (at least this is true on some OSes.   It's OS dependent)
       if filedescriptortable[fd]['options'] & filedescriptortable[otherfd]['options'] & SO_REUSEPORT == SO_REUSEPORT:
         # all is well, continue...
@@ -361,8 +361,8 @@ def bind_syscall(fd,localip,localport):
       else:
         raise SyscallError('bind_syscall','EADDRINUSE',"Another socket is already bound to this address")
 
-  # BUG (?): hmm, how should I support multiple interfaces?   I could either 
-  # force them to pick the result of getmyip here or could return a different 
+  # BUG (?): hmm, how should I support multiple interfaces?   I could either
+  # force them to pick the result of getmyip here or could return a different
   # error later....   I think I'll wait.
   if not intent_to_rebind:
     (ret, localport) = _reserve_localport(localport, filedescriptortable[fd]['protocol'])
@@ -377,9 +377,9 @@ def bind_syscall(fd,localip,localport):
       udpsockobj = CompositeUDPSocket('127.0.0.1', getmyip(), localport)
     else:
       udpsockobj = listenformessage(localip, localport)
-    filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj) 
+    filedescriptortable[fd]['socketobjectid'] = _insert_into_socketobjecttable(udpsockobj)
 
-  # Done!   Let's set the information and bind later since Repy V2 doesn't 
+  # Done!   Let's set the information and bind later since Repy V2 doesn't
   # support a separate call for binding...
   filedescriptortable[fd]['localip']=localip
   filedescriptortable[fd]['localport']=localport
@@ -398,7 +398,7 @@ def bind_syscall(fd,localip,localport):
 
 
 def connect_syscall(fd,remoteip,remoteport):
-  """ 
+  """
     http://linux.die.net/man/2/connect
   """
 
@@ -436,7 +436,7 @@ def connect_syscall(fd,remoteip,remoteport):
     # Am I already bound?   If not, we'll need to get an ip / port
     if 'localip' not in filedescriptortable[fd]:
       localip = getmyip()
-      
+
       localport = _get_available_tcp_port()
       while not _reserve_localport(localport, filedescriptortable[fd]['protocol'])[0]:
         localport = _get_available_tcp_port()
@@ -484,7 +484,7 @@ def connect_syscall(fd,remoteip,remoteport):
   else:
     raise UnimplementedError("Unknown protocol in connect()")
 
-    
+
 
 
 
@@ -497,7 +497,7 @@ def connect_syscall(fd,remoteip,remoteport):
 
 
 def sendto_syscall(fd,message, remoteip,remoteport,flags):
-  """ 
+  """
     http://linux.die.net/man/2/sendto
   """
 
@@ -522,7 +522,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
 
   if filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
     raise SyscallError("sendto_syscall","EISCONN","The descriptor is connection-oriented.")
-    
+
   # What I do depends on the protocol...
   # If UDP, set the items and return
   if filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
@@ -542,7 +542,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
       raise SyscallError('connect_syscall','ENETUNREACH','Network was unreachable because of inability to access local port / IP')
     except DuplicateTupleError, e:
       raise SyscallError('connect_syscall','EADDRINUSE','Network address in use')
- 
+
     # fill in the file descriptor table...
     filedescriptortable[fd]['localip'] = localip
     filedescriptortable[fd]['localport'] = localport
@@ -567,7 +567,7 @@ def sendto_syscall(fd,message, remoteip,remoteport,flags):
 
 
 def send_syscall(fd, message, flags):
-  """ 
+  """
     http://linux.die.net/man/2/send
   """
   if fd not in filedescriptortable:
@@ -576,7 +576,7 @@ def send_syscall(fd, message, flags):
   if not IS_SOCK(filedescriptortable[fd]['mode']):
     raise SyscallError("send_syscall","ENOTSOCK","The descriptor is not a socket.")
 
-  if flags  != 0 and flags != MSG_NOSIGNAL: 
+  if flags  != 0 and flags != MSG_NOSIGNAL:
     raise UnimplementedError("Flagss are not understood by send!")
 
   # includes NOTCONNECTED and LISTEN
@@ -586,14 +586,14 @@ def send_syscall(fd, message, flags):
 
   if filedescriptortable[fd]['protocol'] != IPPROTO_TCP and filedescriptortable[fd]['protocol'] != IPPROTO_UDP:
     raise SyscallError("send_syscall","EOPNOTSUPP","send not supported on this protocol.")
-    
-  # I'll check this anyways, because I later might have multiple protos 
+
+  # I'll check this anyways, because I later might have multiple protos
   # supported
   if filedescriptortable[fd]['protocol'] == IPPROTO_TCP:
 
     # get the socket so I can send...
     sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-    
+
     # retry until it does not block...
     while True:
       try:
@@ -601,11 +601,11 @@ def send_syscall(fd, message, flags):
       # sleep and retry
       except SocketWouldBlockError, e:
          sleep(RETRYWAITAMOUNT)
-        
+
       except Exception, e:
         # I think this shouldn't happen.   A closed socket should go to
         # NOTCONNECTED state.   This is an internal error...
-         raise 
+         raise
 
       # return the characters sent!
       return bytessent
@@ -619,9 +619,9 @@ def send_syscall(fd, message, flags):
   else:
     raise UnimplementedError("Unknown protocol in send()")
 
-    
 
-    
+
+
 
 
 
@@ -639,7 +639,7 @@ RETRYWAITAMOUNT = .00001
 
 # Note that this call may be used by recv_syscall since they are so similar
 def recvfrom_syscall(fd,length,flags):
-  """ 
+  """
     http://linux.die.net/man/2/recvfrom
   """
 
@@ -657,7 +657,7 @@ def recvfrom_syscall(fd,length,flags):
     if filedescriptortable[fd]['state'] != CONNECTED:
       raise SyscallError("recvfrom_syscall","ENOTCONN","The descriptor is not connected."+str(filedescriptortable[fd]['state']))
     # is this a non-blocking recv OR a nonblocking socket?
-    
+
     # I'm ready to recv, get the socket object...
     sockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
     peek = filedescriptortable[fd]['last_peek']
@@ -699,22 +699,22 @@ def recvfrom_syscall(fd,length,flags):
       if (flags & MSG_PEEK) != 0:
         # print "@@ peek next time"
         filedescriptortable[fd]['last_peek'] = peek
-        
+
       return remoteip, remoteport, ret_data
 
-  
-   
+
+
 
 
 
   # If UDP, recieve a message and return...
   elif filedescriptortable[fd]['protocol'] == IPPROTO_UDP:
     # BUG / HELP!!!: Calling this with UDP and without binding does something I
-    # don't really understand...   It seems to block but I don't know what is 
+    # don't really understand...   It seems to block but I don't know what is
     # happening.   The socket isn't bound to a valid inode,etc from what I see.
     if 'localip' not in filedescriptortable[fd]:
       raise UnimplementedError("BUG / FIXME: Should bind before using UDP to recv / recvfrom")
-    
+
 
     # get the udpsocket object...
     udpsockobj = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
@@ -750,7 +750,7 @@ def recvfrom_syscall(fd,length,flags):
 
 
 def recv_syscall(fd, length, flags):
-  """ 
+  """
     http://linux.die.net/man/2/recv
   """
 
@@ -761,7 +761,7 @@ def recv_syscall(fd, length, flags):
   # we don't need the remoteip or remoteport for this...
   return message
 
-    
+
 
 
 
@@ -775,7 +775,7 @@ def recv_syscall(fd, length, flags):
 
 
 def getsockname_syscall(fd):
-  """ 
+  """
     http://linux.die.net/man/2/getsockname
   """
 
@@ -789,16 +789,16 @@ def getsockname_syscall(fd):
   # if we know this, return it...
   if 'localip' in filedescriptortable[fd]:
     return filedescriptortable[fd]['localip'], filedescriptortable[fd]['localport']
-  
+
   # otherwise, return '0.0.0.0', 0
   else:
     return '0.0.0.0',0
-  
-
-    
 
 
-    
+
+
+
+
 
 
 
@@ -807,7 +807,7 @@ def getsockname_syscall(fd):
 
 
 def getpeername_syscall(fd):
-  """ 
+  """
     http://linux.die.net/man/2/getpeername
   """
 
@@ -824,8 +824,8 @@ def getpeername_syscall(fd):
 
   # if we know this, return it...
   return filedescriptortable[fd]['remoteip'], filedescriptortable[fd]['remoteport']
-  
-  
+
+
 
 
 
@@ -840,7 +840,7 @@ def getpeername_syscall(fd):
 
 # I ignore the backlog
 def listen_syscall(fd,backlog):
-  """ 
+  """
     http://linux.die.net/man/2/listen
   """
 
@@ -867,7 +867,7 @@ def listen_syscall(fd,backlog):
 
 
     if 'localip' not in filedescriptortable[fd]:
-      # the real POSIX impl picks a random port and listens on 0.0.0.0.   
+      # the real POSIX impl picks a random port and listens on 0.0.0.0.
       # I think this is unnecessary to implement.
       raise UnimplementedError("listen without bind")
 
@@ -907,7 +907,7 @@ def listen_syscall(fd,backlog):
     filedescriptortable[fd]['state'] = LISTEN
 
 
-    # BUG: I'll let anything go through for now.   I'm fairly sure there will 
+    # BUG: I'll let anything go through for now.   I'm fairly sure there will
     # be issues I may need to handle later.
     # #CM: this is really annoying, so for now we bind to local ip
     if filedescriptortable[fd]['localip'] == "0.0.0.0":
@@ -922,7 +922,7 @@ def listen_syscall(fd,backlog):
   else:
     raise UnimplementedError("Unknown protocol in listen()")
 
-    
+
 
 
 
@@ -941,7 +941,7 @@ def listen_syscall(fd,backlog):
 
 # returns ip, port, sockfd
 def accept_syscall(fd, flags=0):
-  """ 
+  """
     http://linux.die.net/man/2/accept
   """
 
@@ -966,14 +966,14 @@ def accept_syscall(fd, flags=0):
       raise SyscallError("accept_syscall","EINVAL","Must call listen before accept.")
 
     listeningsocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-    
+
     # now we should loop (block) until we get an incoming connection
     while True:
       try:
         if connectedsocket != []:
           remoteip, remoteport, acceptedsocket = connectedsocket.pop(0)
         else:
-          remoteip, remoteport, acceptedsocket = listeningsocket.getconnection() 
+          remoteip, remoteport, acceptedsocket = listeningsocket.getconnection()
 
       # sleep and retry
       except SocketWouldBlockError, e:
@@ -984,7 +984,7 @@ def accept_syscall(fd, flags=0):
         filedescriptortable[newfd]['state'] = CONNECTED
         filedescriptortable[newfd]['localip'] = filedescriptortable[fd]['localip']
         newport = _get_available_tcp_port()
-        (ret, newport) = _reserve_localport(newport, IPPROTO_TCP) 
+        (ret, newport) = _reserve_localport(newport, IPPROTO_TCP)
         assert ret
         filedescriptortable[newfd]['localport'] = newport
         filedescriptortable[newfd]['remoteip'] = remoteip
@@ -997,7 +997,7 @@ def accept_syscall(fd, flags=0):
   else:
     raise UnimplementedError("Unknown protocol in accept()")
 
-    
+
 
 
 
@@ -1007,7 +1007,7 @@ def accept_syscall(fd, flags=0):
 # int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
 
 
-# I'm just going to set these binary options or return the previous setting.   
+# I'm just going to set these binary options or return the previous setting.
 # In most cases, this will be while doing nothing.
 STOREDSOCKETOPTIONS = [ SO_LINGER, # ignored
                         SO_KEEPALIVE, # ignored
@@ -1020,7 +1020,7 @@ STOREDSOCKETOPTIONS = [ SO_LINGER, # ignored
 
 ##### GETSOCKOPT  #####
 def getsockopt_syscall(fd, level, optname):
-  """ 
+  """
     http://linux.die.net/man/2/getsockopt
   """
   if fd not in filedescriptortable:
@@ -1036,7 +1036,7 @@ def getsockopt_syscall(fd, level, optname):
   # TCP...  Ignore most things...
   elif level == SOL_TCP:
     # do nothing
-    
+
     raise UnimplementedError("TCP options not remembered by getsockopt")
 
 
@@ -1105,7 +1105,7 @@ def getsockopt_syscall(fd, level, optname):
 
 ##### SETSOCKOPT  #####
 def setsockopt_syscall(fd, level, optname, optval):
-  """ 
+  """
     http://linux.die.net/man/2/setsockopt
   """
   if fd not in filedescriptortable:
@@ -1123,16 +1123,16 @@ def setsockopt_syscall(fd, level, optname, optval):
     # do nothing
     if optname == TCP_NODELAY:
       return 0
-    
+
     return 0 #temporary for Apache
- 
+
     # otherwise return an error
     raise UnimplementedError("TCP options not remembered by setsockopt")
 
 
   elif level == SOL_SOCKET:
     # this is where the work happens!!!
-    
+
     if optname == SO_ACCEPTCONN or optname == SO_TYPE or optname == SO_SNDLOWAT or optname == SO_RCVLOWAT:
       raise SyscallError("setsockopt_syscall","ENOPROTOOPT","Cannot set option using setsockopt. %d"%(optname))
 
@@ -1140,7 +1140,7 @@ def setsockopt_syscall(fd, level, optname, optval):
     if optname in STOREDSOCKETOPTIONS:
 
       newoptions = filedescriptortable[fd]['options']
-            
+
       # if the value is set, unset it...
       if (newoptions & optname) == optname:
         newoptions = newoptions - optname
@@ -1154,7 +1154,7 @@ def setsockopt_syscall(fd, level, optname, optval):
         newoptions = newoptions | optname
       filedescriptortable[fd]['options'] = newoptions
       return 0
-      
+
 
     # Okay, let's handle the (ignored) buffer settings...
     if optname == SO_SNDBUF:
@@ -1189,7 +1189,7 @@ def _cleanup_socket(fd, partial = False):
     if not partial:
       del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
       del filedescriptortable[fd]['socketobjectid']
-      
+
       filedescriptortable[fd]['state'] = NOTCONNECTED
     return 0
 
@@ -1200,10 +1200,10 @@ def _cleanup_socket(fd, partial = False):
 
 ##### SHUTDOWN  #####
 def netshutdown_syscall(fd, how):
-  """ 
+  """
     http://linux.die.net/man/2/shutdown
   """
-  
+
   if fd not in filedescriptortable:
     raise SyscallError("shutdown_syscall","EBADF","The file descriptor is invalid.")
 
@@ -1212,22 +1212,22 @@ def netshutdown_syscall(fd, how):
 
 
   if how == SHUT_RD:
-    
+
     raise UnimplementedError("Partial shutdown read not implemented.")
-  
+
   elif how == SHUT_WR:
-    
+
     _cleanup_socket(fd, True)
-  
+
   # let's shut this down...
   elif how == SHUT_RDWR:
     # BUG: need to check for duplicate entries (ala dup / dup2)
     _cleanup_socket(fd, False)
   else:
     # BUG: I'm not exactly clear as to how to handle this...
-    
+
     raise SyscallError("shutdown_syscall","EINVAL","Shutdown given an invalid how")
-  
+
   return 0
 
 
@@ -1239,7 +1239,7 @@ def netshutdown_syscall(fd, how):
 def _nonblock_peek_read(fd):
   """Do a read, but don't block or change the socket cursor. Called from select.
 
-  @return False if socket will block, True if socket is ready for read. 
+  @return False if socket will block, True if socket is ready for read.
   """
 
   try:
@@ -1265,7 +1265,7 @@ def _nonblock_peek_read(fd):
 
 
 def select_syscall(nfds, readfds, writefds, exceptfds, time):
-  """ 
+  """
     http://linux.die.net/man/2/select
   """
   # for each fd in readfds,
@@ -1277,7 +1277,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time):
   # if read works, do it as a peek, so next time it won't block
 
   retval = 0
-  
+
   # the bit vectors only support 1024 file descriptors, also lower FDs are not supported
   if nfds < STARTINGFD or nfds > MAX_FD:
     raise SyscallError("select_syscall","EINVAL","number of FDs is wrong: %s"%(str(nfds)))
@@ -1341,10 +1341,10 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time):
     # Excepts
     assert not exceptfds, "Lind does not support exceptfds yet."
 
-    # if the timeout is given as null or negative value, block forever until 
+    # if the timeout is given as null or negative value, block forever until
     # an event has occured, if timeout is provided as zero, return immediatly.
     # if positive time provided, wait until time expires and return
-    
+
     if retval != 0 or time == 0 or (getruntime() >= end_time and time > 0):
       break
     else:
@@ -1356,7 +1356,7 @@ def select_syscall(nfds, readfds, writefds, exceptfds, time):
 
 
 def getifaddrs_syscall():
-  """ 
+  """
     http://linux.die.net/man/2/getifaddrs
 
     Returns a list of the IP addresses of this machine.
@@ -1370,11 +1370,11 @@ def getifaddrs_syscall():
     raise SyscallError("getifaddrs syscall","EADDRNOTAVAIL","Problem getting the" \
                        " local ip address.")
   broadcast = (ip.split('.')[0:3]) # the broadcast address is just x.y.z.255?
-  broadcast = '.'.join(broadcast + ['255']) 
+  broadcast = '.'.join(broadcast + ['255'])
   return 0, [{'ifa_name':'eth0',
            'ifa_flags':0,
            'ifa_addr':ip,
-           'ifa_netmask':'255.255.255.0', 
+           'ifa_netmask':'255.255.255.0',
            'ifa_broadaddr':broadcast,
           },
 
@@ -1388,7 +1388,7 @@ def getifaddrs_syscall():
 
 
 def poll_syscall(fds, timeout):
-  """ 
+  """
     http://linux.die.net/man/2/poll
 
     returns a list of io status indicators for each of the
@@ -1403,8 +1403,8 @@ def poll_syscall(fds, timeout):
     for structpoll in fds:
       fd = structpoll['fd']
       events = structpoll['events']
-      read = events & POLLIN > 0 
-      write = events & POLLOUT > 0 
+      read = events & POLLIN > 0
+      write = events & POLLOUT > 0
       err = events & POLLERR > 0
       reads = []
       writes = []
@@ -1416,15 +1416,15 @@ def poll_syscall(fds, timeout):
       if err:
         errors.append(fd)
 
-      #select with timeout set to zero, acts as a poll... 
+      #select with timeout set to zero, acts as a poll...
       newfd = select_syscall(fd, reads, writes, errors, 0)
-      
+
       # this FD found something
       mask = 0
 
       if newfd[0] > 0:
         mask = mask + (POLLIN if newfd[1] else 0)
-        mask = mask + (POLLOUT if newfd[2] else 0) 
+        mask = mask + (POLLOUT if newfd[2] else 0)
         mask = mask + (POLLERR if newfd[3] else 0)
         return_code += 1
       structpoll['revents'] = mask
@@ -1453,7 +1453,7 @@ def _helper_sockpair():
   socketfd = mycontext[SOCKETPAIR]
   rc = listen_syscall(socketfd, 1)
   assert rc == 0, "Listen failed"
-  rc = accept_syscall(mycontext[SOCKETPAIR]) 
+  rc = accept_syscall(mycontext[SOCKETPAIR])
   mycontext[SOCKETPAIR_LISTEN] = rc[2]
 
 def socketpair_syscall(domain, socktype, protocol):
@@ -1527,7 +1527,7 @@ EPOLL_CTL_MOD = 3
 def _epoll_object_allocator():
   # get a file descriptor
   newfd = get_next_fd()
-  
+
   # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
   # of the calls I did not change break.
   filedescriptortable[newfd] = {
@@ -1538,7 +1538,7 @@ def _epoll_object_allocator():
       'flags':0,
   }
   return newfd
-  
+
 def _epoll_object_deallocator(efd):
   pass
 
@@ -1550,42 +1550,42 @@ def epoll_create_syscall(size):
 def epoll_ctl_syscall(epfd, op, fd, event):
   if not IS_EPOLL_FD(epfd):
     raise SyscallError("epoll_ctl_syscall","EBADF","epfd is not a valid FD")
-  
+
   if (not fd in filedescriptortable) or (IS_EPOLL_FD(fd)):
     raise SyscallError("epoll_ctl_syscall","EBADF","fd is not a valid FD")
-  
+
   epfd_obj = filedescriptortable[epfd];
-  
+
   if op == EPOLL_CTL_DEL or op == EPOLL_CTL_MOD:
     try:
       del epfd_obj['registered_fds'][fd]
     except KeyError, e:
       raise SyscallError("epoll_ctl_syscall","ENOENT","fd is not registered with this epfd")
-  
+
   if op == EPOLL_CTL_ADD and fd in epfd_obj['registered_fds']:
     raise SyscallError("epoll_ctl_syscall","EEXIST","fd is already registered")
-  
+
   if op == EPOLL_CTL_MOD or op == EPOLL_CTL_ADD:
     events = event["events"]
     data = event["fd"]
     epfd_obj['registered_fds'][fd] = {'events':events, 'data':data}
-  
+
   return 0
-  
+
 def epoll_wait_syscall(epfd, maxevents, timeout):
   if not epfd in filedescriptortable:
     raise SyscallError("epoll_wait_syscall","EBADF","epfd is not a valid FD")
-  
+
   if not IS_EPOLL_FD(epfd):
     raise SyscallError("epoll_wait_syscall","EINVAL","epfd is not a epoll FD")
-  
+
   if not maxevents>0:
     raise SyscallError("epoll_wait_syscall","EINVAL","maxevents is not a postive number")
-  
+
   readfds=[]
   writefds=[]
   errfds=[]
-  
+
   poll_fds=[]
   for fd in filedescriptortable[epfd]['registered_fds']:
     events = filedescriptortable[epfd]['registered_fds'][fd]['events']
@@ -1597,7 +1597,7 @@ def epoll_wait_syscall(epfd, maxevents, timeout):
     if events & EPOLLERR > 0:
       structpoll['events'] |= POLLERR
     poll_fds.append(structpoll)
-  
+
   ret, pollresult = poll_syscall(poll_fds, timeout)
   nepoll_return = min(len(pollresult), maxevents)
   epoll_return = []

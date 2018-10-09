@@ -137,7 +137,7 @@ if callfunc == "initialize":
     if active_threads == idle_threads:
       num_scheduled = librunloop._context["_TASK_QUEUE"].count
       if num_scheduled == 0:
-        librunloop.terminate() 
+        librunloop.terminate()
 
 
   # Schedule this checker to run every once in a while
@@ -146,7 +146,7 @@ if callfunc == "initialize":
   # Export everything
   for key in LIBREPY_EXPORTS:
     CHILD_CONTEXT[key] = _context[key]
-  
+
   # Start the next module
   dy_dispatch_module()
 
