@@ -10,6 +10,7 @@ Pipe handlers <description>
 
 """
 
+import threading, os
 
 def lind_sys_pipe(args):
     """ pipe calls are dispatched to this function.
@@ -20,9 +21,10 @@ def lind_sys_pipe(args):
 
     """
 
-    PIPE_FD = (42, 42)
-    result = struct_pack("<2i", PIPE_FD)
-    return SuccessResponseBuilder("sys_pipe", 0, result)
+    in_fd = 24
+    out_fd = 42
+    result = struct_pack("<2i", in_fd, out_fd)
+    return SuccessResponseBuilder("sys_pipe", len(result), result)
 
 
 def lind_sys_pipe2(args):
@@ -34,9 +36,11 @@ def lind_sys_pipe2(args):
 
     """
 
-    PIPE_FD = (42, 42)
-    result = struct_pack("<2i", PIPE_FD)
-    return SuccessResponseBuilder("sys_pipe2", 0, result)
+    in_fd = 24
+    out_fd = 42
+    result = struct_pack("<2i", in_fd, out_fd)
+    return SuccessResponseBuilder("sys_pipe", len(result), result)
+
 
 
 def lind_safe_sys_pipe(args):
