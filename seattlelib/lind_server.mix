@@ -17,7 +17,7 @@ import sys              # for sys.stderr
 
 include struct.repy
 
-VERSION = "$1.0-rc2$"
+VERSION = "1.0-rc2"
 
 SILENT = False # Try to produce output as close as the OS would
                # this means no debug/error messages!
@@ -379,7 +379,7 @@ def main():
   is_trace()
 
   if callfunc == "initialize":
-    log( "Lind v" + VERSION[2:-1] + "\n" + "Last commit:" + "$1.0-rc2$"[7:-2] + "\n")
+    print >> sys.stderr, "Lind v" + VERSION + "\n"
     parse_commandline()
     lind_factory()
 
