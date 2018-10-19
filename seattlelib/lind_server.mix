@@ -13,6 +13,8 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 """
 
+import sys              # for sys.stderr
+
 include struct.repy
 
 VERSION = "$1.0-rc2$"
@@ -61,7 +63,7 @@ def warning(*msg):
 def assert_warning(logic, message):
   """Like assert, but only warn"""
   if not logic:
-    log( "Warning:"+ message)
+    print >> sys.stderr,  "Warning:"+ message
 
 
 def curr_comp():
@@ -78,10 +80,10 @@ def unimplemented(who):
   so we should exit.  """
   message = "a unimplemented function has been called " + str(who)
   if PRODUCTION:
-    log("error: " + message)
+    print >> sys.stderr,  "error: " + message
     exitall()
   else:
-    log("warning: " + message)
+    print >> sys.stderr,  "warning: " + message
 
 include lind_rpc.repy
 
@@ -234,7 +236,7 @@ def print_times(times):
 
 def LindSyscall(call_num, args):
 
-  # log("We have entered LindSyscall\n")
+  # print >> sys.stderr,  "We have entered LindSyscall\n"
 
   comp_num = 1
   response = None
@@ -259,17 +261,17 @@ def LindSyscall(call_num, args):
 
 
 def GetHostFdFromLindFd(lind_fd):
-  # log("We have entered GetHostFdFromLindFd\n")
+  # print >> sys.stderr,  "We have entered GetHostFdFromLindFd\n"
 
   assert isinstance(lind_fd, int)
   if lind_fd < 0:
     return -1
   if not lind_fd in filedescriptortable.keys():
-    log("GetHostFdFromLindFd: fd "+str(lind_fd)+" not found\n")
+    print >> sys.stderr,  "GetHostFdFromLindFd: fd "+str(lind_fd+" not found\n")
     return -1
   inode = filedescriptortable[lind_fd]["inode"]
   if not inode in fileobjecttable.keys():
-    log("GetHostFdFromLindFd: inode "+str(inode)+" not found\n")
+    print >> sys.stderr,  "GetHostFdFromLindFd: inode "+str(inode+" not found\n")
   fobj = fileobjecttable[inode].fobj
   return fobj.fileno()
 
@@ -323,13 +325,13 @@ def new_compoent():
 
 def setup_filetable(comp_num):
   """Try to open file system. If you can't, then make a new one."""
-  log( "Opening file system...\n")
+  print >> sys.stderr, "Opening file system...\n"
   load_fs()
   # load_fs() will check first if the metadata is present, if not
   # present it will create it. I am removing the following call
   # because it duplicates the creation of special files.
   # load_fs_special_files()
-  log( "done.\n")
+  print >> sys.stderr,  "done.\n"
 
   # except KeyError, e:
 
@@ -347,7 +349,7 @@ def lind_factory():
   #_check_file(curr_comp()[PROGRAM])
   #if we are running a compoent, launch another one as a test.
   if "com1" in curr_comp()[PROGRAM]:
-    log("starting multi-component test mode")
+    print >> sys.stderr,  "starting multi-component test mode"
     mycontext[COMP_MODE] = True
     new_compoent()
   else:
@@ -368,9 +370,9 @@ def parse_commandline():
 
 
 def finalize():
-  log("Persisting metadata: ...\n")
+  print >> sys.stderr,  "Persisting metadata: ...\n"
   persist_metadata(DEFAULT_METADATA_FILENAME)
-  log("Done persisting metadata.\n")
+  print >> sys.stderr,  "Done persisting metadata.\n"
 
 
 def main():
