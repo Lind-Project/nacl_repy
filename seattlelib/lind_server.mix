@@ -267,11 +267,11 @@ def GetHostFdFromLindFd(lind_fd):
   if lind_fd < 0:
     return -1
   if not lind_fd in filedescriptortable.keys():
-    print >> sys.stderr,  "GetHostFdFromLindFd: fd "+str(lind_fd+" not found\n")
+    print >> sys.stderr,  "GetHostFdFromLindFd: fd "+str(lind_fd+" not found")
     return -1
   inode = filedescriptortable[lind_fd]["inode"]
   if not inode in fileobjecttable.keys():
-    print >> sys.stderr,  "GetHostFdFromLindFd: inode "+str(inode+" not found\n")
+    print >> sys.stderr,  "GetHostFdFromLindFd: inode "+str(inode+" not found")
   fobj = fileobjecttable[inode].fobj
   return fobj.fileno()
 
@@ -325,13 +325,13 @@ def new_compoent():
 
 def setup_filetable(comp_num):
   """Try to open file system. If you can't, then make a new one."""
-  print >> sys.stderr, "Opening file system...\n"
+  print >> sys.stderr, "Opening file system..."
   load_fs()
   # load_fs() will check first if the metadata is present, if not
   # present it will create it. I am removing the following call
   # because it duplicates the creation of special files.
   # load_fs_special_files()
-  print >> sys.stderr,  "done.\n"
+  print >> sys.stderr,  "done."
 
   # except KeyError, e:
 
@@ -370,16 +370,16 @@ def parse_commandline():
 
 
 def finalize():
-  print >> sys.stderr,  "Persisting metadata: ...\n"
+  print >> sys.stderr,  "Persisting metadata: ..."
   persist_metadata(DEFAULT_METADATA_FILENAME)
-  print >> sys.stderr,  "Done persisting metadata.\n"
+  print >> sys.stderr,  "Done persisting metadata."
 
 
 def main():
   is_trace()
 
   if callfunc == "initialize":
-    print >> sys.stderr, "Lind v" + VERSION + "\n"
+    print >> sys.stderr, "Lind v" + VERSION
     parse_commandline()
     lind_factory()
 
