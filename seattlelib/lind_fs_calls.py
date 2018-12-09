@@ -1869,6 +1869,85 @@ def ftruncate_syscall(fd, new_len):
   return 0
 
 #### PIPE ####
+def _write_pipe(fd, data):
+
+  # write to pipe will be dispatch to here from write_syscall
+  # block when pipe is full
+
+  if not isinstance(data, basestring):
+    raise SyscallError('only string can be write to pipe')
+
+  inode = filedescriptortable[fd]['inode']
+
+
+  # loop when pipe is full
+  # because write and read share the same lock, can't always grab lock when loop
+  # so release the lock a little bit to let _read_pipe to get the lock
+  # this looks clumsy
+  # because I think I'm not supposed to use 'condition' from external libarary
+  while filesystemmetadata['inodetable'][inode]['nwrite'] == \
+        filesystemmetadata['inodetable'][inode]['size'] + \
+        filesystemmetadata['inodetable'][inode]['nread']:
+
+    filedescriptortable[fd]['lock'].release()
+    sleep(0.00001)
+    filedescriptortable[fd]['lock'].acquire(True)
+
+  # if try write more than spare space in pipe, only write how much can be write
+  # exceeded data will be discard 
+  write_count = min(filesystemmetadata['inodetable'][inode]['size'] - \
+        (filesystemmetadata['inodetable'][inode]['nwrite'] - \
+        filesystemmetadata['inodetable'][inode]['nread']), len(data))
+
+  filesystemmetadata['inodetable'][inode]['pipe'] = \
+        filesystemmetadata['inodetable'][inode]['pipe'] + data[:write_count]
+
+  filesystemmetadata['inodetable'][inode]['nwrite'] = \
+        filesystemmetadata['inodetable'][inode]['nwrite'] + write_count
+
+  return write_count
+
+
+def _read_pipe(fd, count):
+
+  inode= filedescriptortable[fd]['inode']
+
+  while filesystemmetadata['inodetable'][inode]['nread'] == \
+        filesystemmetadata['inodetable'][inode]['nwrite']:
+
+    filedescriptortable[fd]['lock'].release()
+    sleep(0.00001)
+    filedescriptortable[fd]['lock'].acquire(True)
+
+  # nread only proceed how many bytes are really read
+  read_count = min(filesystemmetadata['inodetable'][inode]['nwrite'] - \
+      filesystemmetadata['inodetable'][inode]['nread'], count)
+  result = filesystemmetadata['inodetable'][inode]['pipe'][:read_count]
+
+  # update the pipe, this might use more memory though?
+  filesystemmetadata['inodetable'][inode]['pipe'] = \
+      filesystemmetadata['inodetable'][inode]['pipe'][read_count:]
+  filesystemmetadata['inodetable'][inode]['nread'] = \
+      filesystemmetadata['inodetable'][inode]['nread'] + read_count
+
+  return result
+
+def _pipe_close(fd):
+
+  # based on read_open and write_open to decide whether del inode from filesystemmetadata.
+  
+  inode = filedescriptortable[fd]['inode']
+
+  if IS_WRONLY(filedescriptortable[fd]['flags']):
+    filesystemmetadata['inodetable'][inode]['write_open'] = 0
+  else:
+    filesystemmetadata['inodetable'][inode]['read_open'] = 0
+  
+  if (filesystemmetadata['inodetable'][inode]['write_open'] == 0) and \
+    (filesystemmetadata['inodetable'][inode]['read_open'] == 0):
+    del filesystemmetadata['inodetable'][inode]
+    
+
   
   
 
