@@ -1270,6 +1270,10 @@ def read_syscall(fd, count):
 
     # get the inode so I can and check the mode (type)
     inode = filedescriptortable[fd]['inode']
+    
+    # if its a pipe file, call the helper function
+    if IS_PIPE(filesystemmetadata['inodetable'][inode]['mode']):
+      return _read_pipe(fd, count)
 
     # If its a character file, call the helper function.
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1335,6 +1339,9 @@ def write_syscall(fd, data):
 
     # get the inode so I can update the size (if needed) and check the type
     inode = filedescriptortable[fd]['inode']
+
+    if IS_PIPE(filesystemmetadata['inodetable'][inode]['mode']):
+      return _write_pipe(fd, data)
 
     # If its a character file, call the helper function.
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1444,6 +1451,10 @@ def _close_helper(fd):
 
   # get the inode for the filedescriptor
   inode = filedescriptortable[fd]['inode']
+
+  if IS_PIPE(filesystemmetadata['inodetable'][inode]['mode']):
+    _pipe_close(fd)
+    return 0
 
   # If it's not a regular file, we have nothing to close...
   if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
