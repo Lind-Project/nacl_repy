@@ -1868,6 +1868,56 @@ def ftruncate_syscall(fd, new_len):
 
   return 0
 
+#### PIPE ####
+  
+  
+
+def pipe_syscall():
+
+  # try to avoid using class, so store pipe, nread and nwrite in inode, not sure if proper.
+  # pipe is a str in metadata
+  # use mode S_IFPIPE(12288) to identify a pipe
+  # return a pipe for write and a pipe for read
+
+  filesystemmetadatalock.acquire(True)
+
+  try:
+    fd_write = get_next_fd()
+    this_pipe_lock = createlock()
+    inode = filesystemmetadata['nextinode']
+    pipe = ''
+
+    newinodeentry = {'size':4096, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID,
+          'mode':S_IFPIPE,
+          'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
+          'linkcount':1,
+          'nread':0,
+          'nwrite':0,
+          'read_open':1,
+          'write_open':1,
+          'pipe':pipe
+          }
+
+    newinode = filesystemmetadata['nextinode']
+    filesystemmetadata['inodetable'][newinode] = newinodeentry
+
+    # I may not need position here, but I keep it for unity.
+    filedescriptortable[fd_write] = {'position':0, 'inode':newinode, 'lock':this_pipe_lock, 'flags':O_WRONLY}
+
+    #prepare fd for read 
+    fd_read = get_next_fd()
+    filedescriptortable[fd_read] = {'position':0, 'inode': newinode, 'lock':this_pipe_lock, 'flags':O_RDONLY}
+
+    pd = []
+    pd.append(fd_write)
+    pd.append(fd_read)
+     
+    return pd
+  
+  finally:
+    filesystemmetadatalock.release()
+
+
 #### MKNOD ####
 
 # for now, I am considering few assumptions:
