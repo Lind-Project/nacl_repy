@@ -49,6 +49,7 @@ S_IXOTH = 00001
 
 
 # file types for open / stat, etc.
+S_IFPIPE = 12288
 S_IFBLK = 24576
 S_IFCHR = 8192
 S_IFDIR = 16384
@@ -186,6 +187,12 @@ def IS_REG(mode):
 
 def IS_CHR(mode):
   return (mode & S_FILETYPEFLAGS) == S_IFCHR
+
+def IS_PIPE(mode):
+  if mode & S_FILETYPEFLAGS == S_IFPIPE:
+    return True
+  else:
+    return False
 
 
 def IS_SOCK(mode):
