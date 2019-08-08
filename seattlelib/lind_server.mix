@@ -199,6 +199,8 @@ include fs_flock.repy
 
 include fs_rename.repy
 
+include fs_pipe.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy

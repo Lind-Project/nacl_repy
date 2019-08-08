@@ -1,0 +1,29 @@
+"""
+
+Handlers for the pipe system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Open handler pulls out the arguments, does any manditory checking
+then calls the repy posix library open system call.  Then packs
+the result back up.
+
+"""
+def lind_safe_fs_pipe(args):
+    """ pipe calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Pack the single int returned, or error.
+    """
+    print "piped"
+def lind_fs_pipe(args):
+    """ pipe calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Pack the single int returned, or error.
+    """
+    print "piped"
