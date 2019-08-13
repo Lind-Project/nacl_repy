@@ -60,7 +60,8 @@ def setup_dispatcher(comp_num):
     57:lind_safe_net_epoll_ctl,
     58:lind_safe_net_epoll_wait,
 
-    66:lind_safe_fs_pipe,
+    66:lind_safe_sys_pipe,
+    67:lind_safe_sys_pipe2,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -122,7 +123,8 @@ def setup_dispatcher(comp_num):
     57:lind_net_epoll_ctl,
     58:lind_net_epoll_wait,
 
-    66:lind_fs_pipe,
+    66:lind_sys_pipe,
+    67:lind_sys_pipe2,
 
     105:lind_comp_cia,
     106:lind_comp_call,
