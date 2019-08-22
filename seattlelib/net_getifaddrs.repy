@@ -81,7 +81,7 @@ def lind_net_getifaddrs(args):
     """
     size = args[0]
     try:
-        rc, iplist = getnetcall(args[-1],"getifaddrs_syscall")()
+        rc, iplist = get_net_call(args[-1],"getifaddrs_syscall")()
     except SyscallError, e:
         return ErrorResponseBuilder("net_getifaddrs", e[1], e[2])
 

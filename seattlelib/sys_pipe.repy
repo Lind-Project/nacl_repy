@@ -27,7 +27,7 @@ def lind_sys_pipe(args):
   Pack the single int returned, or error.
   """
   try:
-    result = getsyscall(args[-1],"pipe_syscall")()
+    result = get_fs_call(args[-1],"pipe_syscall")()
   except:
     print "Pipe failed"
 
@@ -48,6 +48,6 @@ def lind_sys_pipe2(args):
   """
   flags = args[0]
   try:
-    result = getsyscall(args[-1],"pipe2_syscall")(flags)
+    result = get_fs_call(args[-1],"pipe2_syscall")(flags)
   except:
     print "Pipe2 failed"

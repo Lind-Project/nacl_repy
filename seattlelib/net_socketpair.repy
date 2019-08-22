@@ -28,7 +28,7 @@ def lind_net_socketpair(args):
     _type = args[1]
     protocol = args[2]
     try:
-        (result, sv) = getnetcall(args[-1],"socketpair_syscall")(domain, _type, protocol)
+        (result, sv) = get_net_call(args[-1],"socketpair_syscall")(domain, _type, protocol)
     except SyscallError, e:
         print str(e)
         return ErrorResponseBuilder("net_socketpair", e[1], e[2])

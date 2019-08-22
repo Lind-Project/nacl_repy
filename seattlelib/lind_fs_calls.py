@@ -195,25 +195,25 @@ def load_fs_special_files(cageid):
   Specifically /dev/null, /dev/urandom and /dev/random
   """
   try:
-     getsyscall(cageid,"mkdir_syscall")("/dev", S_IRWXA)
+     get_fs_call(cageid,"mkdir_syscall")("/dev", S_IRWXA)
   except SyscallError as e:
     warning( "making /dev failed. Skipping",str(e))
 
   # load /dev/null
   try:
-    getsyscall(cageid,"mknod_syscall")("/dev/null", S_IFCHR, (1,3))
+    get_fs_call(cageid,"mknod_syscall")("/dev/null", S_IFCHR, (1,3))
   except SyscallError as e:
     warning("making /dev/null failed. Skipping", str(e))
 
   # load /dev/urandom
   try:
-    getsyscall(cageid,"mknod_syscall")("/dev/urandom", S_IFCHR, (1,9))
+    get_fs_call(cageid,"mknod_syscall")("/dev/urandom", S_IFCHR, (1,9))
   except SyscallError as e:
     warning("making /dev/urandom failed. Skipping",str(e))
 
   # load /dev/random
   try:
-    getsyscall(cageid,"mknod_syscall")("/dev/random", S_IFCHR, (1,8))
+    get_fs_call(cageid,"mknod_syscall")("/dev/random", S_IFCHR, (1,8))
   except SyscallError as e:
     warning("making /dev/random failed. Skipping", str(e))
 
@@ -418,11 +418,36 @@ def IS_SOCK_DESC(fd,cageid):
 
 #################### The actual system calls...   #############################
 
+# JS: The following function provides an enclosing scope for all of the file
+# system system calls. This structure allows the system calls enclosed by 
+# get_fs_call to access the cageid without having a signature that contradicts
+# the POSIX specification (by having a cageid parameter on each one). Although
+# such a change would not adversely effect the functioning of the program, it
+# would be ugly and also confusing.
+#
+# The syscalls should be called using the following syntax:
+# get_fs_call(<cageid>,<syscall name>)(arg1,arg2...)
+#
+# The functions are stored in FS_CALL_DICTIONARY, and each function is indexed
+# by its name, and is added to the dictionary after its definition as a nested
+# function. The variables CONST_CAGEID, CLOSURE_SYSCALL_NAME, and 
+# FS_CALL_DICTIONARY should NOT be modified from within the scope of the 
+# enclosed system calls.
+#
+# A similar function exists for networking system calls, named get_net_call. 
+# It is located in lind_net_calls.py, and has the same syntax.
+#
+# The inclusion of the cageid within system calls is necessary to handle a
+# posix compliant fork, which involves a duplication of the file table.
+# Eventually, filesystemmetadata and filesystemmetadatalock will need to be
+# turned into lists or dictionaries indexed by cageid (so that each cage will 
+# have its own independently accessible file descriptor table), and part of the
+#fork system call will need to be implemented in repy, however as of Aug
+# 2019 that has not happened.
 
+def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
-def getsyscall(cageid, syscall):
-
-  syscalls = {}
+  FS_CALL_DICTIONARY = {}
 
   ##### FSTATFS  #####
 
@@ -484,7 +509,7 @@ def getsyscall(cageid, syscall):
     return _istatfs_helper(filedescriptortable[fd]['inode'])
 
 
-  syscalls["fstatfs_syscall"] = fstatfs_syscall
+  FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
 
 
 
@@ -521,7 +546,7 @@ def getsyscall(cageid, syscall):
       filesystemmetadatalock.release()
 
 
-  syscalls["statfs_syscall"] = statfs_syscall
+  FS_CALL_DICTIONARY["statfs_syscall"] = statfs_syscall
 
 
 
@@ -571,7 +596,7 @@ def getsyscall(cageid, syscall):
       # release the lock
       filesystemmetadatalock.release()
 
-  syscalls["access_syscall"] = access_syscall
+  FS_CALL_DICTIONARY["access_syscall"] = access_syscall
 
 
 
@@ -604,7 +629,7 @@ def getsyscall(cageid, syscall):
 
     return 0
 
-  syscalls["chdir_syscall"] = chdir_syscall
+  FS_CALL_DICTIONARY["chdir_syscall"] = chdir_syscall
 
 
 
@@ -679,7 +704,7 @@ def getsyscall(cageid, syscall):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  syscalls["mkdir_syscall"] = mkdir_syscall
+  FS_CALL_DICTIONARY["mkdir_syscall"] = mkdir_syscall
 
 
 
@@ -746,7 +771,7 @@ def getsyscall(cageid, syscall):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  syscalls["rmdir_syscall"] = rmdir_syscall
+  FS_CALL_DICTIONARY["rmdir_syscall"] = rmdir_syscall
 
 
 
@@ -827,7 +852,7 @@ def getsyscall(cageid, syscall):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  syscalls["link_syscall"] = link_syscall
+  FS_CALL_DICTIONARY["link_syscall"] = link_syscall
 
 
 
@@ -896,7 +921,7 @@ def getsyscall(cageid, syscall):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  syscalls["unlink_syscall"] = unlink_syscall
+  FS_CALL_DICTIONARY["unlink_syscall"] = unlink_syscall
 
 
 
@@ -932,7 +957,7 @@ def getsyscall(cageid, syscall):
       filesystemmetadatalock.release()
 
 
-  syscalls["stat_syscall"] = stat_syscall
+  FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
 
 
   ##### FSTAT  #####
@@ -977,7 +1002,7 @@ def getsyscall(cageid, syscall):
       return _istat_helper_chr_file(inode)
     return _istat_helper(inode)
 
-  syscalls["fstat_syscall"] = fstat_syscall
+  FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
 
 
   # private helper routine that returns stat data given an inode
@@ -1134,7 +1159,9 @@ def getsyscall(cageid, syscall):
       # actually open something in this case...
       # Is it a regular file?
       if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        # this is a regular file.  If it's not open, let's open it!
+        # this is a regular file.  If it's not open, let's open it! to handle a
+        # posix compliant fork, which involves a duplication of the file table.
+        # Eventually, 
         if inode not in fileobjecttable:
           thisfo = openfile(FILEDATAPREFIX+str(inode),False)
           fileobjecttable[inode] = thisfo
@@ -1161,7 +1188,7 @@ def getsyscall(cageid, syscall):
       #persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  syscalls["open_syscall"] = open_syscall
+  FS_CALL_DICTIONARY["open_syscall"] = open_syscall
 
 
 
@@ -1185,7 +1212,7 @@ def getsyscall(cageid, syscall):
 
       raise SyscallError('creat_syscall',e[1],e[2])
 
-  syscalls["creat_syscall"] = creat_syscall
+  FS_CALL_DICTIONARY["creat_syscall"] = creat_syscall
 
 
 
@@ -1259,7 +1286,7 @@ def getsyscall(cageid, syscall):
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
 
-  syscalls["lseek_syscall"] = lseek_syscall
+  FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
 
 
 
@@ -1318,7 +1345,7 @@ def getsyscall(cageid, syscall):
       filedescriptortable[fd]['lock'].release()
 
 
-  syscalls["read_syscall"] = read_syscall
+  FS_CALL_DICTIONARY["read_syscall"] = read_syscall
 
 
 
@@ -1407,7 +1434,7 @@ def getsyscall(cageid, syscall):
       filesystemmetadatalock.release()
 
 
-  syscalls["write_syscall"] = write_syscall
+  FS_CALL_DICTIONARY["write_syscall"] = write_syscall
 
 
 
@@ -1419,7 +1446,7 @@ def getsyscall(cageid, syscall):
   def _lookup_fds_by_inode(inode):
     returnedfdlist = []
     for fd in filedescriptortable:
-      if not IS_SOCK_DESC(fd,cageid) and not IS_EPOLL_FD(fd,cageid) and filedescriptortable[fd]['inode'] == inode:
+      if not IS_SOCK_DESC(fd,CONST_CAGEID) and not IS_EPOLL_FD(fd,CONST_CAGEID) and filedescriptortable[fd]['inode'] == inode:
         returnedfdlist.append(fd)
     return returnedfdlist
 
@@ -1448,11 +1475,11 @@ def getsyscall(cageid, syscall):
   # without changing to re-entrant locks
   def _close_helper(fd):
     # if we are a socket, we dont change disk metadata
-    if IS_SOCK_DESC(fd,cageid):
+    if IS_SOCK_DESC(fd,CONST_CAGEID):
       _cleanup_socket(fd)
       return 0
 
-    if IS_EPOLL_FD(fd,cageid):
+    if IS_EPOLL_FD(fd,CONST_CAGEID):
       _epoll_object_deallocator(fd)
       return 0
 
@@ -1522,7 +1549,7 @@ def getsyscall(cageid, syscall):
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
 
-  syscalls["close_syscall"] = close_syscall
+  FS_CALL_DICTIONARY["close_syscall"] = close_syscall
 
 
 
@@ -1586,7 +1613,7 @@ def getsyscall(cageid, syscall):
       filedescriptortable[oldfd]['lock'].release()
 
 
-  syscalls["dup2_syscall"] = dup2_syscall
+  FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
 
 
   ##### DUP  #####
@@ -1623,7 +1650,7 @@ def getsyscall(cageid, syscall):
       filedescriptortable[fd]['lock'].release()
 
 
-  syscalls["dup_syscall"] = dup_syscall
+  FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
 
 
 
@@ -1702,7 +1729,7 @@ def getsyscall(cageid, syscall):
       filedescriptortable[fd]['lock'].release()
 
 
-  syscalls["fcntl_syscall"] = fcntl_syscall
+  FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
 
 
 
@@ -1780,7 +1807,7 @@ def getsyscall(cageid, syscall):
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
 
-  syscalls["getdents_syscall"] = getdents_syscall
+  FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
 
 
   #### CHMOD ####
@@ -1815,7 +1842,7 @@ def getsyscall(cageid, syscall):
       filesystemmetadatalock.release()
     return 0
 
-  syscalls["chmod_syscall"] = chmod_syscall
+  FS_CALL_DICTIONARY["chmod_syscall"] = chmod_syscall
   #### TRUNCATE  ####
 
 
@@ -1832,7 +1859,7 @@ def getsyscall(cageid, syscall):
 
     return ret
 
-  syscalls["truncate_syscall"] = truncate_syscall
+  FS_CALL_DICTIONARY["truncate_syscall"] = truncate_syscall
 
   #### FTRUNCATE ####
 
@@ -1889,7 +1916,7 @@ def getsyscall(cageid, syscall):
 
     return 0
 
-  syscalls["ftruncate_syscall"] = ftruncate_syscall
+  FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
   #### MKNOD ####
 
   # for now, I am considering few assumptions:
@@ -1939,7 +1966,7 @@ def getsyscall(cageid, syscall):
     close_syscall(fd)
     return 0
 
-  syscalls["mknod_syscall"] = mknod_syscall
+  FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
 
   #### Helper Functions for Character Files.####
   # currently supported devices are:
@@ -2016,7 +2043,7 @@ def getsyscall(cageid, syscall):
     # I will return 1000, since this is also used in stat
     return DEFAULT_UID
 
-  syscalls["getuid_syscall"] = getuid_syscall
+  FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
 
   def geteuid_syscall():
     """
@@ -2025,7 +2052,7 @@ def getsyscall(cageid, syscall):
     # I will return 1000, since this is also used in stat
     return DEFAULT_UID
 
-  syscalls["geteuid_syscall"] = geteuid_syscall
+  FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
 
   def getgid_syscall():
     """
@@ -2034,7 +2061,7 @@ def getsyscall(cageid, syscall):
     # I will return 1000, since this is also used in stat
     return DEFAULT_GID
 
-  syscalls["getgid_syscall"] = getgid_syscall
+  FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
 
   def getegid_syscall():
     """
@@ -2043,7 +2070,7 @@ def getsyscall(cageid, syscall):
     # I will return 1000, since this is also used in stat
     return DEFAULT_GID
 
-  syscalls["getegid_syscall"] = getegid_syscall
+  FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
 
   #### RESOURCE LIMITS  ####
 
@@ -2070,7 +2097,7 @@ def getsyscall(cageid, syscall):
       raise UnimplementedError("The resource type is unimplemented.")
 
 
-  syscalls["getrlimit_syscall"] = getrlimit_syscall
+  FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
 
   def setrlimit_syscall(res_type, limits):
     """
@@ -2089,7 +2116,7 @@ def getsyscall(cageid, syscall):
     else:
       raise UnimplementedError("This resource type is unimplemented")
 
-  syscalls["setrlimit_syscall"] = setrlimit_syscall
+  FS_CALL_DICTIONARY["setrlimit_syscall"] = setrlimit_syscall
 
   #### FLOCK SYSCALL  ####
 
@@ -2122,7 +2149,7 @@ def getsyscall(cageid, syscall):
       filedescriptortable[fd]['lock'].release()
       return 0
 
-  syscalls["flock_syscall"] = flock_syscall
+  FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
 
   def rename_syscall(old, new):
     """
@@ -2158,7 +2185,7 @@ def getsyscall(cageid, syscall):
       filesystemmetadatalock.release()
     return 0
 
-  syscalls["rename_syscall"] = rename_syscall
+  FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
 
   def pipe_syscall():
     """
@@ -2177,7 +2204,7 @@ def getsyscall(cageid, syscall):
     finally:
       filesystemmetadatalock.release()
       
-  syscalls["pipe_syscall"] = pipe_syscall
+  FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
     
   def pipe2_syscall(flags):
     """
@@ -2196,9 +2223,9 @@ def getsyscall(cageid, syscall):
     finally:
       filesystemmetadatalock.release()
 
-  syscalls["pipe2_syscall"] = pipe2_syscall
+  FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
 
-  if syscall in syscalls:
-    return syscalls[syscall]
+  if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
+    return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
-    return ErrorResponseBuilder(syscall, "ENOSYS", "System call unimplemented!")
+    return ErrorResponseBuilder(CLOSURE_SYSCALL_NAME, "ENOSYS", "System call unimplemented!")

@@ -30,7 +30,7 @@ def lind_net_send(args):
     flags = args[2]
     buf = args[3]
     try:
-        result = getnetcall(args[-1],"send_syscall")(fd, buf, flags)
+        result = get_net_call(args[-1],"send_syscall")(fd, buf, flags)
     except SyscallError, e:
         return ErrorResponseBuilder("net_send", e[1], e[2])
 

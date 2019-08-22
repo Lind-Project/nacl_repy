@@ -7,7 +7,7 @@ def lind_net_getpeername(args):
   addrlen = args[1]
 
   try:
-    ip, port = getnetcall(args[-1],"getpeername_syscall")(sockfd)
+    ip, port = get_net_call(args[-1],"getpeername_syscall")(sockfd)
   except SyscallError,e:
     return ErrorResponseBuilder("net_getpeername", e[1], e[2])
     

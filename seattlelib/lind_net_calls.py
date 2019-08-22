@@ -224,10 +224,37 @@ def _insert_into_socketobjecttable(socketobj):
 
 
 #################### The actual system calls...   #############################
+  
+# JS: The following function provides an enclosing scope for the network
+# system calls. This design structure allows the system calls enclosed by 
+# get_net_call to access the cageid without having a signature that contradicts
+# the POSIX specification (by having a cageid parameter on each one). Although
+# such a change would not adversely effect the functioning of the program, it
+# would be ugly and also confusing.
+#
+# The syscalls should be called using the following syntax:
+# get_net_call(<cageid>,<syscall name>)(arg1,arg2...)
+#
+# The functions are stored in NET_CALL_DICTIONARY, and each function is indexed
+# by its name, and is added to the dictionary after its definition as a nested
+# function. The variables CONST_CAGEID, CLOSURE_SYSCALL_NAME, and 
+# NET_CALL_DICTIONARY should NOT be modified from within the scope of the 
+# enclosed system calls.
+#
+# A similar function exists for file system system calls, named get_fs_call. It
+# is located in lind_fs_calls.py, and has the same syntax.
+#
+# The inclusion of the cageid within system calls is necessary to handle a
+# posix compliant fork, which involves a duplication of the file table.
+# Eventually, filesystemmetadata, socketobjecttable and filesystemmetadatalock
+# will need to be turned into lists or dictionaries indexed by cageid (so that
+# each cage will have its own independently accessible file descriptor table),
+# and part of the fork system call will need to be implemented in repy, however
+# as of Aug 2019 that has not happened.
 
-def getnetcall(cageid,syscall):
+def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
-  netcalls = {}
+  NET_CALL_DICTIONARY = {}
 
   ##### SOCKET  #####
 
@@ -320,7 +347,7 @@ def getnetcall(cageid,syscall):
 
 
 
-  netcalls[socket_syscall] = socket_syscall
+  NET_CALL_DICTIONARY["socket_syscall"] = socket_syscall
   ##### BIND  #####
 
 
@@ -397,7 +424,7 @@ def getnetcall(cageid,syscall):
   # int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
 
-  netcalls["bind_syscall"] = bind_syscall
+  NET_CALL_DICTIONARY["bind_syscall"] = bind_syscall
   ##### CONNECT  #####
 
 
@@ -489,7 +516,7 @@ def getnetcall(cageid,syscall):
       raise UnimplementedError("Unknown protocol in connect()")
 
 
-  netcalls["connect_syscall"] = connect_syscall
+  NET_CALL_DICTIONARY["connect_syscall"] = connect_syscall
 
 
 
@@ -560,7 +587,7 @@ def getnetcall(cageid,syscall):
       raise UnimplementedError("Unknown protocol in sendto()")
 
 
-  netcalls["sendto_syscall"] = sendto_syscall
+  NET_CALL_DICTIONARY["sendto_syscall"] = sendto_syscall
 
 
 
@@ -627,7 +654,7 @@ def getnetcall(cageid,syscall):
 
 
 
-  netcalls["send_syscall"] = send_syscall
+  NET_CALL_DICTIONARY["send_syscall"] = send_syscall
 
 
 
@@ -745,7 +772,7 @@ def getnetcall(cageid,syscall):
 
 
 
-  netcalls["recvfrom_syscall"] = recvfrom_syscall
+  NET_CALL_DICTIONARY["recvfrom_syscall"] = recvfrom_syscall
 
 
 
@@ -770,7 +797,7 @@ def getnetcall(cageid,syscall):
     return message
 
 
-  netcalls["recv_syscall"] = recv_syscall
+  NET_CALL_DICTIONARY["recv_syscall"] = recv_syscall
 
 
 
@@ -804,7 +831,7 @@ def getnetcall(cageid,syscall):
       return '0.0.0.0',0
 
 
-  netcalls["getsockname_syscall"] = getsockname_syscall
+  NET_CALL_DICTIONARY["getsockname_syscall"] = getsockname_syscall
 
 
 
@@ -836,7 +863,7 @@ def getnetcall(cageid,syscall):
     return filedescriptortable[fd]['remoteip'], filedescriptortable[fd]['remoteport']
 
 
-  netcalls["getpeername_syscall"] = getpeername_syscall
+  NET_CALL_DICTIONARY["getpeername_syscall"] = getpeername_syscall
 
 
 
@@ -934,7 +961,7 @@ def getnetcall(cageid,syscall):
       raise UnimplementedError("Unknown protocol in listen()")
 
 
-  netcalls["listen_syscall"] = listen_syscall
+  NET_CALL_DICTIONARY["listen_syscall"] = listen_syscall
 
 
 
@@ -1011,7 +1038,7 @@ def getnetcall(cageid,syscall):
 
 
 
-  netcalls["accept_syscall"] = accept_syscall
+  NET_CALL_DICTIONARY["accept_syscall"] = accept_syscall
 
 
 
@@ -1108,7 +1135,7 @@ def getnetcall(cageid,syscall):
       raise UnimplementedError("Unknown level in getsockopt(). level = %s"%(oct(level)))
 
 
-  netcalls["getsockopt_syscall"] = getsockopt_syscall
+  NET_CALL_DICTIONARY["getsockopt_syscall"] = getsockopt_syscall
 
 
 
@@ -1190,7 +1217,7 @@ def getnetcall(cageid,syscall):
     else:
       raise UnimplementedError("Unknown level in setsockopt()")
 
-  netcalls["setsockopt_syscall"] = setsockopt_syscall
+  NET_CALL_DICTIONARY["setsockopt_syscall"] = setsockopt_syscall
 
 
 
@@ -1246,7 +1273,7 @@ def getnetcall(cageid,syscall):
     return 0
 
 
-  netcalls["netshutdown_syscall"] = netshutdown_syscall
+  NET_CALL_DICTIONARY["netshutdown_syscall"] = netshutdown_syscall
 
 
 
@@ -1370,7 +1397,7 @@ def getnetcall(cageid,syscall):
        leftover_time = 0;
     return (retval, new_readfds, new_writefds, new_exceptfds, leftover_time)
 
-  netcalls["select_syscall"] = select_syscall
+  NET_CALL_DICTIONARY["select_syscall"] = select_syscall
 
   def getifaddrs_syscall():
     """
@@ -1403,7 +1430,7 @@ def getnetcall(cageid,syscall):
             }
             ]
 
-  netcalls["getifaddrs_syscall"] = getifaddrs_syscall
+  NET_CALL_DICTIONARY["getifaddrs_syscall"] = getifaddrs_syscall
 
   def poll_syscall(fds, timeout):
     """
@@ -1456,7 +1483,7 @@ def getnetcall(cageid,syscall):
 
     return return_code, fds
 
-  netcalls["poll_syscall"] = poll_syscall
+  NET_CALL_DICTIONARY["poll_syscall"] = poll_syscall
 
   #### SOCKETPAIR ####
 
@@ -1524,7 +1551,7 @@ def getnetcall(cageid,syscall):
 
     return (0, sv)
 
-  netcalls["socketpair_syscall"] = socketpair_syscall
+  NET_CALL_DICTIONARY["socketpair_syscall"] = socketpair_syscall
 
   EPOLLIN = 0x001
   EPOLLPRI = 0x002
@@ -1568,7 +1595,7 @@ def getnetcall(cageid,syscall):
       raise SyscallError("epoll_create_syscall","EINVAL","size argument is not positive")
     return _epoll_object_allocator()
 
-  netcalls["epoll_create_syscall"] = epoll_create_syscall
+  NET_CALL_DICTIONARY["epoll_create_syscall"] = epoll_create_syscall
 
   def epoll_ctl_syscall(epfd, op, fd, event):
     if not IS_EPOLL_FD(epfd):
@@ -1595,7 +1622,7 @@ def getnetcall(cageid,syscall):
 
     return 0
 
-  netcalls["epoll_ctl_syscall"] = epoll_ctl_syscall
+  NET_CALL_DICTIONARY["epoll_ctl_syscall"] = epoll_ctl_syscall
 
   def epoll_wait_syscall(epfd, maxevents, timeout):
     if not epfd in filedescriptortable:
@@ -1639,9 +1666,9 @@ def getnetcall(cageid,syscall):
         break;
     return nepoll_return, epoll_return
 
-  netcalls["epoll_wait_syscall"] = epoll_wait_syscall
+  NET_CALL_DICTIONARY["epoll_wait_syscall"] = epoll_wait_syscall
 
-  if syscall in netcalls:
-    return netcalls[syscall]
+  if CLOSURE_SYSCALL_NAME in NET_CALL_DICTIONARY:
+    return NET_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
-    return ErrorResponseBuilder(syscall, "ENOSYS", "System call unimplemented!")
+    return ErrorResponseBuilder(CLOSURE_SYSCALL_NAME, "ENOSYS", "System call unimplemented!")

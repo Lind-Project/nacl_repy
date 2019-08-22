@@ -29,7 +29,7 @@ def lind_fs_open(args):
     mode = args[1]
     file_name = args[2]
     try:
-        result_fd = getsyscall(args[-1],"open_syscall")(file_name, flags, mode)
+        result_fd = get_fs_call(args[-1],"open_syscall")(file_name, flags, mode)
     except SyscallError, e:
         message = "Could not find file: " + file_name + ":\n" + str(e[2]) + "\n"
         return ErrorResponseBuilder("fs_open", e[1], message)

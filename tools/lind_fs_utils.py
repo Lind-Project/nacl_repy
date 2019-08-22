@@ -41,7 +41,7 @@ def _mirror_stat_data(posixfn, lindfn):
 
   # I only want the file perms, not things like 'IS_DIR'.
   # BUG (?): I think this ignores SETUID, SETGID, sticky bit, etc.
-  lind_test_server.getsyscall(cageid,"chmod_syscall")(lindfn, S_IRWXA & statdata[0])
+  lind_test_server.get_fs_call(cageid,"chmod_syscall")(lindfn, S_IRWXA & statdata[0])
 
   # Note: chown / chgrp aren't implemented!!!   We would call them here.
   #lind_test_server.chown_syscall(lindfn, statdata[4])
@@ -103,7 +103,7 @@ def update_into_lind(fullfilename, rootpath='.'):
     host_size = host_statinfo.st_size
 
   try:
-    lind_statinfo = lind_test_server.getsyscall(cageid,"stat_syscall")(fullfilename)
+    lind_statinfo = lind_test_server.get_fs_call(cageid,"stat_syscall")(fullfilename)
   except lind_test_server.SyscallError, e:
     print e
   else:
@@ -128,9 +128,9 @@ def update_into_lind(fullfilename, rootpath='.'):
     host_content = fd.read()
     fd.close()
 
-    lindfd = lind_test_server.getsyscall(cageid,"open_syscall")(fullfilename, O_RDONLY, 0)
-    lind_content = lind_test_server.getsyscall(cageid,"read_syscall")(lindfd, lind_size)
-    lind_test_server.getsyscall(cageid,"close_syscall")(lindfd)
+    lindfd = lind_test_server.get_fs_call(cageid,"open_syscall")(fullfilename, O_RDONLY, 0)
+    lind_content = lind_test_server.get_fs_call(cageid,"read_syscall")(lindfd, lind_size)
+    lind_test_server.get_fs_call(cageid,"close_syscall")(lindfd)
 
     samefile = (host_content == lind_content)
   else:
@@ -139,7 +139,7 @@ def update_into_lind(fullfilename, rootpath='.'):
   if not samefile:
     if lind_exists:
       print "removing "+fullfilename
-      lind_test_server.getsyscall(cageid,"unlink_syscall")(fullfilename)
+      lind_test_server.get_fs_call(cageid,"unlink_syscall")(fullfilename)
 
     cp_into_lind(fullfilename, rootpath, True)
   else:
@@ -226,7 +226,7 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
 
     try:
       # check if this is a directory that exists
-      if IS_DIR(lind_test_server.getsyscall(cageid,"stat_syscall")(currentdir)[2]):
+      if IS_DIR(lind_test_server.get_fs_call(cageid,"stat_syscall")(currentdir)[2]):
         # all is well
         continue
       # otherwise, it exists, but isn't a dir...
@@ -242,7 +242,7 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
         raise IOError("LIND FS path does not exist but should not be created: '"+currentdir+"'")
 
       # otherwise, make it ...
-      lind_test_server.getsyscall(cageid,"mkdir_syscall")(currentdir,S_IRWXA)
+      lind_test_server.get_fs_call(cageid,"mkdir_syscall")(currentdir,S_IRWXA)
       # and copy over the perms, etc.
       _mirror_stat_data(os.path.join(rootpath,currentdir),currentdir)
 
@@ -253,15 +253,15 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   posixfo.close()
 
   # make the new file, truncating any existing contents...
-  lindfd = lind_test_server.getsyscall(cageid,"open_syscall")(normalizedlindfn, O_CREAT|O_EXCL|O_TRUNC|O_WRONLY, S_IRWXA)
+  lindfd = lind_test_server.get_fs_call(cageid,"open_syscall")(normalizedlindfn, O_CREAT|O_EXCL|O_TRUNC|O_WRONLY, S_IRWXA)
 
   # should write all at once...
-  datalen = lind_test_server.getsyscall(cageid,"write_syscall")(lindfd, filecontents)
+  datalen = lind_test_server.get_fs_call(cageid,"write_syscall")(lindfd, filecontents)
   assert(datalen == len(filecontents))
 
-  inode = lind_test_server.getsyscall(cageid,"fstat_syscall")(lindfd)[1]
+  inode = lind_test_server.get_fs_call(cageid,"fstat_syscall")(lindfd)[1]
 
-  lind_test_server.getsyscall(cageid,"close_syscall")(lindfd)
+  lind_test_server.get_fs_call(cageid,"close_syscall")(lindfd)
 
 
   print "Copied "+posixfn+" as "+fullfilename+"("+str(inode)+")"
@@ -275,7 +275,7 @@ def deltree_lind(dirname):
   # It recursively looks at all child dirs
 
   # I need to open the dir to use getdents...
-  dirfd = lind_test_server.getsyscall(cageid,"open_syscall")(dirname,0,0)
+  dirfd = lind_test_server.get_fs_call(cageid,"open_syscall")(dirname,0,0)
 
   # build a list of all dents.   These have an odd format:
   #  [(inode, filename, d_type (DT_DIR, DR_REG, etc.), length of entry), ...]
@@ -285,12 +285,12 @@ def deltree_lind(dirname):
   # Note: the length parameter is odd, it's related to data structure space, so
   # it doesn't map to python cleanly.   So long as it's > the largest possible
   # entry size, this code should work though.
-  thesedents = lind_test_server.getsyscall(cageid,"getdents_syscall")(dirfd,10000)
+  thesedents = lind_test_server.get_fs_call(cageid,"getdents_syscall")(dirfd,10000)
   while thesedents:
     mydentslist += thesedents
-    thesedents = lind_test_server.getsyscall(cageid,"getdents_syscall")(dirfd,10000)
+    thesedents = lind_test_server.get_fs_call(cageid,"getdents_syscall")(dirfd,10000)
 
-  lind_test_server.getsyscall(cageid,"close_syscall")(dirfd)
+  lind_test_server.get_fs_call(cageid,"close_syscall")(dirfd)
 
   for dent in mydentslist:
     # ignore '.' and '..' because they aren't interesting and we don't want
@@ -306,15 +306,15 @@ def deltree_lind(dirname):
     if dent[2]==DT_DIR:
       deltree_lind(thisitem[1])
     else:
-      lind_test_server.getsyscall(cageid,"unlink_syscall")(thisitem[1])
+      lind_test_server.get_fs_call(cageid,"unlink_syscall")(thisitem[1])
 
-  lind_test_server.getsyscall(cageid,"rmdir_syscall")(dirname)
+  lind_test_server.get_fs_call(cageid,"rmdir_syscall")(dirname)
   return
 
   #for dirname in args:
-  #    lind_test_server.getsyscall(cageid,"rmdir_syscall")(dirname)
+  #    lind_test_server.get_fs_call(cageid,"rmdir_syscall")(dirname)
   #for filename in args:
-  #    lind_test_server.getsyscall(cageid,"unlink_syscall")(filename)
+  #    lind_test_server.get_fs_call(cageid,"unlink_syscall")(filename)
 
 
 
@@ -324,7 +324,7 @@ def _find_all_paths_recursively(startingpath):
   knownitems = []
 
   # I need to open the dir to use getdents...
-  dirfd = lind_test_server.getsyscall(cageid,"open_syscall")(startingpath,0,0)
+  dirfd = lind_test_server.get_fs_call(cageid,"open_syscall")(startingpath,0,0)
 
   # build a list of all dents.   These have an odd format:
   #  [(inode, filename, d_type (DT_DIR, DR_REG, etc.), length of entry), ...]
@@ -334,12 +334,12 @@ def _find_all_paths_recursively(startingpath):
   # Note: the length parameter is odd, it's related to data structure space, so
   # it doesn't map to python cleanly.   So long as it's > the largest possible
   # entry size, this code should work though.
-  thesedents = lind_test_server.getsyscall(cageid,"getdents_syscall")(dirfd,10000)
+  thesedents = lind_test_server.get_fs_call(cageid,"getdents_syscall")(dirfd,10000)
   while thesedents:
     mydentslist += thesedents
-    thesedents = lind_test_server.getsyscall(cageid,"getdents_syscall")(dirfd,10000)
+    thesedents = lind_test_server.get_fs_call(cageid,"getdents_syscall")(dirfd,10000)
 
-  lind_test_server.getsyscall(cageid,"close_syscall")(dirfd)
+  lind_test_server.get_fs_call(cageid,"close_syscall")(dirfd)
 
   # to make the output correct, if the dir is '/', don't print it.
   if startingpath == '/':
@@ -389,7 +389,7 @@ def list_all_lind_paths(startingdir='/'):
   # BUG: This code may need to be revisited with symlinks...
 
   # this will throw exceptions when given bad data...
-  lind_test_server.getsyscall(cageid,"chdir_syscall")(startingdir)
+  lind_test_server.get_fs_call(cageid,"chdir_syscall")(startingdir)
 
   return _find_all_paths_recursively(startingdir)
 
@@ -515,7 +515,7 @@ def main():
       return
 
     for filename in args:
-      lind_test_server.getsyscall(cageid,"unlink_syscall")(filename)
+      lind_test_server.get_fs_call(cageid,"unlink_syscall")(filename)
 
 
 
@@ -528,7 +528,7 @@ def main():
       return
 
     for dirname in args:
-      lind_test_server.getsyscall(cageid,"mkdir_syscall")(dirname,S_IRWXA)
+      lind_test_server.get_fs_call(cageid,"mkdir_syscall")(dirname,S_IRWXA)
 
 
 
@@ -541,7 +541,7 @@ def main():
       return
 
     for dirname in args:
-      lind_test_server.getsyscall(cageid,"rmdir_syscall")(dirname)
+      lind_test_server.get_fs_call(cageid,"rmdir_syscall")(dirname)
 
 
 # OTHERWISE?

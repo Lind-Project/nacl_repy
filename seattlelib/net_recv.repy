@@ -30,7 +30,7 @@ def lind_net_recv(args):
     flags = args[2]
 
     try:
-        result = getnetcall(args[-1],"recv_syscall")(sockfd, length, flags)
+        result = get_net_call(args[-1],"recv_syscall")(sockfd, length, flags)
     except SyscallError, e:
         return ErrorResponseBuilder("net_recv", e[1], e[2])
 

@@ -29,7 +29,7 @@ def lind_fs_link(args):
     new_file_name = args[1]
 
     try:
-        result = getsyscall(args[-1],"link_syscall")(old_file_name, new_file_name)
+        result = get_fs_call(args[-1],"link_syscall")(old_file_name, new_file_name)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_link", e[1], e[2])
     return SuccessResponseBuilder("fs_link", result)
