@@ -27,7 +27,7 @@ def lind_net_shutdown(args):
     sockfd = args[0]
     how = args[1]
     try:
-        result = netshutdown_syscall(sockfd, how)
+        result = getnetcall(args[-1],"netshutdown_syscall")(sockfd, how)
 
     except SyscallError, e:
         return ErrorResponseBuilder("net_shutdown", e[1], e[2])

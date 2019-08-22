@@ -7,7 +7,7 @@ def lind_net_getsockname(args):
   addrlen = args[1]
 
   try:
-    ip, port = getsockname_syscall(sockfd)
+    ip, port = getnetcall(args[-1],"getsockname_syscall")(sockfd)
   except SyscallError,e:
     return ErrorResponseBuilder("net_getsockname", e[1], e[2])
     

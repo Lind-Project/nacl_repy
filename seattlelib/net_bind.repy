@@ -30,7 +30,7 @@ def lind_net_bind(args):
     ipaddr = inet_ntoa(struct_pack("<I", ip))
 
     try:
-        result = bind_syscall(fd, ipaddr, port)
+        result = getnetcall(args[-1],"bind_syscall")(fd, ipaddr, port)
     except SyscallError, e:
         return ErrorResponseBuilder("net_bind", e[1], e[2])
 

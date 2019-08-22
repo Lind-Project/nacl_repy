@@ -3,10 +3,10 @@ def lind_fs_xstat(args):
   path = args[1]
   try:
     if type_code == 1: 
-      stat = stat_syscall(path)    
+      stat = getsyscall(args[-1],"stat_syscall")(path)    
     elif type_code == 0:
       assert False,"unimplemented."
-      py_result = xstat_syscall(handle, size)
+      py_result = getsyscall(args[-1],"xstat_syscall")(handle, size)
     else:
       assert False, "this should never happen!  stat typecode must be 0 or 1"
   except SyscallError, e:

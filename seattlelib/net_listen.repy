@@ -18,7 +18,7 @@ def lind_net_listen(args):
     fd = args[0]
     n = args[1]
     try:
-        result = listen_syscall(fd, n)
+        result = getnetcall(args[-1],"listen_syscall")(fd, n)
     except SyscallError, e:
         return ErrorResponseBuilder("net_listen", e[1], e[2])
     except ResourceForbiddenError, e:

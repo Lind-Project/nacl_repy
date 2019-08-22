@@ -2,7 +2,7 @@ def lind_comp_cia(args):
   """Component Interface Attach"""
   log("[info][syscall]Component Interface Attach Called with", args, "\n")
 
-  # for now, just return the other compoent
+  # for now, just return the other component
   target = 0
   if mycontext[COMP] == 1:
     target = 2

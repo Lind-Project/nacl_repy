@@ -42,7 +42,7 @@ def lind_net_recvfrom(args):
     #if length > TX_BUF_MAX:
     #    length = TX_BUF_MAX
     try:
-        result = recvfrom_syscall(sockfd, length, flags)
+        result = getnetcall(args[-1],"recvfrom_syscall")(sockfd, length, flags)
     except SyscallError, e:
         return ErrorResponseBuilder("net_recvfrom", e[1], e[2])
     sockaddr = pack_struct_sockaddr(AF_INET, result[0], result[1])

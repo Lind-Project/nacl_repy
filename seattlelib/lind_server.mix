@@ -305,8 +305,8 @@ def _check_file(name):
 
 
 
-def new_compoent():
-  """add a new compoent to the system"""
+def new_component(cageid):
+  """add a new component to the system"""
 
   mycontext[2] = {}
   code_loc = "liblind/com2.nexe"
@@ -314,7 +314,7 @@ def new_compoent():
 
   mycontext[2][CMD_LINE] = []
   setup_dispatcher(2)
-  setup_filetable(2)
+  setup_filetable(2,cageid)
   setup_component_communication(2)
   nacl = safelyexecutenativecode(code_loc, [])
 
@@ -325,10 +325,10 @@ def new_compoent():
     print "Safe Binary mode must be switched on for this program to work."
 
 
-def setup_filetable(comp_num):
+def setup_filetable(comp_num,cageid):
   """Try to open file system. If you can't, then make a new one."""
   print >> sys.stderr, "Opening file system..."
-  load_fs()
+  load_fs(cageid)
   # load_fs() will check first if the metadata is present, if not
   # present it will create it. I am removing the following call
   # because it duplicates the creation of special files.
@@ -342,18 +342,19 @@ def setup_component_communication(comp_num):
     comp(comp_num)[MBOX] = []
 
 
-def lind_factory():
+def lind_factory(cageid):
   setup_errnos(1)
   setup_dispatcher(1)
-  setup_filetable(1)
+  setup_filetable(1,cageid)
   setup_component_communication(1)
+
   mycontext[LOCK] = createlock()
   #_check_file(curr_comp()[PROGRAM])
   #if we are running a compoent, launch another one as a test.
   if "com1" in curr_comp()[PROGRAM]:
     print >> sys.stderr,  "starting multi-component test mode"
     mycontext[COMP_MODE] = True
-    new_compoent()
+    new_component(cageid)
   else:
     mycontext[COMP_MODE] = False
 
@@ -377,15 +378,15 @@ def finalize():
   print >> sys.stderr,  "Done persisting metadata."
 
 
-def main():
+def main(cageid):
   is_trace()
 
   if callfunc == "initialize":
     print >> sys.stderr, "Lind v" + VERSION
     parse_commandline()
-    lind_factory()
+    lind_factory(cageid)
 
 
-main()
+main(1)
 
 
