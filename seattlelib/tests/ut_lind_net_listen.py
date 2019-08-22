@@ -12,19 +12,19 @@ SyscallError = lind_test_server.SyscallError
 
 # I'll listen, accept, and connect...
 
-serversockfd = lind_test_server.socket_syscall(AF_INET, SOCK_STREAM, 0)
+serversockfd = lind_test_server.get_net_call(-1,"socket_syscall")(AF_INET, SOCK_STREAM, 0)
 
-clientsockfd = lind_test_server.socket_syscall(AF_INET, SOCK_STREAM, 0)
+clientsockfd = lind_test_server.get_net_call(-1,"socket_syscall")(AF_INET, SOCK_STREAM, 0)
 
 
 # bind to a socket
-lind_test_server.bind_syscall(serversockfd,'127.0.0.1',50300)
+lind_test_server.get_net_call(-1,"bind_syscall")(serversockfd,'127.0.0.1',50300)
 
-lind_test_server.listen_syscall(serversockfd,10)
+lind_test_server.get_net_call(-1,"listen_syscall")(serversockfd,10)
 
 def do_server():
   
-  newsocketfd = lind_test_server.accept_syscall(serversockfd)
+  newsocketfd = lind_test_server.get_net_call(-1,"accept_syscall")(serversockfd)
 
 
 createthread(do_server)
@@ -34,8 +34,8 @@ createthread(do_server)
 sleep(.1)
 
 # should be okay...
-lind_test_server.connect_syscall(clientsockfd,'127.0.0.1',50300)
-assert(lind_test_server.getpeername_syscall(clientsockfd) == ('127.0.0.1',50300))
+lind_test_server.get_net_call(-1,"connect_syscall")(clientsockfd,'127.0.0.1',50300)
+assert(lind_test_server.get_net_call(-1,"getpeername_syscall")(clientsockfd) == ('127.0.0.1',50300))
 
 
 

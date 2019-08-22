@@ -229,7 +229,7 @@ def _insert_into_socketobjecttable(socketobj):
 # system calls. This design structure allows the system calls enclosed by 
 # get_net_call to access the cageid without having a signature that contradicts
 # the POSIX specification (by having a cageid parameter on each one). Although
-# such a change would not adversely effect the functioning of the program, it
+# such a change would not adversely affect the functioning of the program, it
 # would be ugly and also confusing.
 #
 # The syscalls should be called using the following syntax:
@@ -255,6 +255,16 @@ def _insert_into_socketobjecttable(socketobj):
 def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
   NET_CALL_DICTIONARY = {}
+
+
+  def get_next_fd():
+    # let's get the next available fd number.   The standard says we need to
+    # return the lowest open fd number.
+    for fd in range(STARTINGFD, MAX_FD):
+      if not fd in filedescriptortable:
+        return fd
+
+    raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
 
   ##### SOCKET  #####
 
@@ -1342,7 +1352,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
           raise SyscallError("select_syscall","EBADF","The file descriptor is invalid.")
 
         desc = filedescriptortable[fd]
-        if not IS_SOCK_DESC(fd) and fd != 0:
+        if not IS_SOCK_DESC(fd,CONST_CAGEID) and fd != 0:
           # files never block, so always say yes for them
           new_readfds.append(fd)
           retval += 1
@@ -1371,7 +1381,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
           raise SyscallError("select_syscall","EBADF","The file descriptor is invalid.")
 
         desc = filedescriptortable[fd]
-        if not IS_SOCK_DESC(fd) or fd == 1 or fd == 2:
+        if not IS_SOCK_DESC(fd,CONST_CAGEID) or fd == 1 or fd == 2:
           # files never block, so always say yes for them
           new_writefds.append(fd)
           retval += 1
@@ -1496,11 +1506,11 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
       Helper function for socktpair() syscall. This is a thread that runs to
       establish a TCP connection and immediatly exists.
     """
-    socketfd = mycontext[SOCKETPAIR]
+    socketfd = SOCKETPAIR
     rc = listen_syscall(socketfd, 1)
     assert rc == 0, "Listen failed"
-    rc = accept_syscall(mycontext[SOCKETPAIR])
-    mycontext[SOCKETPAIR_LISTEN] = rc[2]
+    rc = accept_syscall(SOCKETPAIR)
+    SOCKETPAIR_LISTEN = rc[2]
 
   def socketpair_syscall(domain, socktype, protocol):
     """
@@ -1523,14 +1533,14 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
       rc = bind_syscall(sockfd, '127.0.0.1', port1)
       assert rc == 0, "Bind failed in socket pair"
 
-      mycontext[SOCKETPAIR] = sockfd
+      SOCKETPAIR = sockfd
       createthread(_helper_sockpair)
       sleep(.1)
 
       connect_syscall(listfd, '127.0.0.1', port1)
       sleep(.1)
 
-      sv.append(mycontext[SOCKETPAIR_LISTEN])
+      sv.append(SOCKETPAIR_LISTEN)
       sv.append(listfd)
 
       # we need to close this socket...
@@ -1671,4 +1681,4 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
   if CLOSURE_SYSCALL_NAME in NET_CALL_DICTIONARY:
     return NET_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
-    return ErrorResponseBuilder(CLOSURE_SYSCALL_NAME, "ENOSYS", "System call unimplemented!")
+    exitall(-1)

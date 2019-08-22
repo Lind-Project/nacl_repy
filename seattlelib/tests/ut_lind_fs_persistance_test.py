@@ -26,7 +26,7 @@ lind_test_server.restore_metadata(DEFAULT_METADATA_FILENAME)
 # Everything is okay, so now make a file
 
 try:
-    myfd = lind_test_server.open_syscall(TEST_FILENAME, \
+    myfd = lind_test_server.get_fs_call(-1,"open_syscall")(TEST_FILENAME, \
                                      O_CREAT | O_EXCL | O_RDWR, S_IRWXA)
 except SyscallError:
     pass

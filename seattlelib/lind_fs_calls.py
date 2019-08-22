@@ -422,7 +422,7 @@ def IS_SOCK_DESC(fd,cageid):
 # system system calls. This structure allows the system calls enclosed by 
 # get_fs_call to access the cageid without having a signature that contradicts
 # the POSIX specification (by having a cageid parameter on each one). Although
-# such a change would not adversely effect the functioning of the program, it
+# such a change would not adversely affect the functioning of the program, it
 # would be ugly and also confusing.
 #
 # The syscalls should be called using the following syntax:
@@ -1456,7 +1456,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _cleanup_socket(fd):
     if 'socketobjectid' in filedescriptortable[fd]:
       thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-      thesocket.close()
+      try:
+        thesocket.close()
+      except:
+        thesocket.close(False) #In case for some reason it's an emulcomm socket
       localport = filedescriptortable[fd]['localport']
       try:
         _release_localport(localport, filedescriptortable[fd]['protocol'])
@@ -2228,4 +2231,4 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
     return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
-    return ErrorResponseBuilder(CLOSURE_SYSCALL_NAME, "ENOSYS", "System call unimplemented!")
+    exitall(-1)
