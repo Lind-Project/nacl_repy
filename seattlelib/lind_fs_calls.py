@@ -185,12 +185,13 @@ def repy_deepcopy(obj):
 def _load_lower_handle_stubs(cageid):
   """The lower file hadles need stubs in the descriptor talbe."""
 
+  masterfiledescriptortable[cageid] = {}
   masterfiledescriptortable[cageid][0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDONLY, 'note':'this is a stdin'}
   masterfiledescriptortable[cageid][1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stdout'}
   masterfiledescriptortable[cageid][2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stderr'}
 
 
-def load_fs(cageid,name=METADATAFILENAME):
+def load_fs(cageid, name=METADATAFILENAME):
   """ Help to correcly load a filesystem, if one exists, otherwise
   make a new empty one.  To do this, check if metadata exists.
   If it doesnt, call _blank_fs_init, if it DOES exist call restore_metadata
@@ -205,39 +206,39 @@ def load_fs(cageid,name=METADATAFILENAME):
     _blank_fs_init()
   else:
     f.close()
-#try:
+  try:
     restore_metadata(name)
-    load_fs_special_files(cageid)
-#   except (IndexError, KeyError), e:
-#     print "Error: Cannot reload filesystem.  Run lind_fsck for details."
-#     exitall(1)
+    load_fs_special_files()
+  except (IndexError, KeyError), e:
+    print "Error: Cannot reload filesystem.  Run lind_fsck for details."
+    exitall(1)
   _load_lower_handle_stubs(cageid)
 
 
-def load_fs_special_files(cageid):
+def load_fs_special_files():
   """ If called adds special files in standard locations.
   Specifically /dev/null, /dev/urandom and /dev/random
   """
   try:
-     get_fs_call(cageid,"mkdir_syscall")("/dev", S_IRWXA)
+     get_fs_call(-1,"mkdir_syscall")("/dev", S_IRWXA)
   except SyscallError as e:
     warning( "making /dev failed. Skipping",str(e))
 
   # load /dev/null
   try:
-    get_fs_call(cageid,"mknod_syscall")("/dev/null", S_IFCHR, (1,3))
+    get_fs_call(-1,"mknod_syscall")("/dev/null", S_IFCHR, (1,3))
   except SyscallError as e:
     warning("making /dev/null failed. Skipping", str(e))
 
   # load /dev/urandom
   try:
-    get_fs_call(cageid,"mknod_syscall")("/dev/urandom", S_IFCHR, (1,9))
+    get_fs_call(-1,"mknod_syscall")("/dev/urandom", S_IFCHR, (1,9))
   except SyscallError as e:
     warning("making /dev/urandom failed. Skipping",str(e))
 
   # load /dev/random
   try:
-    get_fs_call(cageid,"mknod_syscall")("/dev/random", S_IFCHR, (1,8))
+    get_fs_call(-1,"mknod_syscall")("/dev/random", S_IFCHR, (1,8))
   except SyscallError as e:
     warning("making /dev/random failed. Skipping", str(e))
 
@@ -474,9 +475,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY = {}
 
-  print CLOSURE_SYSCALL_NAME, CONST_CAGEID
   if CONST_CAGEID not in masterfiledescriptortable:
-    masterfiledescriptortable[CONST_CAGEID] = {}
+    _load_lower_handle_stubs(CONST_CAGEID)
   filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
   if CONST_CAGEID not in master_fs_calls_context:
