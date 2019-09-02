@@ -4,7 +4,7 @@ import lind_test_server
 from lind_fs_constants import *
 
 # Try read / write of a file and see if it works...
-lind_test_server._blank_fs_init(-1)
+lind_test_server._blank_fs_init()
 
 myfd = lind_test_server.get_fs_call(-1,"open_syscall")('/foo',O_CREAT | O_EXCL | O_RDWR,S_IRWXA)
 

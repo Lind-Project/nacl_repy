@@ -7,8 +7,8 @@ Unit test for mknod_syscall(), which is used to create special files.
 import lind_test_server
 from lind_fs_constants import *
 
-lind_test_server._blank_fs_init(-1)
-lind_test_server._load_lower_handle_stubs()
+lind_test_server._blank_fs_init()
+lind_test_server._load_lower_handle_stubs(-1)
 
 # let's create /dev/null...
 lind_test_server.get_fs_call(-1,"mknod_syscall")('/null', S_IFCHR, (1, 3))

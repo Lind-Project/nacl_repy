@@ -14,7 +14,7 @@ from lind_fs_constants import *
 SyscallError = lind_test_server.SyscallError
 
 #Try read/write of a file and see if it works.
-lind_test_server._blank_fs_init(-1)
+lind_test_server._blank_fs_init()
 
 #Create a file, to read/write using select.
 filefd = lind_test_server.get_fs_call(-1,"open_syscall")('/foo.txt', O_CREAT | O_EXCL | O_RDWR, S_IRWXA)

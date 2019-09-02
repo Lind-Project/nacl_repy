@@ -4,7 +4,7 @@ import lind_test_server
 from lind_fs_constants import *
 
 # Try to do dup2
-lind_test_server._blank_fs_init(-1)
+lind_test_server._blank_fs_init()
 
 flags = O_TRUNC | O_CREAT | O_RDWR
 mode = 438   # 0666

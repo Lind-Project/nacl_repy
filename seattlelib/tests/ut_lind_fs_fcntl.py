@@ -3,7 +3,7 @@ from emultimer import sleep
 from lind_net_constants import *
 from lind_fs_constants import *
 
-lind_test_server._blank_fs_init(-1)
+lind_test_server._blank_fs_init()
 
 SyscallError = lind_test_server.SyscallError
 

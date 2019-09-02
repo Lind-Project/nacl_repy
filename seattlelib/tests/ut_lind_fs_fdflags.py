@@ -1,7 +1,7 @@
 from lind_fs_constants import *
 import lind_test_server
 
-lind_test_server._blank_fs_init(-1)
+lind_test_server._blank_fs_init()
 
 
 myfd = lind_test_server.get_fs_call(-1,"creat_syscall")('/hello', S_IRWXA)

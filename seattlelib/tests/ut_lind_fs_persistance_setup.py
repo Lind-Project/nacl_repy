@@ -20,7 +20,7 @@ TEST2_FILENAME = "/otherSimpleFileName2"
 
 if __name__ == '__main__':
 
-    lind_test_server._blank_fs_init(-1)
+    lind_test_server._blank_fs_init()
 
     # Everything is okay, so now make a file
     myfd = lind_test_server.get_fs_call(-1,"open_syscall")(TEST_FILENAME, \

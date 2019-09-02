@@ -465,11 +465,7 @@ def IS_SOCK_DESC(fd,cageid):
 #
 # The inclusion of the cageid within system calls is necessary to handle a
 # posix compliant fork, which involves a duplication of the file table.
-# Eventually, filesystemmetadata and filesystemmetadatalock will need to be
-# turned into lists or dictionaries indexed by cageid (so that each cage will 
-# have its own independently accessible file descriptor table), and part of the
-#fork system call will need to be implemented in repy, however as of Aug
-# 2019 that has not happened.
+# This has been implemented using fs_fork.
 
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 

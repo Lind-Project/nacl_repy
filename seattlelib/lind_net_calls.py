@@ -256,8 +256,12 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
   NET_CALL_DICTIONARY = {}
 
+  if CONST_CAGEID not in masterfiledescriptortable:
+    _load_lower_handle_stubs(CONST_CAGEID)
   filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
+  if CONST_CAGEID not in master_fs_calls_context:
+    master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
 
   def get_next_fd():
