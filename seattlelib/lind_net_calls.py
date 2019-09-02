@@ -256,6 +256,9 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
   NET_CALL_DICTIONARY = {}
 
+  filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
+  fs_calls_context = master_fs_calls_context[CONST_CAGEID]
 
   def get_next_fd():
     # let's get the next available fd number.   The standard says we need to

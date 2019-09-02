@@ -1,0 +1,6 @@
+def lind_fs_fork(args):
+  cagenum = args[0]
+  result = get_fs_call(args[-1],"fork_syscall")(cagenum)
+  return SuccessResponseBuilder("fs_fork", result)
+def lind_safe_fs_fork(args):
+  return lind_fs_fork(args)

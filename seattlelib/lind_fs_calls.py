@@ -123,21 +123,26 @@ filesystemmetadatalock = createlock()
 
 
 # fast lookup table...   (Should I deprecate this?)
+#this is a dictionary of lookup tables
 fastinodelookuptable = {}
 
 # contains open file descriptor information... (keyed by fd)
-filedescriptortable = {}
+#this is a dictionary of dictionaries of file descriptors
+masterfiledescriptortable = {}
 
 # contains file objects... (keyed by inode)
+#this is a dictionary of dictionaries of file objects
 fileobjecttable = {}
 
 # I use this so that I can assign to a global string (currentworkingdirectory)
 # without using global, which is blocked by RepyV2
-fs_calls_context = {}
+#this is a dictionary of dictionaries of contexts
+master_fs_calls_context = {}
 
 # Where we currently are at...
 
-fs_calls_context['currentworkingdirectory'] = '/'
+#fs_calls_context['currentworkingdirectory'] = '/' 
+#We can't initialize it here
 
 SILENT=True
 
@@ -157,13 +162,32 @@ class SyscallError(Exception):
 class UnimplementedError(Exception):
   """A call was called with arguments that are not fully implemented"""
 
+def repy_deepcopy(obj):
+  o = type(obj)
+  if o is dict: # Keys in dicts must be immutable
+    newdict = {}
+    for key, value in obj.iteritems():
+      newdict[key] = repy_deepcopy(value)
+    return newdict
+  if o is list:
+    newlist = []
+    for item in obj:
+      newlist.append(repy_deepcopy(obj))
+    return newlist
+  if o is set: # Sets may only contain immutable members
+    return obj.copy()
+  return obj #If obj is not one of the above three data types, it's immutable
+  # or a user defined class which we don't know how to deal with
+  # Other mutable types (namely arrays) are banned by repy
+    
 
-def _load_lower_handle_stubs():
+
+def _load_lower_handle_stubs(cageid):
   """The lower file hadles need stubs in the descriptor talbe."""
 
-  filedescriptortable[0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDONLY, 'note':'this is a stdin'}
-  filedescriptortable[1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stdout'}
-  filedescriptortable[2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stderr'}
+  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDONLY, 'note':'this is a stdin'}
+  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stdout'}
+  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stderr'}
 
 
 def load_fs(cageid,name=METADATAFILENAME):
@@ -178,16 +202,16 @@ def load_fs(cageid,name=METADATAFILENAME):
     f = openfile(name, False)
   except FileNotFoundError, e:
     warning("Note: No filesystem found, building a fresh one.")
-    _blank_fs_init(cageid)
+    _blank_fs_init()
   else:
     f.close()
-    try:
-      restore_metadata(name)
-      load_fs_special_files(cageid)
-    except (IndexError, KeyError), e:
-      print "Error: Cannot reload filesystem.  Run lind_fsck for details."
-      exitall(1)
-  _load_lower_handle_stubs()
+#try:
+    restore_metadata(name)
+    load_fs_special_files(cageid)
+#   except (IndexError, KeyError), e:
+#     print "Error: Cannot reload filesystem.  Run lind_fsck for details."
+#     exitall(1)
+  _load_lower_handle_stubs(cageid)
 
 
 def load_fs_special_files(cageid):
@@ -220,7 +244,7 @@ def load_fs_special_files(cageid):
 
 # To have a simple, blank file system, simply run this block of code.
 #
-def _blank_fs_init(cageid):
+def _blank_fs_init():
 
   # kill all left over data files...
   # metadata will be killed on persist.
@@ -297,7 +321,7 @@ def _recursive_rebuild_fastinodelookuptable_helper(path, inode):
       continue
 
     # always add it...
-    entrypurepathname = _get_absolute_path(path+'/'+entryname)
+    entrypurepathname = _get_path_no_relative(path+'/'+entryname)
     fastinodelookuptable[entrypurepathname] = entryinode
 
     # and recurse if a directory...
@@ -330,20 +354,7 @@ def _rebuild_fastinodelookuptable():
 
 ######################   Generic Helper functions   #########################
 
-
-
-# private helper function that converts a relative path or a path with things
-# like foo/../bar to a normal path.
-def _get_absolute_path(path):
-
-  # should raise an ENOENT error...
-  if path == '':
-    return path
-
-  # If it's a relative path, prepend the CWD...
-  if path[0] != '/':
-    path = fs_calls_context['currentworkingdirectory'] + '/' + path
-
+def _get_path_no_relative(path):
 
   # now I'll split on '/'.   This gives a list like: ['','foo','bar'] for
   # '/foo/bar'
@@ -396,19 +407,33 @@ def _get_absolute_path(path):
   # now let's join the pathlist!
   return '/'+'/'.join(pathlist)
 
+# private helper function that converts a relative path or a path with things
+# like foo/../bar to a normal path.
+def _get_absolute_path(path, cageid):
+
+  # should raise an ENOENT error...
+  if path == '':
+    return path
+
+  # If it's a relative path, prepend the CWD...
+  if path[0] != '/':
+    path = master_fs_calls_context[cageid]['currentworkingdirectory'] + '/' + path
+
+  return _get_path_no_relative(path)
+
 
 # private helper function
-def _get_absolute_parent_path(path):
-  return _get_absolute_path(path+'/..')
+def _get_absolute_parent_path(path, cageid):
+  return _get_absolute_path(path+'/..', cageid)
 
 
 def IS_EPOLL_FD(fd,cageid):
-  return (fd in filedescriptortable) and ('registered_fds' in filedescriptortable[fd])
+  return (fd in masterfiledescriptortable[cageid]) and ('registered_fds' in masterfiledescriptortable[cageid][fd])
 
 
 # is this file descriptor a socket?
 def IS_SOCK_DESC(fd,cageid):
-  if 'domain' in filedescriptortable[fd]:
+  if 'domain' in masterfiledescriptortable[cageid][fd]:
     return True
   else:
     return False
@@ -448,6 +473,18 @@ def IS_SOCK_DESC(fd,cageid):
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY = {}
+
+  print CLOSURE_SYSCALL_NAME, CONST_CAGEID
+  if CONST_CAGEID not in masterfiledescriptortable:
+    masterfiledescriptortable[CONST_CAGEID] = {}
+  filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
+  if CONST_CAGEID not in master_fs_calls_context:
+    master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
+  fs_calls_context = master_fs_calls_context[CONST_CAGEID]
+  #perhaps include an initalization failsafe?
+
+
 
   ##### FSTATFS  #####
 
@@ -532,7 +569,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -572,7 +609,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
 
       # get the actual name.   Remove things like '../foo'
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       if truepath not in fastinodelookuptable:
         raise SyscallError("access_syscall","ENOENT","A directory in the path does not exist or file not found.")
@@ -617,7 +654,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # only check the fs state once...
 
     # get the actual name.   Remove things like '../foo'
-    truepath = _get_absolute_path(path)
+    truepath = _get_absolute_path(path, CONST_CAGEID)
 
     # If it doesn't exist...
     if truepath not in fastinodelookuptable:
@@ -648,7 +685,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if path == '':
         raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
 
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       # is the path there?
       if truepath in fastinodelookuptable:
@@ -657,7 +694,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # okay, it doesn't exist (great!).   Does it's parent exist and is it a
       # dir?
-      trueparentpath = _get_absolute_parent_path(path)
+      trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
 
       if trueparentpath not in fastinodelookuptable:
         raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
@@ -723,7 +760,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       # Is it the root?
       if truepath == '/':
@@ -746,7 +783,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO: I should check permissions...
 
 
-      trueparentpath = _get_absolute_parent_path(path)
+      trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
       parentinode = fastinodelookuptable[trueparentpath]
 
 
@@ -793,7 +830,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      trueoldpath = _get_absolute_path(oldpath)
+      trueoldpath = _get_absolute_path(oldpath, CONST_CAGEID)
 
       # is the old path there?
       if trueoldpath not in fastinodelookuptable:
@@ -811,7 +848,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if newpath == '':
         raise SyscallError("link_syscall","ENOENT","New path does not exist.")
 
-      truenewpath = _get_absolute_path(newpath)
+      truenewpath = _get_absolute_path(newpath, CONST_CAGEID)
 
       # does the newpath exist?   It shouldn't
       if truenewpath in fastinodelookuptable:
@@ -819,7 +856,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # okay, it doesn't exist (great!).   Does it's parent exist and is it a
       # dir?
-      truenewparentpath = _get_absolute_parent_path(newpath)
+      truenewparentpath = _get_absolute_parent_path(newpath, CONST_CAGEID)
 
       if truenewparentpath not in fastinodelookuptable:
         raise SyscallError("link_syscall","ENOENT","New path does not exist.")
@@ -872,7 +909,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -887,7 +924,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO: I should check permissions...
 
 
-      trueparentpath = _get_absolute_parent_path(path)
+      trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
       parentinode = fastinodelookuptable[trueparentpath]
 
 
@@ -938,7 +975,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -1058,7 +1095,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if path == '':
         raise SyscallError("open_syscall","ENOENT","The file does not exist.")
 
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       # is the file missing?
       if truepath not in fastinodelookuptable:
@@ -1069,7 +1106,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
         # okay, it doesn't exist (great!).   Does it's parent exist and is it a
         # dir?
-        trueparentpath = _get_absolute_parent_path(path)
+        trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
 
         if trueparentpath not in fastinodelookuptable:
           raise SyscallError("open_syscall","ENOENT","Path does not exist.")
@@ -1444,11 +1481,20 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # private helper.   Get the fds for an inode (or [] if none)
   def _lookup_fds_by_inode(inode):
-    returnedfdlist = []
-    for fd in filedescriptortable:
-      if not IS_SOCK_DESC(fd,CONST_CAGEID) and not IS_EPOLL_FD(fd,CONST_CAGEID) and filedescriptortable[fd]['inode'] == inode:
-        returnedfdlist.append(fd)
-    return returnedfdlist
+    returnedfddict = {}
+    for cageid in masterfiledescriptortable:
+      try:
+        for fd in masterfiledescriptortable[cageid]:
+          if not IS_SOCK_DESC(fd,CONST_CAGEID) and not IS_EPOLL_FD(fd,CONST_CAGEID) and filedescriptortable[fd]['inode'] == inode:
+            if cageid in returnedfddict:
+              returnedfddict[cageid].append(fd)
+            else:
+              returnedfddict[cageid] = [fd]
+      except KeyError as e:
+        print e
+
+
+    return returnedfddict
 
 
 
@@ -1489,6 +1535,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # get the inode for the filedescriptor
     inode = filedescriptortable[fd]['inode']
 
+
     # If it's not a regular file, we have nothing to close...
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
 
@@ -1500,16 +1547,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return 0
 
     # so it's a regular file.
-
+    
     # get the list of file descriptors for the inode
     fdsforinode = _lookup_fds_by_inode(inode)
 
     # I should be in there!
-    assert(fd in fdsforinode)
+    assert(fd in fdsforinode[CONST_CAGEID])
 
     # I should only close here if it's the last use of the file.   This can
     # happen due to dup, multiple opens, etc.
-    if len(fdsforinode) > 1:
+    if len(fdsforinode) > 1 or len(fdsforinode[CONST_CAGEID]) > 1:
       # Is there more than one descriptor open?   If so, return success
       return 0
 
@@ -1825,7 +1872,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path)
+      truepath = _get_absolute_path(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -1937,7 +1984,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if path == '':
       raise SyscallError("mknod_syscall","ENOENT","The file does not exist.")
 
-    truepath = _get_absolute_path(path)
+    truepath = _get_absolute_path(path, CONST_CAGEID)
 
     # check if file already exists, if so raise an error.
     if truepath in fastinodelookuptable:
@@ -2161,8 +2208,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     filesystemmetadatalock.acquire(True)
     try:
-      true_old_path = _get_absolute_path(old)
-      true_new_path = _get_absolute_path(new)
+      true_old_path = _get_absolute_path(old, CONST_CAGEID)
+      true_new_path = _get_absolute_path(new, CONST_CAGEID)
 
       if true_old_path not in fastinodelookuptable:
         raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
@@ -2170,7 +2217,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if true_new_path == '':
         raise SyscallError("rename_syscall", "ENOENT", "New file does not exist")
 
-      trueparentpath_old = _get_absolute_parent_path(true_old_path)
+      trueparentpath_old = _get_absolute_parent_path(true_old_path, CONST_CAGEID)
       parentinode = fastinodelookuptable[trueparentpath_old]
 
       inode = fastinodelookuptable[true_old_path]
@@ -2227,6 +2274,19 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
+
+  # NOTE: his is only the part of fork that forks the file table. Most of fork
+  # is implemented in parts of NaCl
+  def fork_syscall(newcageid):
+    masterfiledescriptortable[newcageid] = \
+      repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+    
+    master_fs_calls_context[newcageid] = \
+      repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+    return 0
+  
+  FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+
 
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
     return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]

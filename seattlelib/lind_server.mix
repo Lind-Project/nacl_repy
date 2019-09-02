@@ -201,6 +201,8 @@ include fs_rename.repy
 
 include sys_pipe.repy
 
+include fs_fork.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy
@@ -262,16 +264,16 @@ def LindSyscall(call_num, args):
   return response
 
 
-def GetHostFdFromLindFd(lind_fd):
+def GetHostFdFromLindFd(lind_fd, cageid):
   # print >> sys.stderr,  "We have entered GetHostFdFromLindFd\n"
 
   assert isinstance(lind_fd, int)
   if lind_fd < 0:
     return -1
-  if not lind_fd in filedescriptortable.keys():
+  if not lind_fd in masterfiledescriptortable[cageid].keys():
     print >> sys.stderr,  "GetHostFdFromLindFd: fd "+str(lind_fd+" not found")
     return -1
-  inode = filedescriptortable[lind_fd]["inode"]
+  inode = masterfiledescriptortable[cageid][lind_fd]["inode"]
   if not inode in fileobjecttable.keys():
     print >> sys.stderr,  "GetHostFdFromLindFd: inode "+str(inode+" not found")
   fobj = fileobjecttable[inode].fobj
