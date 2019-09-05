@@ -143,11 +143,12 @@ def dispatch_syscall(call, args):
   with the provided arguments.
   """
 
-  assert isinstance(args[-1], int), "the cageid should be an int"
-  # Cageid can be -1 but only in direct syscalls that don't go through the 
-  # dispatcher, these are present in files such as lind_fs_utils as a dummy
-  # value.
-  assert (args[-1] >= 0), "the cageid should be greater than or equal to zero"
+  if MODE=="safe":
+    assert isinstance(args[-1], int), "the cageid should be an int"
+    # Cageid can be -1 but only in direct syscalls that don't go through the 
+    # dispatcher, these are present in files such as lind_fs_utils as a dummy
+    # value.
+    assert (args[-1] >= 0), "the cageid should be greater than or equal to zero"
 
   try:
     call_fun = curr_comp()[SYSCALL][call]
