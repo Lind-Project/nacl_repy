@@ -134,6 +134,10 @@ masterfiledescriptortable = {}
 #this is a dictionary of dictionaries of file objects
 fileobjecttable = {}
 
+# contains pipe implementaion
+#this is a dictionary of pipes which contains data and appropriate locks
+pipetable = {}
+
 # I use this so that I can assign to a global string (currentworkingdirectory)
 # without using global, which is blocked by RepyV2
 #this is a dictionary of dictionaries of contexts
@@ -2197,6 +2201,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
 
+  #### RENAME SYSCALL  ####
+
+
   def rename_syscall(old, new):
     """
     http://linux.die.net/man/2/rename
@@ -2233,7 +2240,19 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
 
-  def pipe_syscall():
+
+  #### PIPE SYSCALL  ####
+
+
+  def get_next_pipe():
+    # let's get the next available pipe number.   
+    for pipenumber in range(STARTING_PIPE, MAX_PIPE):
+      if not pipenumber in pipetable:
+        return pipenumber
+
+    raise SyscallError("pipe_syscall","EMFILE","The maximum number of files are open.")
+
+  def pipe_syscall(pipefds):
     """
     http://linux.die.net/man/2/pipe
     """
@@ -2242,11 +2261,18 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      #stuff
-      1
-    except:
-      #stuff
-      1
+
+      pipenumber = get_next_pipe()
+
+      pipetable[pipenumber] = {'data':list(), 'writelock':createlock(), 'readlock':createlock()}
+
+      pipefds = [get_next_fd(), get_next_fd]
+
+      filedescriptortable[pipefds[0]] = {'pipe':pipenum, 'lock':createlock(), 'flags':O_RDONLY}
+      filedescriptortable[pipefds[1]] = {'pipe':pipenum, 'lock':createlock(), 'flags':O_WRONLY}
+       
+      return pipefds
+
     finally:
       filesystemmetadatalock.release()
       

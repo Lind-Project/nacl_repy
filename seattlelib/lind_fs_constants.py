@@ -113,6 +113,11 @@ PATH_MAX = 4096
 MAX_FD = 1024
 STARTINGFD = 0
 
+#largest pipe
+STARTING_PIPE = 0
+MAX_PIPE = MAX_FD
+
+
 
 # for dirents...
 DEFAULT_UID=1000
