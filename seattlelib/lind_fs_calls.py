@@ -1336,7 +1336,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/read
     """
-
+    print "In read"
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
  
@@ -1359,19 +1359,27 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-
+      print "trying read"
       if 'pipe' in filedescriptortable[fd]:
+        print "Hey were reading from pipe " + str(fd)
         pipenumber = filedescriptortable[fd]['pipe']
-        pipetable[pipenumber]['readlock'].acquire(True)
-
-        if count < len(pipetable[pipenumber]['data']):
-          count = len(pipetable[pipenumber]['data'])
+        pipetable[pipenumber]['writelock'].acquire(True)
 
         data = ''
-        for i in range(0, count):
-          data += pipetable[pipenumber]['data'].pop(0)
+        num_bytes_read = 0
+
+        while num_bytes_read < count:
+          try:
+            byte_read = pipetable[pipenumber]['data'].pop(0)
+            data += byte_read
+            num_bytes_read += 1
+            print "read: " + str(byte_read)
+
+            except IndexError, e:
+              continue
           
         pipetable[pipenumber]['writelock'].release()
+        print "release locked, returning: " + data
         return data
 
       # get the inode so I can and check the mode (type)
@@ -1419,15 +1427,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
-
+    print "in write"
+    print "writing " + data + " to " + str(fd)
     # check the fd
     if fd not in filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
-
+    print "fd in table with flags: "
+    print filedescriptortable[fd]['flags']
     # Is it open for writing?
     if IS_RDONLY(filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
-
+    print "fd is writeable"
     try:
       if filedescriptortable[fd]['inode'] in [1,2]:
         log(data)
@@ -1435,19 +1445,22 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     except KeyError:
       pass
 
-
+    print "not stdout, acquiring lock"
     # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
     filesystemmetadatalock.acquire(True)
 
     # ... but always release it...
     try:
+      print "trying write"
 
       if 'pipe' in filedescriptortable[fd]:
+        print "Hey, were writing to pipe: " + str(fd)
         pipenumber = filedescriptortable[fd]['pipe']
         pipetable[pipenumber]['writelock'].acquire(True)
 
         for byte in data:
+          print "appending: " + byte
           pipetable[pipenumber]['data'].append(byte)
           
         pipetable[pipenumber]['writelock'].release()
@@ -2293,17 +2306,52 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     filesystemmetadatalock.acquire(True)
 
     # ... but always release it...
+
+    print "In pipe"
+
     try:
 
       pipenumber = get_next_pipe()
+      print "Setting up pipe number " + str(pipenumber)
 
       pipetable[pipenumber] = {'data':list(), 'writelock':createlock(), 'readlock':createlock()}
 
-      pipefds = [get_next_fd(), get_next_fd]
+      print "pipetable complete. setting up pipe fds"
 
-      filedescriptortable[pipefds[0]] = {'pipe':pipenum, 'lock':createlock(), 'flags':O_RDONLY}
-      filedescriptortable[pipefds[1]] = {'pipe':pipenum, 'lock':createlock(), 'flags':O_WRONLY}
-       
+      pipefds = []
+      
+      print "made list"
+
+      try:
+        nextfd1 = get_next_fd()
+      except SyscallError, e:
+        # If it's an error getting the fd, return our call name instead.
+        assert(e[0]=='open_syscall')
+
+        raise SyscallError('pipe_syscall',e[1],e[2])
+      print "got fd" + str(nextfd1)
+
+      filedescriptortable[nextfd1] = {'pipe':pipenumber, 'lock':createlock(), 'flags':O_RDONLY}
+      print "added to fdtable"
+      pipefds.append(nextfd1)    
+
+      print "appended to return list"
+
+      try:
+        nextfd2 = get_next_fd()
+      except SyscallError, e:
+        # If it's an error getting the fd, return our call name instead.
+        assert(e[0]=='open_syscall')
+
+        raise SyscallError('pipe_syscall',e[1],e[2])
+
+      filedescriptortable[nextfd2] = {'pipe':pipenumber, 'lock':createlock(), 'flags':O_WRONLY}
+      pipefds.append(nextfd2)
+
+      print "Pipefds are " + str(pipefds[0]) + " which has flags " + str(filedescriptortable[pipefds[0]]['flags'])
+      print "and "  + str(pipefds[1]) + " which has flags " + str(filedescriptortable[pipefds[1]]['flags'])
+
+      print "Returning from pipe"
       return pipefds
 
     finally:
