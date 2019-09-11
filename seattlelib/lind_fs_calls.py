@@ -1339,8 +1339,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
-    if filedescriptortable[fd]["inode"] == 0:
-      return ""
+ 
+    try:
+      if filedescriptortable[fd]["inode"] == 0:
+        return ""
+    except KeyError:
+      pass
 
     # check the fd
     if fd not in filedescriptortable:
@@ -1355,6 +1359,20 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
+
+      if 'pipe' in filedescriptortable[fd]:
+        pipenumber = filedescriptortable[fd]['pipe']
+        pipetable[pipenumber]['readlock'].acquire(True)
+
+        if count < len(pipetable[pipenumber]['data']):
+          count = len(pipetable[pipenumber]['data'])
+
+        data = ''
+        for i in range(0, count):
+          data += pipetable[pipenumber]['data'].pop(0)
+          
+        pipetable[pipenumber]['writelock'].release()
+        return data
 
       # get the inode so I can and check the mode (type)
       inode = filedescriptortable[fd]['inode']
@@ -1406,13 +1424,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if fd not in filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
-    if filedescriptortable[fd]['inode'] in [1,2]:
-      log(data)
-      return len(data)
-
     # Is it open for writing?
     if IS_RDONLY(filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
+
+    try:
+      if filedescriptortable[fd]['inode'] in [1,2]:
+        log(data)
+        return len(data)
+    except KeyError:
+      pass
 
 
     # Acquire the fd lock...
@@ -1421,6 +1442,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
+
+      if 'pipe' in filedescriptortable[fd]:
+        pipenumber = filedescriptortable[fd]['pipe']
+        pipetable[pipenumber]['writelock'].acquire(True)
+
+        for byte in data:
+          pipetable[pipenumber]['data'].append(byte)
+          
+        pipetable[pipenumber]['writelock'].release()
+        return len(data)
+
 
       # get the inode so I can update the size (if needed) and check the type
       inode = filedescriptortable[fd]['inode']
@@ -1584,6 +1616,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         return 0
     except KeyError:
       pass
+
     # Acquire the fd lock, if there is one.
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].acquire(True)
@@ -2252,7 +2285,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     raise SyscallError("pipe_syscall","EMFILE","The maximum number of files are open.")
 
-  def pipe_syscall(pipefds):
+  def pipe_syscall():
     """
     http://linux.die.net/man/2/pipe
     """

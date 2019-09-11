@@ -11,19 +11,43 @@ then calls the repy posix library open system call.  Then packs
 the result back up.
 
 """
-def lind_safe_fs_pipe(args):
-    """ pipe calls are dispatched to this function.
+def lind_safe_sys_pipe(args):
+  """ pipe calls are dispatched to this function.
 
-    See dispatcher.repy for details.
+  See dispatcher.repy for details.
 
-    Pack the single int returned, or error.
-    """
-    print "piped"
-def lind_fs_pipe(args):
-    """ pipe calls are dispatched to this function.
+  Pack the single int returned, or error.
+  """
+  lind_sys_pipe(args)
+def lind_sys_pipe(args):
+  """ pipe calls are dispatched to this function.
 
-    See dispatcher.repy for details.
+  See dispatcher.repy for details.
 
-    Pack the single int returned, or error.
-    """
-    print "piped"
+  Pack the single int returned, or error.
+  """
+  try:
+    result = get_fs_call(args[-1],"pipe_syscall")()
+  except:
+    print "Pipe failed"
+
+def lind_safe_sys_pipe2(args):
+  """ pipe calls are dispatched to this function.
+
+  See dispatcher.repy for details.
+
+  Pack the single int returned, or error.
+  """
+  lind_sys_pipe2(args)
+def lind_sys_pipe2(args):
+  """ pipe calls are dispatched to this function.
+
+  See dispatcher.repy for details.
+
+  Pack the single int returned, or error.
+  """
+  flags = args[0]
+  try:
+    result = get_fs_call(args[-1],"pipe2_syscall")(flags)
+  except:
+    print "Pipe2 failed"
