@@ -173,14 +173,15 @@ def repy_deepcopy(obj):
     for key, value in obj.iteritems():
       newdict[key] = repy_deepcopy(value)
     return newdict
-  if o is list:
+  elif o is list:
     newlist = []
     for item in obj:
       newlist.append(repy_deepcopy(obj))
     return newlist
-  if o is set: # Sets may only contain immutable members
+  elif o is set: # Sets may only contain immutable members
     return obj.copy()
-  return obj #If obj is not one of the above three data types, it's immutable
+  else:
+    return obj #If obj is not one of the above three data types, it's immutable
   # or a user defined class which we don't know how to deal with
   # Other mutable types (namely arrays) are banned by repy
     
@@ -504,8 +505,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # return statfs data for fstatfs and statfs
   def _istatfs_helper(inode):
-    """
-    """
 
     # I need to compute the amount of disk available / used
     limits, usage, stoptimes = getresources()
@@ -2427,11 +2426,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # NOTE: this is only the part of fork that forks the file table. Most of fork
   # is implemented in parts of NaCl
-  def fork_syscall(newcageid):
-    masterfiledescriptortable[newcageid] = \
+  def fork_syscall(child_cageid):
+    masterfiledescriptortable[child_cageid] = \
       repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
     
-    master_fs_calls_context[newcageid] = \
+    master_fs_calls_context[child_cageid] = \
       repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
 
     return 0

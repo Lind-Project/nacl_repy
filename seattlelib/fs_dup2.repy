@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Dup2 hadler pulls out the arguments, does any manditory checking
+Dup2 handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library dup2 system call.  Then packs
 the result back up.
 

@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Accept hadler pulls out the arguments, does any manditory checking
+Accept handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library accept system call.  Then packs
 the result back up.
 
