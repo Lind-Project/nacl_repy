@@ -40,7 +40,7 @@ def lind_safe_fs_access(args):
 
     See dispatcher.repy for details.
 
-    Check the mode path for consistancy,
+    Check the mode path for consistency,
     then call the real access dispatcher.
 
     """

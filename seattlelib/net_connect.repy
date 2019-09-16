@@ -59,7 +59,7 @@ def lind_safe_net_connect(args):
     See dispatcher.repy for details.
 
     Check the file descriptor, length, and address information struct
-    for consistancy then call the real connect dispatcher.
+    for consistency then call the real connect dispatcher.
 
     """
 

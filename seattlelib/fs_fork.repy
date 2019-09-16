@@ -34,7 +34,7 @@ def lind_safe_fs_fork(args):
 
   See dispatcher.repy for details.
 
-  Check the child's cageid for consistancy,
+  Check the child's cageid for consistency,
   then call the real fork dispatcher.
 
   """

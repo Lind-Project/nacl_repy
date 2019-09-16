@@ -40,7 +40,7 @@ def lind_safe_fs_link(args):
 
     See dispatcher.repy for details.
 
-    Check the paths for consistancy,
+    Check the paths for consistency,
     then call the real link dispatcher.
 
     """

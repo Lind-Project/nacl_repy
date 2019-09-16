@@ -39,7 +39,7 @@ def lind_safe_fs_chdir(args):
 
     See dispatcher.repy for details.
 
-    Check the path for consistancy,
+    Check the path for consistency,
     then call the real chdir dispatcher.
 
     """

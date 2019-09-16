@@ -48,7 +48,7 @@ def lind_safe_fs_fcntl(args):
 
     See dispatcher.repy for details.
 
-    Check handle and flags check for consistancy,
+    Check handle and flags check for consistency,
     then call the real fcntl dispatcher.
 
     """
