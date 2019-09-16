@@ -1377,6 +1377,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
         while num_bytes_read < count:
           try:
+            if len(pipetable[pipenumber]['data'] == 0) and pipetable[pipenumber]['eof'] == True:
+              break
             byte_read = pipetable[pipenumber]['data'].pop(0)
             data += byte_read
             num_bytes_read += 1
@@ -1537,7 +1539,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     for cageid in masterfiledescriptortable:
       try:
         for fd in masterfiledescriptortable[cageid]:
-          if not IS_SOCK_DESC(fd,CONST_CAGEID) and not IS_EPOLL_FD(fd,CONST_CAGEID) and filedescriptortable[fd]['inode'] == inode:
+          if not IS_SOCK_DESC(fd,CONST_CAGEID) and not IS_EPOLL_FD(fd,CONST_CAGEID) and not IS_PIPE_DESC(fd,CONST_CAGEID) and filedescriptortable[fd]['inode'] == inode:
             if cageid in returnedfddict:
               returnedfddict[cageid].append(fd)
             else:
@@ -1547,6 +1549,20 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
     return returnedfddict
+
+  # private helper.   Get the references to and end of a pipe 
+  def _lookup_refs_by_pipe_end(pipenumber, flags):
+    pipe_references = 0
+    for cageid in masterfiledescriptortable:
+      try:
+        for fd in masterfiledescriptortable[cageid]:
+          if filedescriptortable[fd]['pipe'] == pipenumber and filedescriptortable[fd]['flags'] == flags:
+            pipe_references += 1
+      except KeyError as e:
+        print e
+
+
+    return pipe_references
 
 
 
@@ -1572,9 +1588,19 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _cleanup_pipe(fd):
     if 'pipe' in filedescriptortable[fd]:
       pipenumber = filedescriptortable[fd]['pipe']
-      #TODO delete pipe if all references to it are closed
 
-      del filedescriptortable[fd]['pipe']
+      del filedescriptortable[fd]
+
+      read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
+      write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
+
+      if write_references == 0:
+        pipetable[pipenumber]['eof'] = True
+
+
+      if (read_references + write_references) == 0:
+        del pipetable[pipenumber]
+
 
       return 0
 
@@ -1662,7 +1688,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      return _close_helper(fd)pr
+      return _close_helper(fd)
 
     finally:
       # ... release the lock, if there is one
@@ -2341,8 +2367,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       pipenumber = get_next_pipe()
       print "Setting up pipe number " + str(pipenumber)
 
-      pipetable[pipenumber] = {'data':list(), 'writelock':createlock(), 'readlock':createlock()}
-
+      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+      
       print "pipetable complete. setting up pipe fds"
 
       pipefds = []
