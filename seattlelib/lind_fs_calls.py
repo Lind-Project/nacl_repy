@@ -443,6 +443,13 @@ def IS_SOCK_DESC(fd,cageid):
   else:
     return False
 
+# is this file descriptor a pipe?
+def IS_PIPE_DESC(fd,cageid):
+  if 'pipe' in masterfiledescriptortable[cageid][fd]:
+    return True
+  else:
+    return False
+
 
 
 
@@ -1375,8 +1382,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
             num_bytes_read += 1
             print "read: " + str(byte_read)
 
-            except IndexError, e:
-              continue
+          except IndexError, e:
+            continue
           
         pipetable[pipenumber]['writelock'].release()
         print "release locked, returning: " + data
@@ -1562,6 +1569,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filedescriptortable[fd]['state'] = NOTCONNECTED
       return 0
 
+  def _cleanup_pipe(fd):
+    if 'pipe' in filedescriptortable[fd]:
+      pipenumber = filedescriptortable[fd]['pipe']
+      #TODO delete pipe if all references to it are closed
+
+      del filedescriptortable[fd]['pipe']
+
+      return 0
+
 
 
 
@@ -1571,6 +1587,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # if we are a socket, we dont change disk metadata
     if IS_SOCK_DESC(fd,CONST_CAGEID):
       _cleanup_socket(fd)
+      return 0
+
+    if IS_PIPE_DESC(fd,CONST_CAGEID):
+      _cleanup_pipe(fd)
       return 0
 
     if IS_EPOLL_FD(fd,CONST_CAGEID):
@@ -1622,7 +1642,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
+
+    print "In close, closing " + str(fd)
+
     if fd not in filedescriptortable:
+      print "can't find fd" + str(fd)
       raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
     try:
       if filedescriptortable[fd]['inode'] in [0,1,2]:
@@ -1634,9 +1658,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].acquire(True)
 
+    print "Trying close helper"
+
     # ... but always release it...
     try:
-      return _close_helper(fd)
+      return _close_helper(fd)pr
 
     finally:
       # ... release the lock, if there is one
@@ -1644,6 +1670,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
+      print "deleted fd entry"
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
 
