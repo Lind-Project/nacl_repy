@@ -49,7 +49,7 @@ def lind_safe_fs_fxstat(args):
 
     See dispatcher.repy for details.
 
-    Check the handle and flags and file for consistancy,
+    Check the handle and flags and file for consistency,
     then call the real fxstat dispatcher.
 
     """

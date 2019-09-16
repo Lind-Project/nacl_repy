@@ -91,7 +91,7 @@ def lind_safe_fs_getdents(args):
 
     See dispatcher.repy for details.
 
-    Check the handle and count for consistancy,
+    Check the handle and count for consistency,
     then call the real getdents dispatcher.
 
     """

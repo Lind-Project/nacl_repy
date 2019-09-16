@@ -43,7 +43,7 @@ def lind_safe_net_send(args):
     See dispatcher.repy for details.
 
     Check the descriptor, length, flags and a message in
-    a buffer for consistancy, then call the real send dispatcher.
+    a buffer for consistency, then call the real send dispatcher.
 
     """
 

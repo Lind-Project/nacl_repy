@@ -42,7 +42,7 @@ def lind_safe_net_bind(args):
 
     See dispatcher.repy for details.
 
-    Check the fd and IP consistancy,
+    Check the fd and IP consistency,
     then call the real bind dispatcher.
 
     """

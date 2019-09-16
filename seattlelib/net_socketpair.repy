@@ -49,7 +49,7 @@ def lind_safe_net_socketpair(args):
 
     See dispatcher.repy for details.
 
-    Check the socketpair domain, socketpair type and protcol for consistancy,
+    Check the socketpair domain, socketpair type and protcol for consistency,
     then call the real socketpair dispatcher.
 
     """

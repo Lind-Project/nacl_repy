@@ -39,7 +39,7 @@ def lind_safe_fs_dup(args):
 
     See dispatcher.repy for details.
 
-    Check the file handle for consistancy, then call the real dup dispatcher.
+    Check the file handle for consistency, then call the real dup dispatcher.
 
     """
 

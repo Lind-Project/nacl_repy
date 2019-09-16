@@ -45,7 +45,7 @@ def lind_safe_net_poll(args):
 
     See dispatcher.repy for details.
 
-    Check the file descriptor length and flags for consistancy,
+    Check the file descriptor length and flags for consistency,
     then call the real poll dispatcher.
 
     """

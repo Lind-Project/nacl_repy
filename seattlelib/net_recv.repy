@@ -42,7 +42,7 @@ def lind_safe_net_recv(args):
 
     See dispatcher.repy for details.
 
-    Check the file descriptor length and flags for consistancy,
+    Check the file descriptor length and flags for consistency,
     then call the real recv dispatcher.
 
     """
