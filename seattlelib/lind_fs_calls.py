@@ -327,7 +327,7 @@ def _recursive_rebuild_fastinodelookuptable_helper(path, inode):
       continue
 
     # always add it...
-    entrypurepathname = _get_path_no_relative(path+'/'+entryname)
+    entrypurepathname = normpath2(path+'/'+entryname)
     fastinodelookuptable[entrypurepathname] = entryinode
 
     # and recurse if a directory...
@@ -360,7 +360,7 @@ def _rebuild_fastinodelookuptable():
 
 ######################   Generic Helper functions   #########################
 
-def _get_path_no_relative(path):
+def normpath2(path):
 
   # now I'll split on '/'.   This gives a list like: ['','foo','bar'] for
   # '/foo/bar'
@@ -415,7 +415,7 @@ def _get_path_no_relative(path):
 
 # private helper function that converts a relative path or a path with things
 # like foo/../bar to a normal path.
-def _get_absolute_path(path, cageid):
+def normpath(path, cageid):
 
   # should raise an ENOENT error...
   if path == '':
@@ -425,12 +425,12 @@ def _get_absolute_path(path, cageid):
   if path[0] != '/':
     path = master_fs_calls_context[cageid]['currentworkingdirectory'] + '/' + path
 
-  return _get_path_no_relative(path)
+  return normpath2(path)
 
 
 # private helper function
-def _get_absolute_parent_path(path, cageid):
-  return _get_absolute_path(path+'/..', cageid)
+def normpath_parent(path, cageid):
+  return normpath(path+'/..', cageid)
 
 
 def IS_EPOLL_FD(fd,cageid):
@@ -585,7 +585,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -625,7 +625,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
 
       # get the actual name.   Remove things like '../foo'
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       if truepath not in fastinodelookuptable:
         raise SyscallError("access_syscall","ENOENT","A directory in the path does not exist or file not found.")
@@ -670,7 +670,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # only check the fs state once...
 
     # get the actual name.   Remove things like '../foo'
-    truepath = _get_absolute_path(path, CONST_CAGEID)
+    truepath = normpath(path, CONST_CAGEID)
 
     # If it doesn't exist...
     if truepath not in fastinodelookuptable:
@@ -701,7 +701,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if path == '':
         raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
 
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       # is the path there?
       if truepath in fastinodelookuptable:
@@ -710,7 +710,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # okay, it doesn't exist (great!).   Does it's parent exist and is it a
       # dir?
-      trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
+      trueparentpath = normpath_parent(path, CONST_CAGEID)
 
       if trueparentpath not in fastinodelookuptable:
         raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
@@ -776,7 +776,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       # Is it the root?
       if truepath == '/':
@@ -799,7 +799,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO: I should check permissions...
 
 
-      trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
+      trueparentpath = normpath_parent(path, CONST_CAGEID)
       parentinode = fastinodelookuptable[trueparentpath]
 
 
@@ -846,7 +846,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      trueoldpath = _get_absolute_path(oldpath, CONST_CAGEID)
+      trueoldpath = normpath(oldpath, CONST_CAGEID)
 
       # is the old path there?
       if trueoldpath not in fastinodelookuptable:
@@ -864,7 +864,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if newpath == '':
         raise SyscallError("link_syscall","ENOENT","New path does not exist.")
 
-      truenewpath = _get_absolute_path(newpath, CONST_CAGEID)
+      truenewpath = normpath(newpath, CONST_CAGEID)
 
       # does the newpath exist?   It shouldn't
       if truenewpath in fastinodelookuptable:
@@ -872,7 +872,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # okay, it doesn't exist (great!).   Does it's parent exist and is it a
       # dir?
-      truenewparentpath = _get_absolute_parent_path(newpath, CONST_CAGEID)
+      truenewparentpath = normpath_parent(newpath, CONST_CAGEID)
 
       if truenewparentpath not in fastinodelookuptable:
         raise SyscallError("link_syscall","ENOENT","New path does not exist.")
@@ -925,7 +925,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -940,7 +940,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO: I should check permissions...
 
 
-      trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
+      trueparentpath = normpath_parent(path, CONST_CAGEID)
       parentinode = fastinodelookuptable[trueparentpath]
 
 
@@ -991,7 +991,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -1111,7 +1111,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if path == '':
         raise SyscallError("open_syscall","ENOENT","The file does not exist.")
 
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       # is the file missing?
       if truepath not in fastinodelookuptable:
@@ -1122,7 +1122,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
         # okay, it doesn't exist (great!).   Does it's parent exist and is it a
         # dir?
-        trueparentpath = _get_absolute_parent_path(path, CONST_CAGEID)
+        trueparentpath = normpath_parent(path, CONST_CAGEID)
 
         if trueparentpath not in fastinodelookuptable:
           raise SyscallError("open_syscall","ENOENT","Path does not exist.")
@@ -1991,7 +1991,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truepath = _get_absolute_path(path, CONST_CAGEID)
+      truepath = normpath(path, CONST_CAGEID)
 
       # is the path there?
       if truepath not in fastinodelookuptable:
@@ -2103,7 +2103,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if path == '':
       raise SyscallError("mknod_syscall","ENOENT","The file does not exist.")
 
-    truepath = _get_absolute_path(path, CONST_CAGEID)
+    truepath = normpath(path, CONST_CAGEID)
 
     # check if file already exists, if so raise an error.
     if truepath in fastinodelookuptable:
@@ -2330,8 +2330,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     filesystemmetadatalock.acquire(True)
     try:
-      true_old_path = _get_absolute_path(old, CONST_CAGEID)
-      true_new_path = _get_absolute_path(new, CONST_CAGEID)
+      true_old_path = normpath(old, CONST_CAGEID)
+      true_new_path = normpath(new, CONST_CAGEID)
 
       if true_old_path not in fastinodelookuptable:
         raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
@@ -2339,7 +2339,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if true_new_path == '':
         raise SyscallError("rename_syscall", "ENOENT", "New file does not exist")
 
-      trueparentpath_old = _get_absolute_parent_path(true_old_path, CONST_CAGEID)
+      trueparentpath_old = normpath_parent(true_old_path, CONST_CAGEID)
       parentinode = fastinodelookuptable[trueparentpath_old]
 
       inode = fastinodelookuptable[true_old_path]
