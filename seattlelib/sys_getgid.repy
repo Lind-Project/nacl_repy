@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Getgid hadler pulls out the arguments, does any manditory checking
+Getgid handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library getgid system call.  Then packs
 the result back up.
 
@@ -25,7 +25,7 @@ def lind_sys_getgid(args):
     Pack the int returned, or error.
     """
     try:
-        result = getgid_syscall()
+        result = get_fs_call(args[-1],"getgid_syscall")()
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getgid", e[1], e[2])
     except UnimplementedError, e:
@@ -39,7 +39,7 @@ def lind_safe_sys_getgid(args):
 
     See dispatcher.repy for details.
 
-    Check the paths for consistancy,
+    Check the paths for consistency,
     then call the real getgid dispatcher.
 
     """

@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Accept hadler pulls out the arguments, does any manditory checking
+Accept handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library accept system call.  Then packs
 the result back up.
 
@@ -26,7 +26,7 @@ def lind_net_accept(args):
     """
     fd = args[0]
     try:
-        result = accept_syscall(fd, args[1])
+        result = get_net_call(args[-1],"accept_syscall")(fd, args[1])
     except SyscallError, e:
         return ErrorResponseBuilder("net_accept", e[1], e[2])
     return SuccessResponseBuilder("net_accept", result[2])
@@ -37,7 +37,7 @@ def lind_safe_net_accept(args):
 
     See dispatcher.repy for details.
 
-    Check the mode flags and file for consistancy,
+    Check the mode flags and file for consistency,
     then call the real accept dispatcher.
 
     """

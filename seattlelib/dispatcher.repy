@@ -62,6 +62,7 @@ def setup_dispatcher(comp_num):
 
     66:lind_safe_sys_pipe,
     67:lind_safe_sys_pipe2,
+    68:lind_safe_fs_fork,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -125,6 +126,7 @@ def setup_dispatcher(comp_num):
 
     66:lind_sys_pipe,
     67:lind_sys_pipe2,
+    68:lind_fs_fork,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -140,6 +142,13 @@ def dispatch_syscall(call, args):
   """ Given a call number and some arguments in a list call the system call with that call number
   with the provided arguments.
   """
+
+  if MODE=="safe":
+    assert isinstance(args[-1], int), "the cageid should be an int"
+    # Cageid can be -1 but only in direct syscalls that don't go through the
+    # dispatcher, these are present in files such as lind_fs_utils as a dummy
+    # value.
+    assert (args[-1] >= 0), "the cageid should be greater than or equal to zero"
 
   try:
     call_fun = curr_comp()[SYSCALL][call]

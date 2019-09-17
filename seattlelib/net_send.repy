@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Send hadler pulls out the arguments, does any manditory checking
+Send handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library send system call.  Then packs
 the result back up.
 
@@ -30,7 +30,7 @@ def lind_net_send(args):
     flags = args[2]
     buf = args[3]
     try:
-        result = send_syscall(fd, buf, flags)
+        result = get_net_call(args[-1],"send_syscall")(fd, buf, flags)
     except SyscallError, e:
         return ErrorResponseBuilder("net_send", e[1], e[2])
 
@@ -43,7 +43,7 @@ def lind_safe_net_send(args):
     See dispatcher.repy for details.
 
     Check the descriptor, length, flags and a message in
-    a buffer for consistancy, then call the real send dispatcher.
+    a buffer for consistency, then call the real send dispatcher.
 
     """
 

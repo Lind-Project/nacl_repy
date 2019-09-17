@@ -1,0 +1,50 @@
+"""
+
+Subsidiary handlers for the fork system call. The main handler is implemented by NaCl.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler that forks the file system.
+
+Fork handler pulls out the arguments, does any mandatory checking
+then calls the repy posix library fork system call.  Then packs
+the result back up.
+
+"""
+def lind_fs_fork(args):
+  """ fork calls are dispatched to this function.
+
+  See dispatcher.repy for details.
+
+  Given the cageid of the child process, fork the file table.
+
+  Pack the single int returned, or error.
+  """
+  child_cageid = args[0]
+  try:
+    result = get_fs_call(args[-1],"fork_syscall")(child_cageid)
+  except SyscallError, e:
+    message = "Encountered error in fork.\n Parent Cageid: " + args[-1] +  \
+      "\nChild Cageid: " + child_cageid
+    return ErrorResponseBuilder("fs_fork", e[1], message)
+  return SuccessResponseBuilder("fs_fork", result)
+
+def lind_safe_fs_fork(args):
+  """ Safely wrap the fork call.
+
+  See dispatcher.repy for details.
+
+  Check the child's cageid for consistency,
+  then call the real fork dispatcher.
+
+  """
+  child_cageid = args[0]
+  assert isinstance(child_cageid, int), "the cagenum should be an int"
+  # Cageid can be -1 but only in direct syscalls that don't go through the 
+  # dispatcher, these are present in files such as lind_fs_utils as a dummy
+  # value.
+  assert (child_cageid >= 0), "the cageid should be greater than or equal to zero"
+  result =  lind_fs_fork(args)
+  assert isinstance(result, Response), \
+         "wrong return type %s" % (str(type(result)))
+  return result

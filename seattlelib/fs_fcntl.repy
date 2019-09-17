@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Fcntl hadler pulls out the arguments, does any manditory checking
+Fcntl handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library fcntl system call.  Then packs
 the result back up.
 
@@ -31,12 +31,12 @@ def lind_fs_fcntl(args):
     if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN:
         arg = args[2]
         try:
-            result = fcntl_syscall(handle, cmd, arg)
+            result = get_fs_call(args[-1],"fcntl_syscall")(handle, cmd, arg)
         except SyscallError, e:
             return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
     else:
         try:
-            result = fcntl_syscall(handle, cmd)
+            result = get_fs_call(args[-1],"fcntl_syscall")(handle, cmd)
         except SyscallError, e:
             return ErrorResponseBuilder("fs_fcntl", e[1], e[2])
 
@@ -48,7 +48,7 @@ def lind_safe_fs_fcntl(args):
 
     See dispatcher.repy for details.
 
-    Check handle and flags check for consistancy,
+    Check handle and flags check for consistency,
     then call the real fcntl dispatcher.
 
     """

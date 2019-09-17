@@ -9,7 +9,7 @@ def lind_net_setsockopt(args):
   opt = args[4]
 
   try:
-    result = setsockopt_syscall(fd, level, optname, opt)
+    result = get_net_call(args[-1],"setsockopt_syscall")(fd, level, optname, opt)
   except SyscallError,e:
     return ErrorResponseBuilder("net_setsockopt", e[1], e[2])
   except UnimplementedError, e:

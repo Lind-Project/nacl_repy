@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Dup2 hadler pulls out the arguments, does any manditory checking
+Dup2 handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library dup2 system call.  Then packs
 the result back up.
 
@@ -36,7 +36,7 @@ def lind_fs_dup2(args):
               handle, handle2, ")"
 
     try:
-        result = dup2_syscall(handle, handle2)
+        result = get_fs_call(args[-1],"dup2_syscall")(handle, handle2)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_dup2", e[1], e[2])
     return SuccessResponseBuilder("fs_dup2", result)
@@ -47,7 +47,7 @@ def lind_safe_fs_dup2(args):
 
     See dispatcher.repy for details.
 
-    Check the two file handles for consistancy,
+    Check the two file handles for consistency,
     then call the real dup2 dispatcher.
 
     """

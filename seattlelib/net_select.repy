@@ -144,7 +144,7 @@ def lind_net_select(args):
     exceptfds = [] if exceptfds == None else get_fds(bit_string_to_bitlist(exceptfds), nfds)
     
     try:
-        rc, readfds, writefds, exceptfds, usedtime = select_syscall(nfds, readfds, writefds, exceptfds, time)
+        rc, readfds, writefds, exceptfds, usedtime = get_net_call(args[-1],"select_syscall")(nfds, readfds, writefds, exceptfds, time)
     except SyscallError, e:
         return ErrorResponseBuilder("net_select", e[1], e[2])
 

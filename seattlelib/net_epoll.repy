@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Poll hadler pulls out the arguments, does any manditory checking
+Poll handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library poll system call.  Then packs
 the result back up.
 
@@ -44,7 +44,7 @@ def lind_net_epoll_create(args):
     size = args[0]
     result = 0
     try:
-        result = epoll_create_syscall(size)
+        result = get_net_call(args[-1],"epoll_create_syscall")(size)
     except SyscallError, e:
         return ErrorResponseBuilder("net_epoll_create", e[1], e[2])
 
@@ -56,7 +56,7 @@ def lind_safe_net_epoll_create(args):
 
     See dispatcher.repy for details.
 
-    Check the file descriptor length and flags for consistancy,
+    Check the file descriptor length and flags for consistency,
     then call the real epoll_create dispatcher.
 
     """
@@ -74,7 +74,7 @@ def lind_net_epoll_ctl(args):
     
     result=0
     try:
-        result=epoll_ctl_syscall(epfd, op, fd, epstruct)
+        result=get_net_call(args[-1],"epoll_ctl_syscall")(epfd, op, fd, epstruct)
     except SyscallError, e:
         return ErrorResponseBuilder("net_epoll_ctl", e[1], e[2])
     
@@ -94,7 +94,7 @@ def lind_net_epoll_wait(args):
     
     result=0
     try:
-        result=epoll_wait_syscall(epfd, maxevents, timeout)
+        result=get_net_call(args[-1],"epoll_wait_syscall")(epfd, maxevents, timeout)
     except SyscallError, e:
         return ErrorResponseBuilder("net_epoll_wait", e[1], e[2])
     

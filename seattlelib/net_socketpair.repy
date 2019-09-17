@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Socketpair hadler pulls out the arguments, does any manditory checking
+Socketpair handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library socketpair system call.  Then packs
 the result back up.
 
@@ -28,7 +28,7 @@ def lind_net_socketpair(args):
     _type = args[1]
     protocol = args[2]
     try:
-        (result, sv) = socketpair_syscall(domain, _type, protocol)
+        (result, sv) = get_net_call(args[-1],"socketpair_syscall")(domain, _type, protocol)
     except SyscallError, e:
         print str(e)
         return ErrorResponseBuilder("net_socketpair", e[1], e[2])
@@ -49,7 +49,7 @@ def lind_safe_net_socketpair(args):
 
     See dispatcher.repy for details.
 
-    Check the socketpair domain, socketpair type and protcol for consistancy,
+    Check the socketpair domain, socketpair type and protcol for consistency,
     then call the real socketpair dispatcher.
 
     """
