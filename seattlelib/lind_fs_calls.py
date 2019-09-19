@@ -435,6 +435,12 @@ def _get_absolute_parent_path(path, cageid):
 def IS_EPOLL_FD(fd,cageid):
   return (fd in masterfiledescriptortable[cageid]) and ('registered_fds' in masterfiledescriptortable[cageid][fd])
 
+# does this file descriptor have an inode?
+def IS_INODE_DESC(fd,cageid):
+  if 'inode' in masterfiledescriptortable[cageid][fd]:
+    return True
+  else:
+    return False
 
 # is this file descriptor a socket?
 def IS_SOCK_DESC(fd,cageid):
@@ -1343,7 +1349,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/read
     """
-    print "In read"
+    #print "In read"
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
  
@@ -1366,29 +1372,37 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      print "trying read"
+    #  print "trying read"
       if 'pipe' in filedescriptortable[fd]:
-        print "Hey were reading from pipe " + str(fd)
+       # print "Hey were reading from pipe " + str(fd)
         pipenumber = filedescriptortable[fd]['pipe']
-        pipetable[pipenumber]['writelock'].acquire(True)
+        pipetable[pipenumber]['readlock'].acquire(True)
 
         data = ''
         num_bytes_read = 0
 
+        #  print "entering readloop"
+
+       # print "date len in pipe: " + str(len(pipetable[pipenumber]['data']))
+      #  print pipetable[pipenumber]['data']
+
         while num_bytes_read < count:
           try:
-            if len(pipetable[pipenumber]['data'] == 0) and pipetable[pipenumber]['eof'] == True:
+          #  print "lets try to read"
+            if len(pipetable[pipenumber]['data']) == 0 and pipetable[pipenumber]['eof'] == True:
+          #    print "found eof, breaking from read with " + data + " of length " + str(len(data))
               break
             byte_read = pipetable[pipenumber]['data'].pop(0)
+           # print "read: " + str(byte_read) + " val: " + str(ord(byte_read)) 
             data += byte_read
             num_bytes_read += 1
-            print "read: " + str(byte_read)
+          #  print pipetable[pipenumber]['data']
 
           except IndexError, e:
             continue
           
-        pipetable[pipenumber]['writelock'].release()
-        print "release locked, returning: " + data
+        pipetable[pipenumber]['readlock'].release()
+       # print "release locked, returning: " + data + " of length " + str(len(data))
         return data
 
       # get the inode so I can and check the mode (type)
@@ -1436,17 +1450,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
-    print "in write"
-    print "writing " + data + " to " + str(fd)
+  #  print "in write"
+  #  print "writing " + data + " to " + str(fd)
     # check the fd
     if fd not in filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
-    print "fd in table with flags: "
-    print filedescriptortable[fd]['flags']
+   # print "fd in table with flags: "
+   # print filedescriptortable[fd]['flags']
     # Is it open for writing?
     if IS_RDONLY(filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
-    print "fd is writeable"
+  #  print "fd is writeable"
     try:
       if filedescriptortable[fd]['inode'] in [1,2]:
         log(data)
@@ -1454,23 +1468,28 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     except KeyError:
       pass
 
-    print "not stdout, acquiring lock"
+   # print "not stdout, acquiring lock"
     # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
     filesystemmetadatalock.acquire(True)
 
     # ... but always release it...
     try:
-      print "trying write"
+  #    print "trying write"
 
       if 'pipe' in filedescriptortable[fd]:
-        print "Hey, were writing to pipe: " + str(fd)
+       # print "Hey, were writing to pipe: " + str(fd)
         pipenumber = filedescriptortable[fd]['pipe']
+       # print "got pipe number... " + str(pipenumber)
         pipetable[pipenumber]['writelock'].acquire(True)
+       # print "got pipelock"
 
         for byte in data:
-          print "appending: " + byte
+       #   print "appending: " + byte
           pipetable[pipenumber]['data'].append(byte)
+
+     #   print "pipe now at: "
+      #  print pipetable[pipenumber]['data']
           
         pipetable[pipenumber]['writelock'].release()
         return len(data)
@@ -1539,12 +1558,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     for cageid in masterfiledescriptortable:
       try:
         for fd in masterfiledescriptortable[cageid]:
-          if not IS_SOCK_DESC(fd,CONST_CAGEID) and not IS_EPOLL_FD(fd,CONST_CAGEID) and not IS_PIPE_DESC(fd,CONST_CAGEID) and filedescriptortable[fd]['inode'] == inode:
+          if IS_SOCK_DESC(fd, cageid) or IS_EPOLL_FD(fd, cageid) or IS_PIPE_DESC(fd, cageid):
+            continue
+
+          if masterfiledescriptortable[cageid][fd]['inode'] == inode:
             if cageid in returnedfddict:
               returnedfddict[cageid].append(fd)
             else:
               returnedfddict[cageid] = [fd]
       except KeyError as e:
+        print "haha! you caught it 2: electric bugaloo."
         print e
 
 
@@ -1554,11 +1577,19 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _lookup_refs_by_pipe_end(pipenumber, flags):
     pipe_references = 0
     for cageid in masterfiledescriptortable:
+      # print "looking for refs in cageid " + str(cageid)
+      # print ""
+      # print "table dump"
+      # print masterfiledescriptortable[cageid]
+      # print ""
       try:
-        for fd in masterfiledescriptortable[cageid]:
-          if filedescriptortable[fd]['pipe'] == pipenumber and filedescriptortable[fd]['flags'] == flags:
-            pipe_references += 1
+        for fd in masterfiledescriptortable[cageid]: 
+          if IS_PIPE_DESC(fd, cageid):
+            if masterfiledescriptortable[cageid][fd]['pipe'] == pipenumber and masterfiledescriptortable[cageid][fd]['flags'] == flags:
+              #print "found ref at fd " + str(fd) + " and cageid " + str(cageid)
+              pipe_references += 1
       except KeyError as e:
+        print "haha! you caught it."
         print e
 
 
@@ -1586,19 +1617,24 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return 0
 
   def _cleanup_pipe(fd):
+ #   print "in cleanup pipe"
     if 'pipe' in filedescriptortable[fd]:
+   #   print "close: pipe found for fd " + str(fd) + " cageid " + str(CONST_CAGEID)
       pipenumber = filedescriptortable[fd]['pipe']
-
-      del filedescriptortable[fd]
+  #    print "pipenumber " + str(pipenumber)
 
       read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
+  #    print "found " + str(read_references) + " read references"
       write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
+   #   print "found " + str(write_references) + " write references"
 
-      if write_references == 0:
+      if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
+   #     print "no more write references sending eof"
         pipetable[pipenumber]['eof'] = True
 
 
-      if (read_references + write_references) == 0:
+      if (read_references + write_references) == 1:
+  #      print "all refs closed, closing pipe " + str(pipenumber)
         del pipetable[pipenumber]
 
 
@@ -1616,44 +1652,56 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return 0
 
     if IS_PIPE_DESC(fd,CONST_CAGEID):
+   #   print "cleaning up pipe fd " + str(fd) + " for close"
       _cleanup_pipe(fd)
+   #   print "cleanup finished returning 0"
       return 0
 
     if IS_EPOLL_FD(fd,CONST_CAGEID):
       _epoll_object_deallocator(fd)
       return 0
 
+  #  print "ok, getting inode"
+
     # get the inode for the filedescriptor
     inode = filedescriptortable[fd]['inode']
 
+  #  print "got inode " + str(inode)
 
     # If it's not a regular file, we have nothing to close...
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+      #print "not reg?!"
 
       # double check that this isn't in the fileobjecttable
       if inode in fileobjecttable:
+        #print "in fobjtable but not reg"
         raise Exception("Internal Error: non-regular file in fileobjecttable")
 
       # and return success
       return 0
+    #print "closing a reg file"
 
     # so it's a regular file.
     
     # get the list of file descriptors for the inode
     fdsforinode = _lookup_fds_by_inode(inode)
+    #print "is lookup working? if we see this... maybe"
 
     # I should be in there!
     assert(fd in fdsforinode[CONST_CAGEID])
+    #print "post assert"
 
     # I should only close here if it's the last use of the file.   This can
     # happen due to dup, multiple opens, etc.
     if len(fdsforinode) > 1 or len(fdsforinode[CONST_CAGEID]) > 1:
       # Is there more than one descriptor open?   If so, return success
+      #print "closing not last use"
       return 0
 
     # now let's close it and remove it from the table
+    #print "closing last use"
     fileobjecttable[inode].close()
-
+    #print "Deleting inode"
     del fileobjecttable[inode]
 
     # success!
@@ -1669,10 +1717,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
 
-    print "In close, closing " + str(fd)
+    #print "In close, closing " + str(fd) + " for cageid " + str(CONST_CAGEID)
+    #print "printing mfdt -------- before"
+    #print masterfiledescriptortable[CONST_CAGEID]
+    #print "-------------------"
 
     if fd not in filedescriptortable:
-      print "can't find fd" + str(fd)
+      #print "can't find fd" + str(fd)
       raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
     try:
       if filedescriptortable[fd]['inode'] in [0,1,2]:
@@ -1684,7 +1735,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].acquire(True)
 
-    print "Trying close helper"
+    #print "Trying close helper"
 
     # ... but always release it...
     try:
@@ -1696,7 +1747,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
-      print "deleted fd entry"
+      #print "finalizing close, closing " + str(fd) + " for cageid " + str(CONST_CAGEID)
+      #print "printing mfdt -------- after"
+      #print masterfiledescriptortable[CONST_CAGEID]
+      #print "-------------------"
+   #   print "deleted fd entry"
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
 
@@ -2360,20 +2415,20 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
 
-    print "In pipe"
+  #  print "In pipe"
 
     try:
 
       pipenumber = get_next_pipe()
-      print "Setting up pipe number " + str(pipenumber)
+    #  print "Setting up pipe number " + str(pipenumber)
 
       pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
-      
-      print "pipetable complete. setting up pipe fds"
+
+   #  print "pipetable complete. setting up pipe fds"
 
       pipefds = []
       
-      print "made list"
+   #   print "made list"
 
       try:
         nextfd1 = get_next_fd()
@@ -2382,13 +2437,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         assert(e[0]=='open_syscall')
 
         raise SyscallError('pipe_syscall',e[1],e[2])
-      print "got fd" + str(nextfd1)
+   #   print "got fd" + str(nextfd1)
 
       filedescriptortable[nextfd1] = {'pipe':pipenumber, 'lock':createlock(), 'flags':O_RDONLY}
-      print "added to fdtable"
+    #  print "added to fdtable"
       pipefds.append(nextfd1)    
 
-      print "appended to return list"
+     # print "appended to return list"
 
       try:
         nextfd2 = get_next_fd()
@@ -2401,10 +2456,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filedescriptortable[nextfd2] = {'pipe':pipenumber, 'lock':createlock(), 'flags':O_WRONLY}
       pipefds.append(nextfd2)
 
-      print "Pipefds are " + str(pipefds[0]) + " which has flags " + str(filedescriptortable[pipefds[0]]['flags'])
-      print "and "  + str(pipefds[1]) + " which has flags " + str(filedescriptortable[pipefds[1]]['flags'])
+    #  print "Pipefds are " + str(pipefds[0]) + " which has flags " + str(filedescriptortable[pipefds[0]]['flags'])
+    #  print "and "  + str(pipefds[1]) + " which has flags " + str(filedescriptortable[pipefds[1]]['flags'])
 
-      print "Returning from pipe"
+    #  print "Returning from pipe"
       return pipefds
 
     finally:
@@ -2431,7 +2486,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
 
-  # NOTE: his is only the part of fork that forks the file table. Most of fork
+  # NOTE: this is only the part of fork that forks the file table. Most of fork
   # is implemented in parts of NaCl
   def fork_syscall(newcageid):
     masterfiledescriptortable[newcageid] = \
@@ -2439,6 +2494,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     
     master_fs_calls_context[newcageid] = \
       repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+
+    #print masterfiledescriptortable
+
     return 0
   
   FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall

@@ -1,7 +1,9 @@
 def lind_fs_write(args):
     size = args[1]
     fd = args[0]
-    buffer = args[2]
+    # Slice buffer string to only send size bytes
+    buffer = args[2][:size]
+    #print "writing buffer: " + buffer + " of size " + str(size)
     if IS_SOCK_DESC(fd,args[-1]):
         try:
             result = get_fs_call(args[-1],"send_syscall")(fd, buffer, 0)
