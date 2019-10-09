@@ -240,27 +240,21 @@ def print_times(times):
 
 def LindSyscall(call_num, args):
 
-  #print "We have entered LindSyscall with call # " + str(call_num)
-  #print masterfiledescriptortable
-
   comp_num = 1
   response = None
   cageid = args[-1]
 
   if TRACE:
     strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call_num]).split(" ")[1]), str(args)[:128], " = "]
-  #print "before lock??? in " + str(call_num)
-
+  
+  # if we acquire a new cageid, we're going to give it a new lock
   if cageid not in mycontext[LOCK]: 
-    #print "cage id not in mycontext"
     mycontext[LOCK][cageid] = createlock()
 
   mycontext[LOCK][cageid].acquire(True)
-  #print "hell yeah we got the lock in "  + str(call_num)
 
   mycontext[COMP] = comp_num
   try:
-    #print "dispatch that ish in "  + str(call_num)
     response = dispatch_syscall(call_num, args)
   except Exception, e:
     response = ErrorResponseBuilder("LindSyscall", "ENOSYS", str(e))
@@ -277,7 +271,6 @@ def LindSyscall(call_num, args):
 
 
 def GetHostFdFromLindFd(lind_fd, cageid):
-  # print >> sys.stderr,  "We have entered GetHostFdFromLindFd\n"
 
   assert isinstance(lind_fd, int)
   if lind_fd < 0:
@@ -348,8 +341,6 @@ def setup_filetable(comp_num,cageid):
   # because it duplicates the creation of special files.
   # load_fs_special_files()
   print >> sys.stderr,  "done."
-  #print "in setup"
-  #print masterfiledescriptortable
 
   # except KeyError, e:
 
@@ -359,7 +350,6 @@ def setup_component_communication(comp_num):
 
 
 def lind_factory(cageid):
-  #print "lind factory called!"
   setup_errnos(1)
   setup_dispatcher(1)
   setup_filetable(1,cageid)
@@ -391,7 +381,6 @@ def parse_commandline():
 
 
 def finalize():
-  #print masterfiledescriptortable
   print >> sys.stderr,  "Persisting metadata: ..."
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."

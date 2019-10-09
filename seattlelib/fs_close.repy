@@ -5,7 +5,6 @@ def lind_fs_close(args):
     result = get_fs_call(args[-1],"close_syscall")(handle)
   except SyscallError, e:
     return ErrorResponseBuilder("fs_close", e[1], e[2])
- # print "fs_close result: " + str(result)
   return SuccessResponseBuilder("fs_close", result)
 
 def lind_safe_fs_close(args):
