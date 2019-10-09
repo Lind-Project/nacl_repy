@@ -161,6 +161,7 @@ def dispatch_syscall(call, args):
     syscall_response = call_fun(args)
 
   assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
+  
   return syscall_response
 
 
