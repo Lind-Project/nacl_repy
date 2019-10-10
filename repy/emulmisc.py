@@ -22,6 +22,7 @@
 
 import nanny
 import os               # for os.urandom(7)
+import sys              # for sys.stdout.write() and flush()
 import tracebackrepy    # for os.urandom so exception can be logged internally
 import nonportable      # for getruntime
 import harshexit        # for harshexit()
@@ -202,6 +203,26 @@ def log(*args):
   """
   for arg in args:
     print arg,
+
+
+def log_stdout(*args):
+  """
+  <Purpose>
+    Output explicitly via stdout. Used to store program output. Prints output to console by default.
+
+  <Arguments>
+    Takes a variable number of arguments to print. They are wrapped in str(), so it is not necessarily a string.
+
+  <Exceptions>
+    None
+
+  <Returns>
+    Nothing
+  """
+  for arg in args:
+    sys.stdout.write(arg)
+  sys.stdout.flush()
+
 
 
 ##### Class Declarations

@@ -1402,7 +1402,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
     if filedescriptortable[fd]['inode'] in [1,2]:
-      log(data)
+      log_stdout(data)
       return len(data)
 
     # Is it open for writing?
