@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Rename hadler pulls out the arguments, does any manditory checking
+Rename handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library rename system call.  Then packs
 the result back up.
 
@@ -41,7 +41,7 @@ def lind_safe_fs_rename(args):
 
     See dispatcher.repy for details.
 
-    Check the handle and size for consistancy,
+    Check the handle and size for consistency,
     then call the real rename dispatcher.
 
     """

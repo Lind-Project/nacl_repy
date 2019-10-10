@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Flock hadler pulls out the arguments, does any manditory checking
+Flock handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library flock system call.  Then packs
 the result back up.
 
@@ -41,7 +41,7 @@ def lind_safe_fs_flock(args):
 
     See dispatcher.repy for details.
 
-    Check the mode flags and file for consistancy,
+    Check the mode flags and file for consistency,
     then call the real flock dispatcher.
 
     """

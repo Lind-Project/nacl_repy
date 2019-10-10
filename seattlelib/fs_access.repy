@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Access hadler pulls out the arguments, does any manditory checking
+Access handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library access system call.  Then packs
 the result back up.
 
@@ -40,7 +40,7 @@ def lind_safe_fs_access(args):
 
     See dispatcher.repy for details.
 
-    Check the mode path for consistancy,
+    Check the mode path for consistency,
     then call the real access dispatcher.
 
     """

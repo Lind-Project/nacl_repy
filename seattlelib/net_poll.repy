@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Poll hadler pulls out the arguments, does any manditory checking
+Poll handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library poll system call.  Then packs
 the result back up.
 
@@ -45,7 +45,7 @@ def lind_safe_net_poll(args):
 
     See dispatcher.repy for details.
 
-    Check the file descriptor length and flags for consistancy,
+    Check the file descriptor length and flags for consistency,
     then call the real poll dispatcher.
 
     """

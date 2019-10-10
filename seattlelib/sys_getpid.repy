@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Getepid hadler pulls out the arguments, does any manditory checking
+Getepid handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library getepid system call.  Then packs
 the result back up.
 
@@ -43,7 +43,7 @@ def lind_safe_sys_getpid(args):
 
     See dispatcher.repy for details.
 
-    Check the paths for consistancy,
+    Check the paths for consistency,
     then call the real getepid dispatcher.
 
     """

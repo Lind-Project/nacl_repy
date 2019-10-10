@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Lseek hadler pulls out the arguments, does any manditory checking
+Lseek handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library lseek system call.  Then packs
 the result back up.
 
@@ -43,7 +43,7 @@ def lind_safe_fs_lseek(args):
 
     See dispatcher.repy for details.
 
-    Check the paths for consistancy,
+    Check the paths for consistency,
     then call the real lseek dispatcher.
 
     """

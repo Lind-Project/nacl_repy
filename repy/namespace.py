@@ -680,6 +680,10 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emulmisc.log,
        'args' : [NonCopiedVarArgs()],
        'return' : None},
+  'log_stdout' :
+      {'func' : emulmisc.log_stdout,
+       'args' : [NonCopiedVarArgs()],
+       'return' : None},
   'getthreadname' :
       {'func' : emulmisc.getthreadname,
        'args' : [],
