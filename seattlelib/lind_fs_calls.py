@@ -1473,7 +1473,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # Is it open for writing?
     if IS_RDONLY(filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
-
+    
+    # if were writing to stdout/err lets get it over with
     try:
       if filedescriptortable[fd]['inode'] in [1,2]:
         log(data)
