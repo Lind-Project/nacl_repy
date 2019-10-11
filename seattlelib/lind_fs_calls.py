@@ -438,24 +438,15 @@ def IS_EPOLL_FD(fd,cageid):
 
 # does this file descriptor have an inode?
 def IS_INODE_DESC(fd,cageid):
-  if 'inode' in masterfiledescriptortable[cageid][fd]:
-    return True
-  else:
-    return False
+  return 'inode' in masterfiledescriptortable[cageid][fd]:
 
 # is this file descriptor a socket?
 def IS_SOCK_DESC(fd,cageid):
-  if 'domain' in masterfiledescriptortable[cageid][fd]:
-    return True
-  else:
-    return False
+  return 'domain' in masterfiledescriptortable[cageid][fd]:
 
 # is this file descriptor a pipe?
 def IS_PIPE_DESC(fd,cageid):
-  if 'pipe' in masterfiledescriptortable[cageid][fd]:
-    return True
-  else:
-    return False
+  return 'pipe' in masterfiledescriptortable[cageid][fd]:
 
 
 
