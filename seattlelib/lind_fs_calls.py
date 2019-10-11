@@ -1347,6 +1347,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
+    print "reading: " + str(count) + " from fd " + str(fd)
 
     # lets find the pipe number and acquire the readlock
     pipenumber = filedescriptortable[fd]['pipe']
@@ -1367,7 +1368,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       except IndexError, e:
         continue
-
+    print "read: " + data
     #release our readlock  
     pipetable[pipenumber]['readlock'].release()
     return data
@@ -1437,6 +1438,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
+    print "writing pipe " + data 
 
     # find pipe number, and grab lock
     pipenumber = filedescriptortable[fd]['pipe']
@@ -1445,6 +1447,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # append data to pipe list byte by byte
     for byte in data:
       pipetable[pipenumber]['data'].append(byte)
+    print "wrote"
+    print pipetable[pipenumber]['data']
 
     # release our write lock     
     pipetable[pipenumber]['writelock'].release()

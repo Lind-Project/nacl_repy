@@ -149,7 +149,7 @@ def dispatch_syscall(call, args):
     # dispatcher, these are present in files such as lind_fs_utils as a dummy
     # value.
     assert (args[-1] >= 0), "the cageid should be greater than or equal to zero"
-
+  print "dispatching call " str(call) + " in cageid " + str(args[-1])
   try:
     call_fun = curr_comp()[SYSCALL][call]
 
