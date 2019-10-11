@@ -1434,7 +1434,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filedescriptortable[fd]['lock'].release()
 
 
-  FS_CALL_DICTIONARY["read_syscall"] = read_syscall
+  FS_CALL_DICTIONARY["]_syscall"] = read_syscall
 
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
@@ -1466,7 +1466,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/write
     """
-
+    print "in write " + str(fd)
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
 
@@ -1474,9 +1474,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if fd not in filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
 
-    if filedescriptortable[fd]['inode'] in [1,2]:
-      log_stdout(data)
-      return len(data)
+    # if we're going to stdout/err, lets get it over with and print
+    try:
+      if filedescriptortable[fd]['inode'] in [1,2]:
+        log_stdout(data)
+        return len(data)
+    except KeyError:
+      pass
+    
+    
 
     # Is it open for writing?
     if IS_RDONLY(filedescriptortable[fd]['flags']):
@@ -1491,6 +1497,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd,CONST_CAGEID):
+        print "lets write to a pipe!"
         return _write_to_pipe(fd, data)
 
       # get the inode so I can update the size (if needed) and check the type
