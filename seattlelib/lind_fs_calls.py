@@ -955,7 +955,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # If 0, remove the entry from the inode table if there are no open handles
       # If open handles exist, flag it to unlink when the last handle is closed
       if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
-        fdsforinode = _lookup_fds_by_inode(filesystemmetadata['inodetable'][thisinode])
+        fdsforinode = _lookup_fds_by_inode(thisinode)
         if len(fdsforinode) == 0:
             del filesystemmetadata['inodetable'][thisinode]
         else:
