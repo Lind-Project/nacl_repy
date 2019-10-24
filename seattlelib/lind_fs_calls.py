@@ -955,10 +955,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # If zero, remove the entry from the inode table
       if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
         fdsforinode = _lookup_fds_by_inode(filesystemmetadata['inodetable'][thisinode])
-        if len(fdsforinode)==1:
-            if len(fdsforinode[0])==1:
-                del filesystemmetadata['inodetable'][thisinode]
-        filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
+        if len(fdsforinode)==1 and len(fdsforinode[0])==1:
+            del filesystemmetadata['inodetable'][thisinode]
+        else:
+            filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
 
         # TODO: I also would remove the file.   However, I need to do special
         # things if it's open, like wait until it is closed to remove it.
