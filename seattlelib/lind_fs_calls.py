@@ -952,16 +952,18 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # decrement the link count...
       filesystemmetadata['inodetable'][thisinode]['linkcount'] -= 1
 
-      # If zero, remove the entry from the inode table
+      # If 0, remove the entry from the inode table if there are no open handles
+      # If open handles exist, flag it to unlink when the last handle is closed
       if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
         fdsforinode = _lookup_fds_by_inode(filesystemmetadata['inodetable'][thisinode])
-        if len(fdsforinode)==1 and len(fdsforinode[0])==1:
+        if len(fdsforinode) == 0:
             del filesystemmetadata['inodetable'][thisinode]
         else:
             filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
 
         # TODO: I also would remove the file.   However, I need to do special
         # things if it's open, like wait until it is closed to remove it.
+        # This should be relatively possible now, a much more forseeable TODO
 
       return 0
 
