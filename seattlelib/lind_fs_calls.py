@@ -1667,13 +1667,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if len(fdsforinode) > 1 or len(fdsforinode[CONST_CAGEID]) > 1:
       # Is there more than one descriptor open?   If so, return success
       return 0
+    if 'unlinked' in filesystemmetadata['inodetable'][inode]:
+        del filesystemmetadata['inodetable'][inode]
 
     # now let's close it and remove it from the table
     fileobjecttable[inode].close()
     del fileobjecttable[inode]
-
-    if 'unlinked' in fileobjecttable[inode]:
-        del filesystemmetadata['inodetable'][inode]
 
     # success!
     return 0
