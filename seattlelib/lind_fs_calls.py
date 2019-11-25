@@ -1085,10 +1085,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
   # get the next free file descriptor
-  def get_next_fd():
+  def get_next_fd(startfd=STARTINGFD):
     # let's get the next available fd number.   The standard says we need to
     # return the lowest open fd number.
-    for fd in range(STARTINGFD, MAX_FD):
+    for fd in range(startfd, MAX_FD):
       if not fd in filedescriptortable:
         return fd
 
@@ -1786,7 +1786,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### DUP  #####
 
-  def dup_syscall(fd):
+  def dup_syscall(fd, startfd=STARTINGFD):
     """
       http://linux.die.net/man/2/dup
     """
@@ -1802,7 +1802,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # get the next available file descriptor
       try:
-        nextfd = get_next_fd()
+        nextfd = get_next_fd(startfd)
       except SyscallError, e:
         # If it's an error getting the fd, return our call name instead.
         assert(e[0]=='open_syscall')
@@ -1870,6 +1870,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         assert(len(args) == 1)
         assert(type(args[0]) == int or type(args[0]) == long)
         filedescriptortable[fd]['flags'] = args[0]
+        return 0
+
+      # lets go to DUP
+      elif cmd == F_DUPFD:
+        assert(len(args) == 1)
+        assert(type(args[0]) == int or type(args[0]) == long)
+        dup_syscall(fd, args[0])
         return 0
 
       # This is saying we'll get signals for this.   Let's punt this...
