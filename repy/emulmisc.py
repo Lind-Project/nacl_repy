@@ -28,7 +28,10 @@ import nonportable      # for getruntime
 import harshexit        # for harshexit()
 import threading        # for Lock()
 import thread           # to catch thread.error
+import ctypes           # for mmap to call out to NaCl
 from exception_hierarchy import *
+
+libc = ctypes.CDLL(None) # imports libc so that mmap syscall can be performed using ctypes
 
 # threading in python2.7 needs hasattr. It needs to be allowed explicitly.
 threading.hasattr = hasattr
@@ -222,6 +225,20 @@ def log_stdout(*args):
   for arg in args:
     sys.stdout.write(arg)
   sys.stdout.flush()
+
+def repy_mmap(addr, leng, prot, flags, fildes, off):
+    addr = ctypes.c_void_p(addr)
+    leng = ctypes.c_size_t(leng)
+    prot = ctypes.c_int(prot)
+    flags = ctypes.c_int(flags)
+    filedes = ctypes.c_int(filedes)
+    off = ctypes.c_long(off)
+    return libc.syscall(9, addr, leng, prot, flags, filedes, off).value #NOTE: explicit syscall number only in x86_64, unportable
+
+def repy_munmap(addr, leng):
+    addr = ctypes.c_void_p(addr)
+    leng = ctypes.c_size_t(leng)
+    return libc.syscall(11, addr, leng).value #NOTE: explicit syscall number only in x86_64, unportable
 
 
 
