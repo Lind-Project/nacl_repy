@@ -2444,8 +2444,48 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
 
     return 0
-  
+
   FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+
+  def mmap_syscall(addr, leng, prot, flags, fildes, off):
+    """
+    http://linux.die.net/man/2/mmap
+    """
+    # lock to prevent things from changing while we look this up...
+    filesystemmetadatalock.acquire(True)
+
+    # ... but always release it...
+    try:
+      truefileno = fileobjecttable[filedescriptortable[filedes]["inode"]].fileno()
+      1
+    except:
+      1
+    finally:
+      filesystemmetadatalock.release()
+    filesystemmetadatalock.acquire(True)
+    return repy_mmap(addr, leng, prot, flags, fildes, off)
+
+  FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
+   
+  def munmap_syscall(addr, leng):
+    """
+    http://linux.die.net/man/2/munmap
+    """
+    # lock to prevent things from changing while we look this up...
+    filesystemmetadatalock.acquire(True)
+
+    # ... but always release it...
+    try:
+      1
+    except:
+      1
+    finally:
+      filesystemmetadatalock.release()
+    filesystemmetadatalock.acquire(True)
+    return repy_munmap(addr, leng)
+
+  FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
+  
 
 
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
