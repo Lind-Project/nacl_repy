@@ -2456,14 +2456,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      truefileno = fileobjecttable[filedescriptortable[filedes]["inode"]].fileno()
-      1
-    except:
-      1
+      return repy_mmap(addr, leng, prot, flags, fildes, off)
+    except Exception as e: 
+      print("Error in safeposix mmap syscall")
+      print(e)
     finally:
       filesystemmetadatalock.release()
-    filesystemmetadatalock.acquire(True)
-    return repy_mmap(addr, leng, prot, flags, fildes, off)
 
   FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
    
@@ -2476,13 +2474,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      1
-    except:
-      1
+      return repy_mmap(addr, 
+        leng, 
+        PROT_NONE,
+        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,
+        -1,
+        0)
+    except Exception as e: 
+      print("Error in safeposix munmap syscall")
+      print(e)
     finally:
       filesystemmetadatalock.release()
-    filesystemmetadatalock.acquire(True)
-    return repy_munmap(addr, leng)
 
   FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
   

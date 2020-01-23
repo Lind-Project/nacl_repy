@@ -687,7 +687,7 @@ USERCONTEXT_WRAPPER_INFO = {
        'return' : None},
   'repy_mmap' :
       {'func' : emulmisc.repy_mmap,
-       'args' : [Int(), Int(), Int(), Int(), Int(), Int()],
+       'args' : [Int(), Int(), Int(), Int(), Int(min=float('-inf')), Int(min=float('-inf'))],
        'return' : Int()},
   'repy_munmap' :
       {'func' : emulmisc.repy_munmap,
