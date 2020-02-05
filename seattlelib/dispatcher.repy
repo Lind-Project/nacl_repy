@@ -32,7 +32,8 @@ def setup_dispatcher(comp_num):
     26:lind_safe_fs_statfs,
     28:lind_safe_fs_fcntl,
 
-    31:lind_sys_getpid,
+    30:lind_safe_sys_getppid,
+    31:lind_safe_sys_getpid,
       
     32:lind_safe_net_socket,
     33:lind_safe_net_bind,
@@ -99,6 +100,7 @@ def setup_dispatcher(comp_num):
     26:lind_fs_statfs,
     28:lind_fs_fcntl,
 
+    30:lind_sys_getppid,
     31:lind_sys_getpid,
       
     32:lind_net_socket,
