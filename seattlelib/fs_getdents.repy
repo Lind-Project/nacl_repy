@@ -35,13 +35,13 @@ def pack_dirent(dir_tuple, my_start):
         d_type = dir_tuple[2]
     else:
         d_type = DT_UNKNOWN  # TODO: set this
-    
-    # the format of the dirent struct is:
+
+# the format of the dirent struct is:
     #    unsigned long long d_ino
     #    signed long long offset
     #    unsigned short reclen
     #    char[] d_name
-	#    char pad
+    #    char pad
     #    char type
 
     # We want to double word align this because C does so for the dirent structure.  This is meant to make any code that assumes this is true work
@@ -53,15 +53,15 @@ def pack_dirent(dir_tuple, my_start):
     nopaddirent_len = struct_calcsize(formatwopadding)
     # Calculate padding to double word align it...
     paddingsize = 8-(nopaddirent_len % 8)
-     
+
     # Now actually build the format string...
     format = "<Q<q<H" + str(len(d_name)) + "s"+str(paddingsize)+"s<B"
     actual_dirent_len = struct_calcsize(format)
     d_off = my_start + actual_dirent_len
-        
+
     # and then pack things in adding NULL's to fill the padding
     dirent = struct_pack(format, d_ino, d_off, actual_dirent_len, d_name, "\0"*paddingsize, d_type)
-    
+
     return (d_off, dirent)
 
 
@@ -80,7 +80,7 @@ def lind_fs_getdents(args):
 
     #max bytes
     count = args[1]
-	    
+
     try:
         py_result = get_fs_call(args[-1],"getdents_syscall")(handle, count)
 
@@ -96,7 +96,7 @@ def lind_fs_getdents(args):
         (off_delta, str_ent) = pack_dirent(ent, offset_cur)
         offset_cur = off_delta
         final_structs.append(str_ent)
-	
+
     result = ''.join(final_structs)
 
     return SuccessResponseBuilder("fs_getdents", len(result), result)
@@ -116,10 +116,9 @@ def lind_safe_fs_getdents(args):
 
     check_valid_fd_handle(handle)
     assert isinstance(count, int)
-	
-	 
+
     result = lind_fs_getdents(args)
-	
+
     if result.is_error == False:
         #assert(len(result.data) <= TX_BUF_MAX), \
         #    "returning data larger than transmission buffer."
@@ -127,3 +126,4 @@ def lind_safe_fs_getdents(args):
         assert(len(result.data) <= count), \
                "not observing byte count parameter."
     return result
+
