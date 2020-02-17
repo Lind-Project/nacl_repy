@@ -2,12 +2,12 @@
 
 Handlers for the getdents system call.
 
-Called from dispatcher.Repy
+Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
 Getdents handler pulls out the arguments, does any mandatory checking
-then calls the Repy POSIX library getdents system call.  Then packs
+then calls the repy SafePOSIX library getdents system call.  Then packs
 the result back up.
 
 """
@@ -15,11 +15,11 @@ the result back up.
 
 def pack_dirent(dir_tuple, my_start):
     """
-    Given the Pyhton tuple produced by the Repy POSIX library, build the
+    Given the python tuple produced by the repy SafePOSIX library, build the
     corresponding C struct.  This is tricky because it has offsets from
     the previous entries.
 
-    See man 2 getdnents for the struct format is wrong. See below
+    See man 2 getdents for the struct format is wrong. See below
     format obtained by testing
 
     dir_tuple is the tuple with the info (inode, name)
@@ -51,7 +51,7 @@ def pack_dirent(dir_tuple, my_start):
     formatwopadding = "<Q<q<H" + str(len(d_name)) + "s<B"
 
     nopaddirent_len = struct_calcsize(formatwopadding)
-    # This will double word align it...
+    # Calculate padding to double word align it...
     paddingsize = 8-(nopaddirent_len % 8)
      
     # Now actually build the format string...
@@ -59,7 +59,7 @@ def pack_dirent(dir_tuple, my_start):
     actual_dirent_len = struct_calcsize(format)
     d_off = my_start + actual_dirent_len
         
-    # and then pack things in...
+    # and then pack things in adding NULL's to fill the padding
     dirent = struct_pack(format, d_ino, d_off, actual_dirent_len, d_name, "\0"*paddingsize, d_type)
     
     return (d_off, dirent)
@@ -68,7 +68,7 @@ def pack_dirent(dir_tuple, my_start):
 def lind_fs_getdents(args):
     """ getdents calls are dispatched to this function.
 
-    See dispatcher.Repy for details.
+    See dispatcher.repy for details.
 
     Given the file handle and max_bytes, return
     up to the dirents that fit in that space.
@@ -105,7 +105,7 @@ def lind_fs_getdents(args):
 def lind_safe_fs_getdents(args):
     """ Safely wrap the getdents call.
 
-    See dispatcher. Repy for details.
+    See dispatcher.repy for details.
 
     Check the handle and count for consistency,
     then call the real getdents dispatcher.
