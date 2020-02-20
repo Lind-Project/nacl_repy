@@ -166,6 +166,8 @@ class SyscallError(Exception):
 class UnimplementedError(Exception):
   """A call was called with arguments that are not fully implemented"""
 
+# A deepcopy implementation without importing the copy library
+# Clones and calls itself recursively on allowed mutable data types
 def repy_deepcopy(obj):
   o = type(obj)
   if o is dict: # Keys in dicts must be immutable
@@ -182,7 +184,7 @@ def repy_deepcopy(obj):
     return obj.copy()
   else:
     return obj #If obj is not one of the above three data types, it's immutable
-  # or a user defined class which we don't know how to deal with
+  # or a user defined class which we don't know how to deal with (and may want to not clone)
   # Other mutable types (namely arrays) are banned by repy
     
 
@@ -960,10 +962,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
             del filesystemmetadata['inodetable'][thisinode]
         else:
             filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
-
-        # TODO: I also would remove the file.   However, I need to do special
-        # things if it's open, like wait until it is closed to remove it.
-        # This should be relatively possible now, a much more forseeable TODO
 
       return 0
 
