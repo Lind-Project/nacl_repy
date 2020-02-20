@@ -7,7 +7,7 @@ Called from dispatcher.repy
 Safe version checks all parameters, then calls real handler.
 
 Getdents handler pulls out the arguments, does any mandatory checking
-then calls the repy posix library getdents system call.  Then packs
+then calls the repy SafePOSIX library getdents system call.  Then packs
 the result back up.
 
 """
@@ -15,11 +15,11 @@ the result back up.
 
 def pack_dirent(dir_tuple, my_start):
     """
-    Given the python tuple produced by the repy posix library, build the
-    corrosponding C struct.  This is tricky because it has offsets from
+    Given the python tuple produced by the repy SafePOSIX library, build the
+    corresponding C struct.  This is tricky because it has offsets from
     the previous entries.
 
-    See man 2 getdnents for the struct format is wrong. See below
+    See man 2 getdents for the struct format is wrong. See below
     format obtained by testing
 
     dir_tuple is the tuple with the info (inode, name)
@@ -36,17 +36,32 @@ def pack_dirent(dir_tuple, my_start):
     else:
         d_type = DT_UNKNOWN  # TODO: set this
 
-    # the format of the dirent struct is:
+# the format of the dirent struct is:
     #    unsigned long long d_ino
     #    signed long long offset
     #    unsigned short reclen
-    #    char type
     #    char[] d_name
+    #    char pad
+    #    char type
 
-    format = "<Q<q<H<B" + str(len(d_name)) + "s<B"
-    dirent_len = struct_calcsize(format)
-    d_off = my_start + dirent_len
-    dirent = struct_pack(format, d_ino, d_off, dirent_len, d_type, d_name, 0)
+    # We want to double word align this because C does so for the dirent structure.  This is meant to make any code that assumes this is true work
+    # better, even though we are justified in not doing so by the specification.
+
+    # compute the size w/o the padding byte first
+    formatwopadding = "<Q<q<H" + str(len(d_name)) + "s<B"
+
+    nopaddirent_len = struct_calcsize(formatwopadding)
+    # Calculate padding to double word align it...
+    paddingsize = 8-(nopaddirent_len % 8)
+
+    # Now actually build the format string...
+    format = "<Q<q<H" + str(len(d_name)) + "s"+str(paddingsize)+"s<B"
+    actual_dirent_len = struct_calcsize(format)
+    d_off = my_start + actual_dirent_len
+
+    # and then pack things in adding NULL's to fill the padding
+    dirent = struct_pack(format, d_ino, d_off, actual_dirent_len, d_name, "\0"*paddingsize, d_type)
+
     return (d_off, dirent)
 
 
@@ -68,8 +83,8 @@ def lind_fs_getdents(args):
 
     try:
         py_result = get_fs_call(args[-1],"getdents_syscall")(handle, count)
+
     except SyscallError, e:
-        print "ERROR!", e
         return ErrorResponseBuilder("fs_getdents", e[1], e[2])
 
     if not py_result:
@@ -83,6 +98,7 @@ def lind_fs_getdents(args):
         final_structs.append(str_ent)
 
     result = ''.join(final_structs)
+
     return SuccessResponseBuilder("fs_getdents", len(result), result)
 
 
@@ -110,3 +126,4 @@ def lind_safe_fs_getdents(args):
         assert(len(result.data) <= count), \
                "not observing byte count parameter."
     return result
+
