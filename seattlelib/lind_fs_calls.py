@@ -2394,7 +2394,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
       pipefds = []
       
-      # get an fd for each end of the pipe and set flags accordingly, append each to pipefds list
+      # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
+      # append each to pipefds list
 
       for flag in [O_RDONLY, O_WRONLY]:
         try:
@@ -2413,6 +2414,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       
   FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
     
+
+  # pipe2 currently not implemented
+
   def pipe2_syscall(flags):
     """
     http://linux.die.net/man/2/pipe2
@@ -2434,6 +2438,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # NOTE: this is only the part of fork that forks the file table. Most of fork
   # is implemented in parts of NaCl
+
   def fork_syscall(child_cageid):
     masterfiledescriptortable[child_cageid] = \
       repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
