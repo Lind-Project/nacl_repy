@@ -143,6 +143,9 @@ def dispatch_syscall(call, args):
   with the provided arguments.
   """
 
+  print "syscall number " + str(call)
+  print "cageid " + str(args[-1])
+
   if MODE=="safe":
     assert isinstance(args[-1], int), "the cageid should be an int"
     # Cageid can be -1 but only in direct syscalls that don't go through the
@@ -156,9 +159,6 @@ def dispatch_syscall(call, args):
   except KeyError,e:
     log("[ERROR][dispatch] Failed to look up " + str(call) +" with error "+ str(e) + "\n")
     syscall_response =  ErrorResponseBuilder("dispatcher", "ENOSYS", "The system call is not in the system call table. Call="+str(call))
-
-  print "syscall number " + str(call)
-  print "cageid " + str(args[-1])
 
   else:
     syscall_response = call_fun(args)
