@@ -1740,9 +1740,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if newfd == oldfd:
       return newfd
 
+    print "not equal"
+
     # okay, they are different.   If the new fd exists, close it.
     if newfd in filedescriptortable:
       # should not result in an error.   This only occurs on a bad fd
+      print "closing newfd " + str(newfd)
       _close_helper(newfd)
 
 
@@ -1750,7 +1753,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # NOTE: I am not making a copy here!!!   They intentionally both
     # refer to the same instance because manipulating the position, etc.
     # impacts both.
+
+    print "----------before-------------"
+    print filedescriptortable
+
     filedescriptortable[newfd] = filedescriptortable[oldfd]
+
+    print "---------after--------------"
+    print filedescriptortable
 
     return newfd
 
