@@ -1461,6 +1461,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
 
+    print "in write, fd " + str(fd)
+
     # check the fd
     if fd not in filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
@@ -1468,6 +1470,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # if we're going to stdout/err, lets get it over with and print    
     try:
       if filedescriptortable[fd]['inode'] in [1,2]:
+        print "loging to stdout"
+        print filedescriptortable[fd]['inode']
+        print filedescriptortable
+        print "-------"
         log_stdout(data)
         return len(data)
     except KeyError:
