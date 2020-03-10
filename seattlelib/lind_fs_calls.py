@@ -1486,6 +1486,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd,CONST_CAGEID):
+        print "were writing to pipe with fd " + str(fd)
+        print data
+        print "------------------------------------"
         return _write_to_pipe(fd, data)
 
       # get the inode so I can update the size (if needed) and check the type
