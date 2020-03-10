@@ -157,6 +157,9 @@ def dispatch_syscall(call, args):
     log("[ERROR][dispatch] Failed to look up " + str(call) +" with error "+ str(e) + "\n")
     syscall_response =  ErrorResponseBuilder("dispatcher", "ENOSYS", "The system call is not in the system call table. Call="+str(call))
 
+  print "syscall number " + str(call)
+  print "cageid " + str(args[-1])
+
   else:
     syscall_response = call_fun(args)
 
