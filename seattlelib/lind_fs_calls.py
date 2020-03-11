@@ -1377,9 +1377,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
+
+    print "in write, fd " + str(fd)
+
+    print "----fdtable-----"
+    print filedescriptortable
+    print "-------"
+
  
     try:
       if filedescriptortable[fd]["inode"] == 0:
+        print "found stdin returning n/a"
         return ""
     except KeyError:
       pass
@@ -1400,6 +1408,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # lets check if it's a pipe first, and if so read from that
       if IS_PIPE_DESC(fd,CONST_CAGEID):
+        print "we got a pipe on read! fd " + str(fd)
         return _read_from_pipe(fd, count)
 
       # get the inode so I can and check the mode (type)
