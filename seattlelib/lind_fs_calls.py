@@ -1746,6 +1746,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper that allows this to be used by dup
   def _dup2_helper(oldfd,newfd):
 
+    print "in dup2 helper"
+
     # if the new file descriptor is too low or too high
     # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
     #      The Lind code may pass me descriptors less than STARTINGFD
@@ -1766,10 +1768,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       print "closing newfd " + str(newfd)
 
       try:
-        print str(fd)
-        print filedescriptortable[fd]
-        print "inode" + str(filedescriptortable[fd]['inode'])
-        if filedescriptortable[fd]['inode'] not in [0,1,2]:
+        print str(newfd)
+        print filedescriptortable[newfd]
+        print "inode" + str(filedescriptortable[newfd]['inode'])
+        if filedescriptortable[newfd]['inode'] not in [0,1,2]:
           _close_helper(newfd)
       except KeyError:
         pass
