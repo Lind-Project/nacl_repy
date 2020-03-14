@@ -1378,7 +1378,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
 
-    print "in write, fd " + str(fd)
+    print "in read, fd " + str(fd)
 
     print "----fdtable-----"
     print filedescriptortable
