@@ -1766,6 +1766,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       print "closing newfd " + str(newfd)
 
       try:
+        print str(fd)
+        print filedescriptortable[fd]
         print "inode" + str(filedescriptortable[fd]['inode'])
         if filedescriptortable[fd]['inode'] not in [0,1,2]:
           _close_helper(newfd)
