@@ -1017,13 +1017,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # TODO: I don't handle socket objects.   I should return something like:
     # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
     # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
-
+    
+    print "fstat fd " + str(fd)
     # is the file descriptor valid?
     if fd not in filedescriptortable:
       raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
 
     # if so, return the information...
     inode = filedescriptortable[fd]['inode']
+
+    print "inode + " str(inode)
+
     if fd in [0,1,2] or \
       (filedescriptortable[fd] is filedescriptortable[0] or \
        filedescriptortable[fd] is filedescriptortable[1] or \
@@ -1046,6 +1050,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
             0,
             0,                                     # ctime ns
           )
+
+    print "after inode check"
+    
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
       return _istat_helper_chr_file(inode)
     return _istat_helper(inode)
