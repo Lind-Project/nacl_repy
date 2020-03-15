@@ -1029,19 +1029,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     print "before inode"
 
     # if so, return the information...
-    inode = filedescriptortable[fd]['inode']
+
+    if IS_PIPE_DESC(fd,CONST_CAGEID): inode = PIPE_INODE
+    else :inode = filedescriptortable[fd]['inode']
 
     print "inode " 
     print inode
 
-    if fd in [0,1,2] or \
-      (filedescriptortable[fd] is filedescriptortable[0] or \
-       filedescriptortable[fd] is filedescriptortable[1] or \
-       filedescriptortable[fd] is filedescriptortable[2] \
-      ):
+    if inode in [0,1,2, PIPE_INODE]:
       return (filesystemmetadata['dev_id'],          # st_dev
             inode,                                 # inode
-              49590, #mode
+            49590, # mode this is all of the R + W flags for mode
             1,  # links
             DEFAULT_UID, # uid
             DEFAULT_GID, #gid

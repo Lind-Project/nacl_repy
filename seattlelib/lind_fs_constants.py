@@ -117,6 +117,9 @@ STARTINGFD = 0
 STARTING_PIPE = 0
 MAX_PIPE = MAX_FD
 
+# inode used for pipe fstat
+PIPE_INODE = 0xdeadbeef
+
 
 
 # for dirents...
