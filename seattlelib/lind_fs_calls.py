@@ -1771,9 +1771,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # okay, they are different.   If the new fd exists, close it, but only if its not a std descriptor
     if newfd in filedescriptortable:
+      if filedescriptortable[newfd]['inode'] not in [0,1,2]:
+        _close_helper(newfd)
+
+
       # should not result in an error.   This only occurs on a bad fd
       print "closing newfd " + str(newfd)
-      _close_helper(newfd)
      
 
 
