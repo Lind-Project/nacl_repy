@@ -1031,7 +1031,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # if so, return the information...
 
     if IS_PIPE_DESC(fd,CONST_CAGEID): inode = PIPE_INODE
-    else :inode = filedescriptortable[fd]['inode']
+    else: inode = filedescriptortable[fd]['inode']
 
     print "inode " 
     print inode
