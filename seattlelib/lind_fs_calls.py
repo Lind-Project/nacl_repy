@@ -1659,11 +1659,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       _epoll_object_deallocator(fd)
       return 0
 
+    print "closing fd " + str(fd)
+
     # get the inode for the filedescriptor
     inode = filedescriptortable[fd]['inode']
 
+    print inode
+
     # If it's not a regular file, we have nothing to close...
     if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+      print "non reg"
 
       # double check that this isn't in the fileobjecttable
       if inode in fileobjecttable:
@@ -1671,6 +1676,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # and return success
       return 0
+
+    print "reg file"
 
     # so it's a regular file.
     
