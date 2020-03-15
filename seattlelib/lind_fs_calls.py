@@ -1019,9 +1019,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
     
     print "fstat fd " + str(fd)
+
+    print filedescriptortable
+
     # is the file descriptor valid?
     if fd not in filedescriptortable:
       raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
+
+    print "before inode"
 
     # if so, return the information...
     inode = filedescriptortable[fd]['inode']
