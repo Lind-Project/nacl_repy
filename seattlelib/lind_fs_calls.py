@@ -1026,7 +1026,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # if so, return the information...
     inode = filedescriptortable[fd]['inode']
 
-    print "inode + " str(inode)
+    print "inode " 
+    print inode
 
     if fd in [0,1,2] or \
       (filedescriptortable[fd] is filedescriptortable[0] or \
@@ -1052,7 +1053,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           )
 
     print "after inode check"
-    
+
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
       return _istat_helper_chr_file(inode)
     return _istat_helper(inode)
