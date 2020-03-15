@@ -1766,17 +1766,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if newfd in filedescriptortable:
       # should not result in an error.   This only occurs on a bad fd
       print "closing newfd " + str(newfd)
+      _close_helper(newfd)
+     
 
-      try:
-        print str(newfd)
-        print filedescriptortable[newfd]
-        print "inode" + str(filedescriptortable[newfd]['inode'])
-        if filedescriptortable[newfd]['inode'] not in [0,1,2]:
-          _close_helper(newfd)
-      except KeyError:
-        pass
-
-      print "this makes no sense"
 
     print "post close"
 
