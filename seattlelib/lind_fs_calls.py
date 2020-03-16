@@ -1222,7 +1222,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       print "file exists and lets do stuff"
       inode = fastinodelookuptable[truepath]
 
-      print "inode is " + inode
+      print "inode is " + str(inode)
 
 
       # get the next fd so we can use it...
