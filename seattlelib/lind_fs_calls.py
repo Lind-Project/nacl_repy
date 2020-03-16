@@ -110,7 +110,7 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
-ROOTDIRECTORYINODE = 1
+ROOTDIRECTORYINODE = 3
 
 METADATAFILENAME = 'lind.metadata'
 
@@ -261,7 +261,7 @@ def _blank_fs_init():
       removefile(filename)
 
   # Now setup blank data structures
-  filesystemmetadata['nextinode'] = 3
+  filesystemmetadata['nextinode'] = 4
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0,
