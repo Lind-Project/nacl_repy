@@ -1026,17 +1026,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if fd not in filedescriptortable:
       raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
 
-    print "before inode"
-
     # if so, return the information...
-
-    if IS_PIPE_DESC(fd,CONST_CAGEID): inode = PIPE_INODE
-    else: inode = filedescriptortable[fd]['inode']
+    inode = filedescriptortable[fd]['inode']
 
     print "inode " 
     print inode
 
-    if inode in [0,1,2, PIPE_INODE]:
+    if fd in [0,1,2] or \
+      (filedescriptortable[fd] is filedescriptortable[0] or \
+       filedescriptortable[fd] is filedescriptortable[1] or \
+       filedescriptortable[fd] is filedescriptortable[2] \
+      ):
       return (filesystemmetadata['dev_id'],          # st_dev
             inode,                                 # inode
             49590, # mode this is all of the R + W flags for mode
@@ -1056,6 +1056,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           )
 
     print "after inode check"
+
+    print filedescriptortable
 
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
       return _istat_helper_chr_file(inode)
@@ -1239,6 +1241,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # Add the entry to the table!
 
       filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
+
+      print "post open"
+      print thisfd
+      print filedescriptortable
 
       # Done!   Let's return the file descriptor.
       return thisfd
