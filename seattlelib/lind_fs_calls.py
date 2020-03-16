@@ -1114,6 +1114,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # with O_CREAT flags...
     filesystemmetadatalock.acquire(True)
 
+    print "opening" + str(path)
+
     # ... but always release it...
     try:
       if path == '':
@@ -1121,8 +1123,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       truepath = normpath(path, CONST_CAGEID)
 
+      print "true path" + str(truepath)
+
       # is the file missing?
       if truepath not in fastinodelookuptable:
+
+        print "not in fastinode"
 
         # did they use O_CREAT?
         if not O_CREAT & flags:
@@ -1180,6 +1186,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # if the file did exist, were we told to create with exclusion?
       else:
+
+        print "file exists"
         # did they use O_CREAT and O_EXCL?
         if O_CREAT & flags and O_EXCL & flags:
           raise SyscallError("open_syscall","EEXIST","The file exists.")
@@ -1187,6 +1195,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         # This file should be removed.   If O_RDONLY is set, the behavior
         # is undefined, so this is okay, I guess...
         if O_TRUNC & flags:
+
+          print "o trunc"
           inode = fastinodelookuptable[truepath]
 
           # if it exists, close the existing file object so I can remove it...
@@ -1209,7 +1219,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # At this point, the file will exist...
 
       # Let's find the inode
+      print "file exists and lets do stuff"
       inode = fastinodelookuptable[truepath]
+
+      print "inode is " + inode
 
 
       # get the next fd so we can use it...
