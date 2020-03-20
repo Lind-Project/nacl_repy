@@ -1377,6 +1377,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         byte_read = pipetable[pipenumber]['data'].pop(0)
         data += byte_read
         num_bytes_read += 1
+        print "read " + data
 
       except IndexError, e:
         continue
@@ -1464,6 +1465,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # append data to pipe list byte by byte
     for byte in data:
       pipetable[pipenumber]['data'].append(byte)
+
+    print "wrote to pipe" + str(pipenumber)
+    print pipetable[pipenumber]['data']
 
     # release our write lock     
     pipetable[pipenumber]['writelock'].release()
@@ -2421,6 +2425,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       pipenumber = get_next_pipe()
       pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
       pipefds = []
+
+      print "created pipe"
+      print pipetable[pipenumber]
       
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
       # append each to pipefds list
