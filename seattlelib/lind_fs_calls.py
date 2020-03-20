@@ -196,9 +196,9 @@ def _load_lower_handle_stubs(cageid):
   # we're going to give all streams an inode of 2 since lind is emulating a single "terminal"
 
   masterfiledescriptortable[cageid] = {}
-  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
-  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
-  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
+  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
+  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
+  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
 
 
 def load_fs(cageid, name=METADATAFILENAME):
@@ -265,7 +265,7 @@ def _blank_fs_init():
 
   # Now setup blank data structures
   # next inode starts after root and streams
-  filesystemmetadata['nextinode'] = 3
+  filesystemmetadata['nextinode'] = STREAMINODE + 1
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0,
@@ -1039,7 +1039,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     print "inode is " + str(inode)
 
     # this is a stream, lets mock it
-    if inode == 1:
+    if inode == STREAMINODE:
       return _stat_alt_helper(inode)
 
 
@@ -1300,7 +1300,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("lseek_syscall","ESPIPE","Invalid seek.")
 
     # if we are any of the odd handles(stdin, stdout, stderr), we cant seek, so just report we are at 0
-    if filedescriptortable[fd]['inode'] == 2:
+    if filedescriptortable[fd]['inode'] == STREAMINODE:
       return 0
     # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
@@ -1649,7 +1649,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # don't close streams, which have an inode of 1
     try:
-      if filedescriptortable[fd]['inode'] == 1:
+      if filedescriptortable[fd]['inode'] == STREAMINODE:
         return 0
     except KeyError:
       pass
