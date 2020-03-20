@@ -1024,7 +1024,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
 
     # if so, return the information...
-    if IS_PIPE_DESC(fd):
+    if IS_PIPE_DESC(fd, CONST_CAGEID):
       # mocking pipe inode number to 0xfeef0000
       return _stat_alt_helper(0xfeef0000)
     
