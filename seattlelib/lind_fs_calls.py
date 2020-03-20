@@ -1657,12 +1657,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # without changing to re-entrant locks
   def _close_helper(fd):
 
-    # don't close streams, which have an inode of 1
-    try:
-      if filedescriptortable[fd]['inode'] == STREAMINODE:
-        return 0
-    except KeyError:
-      pass
+
 
     # if we are a socket, we dont change disk metadata
     if IS_SOCK_DESC(fd,CONST_CAGEID):
@@ -1676,6 +1671,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if IS_EPOLL_FD(fd,CONST_CAGEID):
       _epoll_object_deallocator(fd)
       return 0
+
+    # don't close streams, which have an inode of 1
+    try:
+      if filedescriptortable[fd]['inode'] == STREAMINODE:
+        return 0
+    except KeyError:
+      pass
 
     # get the inode for the filedescriptor
     inode = filedescriptortable[fd]['inode']
