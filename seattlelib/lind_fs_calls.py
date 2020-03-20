@@ -111,6 +111,7 @@
 # This should not be 0 because this is considered to be deleted
 
 ROOTDIRECTORYINODE = 1
+STREAMINODE = 2
 
 METADATAFILENAME = 'lind.metadata'
 
@@ -192,10 +193,12 @@ def repy_deepcopy(obj):
 def _load_lower_handle_stubs(cageid):
   """The lower file hadles need stubs in the descriptor talbe."""
 
+  # we're going to give all streams an inode of 2 since lind is emulating a single "terminal"
+
   masterfiledescriptortable[cageid] = {}
-  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
-  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
-  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
+  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
+  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
+  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
 
 
 def load_fs(cageid, name=METADATAFILENAME):
@@ -262,7 +265,7 @@ def _blank_fs_init():
 
   # Now setup blank data structures
   # next inode starts after root and streams
-  filesystemmetadata['nextinode'] = 2
+  filesystemmetadata['nextinode'] = 3
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0,
@@ -1019,6 +1022,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
     # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
 
+    print "fstat: fd is " + str(fd)
+
     # is the file descriptor valid?
     if fd not in filedescriptortable:
       raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
@@ -1026,9 +1031,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # if so, return the information...
     if IS_PIPE_DESC(fd, CONST_CAGEID):
       # mocking pipe inode number to 0xfeef0000
+      print "is pipe"
       return _stat_alt_helper(0xfeef0000)
     
     inode = filedescriptortable[fd]['inode']
+
+    print "inode is " + str(inode)
 
     # this is a stream, lets mock it
     if inode == 1:
@@ -1292,7 +1300,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("lseek_syscall","ESPIPE","Invalid seek.")
 
     # if we are any of the odd handles(stdin, stdout, stderr), we cant seek, so just report we are at 0
-    if filedescriptortable[fd]['inode'] == 1:
+    if filedescriptortable[fd]['inode'] == 2:
       return 0
     # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
