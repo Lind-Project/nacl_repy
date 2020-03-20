@@ -1032,7 +1032,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # this is a stream, lets mock it
     if inode == 1:
-      return (_stat_alt_helper(inode)
+      return _stat_alt_helper(inode)
 
 
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
