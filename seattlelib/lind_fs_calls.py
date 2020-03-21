@@ -1645,13 +1645,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # and look up how many read ends and write ends are open
     read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
     write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
+    print "read refs" + str(read_references)
+    print "write refs" + str(write_references)
 
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
+      print "setting eof"
       pipetable[pipenumber]['eof'] = True
 
     # if we're closing the last end, we can delete the pipe
     if (read_references + write_references) == 1:
+      print "Deleting pipe"
       del pipetable[pipenumber]
 
 
@@ -1665,6 +1669,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _close_helper(fd):
 
 
+    # don't close streams, which have an inode of 1
+    try:
+      if filedescriptortable[fd]['inode'] == STREAMINODE:
+        return 0
+    except KeyError:
+      pass
 
     # if we are a socket, we dont change disk metadata
     if IS_SOCK_DESC(fd,CONST_CAGEID):
@@ -1679,12 +1689,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       _epoll_object_deallocator(fd)
       return 0
 
-    # don't close streams, which have an inode of 1
-    try:
-      if filedescriptortable[fd]['inode'] == STREAMINODE:
-        return 0
-    except KeyError:
-      pass
 
     # get the inode for the filedescriptor
     inode = filedescriptortable[fd]['inode']
