@@ -2495,6 +2495,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
 
     return 0
+  
+  FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
 
   # Exec will do the same copying as fork, 
   # but we want to get rid of all the information from the old cage
@@ -2524,7 +2526,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     print "-------------------------------------------"
   
-  FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+  FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
 
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
