@@ -2500,6 +2500,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # but we want to get rid of all the information from the old cage
   
   def exec_syscall(child_cageid):
+    print "reached exec syscall"
 
     print "MFDT before"
 
