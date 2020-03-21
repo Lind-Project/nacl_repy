@@ -203,6 +203,8 @@ include fs_pipe.repy
 
 include fs_fork.repy
 
+include fs_exec.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy
