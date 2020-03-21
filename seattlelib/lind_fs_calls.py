@@ -2501,6 +2501,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
   def exec_syscall(child_cageid):
 
+    print "MFDT before"
+
+    print masterfiledescriptortable
+
+    print "-------------------------------------------"
+
+
     masterfiledescriptortable[child_cageid] = \
       repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
     
@@ -2509,6 +2516,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     del masterfiledescriptortable[CONST_CAGEID]
     del master_fs_calls_context[CONST_CAGEID]
+
+    print "MFDT after"
+
+    print masterfiledescriptortable
+
+    print "-------------------------------------------"
   
   FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
 
