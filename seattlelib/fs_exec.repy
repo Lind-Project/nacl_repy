@@ -12,7 +12,6 @@ the result back up.
 
 """
 def lind_fs_exec(args):
-  print "in exec"
   """ exec calls are dispatched to this function.
 
   See dispatcher.repy for details.
@@ -31,7 +30,6 @@ def lind_fs_exec(args):
   return SuccessResponseBuilder("fs_exec", result)
 
 def lind_safe_fs_exec(args):
-  print "in safe exec"
   """ Safely wrap the exec call.
 
   See dispatcher.repy for details.
