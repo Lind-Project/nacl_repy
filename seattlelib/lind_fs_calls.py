@@ -484,10 +484,6 @@ def IS_PIPE_DESC(fd,cageid):
 
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
-  filesystemmetadatalock.acquire(True)
-  filesystemmetadatalock.release()
-
-
   FS_CALL_DICTIONARY = {}
 
   if CONST_CAGEID not in masterfiledescriptortable:
@@ -1718,10 +1714,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
 
+
+    # in an abundance of caution, lock...
+    filesystemmetadatalock.acquire(True)
+
     if fd not in filedescriptortable:
       raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
-
-  
 
     # Acquire the fd lock, if there is one.
     if 'lock' in filedescriptortable[fd]:
@@ -1738,6 +1736,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
+      filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
 
@@ -2465,21 +2464,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   def fork_syscall(child_cageid):
 
-    # in an abundance of caution, I'll grab a lock...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-
-    try:
-      masterfiledescriptortable[child_cageid] = \
-        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
-      
-      master_fs_calls_context[child_cageid] = \
-        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
-
-    finally:
-      filesystemmetadatalock.release()
-
+    masterfiledescriptortable[child_cageid] = \
+      repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+    
+    master_fs_calls_context[child_cageid] = \
+      repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
 
     return 0
   
@@ -2488,27 +2477,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # Exec will do the same copying as fork, 
   # but we want to get rid of all the information from the old cage
   
-  def exec_syscall(child_cageid):    
+  def exec_syscall(child_cageid):
+
+    masterfiledescriptortable[child_cageid] = \
+      repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
     
-    # in an abundance of caution, I'll grab a lock...
-    filesystemmetadatalock.acquire(True)
+    master_fs_calls_context[child_cageid] = \
+      repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
 
-    # ... but always release it...
-
-    try:
-
-      masterfiledescriptortable[child_cageid] = \
-        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
-      
-      master_fs_calls_context[child_cageid] = \
-        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
-
-      del masterfiledescriptortable[CONST_CAGEID]
-      del master_fs_calls_context[CONST_CAGEID]
-        
-    finally:
-      filesystemmetadatalock.release()
-
+    del masterfiledescriptortable[CONST_CAGEID]
+    del master_fs_calls_context[CONST_CAGEID]
   
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
