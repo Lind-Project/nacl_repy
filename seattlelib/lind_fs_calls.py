@@ -2464,11 +2464,18 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   def fork_syscall(child_cageid):
 
-    masterfiledescriptortable[child_cageid] = \
-      repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+    filesystemmetadatalock.acquire(True)
+
+    try:
+      masterfiledescriptortable[child_cageid] = \
+        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+      
+      master_fs_calls_context[child_cageid] = \
+        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
     
-    master_fs_calls_context[child_cageid] = \
-      repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+    finally:
+      filesystemmetadatalock.release()
+
 
     return 0
   
@@ -2478,15 +2485,21 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # but we want to get rid of all the information from the old cage
   
   def exec_syscall(child_cageid):
-
-    masterfiledescriptortable[child_cageid] = \
-      repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
     
-    master_fs_calls_context[child_cageid] = \
-      repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+    filesystemmetadatalock.acquire(True)
 
-    del masterfiledescriptortable[CONST_CAGEID]
-    del master_fs_calls_context[CONST_CAGEID]
+    try:
+      masterfiledescriptortable[child_cageid] = \
+        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+      
+      master_fs_calls_context[child_cageid] = \
+        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+
+      del masterfiledescriptortable[CONST_CAGEID]
+      del master_fs_calls_context[CONST_CAGEID]
+    
+    finally:
+      filesystemmetadatalock.release()
   
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
