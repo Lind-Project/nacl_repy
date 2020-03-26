@@ -1070,12 +1070,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _stat_alt_helper(inode):
     ret =  (filesystemmetadata['dev_id'],          # st_dev
             inode,                                 # inode
-              49590, #mode
-            1,  # links
-            DEFAULT_UID, # uid
-            DEFAULT_GID, #gid
+            49590,                                 # mode (these are all the R + W permissions)
+            1,                                     # links
+            DEFAULT_UID,                           # uid
+            DEFAULT_GID,                           #  gid
             0,                                     # st_rdev     ignored(?)
-            0, # size
+            0,                                     # size
             0,                                     # st_blksize  ignored(?)
             0,                                     # st_blocks   ignored(?)
             0,
