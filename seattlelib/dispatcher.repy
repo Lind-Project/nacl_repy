@@ -63,6 +63,7 @@ def setup_dispatcher(comp_num):
     66:lind_safe_fs_pipe,
     67:lind_safe_fs_pipe2,
     68:lind_safe_fs_fork,
+    69:lind_safe_fs_exec,
 
     105:lind_comp_cia,
     106:lind_comp_call,
@@ -127,6 +128,7 @@ def setup_dispatcher(comp_num):
     66:lind_fs_pipe,
     67:lind_fs_pipe2,
     68:lind_fs_fork,
+    69:lind_fs_exec,
 
     105:lind_comp_cia,
     106:lind_comp_call,

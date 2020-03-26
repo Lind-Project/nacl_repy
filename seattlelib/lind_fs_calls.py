@@ -111,6 +111,7 @@
 # This should not be 0 because this is considered to be deleted
 
 ROOTDIRECTORYINODE = 1
+STREAMINODE = 2
 
 METADATAFILENAME = 'lind.metadata'
 
@@ -192,10 +193,12 @@ def repy_deepcopy(obj):
 def _load_lower_handle_stubs(cageid):
   """The lower file hadles need stubs in the descriptor talbe."""
 
+  # we're going to give all streams an inode of 2 since lind is emulating a single "terminal"
+
   masterfiledescriptortable[cageid] = {}
-  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':0, 'lock':createlock(), 'flags':O_RDONLY, 'note':'this is a stdin'}
-  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':1, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stdout'}
-  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':2, 'lock':createlock(), 'flags':O_WRONLY, 'note':'this is a stderr'}
+  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
+  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
+  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
 
 
 def load_fs(cageid, name=METADATAFILENAME):
@@ -261,7 +264,8 @@ def _blank_fs_init():
       removefile(filename)
 
   # Now setup blank data structures
-  filesystemmetadata['nextinode'] = 3
+  # next inode starts after root and streams
+  filesystemmetadata['nextinode'] = STREAMINODE + 1
   filesystemmetadata['dev_id'] = 20
   filesystemmetadata['inodetable'] = {}
   filesystemmetadata['inodetable'][ROOTDIRECTORYINODE] = {'size':0,
@@ -1023,29 +1027,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
 
     # if so, return the information...
+    if IS_PIPE_DESC(fd, CONST_CAGEID):
+      # mocking pipe inode number to 0xfeef0000
+      return _stat_alt_helper(0xfeef0000)
+    
     inode = filedescriptortable[fd]['inode']
-    if fd in [0,1,2] or \
-      (filedescriptortable[fd] is filedescriptortable[0] or \
-       filedescriptortable[fd] is filedescriptortable[1] or \
-       filedescriptortable[fd] is filedescriptortable[2] \
-      ):
-      return (filesystemmetadata['dev_id'],          # st_dev
-            inode,                                 # inode
-              49590, #mode
-            1,  # links
-            DEFAULT_UID, # uid
-            DEFAULT_GID, #gid
-            0,                                     # st_rdev     ignored(?)
-            0, # size
-            0,                                     # st_blksize  ignored(?)
-            0,                                     # st_blocks   ignored(?)
-            0,
-            0,                                     # atime ns
-            0,
-            0,                                     # mtime ns
-            0,
-            0,                                     # ctime ns
-          )
+
+    # this is a stream, lets mock it
+    if inode == STREAMINODE:
+      return _stat_alt_helper(inode)
+
+
     if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
       return _istat_helper_chr_file(inode)
     return _istat_helper(inode)
@@ -1070,6 +1062,27 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
             filesystemmetadata['inodetable'][inode]['mtime'],
             0,                                     # mtime ns
             filesystemmetadata['inodetable'][inode]['ctime'],
+            0,                                     # ctime ns
+          )
+    return ret
+
+  # this is used to configure non-std stats such as pipes or std streams
+  def _stat_alt_helper(inode):
+    ret =  (filesystemmetadata['dev_id'],          # st_dev
+            inode,                                 # inode
+            49590,                                 # mode (these are all the R + W permissions)
+            1,                                     # links
+            DEFAULT_UID,                           # uid
+            DEFAULT_GID,                           #  gid
+            0,                                     # st_rdev     ignored(?)
+            0,                                     # size
+            0,                                     # st_blksize  ignored(?)
+            0,                                     # st_blocks   ignored(?)
+            0,
+            0,                                     # atime ns
+            0,
+            0,                                     # mtime ns
+            0,
             0,                                     # ctime ns
           )
     return ret
@@ -1282,7 +1295,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("lseek_syscall","ESPIPE","Invalid seek.")
 
     # if we are any of the odd handles(stdin, stdout, stderr), we cant seek, so just report we are at 0
-    if filedescriptortable[fd]['inode'] in [0,1,2]:
+    if filedescriptortable[fd]['inode'] == STREAMINODE:
       return 0
     # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
@@ -1377,9 +1390,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
- 
+
+
     try:
-      if filedescriptortable[fd]["inode"] == 0:
+      if filedescriptortable[fd]["stream"] == 0:
         return ""
     except KeyError:
       pass
@@ -1467,7 +1481,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
     # if we're going to stdout/err, lets get it over with and print    
     try:
-      if filedescriptortable[fd]['inode'] in [1,2]:
+      if filedescriptortable[fd]['stream'] in [1,2]:
         log_stdout(data)
         return len(data)
     except KeyError:
@@ -1611,7 +1625,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
     write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
 
-    # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send and EOF
+    # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
       pipetable[pipenumber]['eof'] = True
 
@@ -1628,6 +1642,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper that allows this to be called in other places (like dup2)
   # without changing to re-entrant locks
   def _close_helper(fd):
+
+
+    # don't close streams, which have an inode of 1
+    try:
+      if filedescriptortable[fd]['inode'] == STREAMINODE:
+        return 0
+    except KeyError:
+      pass
+
     # if we are a socket, we dont change disk metadata
     if IS_SOCK_DESC(fd,CONST_CAGEID):
       _cleanup_socket(fd)
@@ -1640,6 +1663,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if IS_EPOLL_FD(fd,CONST_CAGEID):
       _epoll_object_deallocator(fd)
       return 0
+
 
     # get the inode for the filedescriptor
     inode = filedescriptortable[fd]['inode']
@@ -1690,14 +1714,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
 
+
+    # in an abundance of caution, lock...
+    filesystemmetadatalock.acquire(True)
+
     if fd not in filedescriptortable:
       raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
-
-    try:
-      if filedescriptortable[fd]['inode'] in [0,1,2]:
-        return 0
-    except KeyError:
-      pass
 
     # Acquire the fd lock, if there is one.
     if 'lock' in filedescriptortable[fd]:
@@ -1714,6 +1736,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
+      filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
 
@@ -2393,7 +2416,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       pipenumber = get_next_pipe()
       pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
       pipefds = []
-      
+     
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
       # append each to pipefds list
 
@@ -2440,15 +2463,45 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # is implemented in parts of NaCl
 
   def fork_syscall(child_cageid):
-    masterfiledescriptortable[child_cageid] = \
-      repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+
+    filesystemmetadatalock.acquire(True)
+
+    try:
+      masterfiledescriptortable[child_cageid] = \
+        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+      
+      master_fs_calls_context[child_cageid] = \
+        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
     
-    master_fs_calls_context[child_cageid] = \
-      repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+    finally:
+      filesystemmetadatalock.release()
+
 
     return 0
   
   FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+
+  # Exec will do the same copying as fork, 
+  # but we want to get rid of all the information from the old cage
+  
+  def exec_syscall(child_cageid):
+    
+    filesystemmetadatalock.acquire(True)
+
+    try:
+      masterfiledescriptortable[child_cageid] = \
+        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+      
+      master_fs_calls_context[child_cageid] = \
+        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+
+      del masterfiledescriptortable[CONST_CAGEID]
+      del master_fs_calls_context[CONST_CAGEID]
+    
+    finally:
+      filesystemmetadatalock.release()
+  
+  FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
 
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
