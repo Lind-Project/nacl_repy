@@ -286,6 +286,10 @@ def _blank_fs_init():
 # These are used to initialize and stop the system
 def persist_metadata(metadatafilename):
 
+  print "persisting"
+
+  ptimestart = time.time()
+
   metadatastring = serializedata(filesystemmetadata)
 
 
@@ -297,6 +301,10 @@ def persist_metadata(metadatafilename):
   metadatafo = openfile(metadatafilename,True)
   metadatafo.writeat(metadatastring,0)
   metadatafo.close()
+
+  ptimeend = time.time()
+  ptime = 1000 * (pmtimeend - pmtimestart)
+  print "persist total time " + str(ptime) + " ms"
 
 
 
@@ -614,7 +622,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       See: http://linux.die.net/man/2/access
     """
 
-    atimestart = time.time()
     # lock to prevent things from changing while we look this up...
     filesystemmetadatalock.acquire(True)
 
@@ -642,19 +649,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("access_syscall","EACCES","The requested access is denied.")
 
     finally:
-      pmtimestart = time.time()
       persist_metadata(METADATAFILENAME)
-      pmtimeend = time.time()
       # release the lock
       filesystemmetadatalock.release()
       
-      atimeend = time.time()
-      pmtime = 1000 * (pmtimeend - pmtimestart)
-      print "access persist time " + str(pmtime) + " ms"
-      atime = 1000 * (atimeend - atimestart)
-      print "access total time " + str(atime) + " ms"
-
-
   FS_CALL_DICTIONARY["access_syscall"] = access_syscall
 
 
