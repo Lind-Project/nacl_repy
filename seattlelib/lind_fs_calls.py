@@ -303,7 +303,7 @@ def persist_metadata(metadatafilename):
   metadatafo.close()
 
   ptimeend = time.time()
-  ptime = 1000 * (pmtimeend - pmtimestart)
+  ptime = 1000 * (ptimeend - ptimestart)
   print "persist total time " + str(ptime) + " ms"
 
 
