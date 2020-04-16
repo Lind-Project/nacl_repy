@@ -276,7 +276,7 @@ def LindSyscall(call_num, args):
 
   syscall_end = time.time()
 
-  syscall_time = syscall_start - syscall_end
+  syscall_time = syscall_end - syscall_start
 
   print "Syscall " + str(call_num) + " took " + str(syscall_time) + " seconds"
   
