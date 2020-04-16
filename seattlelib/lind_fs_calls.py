@@ -649,7 +649,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       pmtimeend = time.time()
       atimeend = time.time()
       pmtime = 1000 * (pmtimeend - pmtimestart)
-      print "access persist time " + str(pmtime) + " ms"'
+      print "access persist time " + str(pmtime) + " ms"
       atime = 1000 * (atimeend - atimestart)
       print "access total time " + str(atime) + " ms"
 
