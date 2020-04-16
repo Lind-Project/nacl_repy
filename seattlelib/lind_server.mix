@@ -244,7 +244,7 @@ def print_times(times):
 
 def LindSyscall(call_num, args):
 
-  start = time.time()
+  syscall_start = time.time()
 
   comp_num = 1
   response = None
