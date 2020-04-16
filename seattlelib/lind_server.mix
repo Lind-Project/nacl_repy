@@ -15,6 +15,8 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 import sys              # for sys.stderr
 
+import time
+
 include struct.repy
 
 VERSION = "1.0-rc2"
@@ -242,6 +244,8 @@ def print_times(times):
 
 def LindSyscall(call_num, args):
 
+  start = time.perf_counter()
+
   comp_num = 1
   response = None
   cageid = args[-1]
@@ -269,6 +273,13 @@ def LindSyscall(call_num, args):
   mycontext[LOCK][cageid].release()
   if response == None:
     raise Exception()
+
+  syscall_end = time.perf_counter()
+
+  syscall_time = syscall_start - syscall_end
+
+  print "Syscall " + str(call_num) + " took " + str(syscall_time) + " seconds"
+  
   return response
 
 
