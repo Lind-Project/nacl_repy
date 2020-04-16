@@ -244,7 +244,7 @@ def print_times(times):
 
 def LindSyscall(call_num, args):
 
-  start = time.perf_counter()
+  start = time.time()
 
   comp_num = 1
   response = None
@@ -274,7 +274,7 @@ def LindSyscall(call_num, args):
   if response == None:
     raise Exception()
 
-  syscall_end = time.perf_counter()
+  syscall_end = time.time()
 
   syscall_time = syscall_start - syscall_end
 
