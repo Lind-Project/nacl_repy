@@ -644,9 +644,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       pmtimestart = time.time()
       persist_metadata(METADATAFILENAME)
+      pmtimeend = time.time()
       # release the lock
       filesystemmetadatalock.release()
-      pmtimeend = time.time()
+      
       atimeend = time.time()
       pmtime = 1000 * (pmtimeend - pmtimestart)
       print "access persist time " + str(pmtime) + " ms"
