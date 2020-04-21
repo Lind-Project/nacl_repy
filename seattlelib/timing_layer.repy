@@ -1,10 +1,7 @@
 """
 This security layer interposes on file operations so we can get timing statistics
 
-
 """	
-
-# This is just an example global variable.   It stores a list of the calls the application makes.
 
 
 def time_call(func):
@@ -33,6 +30,7 @@ class SecureFile():
 
 def secure_openfile(filename, create):
   # Open a file from the layer below (likely the sandbox)
+  print "opening a file"
   privilegedfo = time_call(openfile(filename,create))
   return SecureFile(privilegedfo)
 
