@@ -213,6 +213,8 @@ include unimplemented_syscalls.repy
 
 include dispatcher.repy
 
+include time_interface.repy
+
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
