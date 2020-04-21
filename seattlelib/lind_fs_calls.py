@@ -296,7 +296,7 @@ def persist_metadata(metadatafilename):
   metadatastring = serializedata(filesystemmetadata)
   stimeend = time.time()
   stime = 1000 * (stimeend - stimestart)
-  print "serialize total time " + str(ptime) + " ms"
+  print "serialize total time " + str(stime) + " ms"
 
 
 
