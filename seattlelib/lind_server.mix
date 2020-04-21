@@ -213,10 +213,6 @@ include unimplemented_syscalls.repy
 
 include dispatcher.repy
 
-include encasementlib.repy
-
-include timing_layer.repy
-
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
