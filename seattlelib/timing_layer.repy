@@ -4,34 +4,38 @@ This security layer interposes on file operations so we can get timing statistic
 """	
 
 
-def time_call(func):
+def dectime(func):
+  def timeit(*args, **kwargs):
     timestart = time.time()
-    result = func()
-    timend = time.time()
+    result = func(*args, **kwargs)
+    timeend = time.time()
     time_result = 1000 * (timeend - timestart)
-    print "Total time for " + func.__name__ +" was " str(time_result) + " ms"
-
+    print "Total time for " + func.__name__ +" was " + str(time_result) + " ms"
     return result
+  return timeit
 
 
 class SecureFile():
   def __init__(self,privilegedfo):
     self.privilegedfo = privilegedfo
-
+  
+  @dectime
   def readat(self,bytes,offset):
-    return time_call(self.privilegedfo.readat(bytes,offset))
-
+    return self.privilegedfo.readat(bytes,offset)
+  
+  @dectime
   def writeat(self,data,offset):
-    return time_call(self.privilegedfo.writeat(data,offset))
-	
+    return self.privilegedfo.writeat(data,offset)
+
+  @dectime	
   def close(self):
-    return time_call(self.privilegedfo.close())
+    return self.privilegedfo.close()
 
-
+@dectime
 def secure_openfile(filename, create):
   # Open a file from the layer below (likely the sandbox)
   print "opening a file"
-  privilegedfo = time_call(openfile(filename,create))
+  privilegedfo = openfile(filename,create)
   return SecureFile(privilegedfo)
 
 
