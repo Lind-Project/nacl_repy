@@ -119,6 +119,7 @@ import nonportable
 import safe # Used to get SafeDict
 import tracebackrepy
 import virtual_namespace
+import time
 
 #from naclimc import * 
 from exception_hierarchy import *
@@ -1260,7 +1261,7 @@ class NamespaceAPIFunctionWrapper(object):
       timeend = time.time()
       time_result = 1000 * (timeend - timestart)
       res_string = "Total time for " + str(func_to_call.__name__) + " was " + str(time_result) + " ms"
-      log(res_string)
+      print(res_string)
 
       return self._process_retval(retval)
 
