@@ -213,6 +213,7 @@ include unimplemented_syscalls.repy
 
 include dispatcher.repy
 
+includ encasementlib.repy
 include timing_layer.repy
 
 
