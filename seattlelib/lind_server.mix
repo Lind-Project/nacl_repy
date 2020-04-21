@@ -213,7 +213,7 @@ include unimplemented_syscalls.repy
 
 include dispatcher.repy
 
-include time_interface.repy
+include timing_layer.repy
 
 
 def print_times(times):

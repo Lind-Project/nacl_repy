@@ -35,7 +35,7 @@ class SecureFile():
 @dectime
 def secure_openfile(filename, create):
   # Open a file from the layer below (likely the sandbox)
-  print "opening a file"
+  log("opening a file")
   privilegedfo = openfile(filename,create)
   return SecureFile(privilegedfo)
 
