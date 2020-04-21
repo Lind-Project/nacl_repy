@@ -10,7 +10,8 @@ def dectime(func):
     result = func(*args, **kwargs)
     timeend = time.time()
     time_result = 1000 * (timeend - timestart)
-    print "Total time for " + func.__name__ +" was " + str(time_result) + " ms"
+    res_string = "Total time for " + str(func.__name__) + " was " + str(time_result) + " ms"
+    log(res_string)
     return result
   return timeit
 
