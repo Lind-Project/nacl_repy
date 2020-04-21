@@ -292,7 +292,12 @@ def persist_metadata(metadatafilename):
 
   ptimestart = time.time()
 
+  stimestart = time.time()
   metadatastring = serializedata(filesystemmetadata)
+  stimeend = time.time()
+  stime = 1000 * (stimeend - stimestart)
+  print "serialize total time " + str(ptime) + " ms"
+
 
 
   # open the file (clobber) and write out the information...
