@@ -1449,6 +1449,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # and update the position
       filedescriptortable[fd]['position'] += len(data)
 
+      print fd
+      print data
       return data
 
     finally:
