@@ -288,15 +288,15 @@ def _blank_fs_init():
 # These are used to initialize and stop the system
 def persist_metadata(metadatafilename):
 
-  print "persisting"
+ # print "persisting"
 
   ptimestart = time.time()
 
   stimestart = time.time()
   metadatastring = serializedata(filesystemmetadata)
   stimeend = time.time()
-  stime = 1000 * (stimeend - stimestart)
-  print "serialize total time " + str(stime) + " ms"
+ # stime = 1000 * (stimeend - stimestart)
+ # print "serialize total time " + str(stime) + " ms"
 
 
 
@@ -310,8 +310,8 @@ def persist_metadata(metadatafilename):
   metadatafo.close()
 
   ptimeend = time.time()
-  ptime = 1000 * (ptimeend - ptimestart)
-  print "persist total time " + str(ptime) + " ms"
+  #ptime = 1000 * (ptimeend - ptimestart)
+ # print "persist total time " + str(ptime) + " ms"
 
 
 
