@@ -1256,12 +1256,12 @@ class NamespaceAPIFunctionWrapper(object):
           args_to_use = args_copy
 
 
-      timestart = time.time()
+     # timestart = time.time()
       retval = func_to_call(*args_to_use)
-      timeend = time.time()
-      time_result = 1000 * (timeend - timestart)
-      res_string = "Total time for " + str(func_to_call.__name__) + " was " + str(time_result) + " ms"
-      print(res_string)
+    #  timeend = time.time()
+     # time_result = 1000 * (timeend - timestart)
+     # res_string = "Total time for " + str(func_to_call.__name__) + " was " + str(time_result) + " ms"
+     #print(res_string)
 
       return self._process_retval(retval)
 
