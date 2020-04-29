@@ -48,6 +48,8 @@ def lind_safe_fs_mmap(args):
     flags = args[3]
     fildes = args[4]
     off = args[5]
+    assert prot == prot & (PROT_READ | PROT_WRITE | PROT_EXEC), "prot value must have only valid flags"
+    assert flags == flags & (MAP_SHARED | MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS), "flags value must have only valid flags"
     assert isinstance(addr, int), "the addr should be an int"
     assert isinstance(leng, int), "the len should be an int"
     assert isinstance(prot, int), "the prot should be an int"

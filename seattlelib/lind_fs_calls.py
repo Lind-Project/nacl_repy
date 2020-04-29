@@ -2450,10 +2450,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # ... but always release it...
     try:
       #stuff
-      1
-    except:
-      #stuff
-      1
+      pass
     finally:
       filesystemmetadatalock.release()
 
@@ -2490,10 +2487,49 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
+      if leng==0:
+        raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
+
+      if 0 == flags & (MAP_PRIVATE | MAP_SHARED):
+        raise SyscallError("mmap_syscall", "EINVAL", "The value of flags is invalid (neither MAP_PRIVATE nor MAP_SHARED is set)")
+
+      #some ENOMEM guards might be nice, maybe even EAGAIN or EPERM
+      if 0 == flags & MAP_ANONYMOUS:
+        if fildes in filedescriptortable:
+          filedescriptortable[fildes]['lock'].acquire(True)
+          mode = filedescriptortable[fildes]['mode']
+
+          if (0 == mode & O_RDONLY) or (flags & PROT_WRITE and not (mode & O_WRONLY)):
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "EACCES", "The fildes argument is not open for read, regardless of the protection" +
+                " specified, or fildes is not open for write and PROT_WRITE was specified for a MAP_SHARED type mapping")
+
+          if not (IS_REG(mode) or IS_CHR(mode)):
+            raise SyscallError("mmap_syscall", "ENODEV", "The fildes argument refers to a file whose type is not supported by mmap()")
+
+
+          inode = filedescriptortable[fildes]['inode']
+          filesize = filesystemmetadata['inodetable'][inode]['size']
+
+          if off < filesize and off + leng < filesize:
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "EOVERFLOW", "The file is a regular file and the value of off plus len exceeds" +
+                " the offset maximum established in the open file description associated with fildes")
+
+          if off < 0 or off > filesize:
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
+
+          filedescriptortable[fildes]['lock'].release()
+        else:
+          #Some internal NaCl mmaps don't have corresponding repy fds but aren't anonymous
+          #Unfortunately that means we need to rely on this being a valid path
+          #TODO: ensure user mmaps can't reach here
+          pass
+          #raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
+
+
       return repy_mmap(addr, leng, prot, flags, fildes, off)
-    except Exception as e: 
-      print("Error in safeposix mmap syscall")
-      print(e)
     finally:
       filesystemmetadatalock.release()
 
@@ -2508,15 +2544,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
+      if leng==0:
+        raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
       return repy_mmap(addr, 
         leng, 
         PROT_NONE,
         MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,
         -1,
         0)
-    except Exception as e: 
-      print("Error in safeposix munmap syscall")
-      print(e)
     finally:
       filesystemmetadatalock.release()
 
