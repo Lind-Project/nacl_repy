@@ -642,7 +642,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("access_syscall","EACCES","The requested access is denied.")
 
     finally:
-      persist_metadata(METADATAFILENAME)
       # release the lock
       filesystemmetadatalock.release()
 
@@ -1005,7 +1004,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return _istat_helper(thisinode)
 
     finally:
-      #persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
 
@@ -1246,7 +1244,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return thisfd
 
     finally:
-      #persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["open_syscall"] = open_syscall
@@ -1732,7 +1729,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       # ... release the lock, if there is one
-      #persist_metadata(METADATAFILENAME)
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
