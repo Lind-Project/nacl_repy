@@ -207,6 +207,8 @@ include fs_mmap.repy
 
 include fs_munmap.repy
 
+include fs_exec.repy
+
 include debug.repy
 
 include unimplemented_syscalls.repy
