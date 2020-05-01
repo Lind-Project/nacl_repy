@@ -105,6 +105,17 @@ LOCK_EX = 2
 LOCK_UN = 8
 LOCK_NB = 4
 
+# for mmap/munmap syscall
+MAP_SHARED = 1
+MAP_PRIVATE = 2
+MAP_FIXED = 16
+MAP_ANONYMOUS = 32
+
+PROT_NONE = 0
+PROT_READ = 1 
+PROT_WRITE = 2
+PROT_EXEC = 4
+
 
 # the longest path in Linux
 PATH_MAX = 4096

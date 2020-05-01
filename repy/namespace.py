@@ -119,6 +119,7 @@ import nonportable
 import safe # Used to get SafeDict
 import tracebackrepy
 import virtual_namespace
+import mmap
 
 #from naclimc import * 
 from exception_hierarchy import *
@@ -684,6 +685,14 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emulmisc.log_stdout,
        'args' : [NonCopiedVarArgs()],
        'return' : None},
+  'repy_mmap' :
+      {'func' : emulmisc.repy_mmap,
+       'args' : [Int(), Int(), Int(), Int(), Int(min=float('-inf')), Int(min=float('-inf'))],
+       'return' : Int()},
+  'repy_munmap' :
+      {'func' : emulmisc.repy_munmap,
+       'args' : [Int(), Int()],
+       'return' : Int()},
   'getthreadname' :
       {'func' : emulmisc.getthreadname,
        'args' : [],
