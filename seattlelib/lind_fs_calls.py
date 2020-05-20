@@ -109,6 +109,7 @@
 
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
+pipecounter = 0
 
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
@@ -1350,6 +1351,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
 
+
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
 
@@ -1374,6 +1376,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     #     continue
 
     data = ''
+    if pipecounter < 8:
+      data = 'A' * count
+      pipecounter += 1
 
     #release our readlock  
     pipetable[pipenumber]['readlock'].release()
