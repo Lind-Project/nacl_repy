@@ -2510,7 +2510,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
             filedescriptortable[fildes]['lock'].release()
             raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
 
-          if off < filesize and off + leng > filesize:
+          if off + leng > filesize:
             filedescriptortable[fildes]['lock'].release()
             raise SyscallError("mmap_syscall", "EOVERFLOW", "The file is a regular file and the value of off plus len exceeds" +
                 " the offset maximum established in the open file description associated with fildes")
