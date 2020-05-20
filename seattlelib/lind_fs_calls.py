@@ -1360,18 +1360,20 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     data = ''
     num_bytes_read = 0
     
-    # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    while num_bytes_read < count:
-      try:
-        if len(pipetable[pipenumber]['data']) == 0 and pipetable[pipenumber]['eof'] == True:
-          break
-        # pop the byte from the data list, append it to return data string
-        byte_read = pipetable[pipenumber]['data'].pop(0)
-        data += byte_read
-        num_bytes_read += 1
+    # # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
+    # while num_bytes_read < count:
+    #   try:
+    #     if len(pipetable[pipenumber]['data']) == 0 and pipetable[pipenumber]['eof'] == True:
+    #       break
+    #     # pop the byte from the data list, append it to return data string
+    #     byte_read = pipetable[pipenumber]['data'].pop(0)
+    #     data += byte_read
+    #     num_bytes_read += 1
 
-      except IndexError, e:
-        continue
+    #   except IndexError, e:
+    #     continue
+
+    data = 'A' * count
 
     #release our readlock  
     pipetable[pipenumber]['readlock'].release()
@@ -1448,9 +1450,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['writelock'].acquire(True)
 
-    # append data to pipe list byte by byte
-    for byte in data:
-      pipetable[pipenumber]['data'].append(byte)
+    # # append data to pipe list byte by byte
+    # for byte in data:
+    #   pipetable[pipenumber]['data'].append(byte)
 
     # release our write lock     
     pipetable[pipenumber]['writelock'].release()
