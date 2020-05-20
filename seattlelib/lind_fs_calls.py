@@ -1373,7 +1373,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     #   except IndexError, e:
     #     continue
 
-    data = 'A' * count
+    data = ''
 
     #release our readlock  
     pipetable[pipenumber]['readlock'].release()
