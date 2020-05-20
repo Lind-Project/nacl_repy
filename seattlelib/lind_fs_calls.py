@@ -2506,7 +2506,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
           filesize = filesystemmetadata['inodetable'][thisinode]['size']
 
-          if off < 0 or off > filesize:
+          if off < 0 or off >= filesize:
             filedescriptortable[fildes]['lock'].release()
             raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
 
