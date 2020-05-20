@@ -2500,8 +2500,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
             filedescriptortable[fildes]['lock'].release()
             raise SyscallError("mmap_syscall", "EACCES", "The fildes argument is not open for read, regardless of the protection" +
                 " specified, or fildes is not open for write and PROT_WRITE was specified for a MAP_SHARED type mapping")
-
+          if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (mode & O_RDWR):
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
           if not (IS_REG(mode) or IS_CHR(mode)):
+            filedescriptortable[fildes]['lock'].release()
             raise SyscallError("mmap_syscall", "ENODEV", "The fildes argument refers to a file whose type is not supported by mmap()")
 
           filesize = filesystemmetadata['inodetable'][thisinode]['size']
