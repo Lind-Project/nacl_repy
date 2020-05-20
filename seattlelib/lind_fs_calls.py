@@ -2493,19 +2493,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if 0 == flags & MAP_ANONYMOUS:
         if fildes in filedescriptortable:
           filedescriptortable[fildes]['lock'].acquire(True)
+
           thisinode = filedescriptortable[fildes]['inode']
           mode = filesystemmetadata['inodetable'][thisinode]['mode']
+          fflags = filedescriptortable[fildes]['flags']
 
-          if (flags & PROT_WRITE) and not (mode & O_WRONLY): #O_RDONLY is 0 so it is useless for bitwise
-            filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EACCES", "The fildes argument is not open for read, regardless of the protection" +
-                " specified, or fildes is not open for write and PROT_WRITE was specified for a MAP_SHARED type mapping")
-          if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (mode & O_RDWR):
+          if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
             filedescriptortable[fildes]['lock'].release()
             raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
           if not (IS_REG(mode) or IS_CHR(mode)):
             filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "ENODEV", "The fildes argument refers to a file whose type is not supported by mmap()")
+            raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
 
           filesize = filesystemmetadata['inodetable'][thisinode]['size']
 
@@ -2515,7 +2513,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
           if off + leng > filesize:
             filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EOVERFLOW", "The file is a regular file and the value of off plus len exceeds" +
+            raise SyscallError("mmap_syscall", "EINVAL", "The file is a regular file and the value of off plus len exceeds" +
                 " the offset maximum established in the open file description associated with fildes")
 
           filedescriptortable[fildes]['lock'].release()
