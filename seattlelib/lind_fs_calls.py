@@ -2498,6 +2498,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           mode = filesystemmetadata['inodetable'][thisinode]['mode']
           fflags = filedescriptortable[fildes]['flags']
 
+          # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
+          # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
           if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
             filedescriptortable[fildes]['lock'].release()
             raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
