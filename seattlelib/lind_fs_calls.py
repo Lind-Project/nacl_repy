@@ -1360,27 +1360,28 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     data = ''
     
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    try:
-        current_pipesize = len(pipetable[pipenumber]['data'])
-        if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
-            break
+    while True:
+      try:
+          current_pipesize = len(pipetable[pipenumber]['data'])
+          if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
+              break
 
-        print "current pipesize: " + str(current_pipesize)
-        print "count: " + str(count)
-        print "---------------------------"
+          print "current pipesize: " + str(current_pipesize)
+          print "count: " + str(count)
+          print "---------------------------"
 
-        # If count is smaller than pipe, read that much and delete it from pipe,
-        # if not, take the whole thing
-        if count < current_pipesize:
-            data += "".join(pipetable[pipenumber]['data'][:count])
-            del pipetable[pipenumber]['data'][:count]
-        else:
-            data += "".join(pipetable[pipenumber]['data'])
-            del pipetable[pipenumber]['data'][:]
+          # If count is smaller than pipe, read that much and delete it from pipe,
+          # if not, take the whole thing
+          if count < current_pipesize:
+              data += "".join(pipetable[pipenumber]['data'][:count])
+              del pipetable[pipenumber]['data'][:count]
+              break
+          else:
+              data += "".join(pipetable[pipenumber]['data'])
+              del pipetable[pipenumber]['data'][:]
 
-    except IndexError, e:
-        print "error"
-            continue
+      except IndexError, e:
+          continue
 
     #release our readlock  
     pipetable[pipenumber]['readlock'].release()
