@@ -1375,6 +1375,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           else:
               data += "".join(pipetable[pipenumber]['data'])
               del pipetable[pipenumber]['data'][:]
+              count -= current_pipesize
 
       except IndexError, e:
           continue
