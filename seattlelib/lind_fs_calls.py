@@ -1366,10 +1366,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
               break
 
-          print "current pipesize: " + str(current_pipesize)
-          print "count: " + str(count)
-          print "---------------------------"
-
           # If count is smaller than pipe, read that much and delete it from pipe,
           # if not, take the whole thing
           if count < current_pipesize:
@@ -1460,7 +1456,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # concatenate on each byte as a list
     pipetable[pipenumber]['data'] += list(data)
-
 
     # release our write lock     
     pipetable[pipenumber]['writelock'].release()
