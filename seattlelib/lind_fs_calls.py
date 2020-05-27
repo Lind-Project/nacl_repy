@@ -1361,6 +1361,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipetable[pipenumber]['readlock'].acquire(True)
 
     data = ''
+
+    print "in read"
+    print type(pipetable[pipenumber]['data'])
+    print len(pipetable[pipenumber]['data'])
     
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
     while True:
