@@ -110,6 +110,9 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
+from collections import deque
+from itertools import islice, starmap, repeat
+
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 
@@ -1354,33 +1357,30 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _read_from_pipe(fd, count):
 
     # lets find the pipe number and acquire the readlock
-    pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
 
-    data = ''
-    
+    data = ""
+
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
     while True:
       try:
-          current_pipesize = len(pipetable[pipenumber]['data'])
-          if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
-              break
+        current_pipesize = len(pipetable[pipenumber]['data'])
+        if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
+            break
 
           # If count is smaller than pipe, read that much and delete it from pipe,
           # if not, take the whole thing
-          if count < current_pipesize:
-              data += "".join(pipetable[pipenumber]['data'][:count])
-              del pipetable[pipenumber]['data'][:count]
-              break
-          else:
-              data += "".join(pipetable[pipenumber]['data'])
-              del pipetable[pipenumber]['data'][:]
-              count -= current_pipesize
+        if count < current_pipesize:  
+            data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), count)))
+            break
+        else:
+            data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), current_pipesize)))
+            count -= current_pipesize
 
       except IndexError, e:
           continue
 
-    #release our readlock  
+    # release our readlock  
     pipetable[pipenumber]['readlock'].release()
     return data
 
@@ -1451,17 +1451,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
 
-    # find pipe number, and grab lock
-    pipenumber = filedescriptortable[fd]['pipe']
-    pipetable[pipenumber]['writelock'].acquire(True)
+      # find pipe number, and grab lock
+      pipetable[pipenumber]['writelock'].acquire(True)
 
-    # concatenate on each byte as a list
-    pipetable[pipenumber]['data'] += list(data)
+      # append data to pipe list
+      pipetable[pipenumber]['data'].extend(data)
+      
+      # release our write lock     
+      pipetable[pipenumber]['writelock'].release()
 
-    # release our write lock     
-    pipetable[pipenumber]['writelock'].release()
-
-    return len(data)
+      return len(data)
 
 
 
