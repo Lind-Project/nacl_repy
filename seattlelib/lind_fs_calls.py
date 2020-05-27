@@ -2413,7 +2413,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # get next available pipe number, and set up pipe
       pipenumber = get_next_pipe()
-      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+      pipetable[pipenumber] = {'data':deque(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
       pipefds = []
      
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
