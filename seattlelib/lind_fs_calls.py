@@ -1357,10 +1357,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _read_from_pipe(fd, count):
 
     # lets find the pipe number and acquire the readlock
+    pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
 
-    data = ""
-
+    data = ''
+    
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
     while True:
       try:
@@ -1379,10 +1380,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       except IndexError, e:
           continue
-
-    # release our readlock  
-    pipetable[pipenumber]['readlock'].release()
-    return data
 
 
 
@@ -1451,16 +1448,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
 
-      # find pipe number, and grab lock
-      pipetable[pipenumber]['writelock'].acquire(True)
+    # find pipe number, and grab lock
+    pipenumber = filedescriptortable[fd]['pipe']
+    pipetable[pipenumber]['writelock'].acquire(True)
 
-      # append data to pipe list
-      pipetable[pipenumber]['data'].extend(data)
-      
-      # release our write lock     
-      pipetable[pipenumber]['writelock'].release()
+    # append data to pipe list
+    pipetable[pipenumber]['data'].extend(data)
 
-      return len(data)
+    # release our write lock     
+    pipetable[pipenumber]['writelock'].release()
+
+    return len(data)
 
 
 
