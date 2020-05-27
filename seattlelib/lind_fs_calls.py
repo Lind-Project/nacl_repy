@@ -1452,6 +1452,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['writelock'].acquire(True)
 
+    print pipetable[pipenumber]['data']
+
     # append data to pipe list
     pipetable[pipenumber]['data'].extend(data)
 
