@@ -113,6 +113,9 @@
 from collections import deque
 from itertools import islice, starmap, repeat
 
+pipecounter = 0
+pipecountmax = (40473920/(2**14)) - 1
+
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 
@@ -1361,25 +1364,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipetable[pipenumber]['readlock'].acquire(True)
 
     data = ''
-   
-    # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    while True:
-      try:
-        if not pipetable[pipenumber]['data'] and pipetable[pipenumber]['eof'] == True:
-            break
-        current_pipesize = len(pipetable[pipenumber]['data'])
-
-          # If count is smaller than pipe, read that much and delete it from pipe,
-          # if not, take the whole thing
-        if count < current_pipesize:  
-            data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), count)))
-            break
-        else:
-            data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), current_pipesize)))
-            count -= current_pipesize
-
-      except IndexError, e:
-          continue
+    if pipecounter < pipecountmax:
+      data = 'A' * count
+      pipecounter += 1
 
     # release our readlock  
     pipetable[pipenumber]['readlock'].release()
@@ -1457,7 +1444,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipetable[pipenumber]['writelock'].acquire(True)
 
     # append data to pipe list
-    pipetable[pipenumber]['data'].extend(data)
+   # pipetable[pipenumber]['data'].extend(data)
 
     # release our write lock     
     pipetable[pipenumber]['writelock'].release()
@@ -2417,7 +2404,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # get next available pipe number, and set up pipe
       pipenumber = get_next_pipe()
-      pipetable[pipenumber] = {'data':deque(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
       pipefds = []
      
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
