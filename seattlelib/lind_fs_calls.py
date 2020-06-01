@@ -113,9 +113,6 @@
 from collections import deque
 from itertools import islice, starmap, repeat
 
-pipecounter = 0
-pipecountmax = (40473920/(2**14)) - 1
-
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 
@@ -154,6 +151,9 @@ master_fs_calls_context = {}
 
 #fs_calls_context['currentworkingdirectory'] = '/' 
 #We can't initialize it here
+
+pipecounter = 0
+pipecountmax = (40473920/(2**14)) - 1
 
 SILENT=True
 
