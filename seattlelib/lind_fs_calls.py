@@ -1365,7 +1365,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     data = ''
     if pipetable[pipenumber]['counter'] < pipecountmax:
       data = 'A' * count
-      pipecounter += 1
+      pipetable[pipenumber]['counter'] += 1
 
     # release our readlock  
     pipetable[pipenumber]['readlock'].release()
