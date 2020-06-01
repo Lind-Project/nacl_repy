@@ -149,6 +149,8 @@ def dispatch_syscall(call, args):
   with the provided arguments.
   """
 
+  time_start = time.time()
+
   if MODE=="safe":
     assert isinstance(args[-1], int), "the cageid should be an int"
     # Cageid can be -1 but only in direct syscalls that don't go through the
@@ -167,6 +169,10 @@ def dispatch_syscall(call, args):
     syscall_response = call_fun(args)
 
   assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
+  
+  time_end = time.time()
+  timer_tot = time_end - time_start
+  call_times.append((call, timer_tot))
   
   return syscall_response
 
