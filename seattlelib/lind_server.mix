@@ -283,7 +283,7 @@ def LindSyscall(call_num, args):
     raise Exception()
 
   time_end = time.time()
-  timer_tot = time_end - time_start
+  timer_tot = (time_end - time_start) * 1000
   call_times.append((call_num, timer_tot))
 
   return response
