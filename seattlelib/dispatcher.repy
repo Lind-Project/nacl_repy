@@ -3,6 +3,8 @@ NOOP_CALL_NUM=1
 # MODE="safe"
 MODE="fast"
 
+import time
+
 def setup_dispatcher(comp_num):
   # map a systemcall number to a particular function
   if MODE == "safe":
@@ -173,7 +175,7 @@ def dispatch_syscall(call, args):
   time_end = time.time()
   timer_tot = time_end - time_start
   call_times.append((call, timer_tot))
-  
+
   return syscall_response
 
 
