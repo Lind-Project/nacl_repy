@@ -152,7 +152,6 @@ master_fs_calls_context = {}
 #fs_calls_context['currentworkingdirectory'] = '/' 
 #We can't initialize it here
 
-pipecounter = 0
 pipecountmax = 2469
 
 SILENT=True
@@ -1364,7 +1363,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipetable[pipenumber]['readlock'].acquire(True)
 
     data = ''
-    if pipecounter < pipecountmax:
+    if pipetable[pipenumber]['counter'] < pipecountmax:
       data = 'A' * count
       pipecounter += 1
 
@@ -2404,7 +2403,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # get next available pipe number, and set up pipe
       pipenumber = get_next_pipe()
-      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock(), 'counter':0}
       pipefds = []
      
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
