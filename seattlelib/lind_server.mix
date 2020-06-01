@@ -284,8 +284,8 @@ def LindSyscall(call_num, args):
 
   time_end = time.time()
   timer_tot = time_end - time_start
-  call_times.append((call, timer_tot))
-  
+  call_times.append((call_num, timer_tot))
+
   return response
 
 
