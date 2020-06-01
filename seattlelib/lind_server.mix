@@ -394,9 +394,9 @@ def finalize():
   print >> sys.stderr,  "Done persisting metadata."
   total_time = 0
   for data in call_times:
-    print "Call number " + str(call_times[0]) " took " + str(call_times[1]) " ms."
+    print "Call number " + str(call_times[0]) + " took " + str(call_times[1]) " ms."
     total_time += call_times[1]
-  print "total time " _ str(total_time) + " ms."
+  print "total time " + str(total_time) + " ms."
 
 
 def main(cageid):
