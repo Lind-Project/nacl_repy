@@ -153,7 +153,7 @@ master_fs_calls_context = {}
 #We can't initialize it here
 
 pipecounter = 0
-pipecountmax = (40473920/(2**14)) - 1
+pipecountmax = 2469
 
 SILENT=True
 
