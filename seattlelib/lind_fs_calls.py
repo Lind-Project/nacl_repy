@@ -1363,7 +1363,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipetable[pipenumber]['readlock'].acquire(True)
 
     data = ''
-    if pipetable[pipenumber]['counter'] < 1:
+    if pipetable[pipenumber]['counter'] < pipecountmax:
       data = 'A' * count
       pipetable[pipenumber]['counter'] += 1
 
