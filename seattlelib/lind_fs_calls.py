@@ -1365,9 +1365,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
     while True:
       try:
-        if not pipetable[pipenumber]['data'] and pipetable[pipenumber]['eof'] == True:
-            break
+        
         current_pipesize = len(pipetable[pipenumber]['data'])
+        print "pipesize " + str(current_pipesize)
+        print "eof " + str(pipetable[pipenumber]['eof'])
+
+        if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
+          print "breaking"
+            break
 
           # If count is smaller than pipe, read that much and delete it from pipe,
           # if not, take the whole thing
