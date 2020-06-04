@@ -1371,7 +1371,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         print "eof " + str(pipetable[pipenumber]['eof'])
 
         if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
-          print "breaking"
+            print "breaking"
             break
 
           # If count is smaller than pipe, read that much and delete it from pipe,
