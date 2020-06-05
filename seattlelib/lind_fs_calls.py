@@ -1356,6 +1356,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
 
+
+    print "entering read"
     # lets find the pipe number and acquire the readlock
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
