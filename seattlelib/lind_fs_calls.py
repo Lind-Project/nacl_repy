@@ -1369,6 +1369,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         current_pipesize = len(pipetable[pipenumber]['data'])
         print "pipesize " + str(current_pipesize)
         print "eof " + str(pipetable[pipenumber]['eof'])
+        print "count" + str(count)
 
         if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
             print "breaking"
