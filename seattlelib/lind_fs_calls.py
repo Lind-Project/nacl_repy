@@ -1363,7 +1363,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     data = ''
    
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    while True:
+    while count != 0:
       try:
         
         current_pipesize = len(pipetable[pipenumber]['data'])
