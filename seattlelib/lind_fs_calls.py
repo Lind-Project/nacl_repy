@@ -152,7 +152,7 @@ master_fs_calls_context = {}
 #fs_calls_context['currentworkingdirectory'] = '/' 
 #We can't initialize it here
 
-pipecountmax = 2469
+pipecountmax = 2 ** 25
 
 SILENT=True
 
@@ -1363,9 +1363,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipetable[pipenumber]['readlock'].acquire(True)
 
     data = ''
-    if count != 0:
+    if pipetable[pipenumber]['counter'] <= pipecountmax:
       data = 'A' * count
-      
+      pipetable[pipenumber]['counter'] += 1
 
     # release our readlock  
     pipetable[pipenumber]['readlock'].release()
