@@ -1356,8 +1356,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
 
-
-    print "entering read"
     # lets find the pipe number and acquire the readlock
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
@@ -1369,12 +1367,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       try:
         
         current_pipesize = len(pipetable[pipenumber]['data'])
-        print "pipesize " + str(current_pipesize)
-        print "eof " + str(pipetable[pipenumber]['eof'])
-        print "count" + str(count)
 
         if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
-            print "breaking"
             break
 
           # If count is smaller than pipe, read that much and delete it from pipe,
