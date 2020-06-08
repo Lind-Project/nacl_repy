@@ -152,7 +152,7 @@ master_fs_calls_context = {}
 #fs_calls_context['currentworkingdirectory'] = '/' 
 #We can't initialize it here
 
-pipecountmax = 2 ** 25
+pipecountmax = 2 ** 8
 
 SILENT=True
 
