@@ -47,10 +47,6 @@ COMP_MODE = "component_mode"
 TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
 RX_BUF_MAX = (4096 * 4)
 
-writepipenumber = -100
-
-
-
 
 def is_trace():
   if not TRACE:
