@@ -2,7 +2,7 @@
 def lind_fs_close(args):
   
   handle = args[0]
-  if (handle == writepipenumber) writepipenumber = -100
+  if (handle == writepipenumber): writepipenumber = -100
   try:
     result = get_fs_call(args[-1],"close_syscall")(handle)
   except SyscallError, e:
