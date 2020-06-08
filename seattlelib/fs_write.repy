@@ -1,4 +1,3 @@
-writepipenumber = -100
 
 def lind_fs_write(args):
     size = args[1]
