@@ -2418,7 +2418,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
         filedescriptortable[nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
         pipefds.append(nextfd)    
-
+      writepipenumber = pipefds[1]
       return pipefds
 
     finally:

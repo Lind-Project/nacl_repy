@@ -1,21 +1,27 @@
+writepipenumber = -100
+
 def lind_fs_write(args):
     size = args[1]
     fd = args[0]
 
+    
+
     # slice buffer string to only send size n bytes
     buffer = args[2][:size]
     
-    if IS_SOCK_DESC(fd,args[-1]):
-        try:
-            result = get_fs_call(args[-1],"send_syscall")(fd, buffer, 0)
-        except SyscallError, e:
-            print "Write failed with", e
-            return ErrorResponseBuilder("fs_write", e[1], e[2])
-    else:
-        try:
-            result = get_fs_call(args[-1],"write_syscall")(fd, buffer)
-        except SyscallError, e:
-            return ErrorResponseBuilder("fs_write", e[1], e[2])
+    if (fd != writepipenumber):
+        if IS_SOCK_DESC(fd,args[-1]):
+            try:
+                result = get_fs_call(args[-1],"send_syscall")(fd, buffer, 0)
+            except SyscallError, e:
+                print "Write failed with", e
+                return ErrorResponseBuilder("fs_write", e[1], e[2])
+        else:
+            try:
+                result = get_fs_call(args[-1],"write_syscall")(fd, buffer)
+            except SyscallError, e:
+                return ErrorResponseBuilder("fs_write", e[1], e[2])
+    result = len(buffer)
     return SuccessResponseBuilder("fs_write", result)
 
 
