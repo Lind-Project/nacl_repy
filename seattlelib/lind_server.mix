@@ -252,7 +252,7 @@ def print_times(times):
 def LindSyscall(call_num, args):
 
 
-  time_start = time.time()
+  # time_start = time.time()
   
   comp_num = 1
   response = None
@@ -282,9 +282,9 @@ def LindSyscall(call_num, args):
   if response == None:
     raise Exception()
 
-  time_end = time.time()
-  timer_tot = (time_end - time_start) * 1000
-  call_times.append((call_num, timer_tot))
+  # time_end = time.time()
+  # timer_tot = (time_end - time_start) * 1000
+  # call_times.append((call_num, timer_tot))
 
   return response
 
@@ -404,10 +404,10 @@ def finalize():
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."
   total_time = 0
-  for times in call_times:
-    print "Call number " + str(times[0]) + " took " + str(times[1]) + " ms."
-    total_time += times[1]
-  print "total time " + str(total_time) + " ms."
+  # for times in call_times:
+  #   print "Call number " + str(times[0]) + " took " + str(times[1]) + " ms."
+  #   total_time += times[1]
+  # print "total time " + str(total_time) + " ms."
 
 
 def main(cageid):
