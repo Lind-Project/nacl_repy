@@ -5,7 +5,7 @@ def lind_fs_write(args):
     # slice buffer string to only send size n bytes
     buffer = args[2][:size]
     if fd == 1:
-        return SuccessResponseBuilder("fs_write", len(buffer))
+        return SuccessResponseBuilder("fs_write", size)
 
     if IS_SOCK_DESC(fd,args[-1]):
         try:
