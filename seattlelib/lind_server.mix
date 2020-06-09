@@ -252,6 +252,9 @@ def LindSyscall(call_num, args):
 
 
   # time_start = time.time()
+
+  if (call == 13) and (args[0] == 1):
+    return SuccessResponseBuilder("fs_write", args[1])
   
   comp_num = 1
   response = None
