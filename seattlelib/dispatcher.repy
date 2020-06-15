@@ -1,3 +1,5 @@
+import time
+
 NOOP_CALL_NUM=1
 
 # MODE="safe"
@@ -164,7 +166,11 @@ def dispatch_syscall(call, args):
     syscall_response =  ErrorResponseBuilder("dispatcher", "ENOSYS", "The system call is not in the system call table. Call="+str(call))
 
   else:
+    before = time.clock()
     syscall_response = call_fun(args)
+    after = time.clock()
+    timer = (after - before) * 1000000
+    print "call number " + str(call) + " took " + str(timer) + " us"
 
   assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
   
