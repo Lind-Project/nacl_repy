@@ -215,6 +215,9 @@ include unimplemented_syscalls.repy
 
 include dispatcher.repy
 
+call_times = list()
+
+
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
@@ -246,6 +249,9 @@ def print_times(times):
 
 def LindSyscall(call_num, args):
 
+  time_start = time.time()
+
+
   comp_num = 1
   response = None
   cageid = args[-1]
@@ -273,6 +279,11 @@ def LindSyscall(call_num, args):
   mycontext[LOCK][cageid].release()
   if response == None:
     raise Exception()
+
+  time_end = time.time()
+  timer_tot = (time_end - time_start) * 1000
+  call_times.append((call_num, timer_tot))
+
   return response
 
 
@@ -390,6 +401,10 @@ def finalize():
   print >> sys.stderr,  "Persisting metadata: ..."
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."
+  for times in call_times:
+    print "Call number " + str(times[0]) + " took " + str(times[1]) + " ms."
+    total_time += times[1]
+  print "total time " + str(total_time) + " ms."
 
 
 def main(cageid):
