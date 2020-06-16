@@ -1,0 +1,29 @@
+Open
+Native - 23 us
+Lind - 1739 us
+75x slower
+SafePosix - 35492 us
+
+Write
+Native - 3 us
+Lind - 220 us
+73x slower
+SafePosix - 94 us
+
+Seek
+Native - 4 us
+Lind - 43 us
+11x slower
+SafePosix - 39 us
+
+Read
+Native - 3 us
+Lind - 193 us
+64x slower
+SafePosix - 77 us
+
+Close
+Native - 3 us
+Lind - 81 us
+27x slower
+SafePosix - 60 us
