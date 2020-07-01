@@ -642,7 +642,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("access_syscall","EACCES","The requested access is denied.")
 
     finally:
-      persist_metadata(METADATAFILENAME)
       # release the lock
       filesystemmetadatalock.release()
 
@@ -1005,7 +1004,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return _istat_helper(thisinode)
 
     finally:
-      #persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
 
@@ -1246,7 +1244,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return thisfd
 
     finally:
-      #persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["open_syscall"] = open_syscall
@@ -1732,7 +1729,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       # ... release the lock, if there is one
-      #persist_metadata(METADATAFILENAME)
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
@@ -2450,10 +2446,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # ... but always release it...
     try:
       #stuff
-      1
-    except:
-      #stuff
-      1
+      pass
     finally:
       filesystemmetadatalock.release()
 
@@ -2478,9 +2471,90 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
     return 0
-  
+
   FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
 
+  def mmap_syscall(addr, leng, prot, flags, fildes, off):
+    """
+    http://linux.die.net/man/2/mmap
+    """
+    # lock to prevent things from changing while we look this up...
+    filesystemmetadatalock.acquire(True)
+
+    # ... but always release it...
+    try:
+      if leng==0:
+        raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
+
+      if 0 == flags & (MAP_PRIVATE | MAP_SHARED):
+        raise SyscallError("mmap_syscall", "EINVAL", "The value of flags is invalid (neither MAP_PRIVATE nor MAP_SHARED is set)")
+
+      #some ENOMEM guards might be nice, maybe even EAGAIN or EPERM
+      if 0 == flags & MAP_ANONYMOUS:
+        if fildes in filedescriptortable:
+          filedescriptortable[fildes]['lock'].acquire(True)
+
+          thisinode = filedescriptortable[fildes]['inode']
+          mode = filesystemmetadata['inodetable'][thisinode]['mode']
+          fflags = filedescriptortable[fildes]['flags']
+
+          # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
+          # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
+          if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
+          if not (IS_REG(mode) or IS_CHR(mode)):
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
+
+          filesize = filesystemmetadata['inodetable'][thisinode]['size']
+
+          if off < 0 or off >= filesize:
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
+
+          if off + leng > filesize:
+            filedescriptortable[fildes]['lock'].release()
+            raise SyscallError("mmap_syscall", "EINVAL", "The file is a regular file and the value of off plus len exceeds" +
+                " the offset maximum established in the open file description associated with fildes")
+
+          filedescriptortable[fildes]['lock'].release()
+        else:
+          #Some internal NaCl mmaps don't have corresponding repy fds but aren't anonymous
+          #Unfortunately that means we need to rely on this being a valid path
+          #TODO: ensure user mmaps can't reach here
+          pass
+          #raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
+
+
+      return repy_mmap(addr, leng, prot, flags, fildes, off)
+    finally:
+      filesystemmetadatalock.release()
+
+  FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
+   
+  def munmap_syscall(addr, leng):
+    """
+    http://linux.die.net/man/2/munmap
+    """
+    # lock to prevent things from changing while we look this up...
+    filesystemmetadatalock.acquire(True)
+
+    # ... but always release it...
+    try:
+      if leng==0:
+        raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
+      return repy_mmap(addr, 
+        leng, 
+        PROT_NONE,
+        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,
+        -1,
+        0)
+    finally:
+      filesystemmetadatalock.release()
+
+  FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
+  
   # Exec will do the same copying as fork, 
   # but we want to get rid of all the information from the old cage
   
@@ -2502,7 +2576,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadatalock.release()
   
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
-
 
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
     return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
