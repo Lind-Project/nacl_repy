@@ -518,6 +518,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     filedescriptortable.clear()
     filesystemmetadatalock.release()
+    print("Exit done.")
     return 0
   
   FS_CALL_DICTIONARY("exit_syscall") = exit_syscall
