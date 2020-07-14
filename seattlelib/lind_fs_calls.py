@@ -521,7 +521,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     print("Exit done.")
     return 0
   
-  FS_CALL_DICTIONARY("exit_syscall") = exit_syscall
+  FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
   
 
   
