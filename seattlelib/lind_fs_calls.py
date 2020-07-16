@@ -505,7 +505,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
 
     filesystemmetadatalock.acquire(True)
-    
+  
     for fd in filedescriptortable:
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].acquire(True)
@@ -515,10 +515,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         if 'lock' in filedescriptortable[fd]:
           filedescriptortable[fd]['lock'].release()
         del filedescriptortable[fd]
-
+    print("File descriptors all closed.")
     filedescriptortable.clear()
     filesystemmetadatalock.release()
-    print("Exit done.")
+    print("Data structures cleaned up. Exit done.")
     return 0
   
   FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
