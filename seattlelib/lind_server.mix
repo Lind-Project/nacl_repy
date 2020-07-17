@@ -215,6 +215,8 @@ include unimplemented_syscalls.repy
 
 include dispatcher.repy
 
+import flamegraph
+
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
@@ -396,7 +398,7 @@ def main(cageid):
   is_trace()
 
   if callfunc == "initialize":
-    #flamegraph.start_profile_thread(fd=open("./perf.log", "w"))
+    flamegraph.start_profile_thread(fd=open("./perf.log", "w"))
     print >> sys.stderr, "Lind v" + VERSION
     parse_commandline()
     lind_factory(cageid)
