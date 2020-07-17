@@ -251,10 +251,6 @@ def LindSyscall(call_num, args):
   response = None
   cageid = args[-1]
 
-  print "cage id is " + str(cageid)
-  print "mycontext"
-  print mycontext[LOCK]
-
   if TRACE:
     strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call_num]).split(" ")[1]), str(args)[:128], " = "]
   
