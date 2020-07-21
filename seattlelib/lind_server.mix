@@ -16,7 +16,6 @@ The Lind OS Server.  This module services system calls coming from glibc
 import sys              # for sys.stderr
 sys.path.append('../portability')
 from repyportability import *
-import flamegraph
 
 include struct.repy
 
@@ -400,7 +399,6 @@ def main(cageid):
   is_trace()
 
   if callfunc == "initialize":
-    flamegraph.start_profile_thread(fd=open("./perf.log", "w"))
     print >> sys.stderr, "Lind v" + VERSION
     parse_commandline()
     lind_factory(cageid)
