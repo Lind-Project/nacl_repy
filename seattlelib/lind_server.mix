@@ -15,6 +15,7 @@ The Lind OS Server.  This module services system calls coming from glibc
 
 import sys              # for sys.stderr
 import ../portability/repyportability.py
+import flamegraph
 
 include struct.repy
 
