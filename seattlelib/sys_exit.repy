@@ -12,7 +12,8 @@ the result back up.
 """
 
 def lind_sys_exit(args):
-  
+  print("lind_sys_exit printing cageid...")
+  print(args[-1], '\n')
   status = args[0]
   try: 
     result = get_fs_call(args[-1], "exit_syscall")(status)
@@ -22,7 +23,8 @@ def lind_sys_exit(args):
 
 
 def lind_safe_sys_exit(args):
-
+  print("lind_safe_sys_exit printing cageid...")
+  print(args[-1], '\n')
   status = args[0]
   assert isinstance(status, int)
   return lind_sys_exit(args)
