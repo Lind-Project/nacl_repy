@@ -213,6 +213,8 @@ include debug.repy
 
 include unimplemented_syscalls.repy
 
+include sys_exit.repy
+
 include dispatcher.repy
 
 
@@ -357,6 +359,7 @@ def setup_component_communication(comp_num):
 
 
 def lind_factory(cageid):
+  print("lind_factory printing cageid", cageid, '\n')
   setup_errnos(1)
   setup_dispatcher(1)
   setup_filetable(1,cageid)
