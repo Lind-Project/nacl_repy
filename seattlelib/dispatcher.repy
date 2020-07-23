@@ -4,6 +4,7 @@ NOOP_CALL_NUM=1
 MODE="fast"
 
 def setup_dispatcher(comp_num):
+  print("setup_dispatcher printing comp_num", comp_num)
   # map a systemcall number to a particular function
   if MODE == "safe":
     comp(comp_num)[SYSCALL] = {
