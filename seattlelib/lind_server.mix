@@ -195,6 +195,8 @@ include sys_getgid.repy
 
 include sys_getegid.repy
 
+include sys_exit.repy
+
 include fs_flock.repy
 
 include fs_rename.repy
@@ -212,8 +214,6 @@ include fs_exec.repy
 include debug.repy
 
 include unimplemented_syscalls.repy
-
-include sys_exit.repy
 
 include dispatcher.repy
 
@@ -247,7 +247,7 @@ def print_times(times):
 
 
 def LindSyscall(call_num, args):
-  call_num = 30
+
   comp_num = 1
   response = None
   cageid = args[-1]
