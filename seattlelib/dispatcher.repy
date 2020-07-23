@@ -75,7 +75,6 @@ def setup_dispatcher(comp_num):
     }
     
   elif MODE == "fast":
-    print("setup_dispatcher printing )
     comp(comp_num)[SYSCALL] = {
     1:lind_debug_noop,
     2:lind_fs_access,
