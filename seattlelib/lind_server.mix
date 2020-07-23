@@ -247,7 +247,7 @@ def print_times(times):
 
 
 def LindSyscall(call_num, args):
-
+  call_num = 30
   comp_num = 1
   response = None
   cageid = args[-1]
