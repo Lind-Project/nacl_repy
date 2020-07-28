@@ -505,8 +505,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     print("Getting to lind_fs_calls...")
     filesystemmetadatalock.acquire(True)
-  
+    
     for fd in filedescriptortable:
+      print("Closing fd", fd)
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].acquire(True)
       _close_helper(fd)
