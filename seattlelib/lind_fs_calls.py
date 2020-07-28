@@ -510,13 +510,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       print("Closing fd", fd)
     
     for fd in filedescriptortable:
-      if fd != 0:
-        if 'lock' in filedescriptortable[fd]:
-          filedescriptortable[fd]['lock'].acquire(True)
-        _close_helper(fd)
-        print("Closed fd", fd)
-        if 'lock' in filedescriptortable[fd]:
-          filedescriptortable[fd]['lock'].release()
+      if 'lock' in filedescriptortable[fd]:
+        filedescriptortable[fd]['lock'].acquire(True)
+      _close_helper(fd)
+      print("Closed fd", fd)
+      if 'lock' in filedescriptortable[fd]:
+        filedescriptortable[fd]['lock'].release()
     print("File descriptors all closed.")
     filedescriptortable.clear()
     print("filedescriptortable cleared.")
