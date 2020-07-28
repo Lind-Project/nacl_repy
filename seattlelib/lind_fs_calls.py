@@ -511,10 +511,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         filedescriptortable[fd]['lock'].acquire(True)
       try:
         _close_helper(fd)
-      finally:
-        if 'lock' in filedescriptortable[fd]:
-          filedescriptortable[fd]['lock'].release()
-        del filedescriptortable[fd]
+      if 'lock' in filedescriptortable[fd]:
+        filedescriptortable[fd]['lock'].release()
+      del filedescriptortable[fd]
     print("File descriptors all closed.")
     filedescriptortable.clear()
     filesystemmetadatalock.release()
