@@ -503,7 +503,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     http://linux.die.net/man/2/exit
     """
-
+    print("Getting to lind_fs_calls...")
     filesystemmetadatalock.acquire(True)
   
     for fd in filedescriptortable:
