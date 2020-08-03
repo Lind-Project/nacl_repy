@@ -496,7 +496,32 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #perhaps include an initalization failsafe?
 
 
+  ##### EXIT  #####
 
+
+  def exit_syscall(status):
+    """
+    http://linux.die.net/man/2/exit
+    """
+
+    filesystemmetadatalock.acquire(True)
+    
+    # close all the fds in the fd-table
+    for fd in filedescriptortable:
+      if 'lock' in filedescriptortable[fd]:
+        filedescriptortable[fd]['lock'].acquire(True)
+      _close_helper(fd) # call _close_helper to do the work
+      if 'lock' in filedescriptortable[fd]:
+        filedescriptortable[fd]['lock'].release()
+     
+    filedescriptortable.clear() # clean up the fd-table
+    filesystemmetadatalock.release()
+    return 0
+  
+  FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
+  
+
+  
   ##### FSTATFS  #####
 
 
