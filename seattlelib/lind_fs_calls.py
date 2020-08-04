@@ -1356,6 +1356,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
 
+    pipe_read_time_start = time.time()
+
+
     # lets find the pipe number and acquire the readlock
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
@@ -1385,6 +1388,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # release our readlock  
     pipetable[pipenumber]['readlock'].release()
+
+    pipe_read_time_end = time.time()
+    pipe_read_timer_tot = (pipe_read_time_end - pipe_read_time_start) * 1000000
+    pipe_read_times.append(("read", "pipe", pipe_read_timer_tot))
+            
     return data
 
 
@@ -1397,6 +1405,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
+
+
+    pipe_write_time_start = time.time()
+
 
 
     try:
@@ -1463,6 +1475,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # release our write lock     
     pipetable[pipenumber]['writelock'].release()
+
+    pipe_write_time_end = time.time()
+    pipe_write_timer_tot = (pipe_write_time_end - pipe_write_time_start) * 1000000
+    pipe_write_times.append(("write", "pipe", pipe_write_timer_tot))
 
     return len(data)
 
