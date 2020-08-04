@@ -412,10 +412,10 @@ def finalize():
   print >> sys.stderr,  "Done persisting metadata."
 
   for times in write_times:
-    print "Call to " + write_times[0] + " in " + write_times[1]) + " took " + str(write_times[2]) + " ms."
+    print "Call to " + write_times[0] + " in " + write_times[1] + " took " + str(write_times[2]) + " ms."
 
   for times in call_times:
-    print "Call to " + read_times[0] + " in " + read_times[1]) + " took " + str(read_times[2]) + " ms."
+    print "Call to " + read_times[0] + " in " + read_times[1] + " took " + str(read_times[2]) + " ms."
 
 
 def main(cageid):
