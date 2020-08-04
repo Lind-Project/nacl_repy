@@ -411,6 +411,12 @@ def finalize():
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."
 
+  for times in write_times:
+    print Call to + write_times[0] + " in " + write_times[1]) + " took " + write_times[2] " ms."
+
+  for times in call_times:
+    print Call to + read_times[0] + " in " + read_times[1]) + " took " + read_times[2] " ms."
+
 
 def main(cageid):
   is_trace()
