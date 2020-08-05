@@ -1360,30 +1360,30 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
 
-    data = ''
+    data = count * 'A'
    
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    while count != 0:
-      try:
+    # while count != 0:
+    #   try:
         
-        current_pipesize = len(pipetable[pipenumber]['data'])
+    #     current_pipesize = len(pipetable[pipenumber]['data'])
 
-        if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
-            break
+    #     if current_pipesize == 0 and pipetable[pipenumber]['eof'] == True:
+    #         break
 
-          # If count is smaller than pipe, read that much and delete it from pipe,
-          # if not, take the whole thing
-        if count < current_pipesize:  
-            data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), count)))
-            break
-        else:
-            data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), current_pipesize)))
-            count -= current_pipesize
+    #       # If count is smaller than pipe, read that much and delete it from pipe,
+    #       # if not, take the whole thing
+    #     if count < current_pipesize:  
+    #         data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), count)))
+    #         break
+    #     else:
+    #         data += "".join(starmap(pipetable[pipenumber]['data'].popleft, repeat((), current_pipesize)))
+    #         count -= current_pipesize
 
-      except IndexError, e:
-          continue
+    #   except IndexError, e:
+    #       continue
 
-    # release our readlock  
+    # # release our readlock  
     pipetable[pipenumber]['readlock'].release()
     return data
 
