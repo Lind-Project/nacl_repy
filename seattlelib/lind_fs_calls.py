@@ -147,6 +147,9 @@ pipetable = {}
 #this is a dictionary of dictionaries of contexts
 master_fs_calls_context = {}
 
+pipecounter = 0
+PIPETOTAL = 2 ** 25
+
 # Where we currently are at...
 
 #fs_calls_context['currentworkingdirectory'] = '/' 
@@ -1360,7 +1363,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
 
-    data = count * 'A'
+    data = ''
+    if pipecounter < PIPETOTAL: 
+      data = count * 'A'
+      pipecounter += count
+
    
     # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
     # while count != 0:
