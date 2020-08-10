@@ -280,7 +280,7 @@ def LindSyscall(call_num, args):
       print "trying read stdin"
       buffer = ''
       if (counter < PIPEFILEMAX): buffer = 'A' * args[1]
-      counter += args[1]
+      mycontext[COUNTER] += args[1]
       response = SuccessResponseBuilder("fs_read", buffer)
     elif (call_num == 13 and args[0] == 1 and args[-1] == 4):
       print "tring write stdout"
@@ -393,6 +393,7 @@ def lind_factory(cageid):
   setup_filetable(1,cageid)
   setup_component_communication(1)
 
+  mycontext[COUNTER] = 0
   mycontext[LOCK] = {}
   mycontext[LOCK][cageid] = createlock()
   #_check_file(curr_comp()[PROGRAM])
