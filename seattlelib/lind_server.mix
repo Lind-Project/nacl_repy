@@ -283,7 +283,7 @@ def LindSyscall(call_num, args):
       mycontext[COUNTER] += args[1]
       response = SuccessResponseBuilder("fs_read", len(buffer), buffer)
     elif (call_num == 13 and args[0] == 1 and args[-1] == 4):
-      response = SuccessResponseBuilder("fs_write", args1)
+      response = SuccessResponseBuilder("fs_write", args[1])
     else:
       response = dispatch_syscall(call_num, args)
   except Exception, e:
