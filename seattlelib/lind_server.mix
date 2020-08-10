@@ -198,6 +198,8 @@ include sys_getgid.repy
 
 include sys_getegid.repy
 
+include sys_exit.repy
+
 include fs_flock.repy
 
 include fs_rename.repy
