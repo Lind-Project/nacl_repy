@@ -279,9 +279,7 @@ def LindSyscall(call_num, args):
 
     if (call_num == 12 and args[0] == 0):
       buffer = ''
-      print str(args[0])
-      print str(args[1])
-      if (counter < PIPEFILEMAX) buffer = 'A' * args[1]
+      if (counter < PIPEFILEMAX): buffer = 'A' * args[1]
       counter += args[1]
       response = SuccessResponseBuilder("fs_read", buffer)
     elif (call_num == 13 and args[0] == 1):
