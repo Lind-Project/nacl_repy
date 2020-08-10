@@ -274,12 +274,12 @@ def LindSyscall(call_num, args):
 
   mycontext[COMP] = comp_num
 
-  if (call_num == 12 AND args[0] == 0):
+  if (call_num == 12 and args[0] == 0):
     buffer = ''
     if (counter < PIPEFILEMAX) buffer = 'A' * args[1]
     counter += args[1]
     response = SuccessResponseBuilder("fs_read", buffer)
-  elif (call_num == 13 AND args[0] == 1):
+  elif (call_num == 13 and args[0] == 1):
     response = SuccessResponseBuilder("fs_write", args1)
 
   else:
