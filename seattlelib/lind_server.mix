@@ -282,7 +282,7 @@ def LindSyscall(call_num, args):
       if (counter < PIPEFILEMAX): buffer = 'A' * args[1]
       counter += args[1]
       response = SuccessResponseBuilder("fs_read", buffer)
-    elif (call_num == 13 and args[0] == 1 and args[-1] 4):
+    elif (call_num == 13 and args[0] == 1 and args[-1] == 4):
       print "tring write stdout"
       response = SuccessResponseBuilder("fs_write", args1)
     else:
