@@ -224,7 +224,6 @@ call_times = list()
 
 counter = 0
 PIPEFILEMAX = 647582720
-fork_on = False
 
 
 def print_times(times):
@@ -275,17 +274,15 @@ def LindSyscall(call_num, args):
 
   mycontext[COMP] = comp_num
 
-  if (call_num == 66): fork_on = True
-
   try:
 
-    if (call_num == 12 and args[0] == 0 and fork_on):
+    if (call_num == 12 and args[0] == 0 and args[-1] == 5):
       print "trying read stdin"
       buffer = ''
       if (counter < PIPEFILEMAX): buffer = 'A' * args[1]
       counter += args[1]
       response = SuccessResponseBuilder("fs_read", buffer)
-    elif (call_num == 13 and args[0] == 1 and fork_on):
+    elif (call_num == 13 and args[0] == 1 and args[-1] 4):
       print "tring write stdout"
       response = SuccessResponseBuilder("fs_write", args1)
     else:
