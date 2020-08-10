@@ -278,11 +278,13 @@ def LindSyscall(call_num, args):
   try:
 
     if (call_num == 12 and args[0] == 0):
+      print "trying read stdin"
       buffer = ''
       if (counter < PIPEFILEMAX): buffer = 'A' * args[1]
       counter += args[1]
       response = SuccessResponseBuilder("fs_read", buffer)
     elif (call_num == 13 and args[0] == 1):
+      print "tring write stdout"
       response = SuccessResponseBuilder("fs_write", args1)
     else:
       response = dispatch_syscall(call_num, args)
