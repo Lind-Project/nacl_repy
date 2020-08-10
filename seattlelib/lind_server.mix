@@ -274,23 +274,24 @@ def LindSyscall(call_num, args):
 
   mycontext[COMP] = comp_num
 
-  if (call_num == 12 and args[0] == 0):
-    buffer = ''
-    print str(args[0])
-    print str(args[1])
-    if (counter < PIPEFILEMAX) buffer = 'A' * args[1]
-    counter += args[1]
-    response = SuccessResponseBuilder("fs_read", buffer)
-  elif (call_num == 13 and args[0] == 1):
-    response = SuccessResponseBuilder("fs_write", args1)
 
-  else:
-    try:
+  try:
+
+    if (call_num == 12 and args[0] == 0):
+      buffer = ''
+      print str(args[0])
+      print str(args[1])
+      if (counter < PIPEFILEMAX) buffer = 'A' * args[1]
+      counter += args[1]
+      response = SuccessResponseBuilder("fs_read", buffer)
+    elif (call_num == 13 and args[0] == 1):
+      response = SuccessResponseBuilder("fs_write", args1)
+    else:
       response = dispatch_syscall(call_num, args)
-    except Exception, e:
-      response = ErrorResponseBuilder("LindSyscall", "ENOSYS", str(e))
-    except:
-      response = ErrorResponseBuilder("LindSyscall", "ENOSYS", "Internal Syscall Error")
+  except Exception, e:
+    response = ErrorResponseBuilder("LindSyscall", "ENOSYS", str(e))
+  except:
+    response = ErrorResponseBuilder("LindSyscall", "ENOSYS", "Internal Syscall Error")
 
   
   finally:
