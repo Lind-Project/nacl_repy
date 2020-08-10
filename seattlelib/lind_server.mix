@@ -42,6 +42,8 @@ SUCCESS = 0
 PRODUCTION = False
 COMP_MODE = "component_mode"
 
+COUNTER = "counter"
+
 # the size of the transmission buffer.  We should never send something
 # bigger than this!
 TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
@@ -222,7 +224,6 @@ include dispatcher.repy
 
 call_times = list()
 
-counter = 0
 PIPEFILEMAX = 647582720
 
 
@@ -279,7 +280,7 @@ def LindSyscall(call_num, args):
     if (call_num == 12 and args[0] == 0 and args[-1] == 5):
       print "trying read stdin"
       buffer = ''
-      if (counter < PIPEFILEMAX): buffer = 'A' * args[1]
+      if (mycontext[COUNTER] < PIPEFILEMAX): buffer = 'A' * args[1]
       mycontext[COUNTER] += args[1]
       response = SuccessResponseBuilder("fs_read", buffer)
     elif (call_num == 13 and args[0] == 1 and args[-1] == 4):
