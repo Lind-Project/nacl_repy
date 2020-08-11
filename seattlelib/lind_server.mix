@@ -428,7 +428,7 @@ def finalize():
   print >> sys.stderr,  "Done persisting metadata."
   total_time = 0
   for times in call_times:
-    print "Call number " + str(times[0]) + " took " + str(times[1]) + " ms."
+    print "Call number " + str(times[0]) + " of type " + str(times[2]) + " took " + str(times[1]) + " ms."
     total_time += times[1]
   print "total time " + str(total_time) + " ms."
 
