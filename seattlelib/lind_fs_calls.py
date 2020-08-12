@@ -1381,8 +1381,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
 
-    print "pipe read: should not reach"
-
     # lets find the pipe number and acquire the readlock
     pipenumber = filedescriptortable[fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
@@ -1478,9 +1476,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
-
-    print "pipe write: should not reach"
-
 
     # find pipe number, and grab lock
     pipenumber = filedescriptortable[fd]['pipe']
