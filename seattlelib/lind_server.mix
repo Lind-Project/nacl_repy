@@ -279,17 +279,13 @@ def LindSyscall(call_num, args):
   try:
 
     if (call_num == 12 and args[0] == 0 and args[-1] == 5):
-      buffer = ''
-      if (mycontext[COUNTER] < PIPEFILEMAX): buffer = 'A' * args[1]
-      mycontext[COUNTER] += args[1]
       calltype = "pipe read"
-      response = SuccessResponseBuilder("fs_read", len(buffer), buffer)
     elif (call_num == 13 and args[0] == 1 and args[-1] == 4):
       calltype = "pipe write"
-      response = SuccessResponseBuilder("fs_write", args[1])
     else:
       if (call_num == 12): calltype = "file read"
-      response = dispatch_syscall(call_num, args)
+      
+    response = dispatch_syscall(call_num, args)
   except Exception, e:
     response = ErrorResponseBuilder("LindSyscall", "ENOSYS", str(e))
   except:
