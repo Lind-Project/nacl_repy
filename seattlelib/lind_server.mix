@@ -435,7 +435,6 @@ def main(cageid):
   if callfunc == "initialize":
     print >> sys.stderr, "Lind v" + VERSION
     parse_commandline()
-    override_restrictions()
     lind_factory(cageid)
 
 
