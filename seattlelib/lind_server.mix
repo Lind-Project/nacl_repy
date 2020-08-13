@@ -284,7 +284,7 @@ def LindSyscall(call_num, args):
       calltype = "pipe write"
     else:
       if (call_num == 12): calltype = "file read"
-      
+
     response = dispatch_syscall(call_num, args)
   except Exception, e:
     response = ErrorResponseBuilder("LindSyscall", "ENOSYS", str(e))
@@ -435,6 +435,7 @@ def main(cageid):
   if callfunc == "initialize":
     print >> sys.stderr, "Lind v" + VERSION
     parse_commandline()
+    override_restrictions()
     lind_factory(cageid)
 
 

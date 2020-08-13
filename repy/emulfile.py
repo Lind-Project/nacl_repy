@@ -431,9 +431,8 @@ class emulated_file (object):
       disk_blocks_read += 1
 
     # Charge 4K per block
-    # nanny.tattle_quantity('fileread', disk_blocks_read*4096)
-    nanny.tattle_quantity('fileread', 0)
-
+    nanny.tattle_quantity('fileread', disk_blocks_read*4096)
+    
 
     # Return the data
     return data
