@@ -1,0 +1,26 @@
+"""
+Handlers for the exit system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls the real handler.
+
+Exit handler pulls out arguments, does any mandatory checking
+then calls the repy posix library exit system call, then packs
+the result back up.
+
+"""
+
+def lind_sys_exit(args):
+  status = args[0]
+  try:
+    result = get_fs_call(args[-1], "exit_syscall")(status)
+  except SyscallError, e:
+    return ErrorResponseBuilder("sys_exit", e[1], e[2])
+  return SuccessResponseBuilder("sys_exit", result)
+
+
+def lind_safe_sys_exit(args):
+  status = args[0]
+  assert isinstance(status, int)
+  return lind_sys_exit(args)
