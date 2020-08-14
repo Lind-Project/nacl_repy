@@ -448,5 +448,6 @@ def repy_main(argv=sys.argv):
     harshexit.harshexit(3)
 
 if __name__ == '__main__':
+  override_restrictions()
   repy_main()
 
