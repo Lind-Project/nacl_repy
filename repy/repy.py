@@ -139,10 +139,11 @@ if "fork" in dir(os):
   __orig_fork = os.fork
   os.fork = nonSafe_fork
 
-override_restrictions()
 
 
 def main(resourcefn, program, args):
+  override_restrictions()
+
 
   # Armon: Initialize the circular logger before starting the nanny
   if logfile:
