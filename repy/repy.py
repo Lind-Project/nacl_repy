@@ -139,6 +139,7 @@ if "fork" in dir(os):
   __orig_fork = os.fork
   os.fork = nonSafe_fork
 
+override_restrictions()
 
 
 def main(resourcefn, program, args):
@@ -448,6 +449,5 @@ def repy_main(argv=sys.argv):
     harshexit.harshexit(3)
 
 if __name__ == '__main__':
-  override_restrictions()
   repy_main()
 
