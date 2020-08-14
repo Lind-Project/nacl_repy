@@ -122,6 +122,7 @@ def preparesocket(socketobject):
 # This will result in an internal thread on Windows
 # and a thread on the external process for *NIX
 def monitor_cpu_disk_and_mem():
+  return
   if ostype == 'Linux' or ostype == 'Darwin':  
     # Startup a CPU monitoring thread/process
     do_forked_resource_monitor()

@@ -142,8 +142,6 @@ if "fork" in dir(os):
 
 
 def main(resourcefn, program, args):
-  override_restrictions()
-
 
   # Armon: Initialize the circular logger before starting the nanny
   if logfile:
