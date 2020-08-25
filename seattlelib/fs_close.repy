@@ -4,6 +4,7 @@ def lind_fs_close(args):
   try:
     result = get_fs_call(args[-1],"close_syscall")(handle)
   except SyscallError, e:
+    print "failed closing fd " + str(args[0]) + " in cage " + str(args[-1])
     return ErrorResponseBuilder("fs_close", e[1], e[2])
     
   return SuccessResponseBuilder("fs_close", result)
