@@ -1735,9 +1735,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
-
-    print "closing fd " + str(fd)
+    print "-------------------------------------------------------------"
+    print "closing fd " + str(fd) " in cage " + str(CONST_CAGEID)
     print filedescriptortable
+    print "-------------------------------------------------------------"
+
 
 
     # in an abundance of caution, lock...
