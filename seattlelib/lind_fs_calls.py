@@ -110,7 +110,7 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
-removerfile("errors.txt")
+removefile("errors.txt")
 errorfile = openfile("errors.txt", True)
 eposition = 0
 
