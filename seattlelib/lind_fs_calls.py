@@ -110,20 +110,16 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
-global errordict
-global counter
-errordict = {}
-counter = 0
+errorfile = open(errors.txt)
 
 
-def print_errorlist():
-  for x in range(0, counter):
-    print(errordict[x])
+def print_errorfile():
+  errors = errorfile.read()
+  print errors
   return
 
 def adderror(thing):
-  errordict[counter] = thing
-  counter += 1
+  errorfile.write(thing)
   return
 
 ROOTDIRECTORYINODE = 1
@@ -1753,7 +1749,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # check the fd
     
     adderror("closing fd " + str(fd) + " in cage " + str(CONST_CAGEID))
-    adderror(filedescriptortable)
+    adderror(str(filedescriptortable))
     adderror("-------------------------------------------------------------")
 
 
