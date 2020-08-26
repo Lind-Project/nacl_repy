@@ -1667,9 +1667,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # and look up how many read ends and write ends are open
     read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
+
+    adderror("after readrefs " + str(read_references) + " fd " + str(fd))
+
     write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
 
-    adderror("after refs fd " + str(fd))
+    adderror("after writerefs " + str(write_references) + " fd " + str(fd))
 
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
