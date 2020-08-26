@@ -120,8 +120,8 @@ def print_errorfile():
   return
 
 def adderror(thing):
-    errorfile.writeat(thing, eposition)
-    eposition += len(thing)
+  errorfile.writeat(thing, eposition)
+  eposition += len(thing)
   return
 
 ROOTDIRECTORYINODE = 1
