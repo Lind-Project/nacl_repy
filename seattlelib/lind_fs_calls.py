@@ -1787,8 +1787,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      adderror("acquired lock and entering helper fd " + str(fd) + " in cage " + str(CONST_CAGEID))
-         return _close_helper(fd)
+      return _close_helper(fd)
 
     finally:
       # ... release the lock, if there is one
