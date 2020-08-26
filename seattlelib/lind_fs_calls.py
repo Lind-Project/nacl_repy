@@ -110,6 +110,8 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
+import traceback
+
 removefile("errors.txt")
 errorfile = openfile("errors.txt", True)
 eposition = 0
@@ -1663,16 +1665,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # let's find the pipenumber
     pipenumber = filedescriptortable[fd]['pipe']
 
-    adderror("fd " + str(fd) + " pipenumber " + str(pipenumber))
 
     # and look up how many read ends and write ends are open
     read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
 
-    adderror("after readrefs " + str(read_references) + " fd " + str(fd))
 
     write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
 
-    adderror("after writerefs " + str(write_references) + " fd " + str(fd))
 
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
@@ -1710,8 +1709,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         return 0
 
       if IS_PIPE_DESC(fd,CONST_CAGEID):
-        adderror("ispipe fd " + str(fd))
-
         _cleanup_pipe(fd)
         return 0
 
@@ -1776,7 +1773,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return 0
     except:
       print "error occured"
-      
+      print(traceback.format_exc())
+
 
 
 
