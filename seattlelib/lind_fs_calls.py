@@ -110,16 +110,18 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
-errorfile = open("errors.txt", "r+")
+errorfile = openfile("errors.txt", False)
+eposition = 0
 
 
 def print_errorfile():
-  errors = errorfile.read()
+  errors = errorfile.readat(None, 0)
   print errors
   return
 
 def adderror(thing):
-  errorfile.write(thing)
+    errorfile.writeat(thing, eposition)
+    eposition += len(thing)
   return
 
 ROOTDIRECTORYINODE = 1
