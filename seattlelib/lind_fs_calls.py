@@ -120,6 +120,7 @@ def print_errorfile():
   return
 
 def adderror(thing):
+  global eposition
   errorfile.writeat(thing, eposition)
   eposition += len(thing)
   return
