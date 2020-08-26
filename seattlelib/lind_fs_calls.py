@@ -110,6 +110,12 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
+global errorlist = list()
+
+def print_errorlist():
+  print errorlist
+  return
+
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 
@@ -1735,10 +1741,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
-    print "-------------------------------------------------------------"
-    print "closing fd " + str(fd) + " in cage " + str(CONST_CAGEID)
-    print filedescriptortable
-    print "-------------------------------------------------------------"
+    errorstring = ""
+    errorstring += "-------------------------------------------------------------"
+    errorstring += "closing fd " + str(fd) + " in cage " + str(CONST_CAGEID)
+    errorstring += filedescriptortable
+    errorstring += "-------------------------------------------------------------"
+    errorlist.append(errorstring)
+    errorstring = ""
 
 
 
@@ -1755,7 +1764,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      print "acquired lock and entering helper fd " + str(fd) + " in cage " + str(CONST_CAGEID)
+      errorstring += "acquired lock and entering helper fd " + str(fd) + " in cage " + str(CONST_CAGEID)
+      errorlist.append(errorstring)
+      errorstring = ""
       return _close_helper(fd)
 
     finally:
