@@ -1698,7 +1698,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     except KeyError:
       pass
 
-    adderror("past stream fd " + str(fd))
+    # adderror("past stream fd " + str(fd))
 
     # if we are a socket, we dont change disk metadata
     if IS_SOCK_DESC(fd,CONST_CAGEID):
