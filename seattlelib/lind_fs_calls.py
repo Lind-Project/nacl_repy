@@ -1663,9 +1663,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # let's find the pipenumber
     pipenumber = filedescriptortable[fd]['pipe']
 
+    adderror("fd " + str(fd) + " pipenumber " + str(pipenumber))
+
     # and look up how many read ends and write ends are open
     read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
     write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
+
+    adderror("after refs fd " + str(fd))
 
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
@@ -1676,7 +1680,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       del pipetable[pipenumber]
 
 
-      return 0
+    return 0
 
 
 
@@ -1711,7 +1715,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       _epoll_object_deallocator(fd)
       return 0
 
-    adderror("past desccheck fd " + str(fd))
+    # adderror("past desccheck fd " + str(fd))
 
 
     # get the inode for the filedescriptor
@@ -1727,7 +1731,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # and return success
       return 0
 
-    adderror("past inode fd " + str(fd))
+    # adderror("past inode fd " + str(fd))
 
 
     # so it's a regular file.
@@ -1735,9 +1739,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # get the list of file descriptors for the inode
     fdsforinode = _lookup_fds_by_inode(inode)
 
-    adderror("past stream fd " + str(fd))
+    # adderror("past stream fd " + str(fd))
 
-    adderror("fds " + str(fdsforinode[CONST_CAGEID]))
+    # adderror("fds " + str(fdsforinode[CONST_CAGEID]))
 
 
     # I should be in there!
@@ -1752,7 +1756,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     fileobjecttable[inode].close()
     del fileobjecttable[inode]
 
-    adderror("past fot fd " + str(fd))
+    # adderror("past fot fd " + str(fd))
 
 
     # If this was the last open handle to the file, and the file has been marked
@@ -1761,7 +1765,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if 'unlinked' in filesystemmetadata['inodetable'][inode]:
         del filesystemmetadata['inodetable'][inode]
 
-    adderror("past unlink fd " + str(fd))
+    # adderror("past unlink fd " + str(fd))
 
 
     # success!
