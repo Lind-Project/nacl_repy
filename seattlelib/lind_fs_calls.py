@@ -1702,77 +1702,81 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       pass
 
     # adderror("past stream fd " + str(fd))
+    try:
+        
+      # if we are a socket, we dont change disk metadata
+      if IS_SOCK_DESC(fd,CONST_CAGEID):
+        _cleanup_socket(fd)
+        return 0
 
-    # if we are a socket, we dont change disk metadata
-    if IS_SOCK_DESC(fd,CONST_CAGEID):
-      _cleanup_socket(fd)
+      if IS_PIPE_DESC(fd,CONST_CAGEID):
+        adderror("ispipe fd " + str(fd))
+
+        _cleanup_pipe(fd)
+        return 0
+
+      if IS_EPOLL_FD(fd,CONST_CAGEID):
+        _epoll_object_deallocator(fd)
+        return 0
+
+      # adderror("past desccheck fd " + str(fd))
+
+
+      # get the inode for the filedescriptor
+      inode = filedescriptortable[fd]['inode']
+
+      # If it's not a regular file, we have nothing to close...
+      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+
+        # double check that this isn't in the fileobjecttable
+        if inode in fileobjecttable:
+          raise Exception("Internal Error: non-regular file in fileobjecttable")
+
+        # and return success
+        return 0
+
+      # adderror("past inode fd " + str(fd))
+
+
+      # so it's a regular file.
+      
+      # get the list of file descriptors for the inode
+      fdsforinode = _lookup_fds_by_inode(inode)
+
+      # adderror("past stream fd " + str(fd))
+
+      # adderror("fds " + str(fdsforinode[CONST_CAGEID]))
+
+
+      # I should be in there!
+      assert(fd in fdsforinode[CONST_CAGEID])
+
+      # I should only close here if it's the last use of the file.   This can
+      # happen due to dup, multiple opens, etc.
+      if len(fdsforinode) > 1 or len(fdsforinode[CONST_CAGEID]) > 1:
+        # Is there more than one descriptor open?   If so, return success
+        return 0
+      # now let's close it and remove it from the table
+      fileobjecttable[inode].close()
+      del fileobjecttable[inode]
+
+      # adderror("past fot fd " + str(fd))
+
+
+      # If this was the last open handle to the file, and the file has been marked
+      # for unlinking, then delete the inode here.
+      # TODO: also delete file here, not just inode
+      if 'unlinked' in filesystemmetadata['inodetable'][inode]:
+          del filesystemmetadata['inodetable'][inode]
+
+      # adderror("past unlink fd " + str(fd))
+
+
+      # success!
       return 0
-
-    if IS_PIPE_DESC(fd,CONST_CAGEID):
-      adderror("ispipe fd " + str(fd))
-
-      _cleanup_pipe(fd)
-      return 0
-
-    if IS_EPOLL_FD(fd,CONST_CAGEID):
-      _epoll_object_deallocator(fd)
-      return 0
-
-    # adderror("past desccheck fd " + str(fd))
-
-
-    # get the inode for the filedescriptor
-    inode = filedescriptortable[fd]['inode']
-
-    # If it's not a regular file, we have nothing to close...
-    if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-
-      # double check that this isn't in the fileobjecttable
-      if inode in fileobjecttable:
-        raise Exception("Internal Error: non-regular file in fileobjecttable")
-
-      # and return success
-      return 0
-
-    # adderror("past inode fd " + str(fd))
-
-
-    # so it's a regular file.
-    
-    # get the list of file descriptors for the inode
-    fdsforinode = _lookup_fds_by_inode(inode)
-
-    # adderror("past stream fd " + str(fd))
-
-    # adderror("fds " + str(fdsforinode[CONST_CAGEID]))
-
-
-    # I should be in there!
-    assert(fd in fdsforinode[CONST_CAGEID])
-
-    # I should only close here if it's the last use of the file.   This can
-    # happen due to dup, multiple opens, etc.
-    if len(fdsforinode) > 1 or len(fdsforinode[CONST_CAGEID]) > 1:
-      # Is there more than one descriptor open?   If so, return success
-      return 0
-    # now let's close it and remove it from the table
-    fileobjecttable[inode].close()
-    del fileobjecttable[inode]
-
-    # adderror("past fot fd " + str(fd))
-
-
-    # If this was the last open handle to the file, and the file has been marked
-    # for unlinking, then delete the inode here.
-    # TODO: also delete file here, not just inode
-    if 'unlinked' in filesystemmetadata['inodetable'][inode]:
-        del filesystemmetadata['inodetable'][inode]
-
-    # adderror("past unlink fd " + str(fd))
-
-
-    # success!
-    return 0
+    except:
+      print "error occured"
+      
 
 
 
