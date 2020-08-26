@@ -112,6 +112,7 @@
 
 global errordict
 global counter
+errordict = {}
 counter = 0
 
 
