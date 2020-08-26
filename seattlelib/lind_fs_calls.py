@@ -121,9 +121,9 @@ def print_errorfile():
 
 def adderror(thing):
   global eposition
-  writestring = "------------------------"
+  writestring = "------------------------\n"
   writestring += thing
-  writestring += "------------------------"
+  writestring += "------------------------\n"
 
   errorfile.writeat(writestring, eposition)
   eposition += len(writestring)
@@ -1685,6 +1685,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _close_helper(fd):
 
 
+    
     # don't close streams, which have an inode of 1
     try:
       if filedescriptortable[fd]['inode'] == STREAMINODE:
@@ -1692,18 +1693,24 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     except KeyError:
       pass
 
+    adderror("past stream fd " + str(fd))
+
     # if we are a socket, we dont change disk metadata
     if IS_SOCK_DESC(fd,CONST_CAGEID):
       _cleanup_socket(fd)
       return 0
 
     if IS_PIPE_DESC(fd,CONST_CAGEID):
+      adderror("ispipe fd " + str(fd))
+
       _cleanup_pipe(fd)
       return 0
 
     if IS_EPOLL_FD(fd,CONST_CAGEID):
       _epoll_object_deallocator(fd)
       return 0
+
+    adderror("past desccheck fd " + str(fd))
 
 
     # get the inode for the filedescriptor
@@ -1719,10 +1726,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # and return success
       return 0
 
+    adderror("past inode fd " + str(fd))
+
+
     # so it's a regular file.
     
     # get the list of file descriptors for the inode
     fdsforinode = _lookup_fds_by_inode(inode)
+
+    adderror("past stream fd " + str(fd))
+
 
     # I should be in there!
     assert(fd in fdsforinode[CONST_CAGEID])
@@ -1736,11 +1749,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     fileobjecttable[inode].close()
     del fileobjecttable[inode]
 
+    adderror("past fot fd " + str(fd))
+
+
     # If this was the last open handle to the file, and the file has been marked
     # for unlinking, then delete the inode here.
     # TODO: also delete file here, not just inode
     if 'unlinked' in filesystemmetadata['inodetable'][inode]:
         del filesystemmetadata['inodetable'][inode]
+
+    adderror("past unlink fd " + str(fd))
+
 
     # success!
     return 0
@@ -1754,12 +1773,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
-    
-    adderror("closing fd " + str(fd) + " in cage " + str(CONST_CAGEID))
-    adderror(str(filedescriptortable))
-    adderror("-------------------------------------------------------------")
-
-
 
     # in an abundance of caution, lock...
     filesystemmetadatalock.acquire(True)
@@ -1775,8 +1788,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # ... but always release it...
     try:
       adderror("acquired lock and entering helper fd " + str(fd) + " in cage " + str(CONST_CAGEID))
-   
-      return _close_helper(fd)
+         return _close_helper(fd)
 
     finally:
       # ... release the lock, if there is one
