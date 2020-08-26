@@ -1801,9 +1801,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       # ... release the lock, if there is one
+      adderror("closing fd " + str(fd))
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
+      adderror("deleted " + str(fd))
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
