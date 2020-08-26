@@ -1737,6 +1737,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     adderror("past stream fd " + str(fd))
 
+    adderror("fds " + str(fdsforinode[CONST_CAGEID]))
+
 
     # I should be in there!
     assert(fd in fdsforinode[CONST_CAGEID])
