@@ -121,8 +121,12 @@ def print_errorfile():
 
 def adderror(thing):
   global eposition
-  errorfile.writeat(thing, eposition)
-  eposition += len(thing)
+  writestring = "------------------------"
+  writestring += thing
+  writestring += "------------------------"
+
+  errorfile.writeat(writestring, eposition)
+  eposition += len(writestring)
   return
 
 ROOTDIRECTORYINODE = 1
