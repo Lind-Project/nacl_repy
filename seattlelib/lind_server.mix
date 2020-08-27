@@ -392,8 +392,6 @@ def finalize():
   print >> sys.stderr,  "Persisting metadata: ..."
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."
-  print_errorfile()
-
 
 def main(cageid):
   is_trace()
