@@ -1761,7 +1761,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # in an abundance of caution, lock...
 
     global lockverify
-    print lockverify
+    # print lockverify
 
     filesystemmetadatalock.acquire(True)
 
@@ -1835,6 +1835,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/dup2
     """
 
+    # in an abundance of caution, I'll grab a lock...
+    filesystemmetadatalock.acquire(True)
+
     # check the fd
     if oldfd not in filedescriptortable:
       raise SyscallError("dup2_syscall","EBADF","Invalid old file descriptor.")
@@ -1848,8 +1851,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return _dup2_helper(oldfd, newfd)
 
     finally:
-      # ... release the lock
+      # ... release the locks
       filedescriptortable[oldfd]['lock'].release()
+      filesystemmetadatalock.release()
 
 
   FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
@@ -1861,7 +1865,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/dup
     """
-
+    # in an abundance of caution, I'll grab a lock...
+    filesystemmetadatalock.acquire(True)
 
     # check the fd
     if fd not in filedescriptortable and fd >= STARTINGFD:
@@ -1885,8 +1890,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return _dup2_helper(fd, nextfd)
 
     finally:
-      # ... release the lock
+      # ... release the locks
       filedescriptortable[fd]['lock'].release()
+      filesystemmetadatalock.release()
+
 
 
   FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
