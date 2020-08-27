@@ -1590,9 +1590,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper.   Get the fds for an inode (or [] if none)
   def _lookup_fds_by_inode(inode):
     returnedfddict = {}
-    for cageid in masterfiledescriptortable:
+    for cageid in masterfiledescriptortable.keys():
       try:
-        for fd in masterfiledescriptortable[cageid]:
+        for fd in masterfiledescriptortable[cageid].keys():
           if IS_SOCK_DESC(fd, cageid) or IS_EPOLL_FD(fd, cageid) or IS_PIPE_DESC(fd, cageid):
             continue
 
@@ -1610,9 +1610,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper.   Get the references to and end of a pipe 
   def _lookup_refs_by_pipe_end(pipenumber, flags):
     pipe_references = 0
-    for cageid in masterfiledescriptortable:
+    for cageid in masterfiledescriptortable.keys():
       try:
-        for fd in masterfiledescriptortable[cageid]: 
+        for fd in masterfiledescriptortable[cageid].keys(): 
           if IS_PIPE_DESC(fd, cageid):
             if masterfiledescriptortable[cageid][fd]['pipe'] == pipenumber and masterfiledescriptortable[cageid][fd]['flags'] == flags:
               pipe_references += 1
