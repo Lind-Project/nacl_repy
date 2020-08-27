@@ -1693,9 +1693,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         if (here): print "here at the same time, doesnt make sense"
-        here = true
+        here = True
         _cleanup_pipe(fd)
-        here = false
+        here = False
         return 0
 
       if IS_EPOLL_FD(fd,CONST_CAGEID):
