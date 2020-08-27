@@ -113,6 +113,7 @@
 import traceback
 
 lockverify = False
+here = False
 
 
 ROOTDIRECTORYINODE = 1
@@ -1674,7 +1675,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # without changing to re-entrant locks
   def _close_helper(fd):
 
-
+    global here
     
     # don't close streams, which have an inode of 1
     try:
@@ -1691,7 +1692,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         return 0
 
       if IS_PIPE_DESC(fd,CONST_CAGEID):
+        if (here): print "here at the same time, doesnt make sense"
+        here = true
         _cleanup_pipe(fd)
+        here = false
         return 0
 
       if IS_EPOLL_FD(fd,CONST_CAGEID):
@@ -1766,7 +1770,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     filesystemmetadatalock.acquire(True)
 
-    if (lockverify): print "lock is active but we still got here!"
     lockverify = True
 
     if fd not in filedescriptortable:
