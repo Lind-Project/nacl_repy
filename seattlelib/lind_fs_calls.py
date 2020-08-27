@@ -1761,7 +1761,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # in an abundance of caution, lock...
 
     global lockverify
-    
+    print lockverify
+
     filesystemmetadatalock.acquire(True)
 
     if (lockverify): print "lock is active but we still got here!"
