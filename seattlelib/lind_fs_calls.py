@@ -112,25 +112,8 @@
 
 import traceback
 
-removefile("errors.txt")
-errorfile = openfile("errors.txt", True)
-eposition = 0
+lockverify = False
 
-
-def print_errorfile():
-  errors = errorfile.readat(None, 0)
-  print errors
-  return
-
-def adderror(thing):
-  global eposition
-  writestring = "------------------------\n"
-  writestring += thing
-  writestring += "------------------------\n"
-
-  errorfile.writeat(writestring, eposition)
-  eposition += len(writestring)
-  return
 
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
@@ -1700,7 +1683,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     except KeyError:
       pass
 
-    # adderror("past stream fd " + str(fd))
     try:
         
       # if we are a socket, we dont change disk metadata
@@ -1716,7 +1698,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         _epoll_object_deallocator(fd)
         return 0
 
-      # adderror("past desccheck fd " + str(fd))
 
 
       # get the inode for the filedescriptor
@@ -1732,17 +1713,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         # and return success
         return 0
 
-      # adderror("past inode fd " + str(fd))
-
 
       # so it's a regular file.
       
       # get the list of file descriptors for the inode
       fdsforinode = _lookup_fds_by_inode(inode)
 
-      # adderror("past stream fd " + str(fd))
-
-      # adderror("fds " + str(fdsforinode[CONST_CAGEID]))
 
 
       # I should be in there!
@@ -1757,16 +1733,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       fileobjecttable[inode].close()
       del fileobjecttable[inode]
 
-      # adderror("past fot fd " + str(fd))
-
 
       # If this was the last open handle to the file, and the file has been marked
       # for unlinking, then delete the inode here.
       # TODO: also delete file here, not just inode
       if 'unlinked' in filesystemmetadata['inodetable'][inode]:
           del filesystemmetadata['inodetable'][inode]
-
-      # adderror("past unlink fd " + str(fd))
 
 
       # success!
@@ -1789,6 +1761,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # in an abundance of caution, lock...
     filesystemmetadatalock.acquire(True)
 
+    if (lockverify): print "lock is active but we still got here!"
+    lockverify = True
+
     if fd not in filedescriptortable:
       raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
 
@@ -1799,16 +1774,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-      adderror("going to help fd " + str(fd))
       return _close_helper(fd)
 
     finally:
       # ... release the lock, if there is one
-      adderror("closing fd " + str(fd))
       if 'lock' in filedescriptortable[fd]:
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
-      adderror("deleted " + str(fd))
+      lockverify = False
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
