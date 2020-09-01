@@ -2280,6 +2280,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/getgid
     """
     # I will return 1000, since this is also used in stat
+    print("SafePOSIX getgid()\n")
     return DEFAULT_GID
 
   FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
@@ -2289,6 +2290,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/getegid
     """
     # I will return 1000, since this is also used in stat
+    print("SafePOSIX getegid()\n")
     return DEFAULT_GID
 
   FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
