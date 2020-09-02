@@ -32,8 +32,9 @@ def lind_sys_getegid(args):
         return ErrorResponseBuilder("sys_getegid", e[1], e[2])
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_getegid", 'EINVAL', str(e))
-
-    return SuccessResponseBuilder("sys_getegid", result)
+    
+    data = struct_pack("<i", result)
+    return SuccessResponseBuilder("sys_getegid", len(data), data)
 
 
 def lind_safe_sys_getegid(args):
