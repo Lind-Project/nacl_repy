@@ -509,16 +509,19 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     filesystemmetadatalock.acquire(True)
     
-    # close all the fds in the fd-table
-    for fd in filedescriptortable:
-      if 'lock' in filedescriptortable[fd]:
-        filedescriptortable[fd]['lock'].acquire(True)
-      _close_helper(fd) # call _close_helper to do the work
-      if 'lock' in filedescriptortable[fd]:
-        filedescriptortable[fd]['lock'].release()
-     
-    filedescriptortable.clear() # clean up the fd-table
-    filesystemmetadatalock.release()
+    try:
+      # close all the fds in the fd-table
+      for fd in filedescriptortable:
+        if 'lock' in filedescriptortable[fd]:
+          filedescriptortable[fd]['lock'].acquire(True)
+        _close_helper(fd) # call _close_helper to do the work
+        if 'lock' in filedescriptortable[fd]:
+          filedescriptortable[fd]['lock'].release()
+      
+      filedescriptortable.clear() # clean up the fd-table
+
+    finally:
+      filesystemmetadatalock.release()
     return 0
   
   FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
@@ -1593,9 +1596,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper.   Get the fds for an inode (or [] if none)
   def _lookup_fds_by_inode(inode):
     returnedfddict = {}
-    for cageid in masterfiledescriptortable:
+    for cageid in masterfiledescriptortable.keys():
       try:
-        for fd in masterfiledescriptortable[cageid]:
+        for fd in masterfiledescriptortable[cageid].keys():
           if IS_SOCK_DESC(fd, cageid) or IS_EPOLL_FD(fd, cageid) or IS_PIPE_DESC(fd, cageid):
             continue
 
@@ -1613,9 +1616,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper.   Get the references to and end of a pipe 
   def _lookup_refs_by_pipe_end(pipenumber, flags):
     pipe_references = 0
-    for cageid in masterfiledescriptortable:
+    for cageid in masterfiledescriptortable.keys():
       try:
-        for fd in masterfiledescriptortable[cageid]: 
+        for fd in masterfiledescriptortable[cageid].keys(): 
           if IS_PIPE_DESC(fd, cageid):
             if masterfiledescriptortable[cageid][fd]['pipe'] == pipenumber and masterfiledescriptortable[cageid][fd]['flags'] == flags:
               pipe_references += 1
@@ -1814,6 +1817,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/dup2
     """
+  
+    # lock to prevent things from changing while we look this up...
+    filesystemmetadatalock.acquire(True)
 
     # check the fd
     if oldfd not in filedescriptortable:
@@ -1828,8 +1834,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return _dup2_helper(oldfd, newfd)
 
     finally:
-      # ... release the lock
+      # ... release the locks
       filedescriptortable[oldfd]['lock'].release()
+      filesystemmetadatalock.release()
 
 
   FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
@@ -1842,6 +1849,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/dup
     """
 
+    # lock to prevent things from changing while we look this up...
+    filesystemmetadatalock.acquire(True)
 
     # check the fd
     if fd not in filedescriptortable and fd >= STARTINGFD:
@@ -1865,8 +1874,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return _dup2_helper(fd, nextfd)
 
     finally:
-      # ... release the lock
+      # ... release the locks
       filedescriptortable[fd]['lock'].release()
+      filesystemmetadatalock.release()
+
 
 
   FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
