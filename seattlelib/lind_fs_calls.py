@@ -145,11 +145,11 @@ def print_log():
   for i in range(0, call_counter):
     print str(i)
     curr = call_log[i]
-    logstring = "Call number " + str(curr["number"])
-    logstring += " syscall time " + str(curr["syscall"])
-    logstring += " dispatcher time " + str(curr["dispatcher"])
-    if "stub" in curr: logstring += " stub time " + str(curr["stub"])
-    if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"])
+    logstring = "Call number " + str(curr["number"] * 1000000) + " us"
+    logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
+    logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
+    if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
+    if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
 
     print logstring
 
