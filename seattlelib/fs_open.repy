@@ -46,6 +46,8 @@ def lind_safe_fs_open(args):
 
     """
 
+    print "were doing safe!"
+
     stub_starttime = time.clock()
 
     #constants pulled from standard lib
