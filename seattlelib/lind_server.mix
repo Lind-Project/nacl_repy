@@ -219,9 +219,6 @@ include dispatcher.repy
 
 import time
 
-call_counter = 0
-
-call_log = {}
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
@@ -292,6 +289,8 @@ def LindSyscall(call_num, args):
   syscall_tot = (syscall_endtime - syscall_starttime)
 
   add_to_log("syscall", syscall_tot)
+
+  call_counter += 1
 
   return response
 
@@ -405,25 +404,13 @@ def parse_commandline():
     curr_comp()[PROGRAM] = callargs[0]
     curr_comp()[CMD_LINE] = callargs[1:]
 
-def add_to_log(type, time):
-  call_log[call_counter][type] = time
 
-
-def print_log():
-  for i in range(0, call_counter):
-    curr = call_log[call_counter]
-    logstring = "Call number " + str(curr["number"])
-    logstring += " syscall time " + str(curr["syscall"])
-    logstring += " dispatcher time " + str(curr["dispatcher"])
-    logstring += " stub time " + str(curr["stub"])
-    logstring += " fs call time " + str(curr["fs_call"])
-
-    print logstring
 
 def finalize():
   print >> sys.stderr,  "Persisting metadata: ..."
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."
+  print_log()
 
 
 def main(cageid):

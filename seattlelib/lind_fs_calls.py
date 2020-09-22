@@ -112,6 +112,26 @@
 
 import time
 
+call_counter = 0
+
+call_log = {}
+
+
+def add_to_log(handle, time):
+  call_log[call_counter][handle] = time
+
+
+def print_log():
+  for i in range(0, call_counter):
+    curr = call_log[call_counter]
+    logstring = "Call number " + str(curr["number"])
+    logstring += " syscall time " + str(curr["syscall"])
+    logstring += " dispatcher time " + str(curr["dispatcher"])
+    logstring += " stub time " + str(curr["stub"])
+    logstring += " fs call time " + str(curr["fs_call"])
+
+    print logstring
+
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 
