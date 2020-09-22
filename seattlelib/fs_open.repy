@@ -11,7 +11,7 @@ then calls the repy posix library open system call.  Then packs
 the result back up.
 
 """
-
+import time
 
 def lind_fs_open(args):
     """ open calls are dispatched to this function.
