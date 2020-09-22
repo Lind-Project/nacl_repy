@@ -1303,7 +1303,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       fs_tot = (fs_endtime - fs_starttime)
 
-      add_to_log("fs_call", fs_tot)
+      if not bool(call_log):
+        add_to_log("fs_call", fs_tot)
 
       filesystemmetadatalock.release()
 
