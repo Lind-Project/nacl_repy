@@ -122,8 +122,15 @@ def init_log_entry(call_num):
   global call_counter
 
   call_log[call_counter] = {}
+  callstring = str(call_num)
+  if (call_num = 10) callstring = "open"
+  if (call_num = 14) callstring = "seek"
+  if (call_num = 12) callstring = "read"
+  if (call_num = 13) callstring = "write"
+  if (call_num = 11) callstring = "close"
 
-  call_log[call_counter]["number"] = call_num
+
+  call_log[call_counter]["call"] = callstring
 
 def inc_logcount():
   global call_counter
@@ -140,12 +147,9 @@ def print_log():
   global call_log
   global call_counter
 
-  print call_log
-
   for i in range(0, call_counter):
-    print str(i)
     curr = call_log[i]
-    logstring = "Call number " + str(curr["number"] * 1000000) + " us"
+    logstring = "Syscall" + curr["call"]
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
