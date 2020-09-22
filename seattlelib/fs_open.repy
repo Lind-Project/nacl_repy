@@ -77,7 +77,7 @@ def lind_safe_fs_open(args):
 
     stub_tot = (stub_endtime - stub_starttime)
 
-    call_log[call_counter]["stub"] = stub_tot
+    add_to_log("stub", stub_tot)
 
 
     return result

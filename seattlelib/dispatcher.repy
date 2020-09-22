@@ -178,7 +178,7 @@ def dispatch_syscall(call, args):
 
   dispatcher_tot = (dispatcher_endtime - dispatcher_starttime)
 
-  call_log[call_counter]["dispatcher"] = dispatcher_tot
+  add_to_log("dispatcher", dispatcher_tot)
 
   return syscall_response
 

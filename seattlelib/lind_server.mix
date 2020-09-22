@@ -291,7 +291,7 @@ def LindSyscall(call_num, args):
 
   syscall_tot = (syscall_endtime - syscall_starttime)
 
-  call_log[call_counter]["syscall"] = syscall_tot
+  add_to_log("syscall", syscall_tot)
 
   return response
 
@@ -404,6 +404,9 @@ def parse_commandline():
   else:
     curr_comp()[PROGRAM] = callargs[0]
     curr_comp()[CMD_LINE] = callargs[1:]
+
+def add_to_log(type, time):
+  call_log[call_counter][type] = time
 
 
 def print_log():
