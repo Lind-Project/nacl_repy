@@ -118,19 +118,28 @@ call_log = {}
 
 
 def init_log_entry(call_num):
+  global call_log
+  global call_counter
+
   call_log[call_counter] = {}
 
   call_log[call_counter]["number"] = call_num
 
 def inc_logcount():
+  global call_counter
   call_counter += 1
 
 
 def add_to_log(handle, time):
+  global call_log
+  global call_counter
   call_log[call_counter][handle] = time
 
 
 def print_log():
+  global call_log
+  global call_counter
+  
   for i in range(0, call_counter):
     curr = call_log[call_counter]
     logstring = "Call number " + str(curr["number"])
