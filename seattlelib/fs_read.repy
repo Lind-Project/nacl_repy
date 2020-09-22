@@ -25,6 +25,9 @@ def lind_fs_read(args):
     Pack the single int returned, or error.
     """
 
+    stub_starttime = time.clock()
+
+
     handle = args[0]
     size = args[1]
 
@@ -48,6 +51,12 @@ def lind_fs_read(args):
             result = get_fs_call(args[-1],"read_syscall")(handle, size)
         except SyscallError, e:
             return ErrorResponseBuilder("fs_read", e[1], e[2])
+
+    stub_endtime = time.clock()
+
+    stub_tot = (stub_endtime - stub_starttime)
+
+    add_to_log("stub", stub_tot)
             
     return SuccessResponseBuilder("fs_read", len(result), result)
 

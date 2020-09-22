@@ -148,8 +148,8 @@ def print_log():
     logstring = "Call number " + str(curr["number"])
     logstring += " syscall time " + str(curr["syscall"])
     logstring += " dispatcher time " + str(curr["dispatcher"])
-    logstring += " stub time " + str(curr["stub"])
-    logstring += " fs call time " + str(curr["fs_call"])
+    if "stub" in curr: logstring += " stub time " + str(curr["stub"])
+    if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"])
 
     print logstring
 
@@ -1366,6 +1366,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/lseek
     """
 
+    fs_starttime = time.clock()
+
+
     # check the fd
     if fd not in filedescriptortable:
       raise SyscallError("lseek_syscall","EBADF","Invalid file descriptor.")
@@ -1430,6 +1433,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
   FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
 
@@ -1465,6 +1474,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   ##### READ  #####
 
   def read_syscall(fd, count):
+
+    fs_starttime = time.clock()
+
     """
       http://linux.die.net/man/2/read
     """
@@ -1521,6 +1533,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
 
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
+
 
   FS_CALL_DICTIONARY["read_syscall"] = read_syscall
 
@@ -1551,6 +1570,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/write
     """
+    
+    fs_starttime = time.clock()
 
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
@@ -1629,6 +1650,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
       filesystemmetadatalock.release()
+
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
 
   FS_CALL_DICTIONARY["write_syscall"] = write_syscall
@@ -1791,6 +1819,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/close
     """
 
+    fs_starttime = time.clock()
+
+
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
     # check the fd
 
@@ -1816,6 +1847,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         filedescriptortable[fd]['lock'].release()
       del filedescriptortable[fd]
       filesystemmetadatalock.release()
+
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
 
