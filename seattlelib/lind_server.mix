@@ -250,9 +250,7 @@ def print_times(times):
 
 def LindSyscall(call_num, args):
 
-  call_log[call_counter] = {}
-
-  call_log[call_counter]["number"] = call_num
+  init_log_entry(call_num)
 
   syscall_starttime = time.clock()
 
@@ -289,7 +287,7 @@ def LindSyscall(call_num, args):
   syscall_tot = (syscall_endtime - syscall_starttime)
 
   add_to_log("syscall", syscall_tot)
-  call_counter += 1
+  inc_logcount()
 
   return response
 

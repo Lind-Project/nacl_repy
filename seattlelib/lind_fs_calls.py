@@ -117,6 +117,15 @@ call_counter = 0
 call_log = {}
 
 
+def init_log_entry(call_num):
+  call_log[call_counter] = {}
+
+  call_log[call_counter]["number"] = call_num
+
+def inc_logcount():
+  call_counter += 1
+
+
 def add_to_log(handle, time):
   call_log[call_counter][handle] = time
 
