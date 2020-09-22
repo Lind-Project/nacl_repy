@@ -139,9 +139,9 @@ def add_to_log(handle, time):
 def print_log():
   global call_log
   global call_counter
-  
+
   for i in range(0, call_counter):
-    curr = call_log[call_counter]
+    curr = call_log[i]
     logstring = "Call number " + str(curr["number"])
     logstring += " syscall time " + str(curr["syscall"])
     logstring += " dispatcher time " + str(curr["dispatcher"])
