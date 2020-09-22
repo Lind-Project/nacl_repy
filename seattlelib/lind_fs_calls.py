@@ -123,11 +123,11 @@ def init_log_entry(call_num):
 
   call_log[call_counter] = {}
   callstring = str(call_num)
-  if (call_num = 10) callstring = "open"
-  if (call_num = 14) callstring = "seek"
-  if (call_num = 12) callstring = "read"
-  if (call_num = 13) callstring = "write"
-  if (call_num = 11) callstring = "close"
+  if (call_num == 10) callstring = "open"
+  if (call_num == 14) callstring = "seek"
+  if (call_num == 12) callstring = "read"
+  if (call_num == 13) callstring = "write"
+  if (call_num == 11) callstring = "close"
 
 
   call_log[call_counter]["call"] = callstring
