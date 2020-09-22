@@ -1136,6 +1136,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/open
     """
 
+    fs_starttime = time.clock()
+
+
     # in an abundance of caution, lock...   I think this should only be needed
     # with O_CREAT flags...
     filesystemmetadatalock.acquire(True)
@@ -1272,6 +1275,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return thisfd
 
     finally:
+
+      
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      call_log[call_counter]["fs_call"] = fs_tot
+
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["open_syscall"] = open_syscall

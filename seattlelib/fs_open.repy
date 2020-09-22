@@ -45,6 +45,9 @@ def lind_safe_fs_open(args):
     then call the real open dispatcher.
 
     """
+
+    stub_starttime = time.clock()
+
     #constants pulled from standard lib
     MASK = 3
     O_RDONLY = 00
@@ -69,5 +72,12 @@ def lind_safe_fs_open(args):
            "wrong return type %s" % (str(type(result)))
     if not result.is_error:
         assert (-1 <= result.return_code <= MAX_FD), "Must return a valid FD."
+
+    stub_endtime = time.clock()
+
+    stub_tot = (stub_endtime - stub_starttime)
+
+    call_log[call_counter]["stub"] = stub_tot
+
 
     return result
