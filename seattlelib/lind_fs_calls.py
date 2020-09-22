@@ -140,7 +140,10 @@ def print_log():
   global call_log
   global call_counter
 
+  print call_log
+
   for i in range(0, call_counter):
+    print str(i)
     curr = call_log[i]
     logstring = "Call number " + str(curr["number"])
     logstring += " syscall time " + str(curr["syscall"])
