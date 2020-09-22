@@ -25,6 +25,9 @@ def lind_fs_open(args):
     Pack the single int returned, or error.
     """
 
+    stub_starttime = time.clock()
+
+
     flags = args[0]
     mode = args[1]
     file_name = args[2]
@@ -33,6 +36,14 @@ def lind_fs_open(args):
     except SyscallError, e:
         message = "Could not find file: " + file_name + ":\n" + str(e[2]) + "\n"
         return ErrorResponseBuilder("fs_open", e[1], message)
+
+
+    stub_endtime = time.clock()
+
+    stub_tot = (stub_endtime - stub_starttime)
+
+    add_to_log("stub", stub_tot)
+
     return SuccessResponseBuilder("fs_open", result_fd)
 
 
@@ -46,9 +57,6 @@ def lind_safe_fs_open(args):
 
     """
 
-    print "were doing safe!"
-
-    stub_starttime = time.clock()
 
     #constants pulled from standard lib
     MASK = 3
@@ -75,11 +83,7 @@ def lind_safe_fs_open(args):
     if not result.is_error:
         assert (-1 <= result.return_code <= MAX_FD), "Must return a valid FD."
 
-    stub_endtime = time.clock()
 
-    stub_tot = (stub_endtime - stub_starttime)
-
-    add_to_log("stub", stub_tot)
 
 
     return result
