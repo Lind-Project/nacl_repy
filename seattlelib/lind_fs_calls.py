@@ -149,7 +149,7 @@ def print_log():
 
   for i in range(0, call_counter):
     curr = call_log[i]
-    logstring = "Syscall" + curr["call"]
+    logstring = "Syscall " + curr["call"]
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
