@@ -132,6 +132,8 @@ def init_log_entry(call_num):
   if (call_num == 9): callstring = "stat"
   if (call_num == 21): callstring = "mmap"
   if (call_num == 30): callstring = "exit"
+  if (call_num == 2): callstring = "access"
+
 
 
 
@@ -714,6 +716,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       See: http://linux.die.net/man/2/access
     """
 
+    fs_starttime = time.clock()
 
     # lock to prevent things from changing while we look this up...
     filesystemmetadatalock.acquire(True)
@@ -744,6 +747,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       # release the lock
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
   FS_CALL_DICTIONARY["access_syscall"] = access_syscall
 
