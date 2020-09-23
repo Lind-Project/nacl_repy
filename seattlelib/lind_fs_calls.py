@@ -161,6 +161,7 @@ def print_log():
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
+    if "closure" in curr: logstring += " closure time " + str(curr["closure"] * 1000000) + " us"
     if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
 
     print logstring
@@ -538,130 +539,131 @@ def IS_PIPE_DESC(fd,cageid):
 # This has been implemented using fs_fork.
 
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
+  closure_starttime = time.clock()
+  try:
+    FS_CALL_DICTIONARY = {}
 
-  FS_CALL_DICTIONARY = {}
+    if CONST_CAGEID not in masterfiledescriptortable:
+      _load_lower_handle_stubs(CONST_CAGEID)
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
-  if CONST_CAGEID not in masterfiledescriptortable:
-    _load_lower_handle_stubs(CONST_CAGEID)
-  filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
-
-  if CONST_CAGEID not in master_fs_calls_context:
-    master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
-  fs_calls_context = master_fs_calls_context[CONST_CAGEID]
-  #perhaps include an initalization failsafe?
-
-
-  ##### EXIT  #####
+    if CONST_CAGEID not in master_fs_calls_context:
+      master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
+    fs_calls_context = master_fs_calls_context[CONST_CAGEID]
+    #perhaps include an initalization failsafe?
 
 
-  def exit_syscall(status):
-    """
-    http://linux.die.net/man/2/exit
-    """
-    fs_starttime = time.clock()
+    ##### EXIT  #####
 
-    filesystemmetadatalock.acquire(True)
-    
-    try:
-      # close all the fds in the fd-table
-      for fd in filedescriptortable:
-        if 'lock' in filedescriptortable[fd]:
-          filedescriptortable[fd]['lock'].acquire(True)
-        _close_helper(fd) # call _close_helper to do the work
-        if 'lock' in filedescriptortable[fd]:
-          filedescriptortable[fd]['lock'].release()
+
+    def exit_syscall(status):
+      """
+      http://linux.die.net/man/2/exit
+      """
+      fs_starttime = time.clock()
+
+      filesystemmetadatalock.acquire(True)
       
-      filedescriptortable.clear() # clean up the fd-table
+      try:
+        # close all the fds in the fd-table
+        for fd in filedescriptortable:
+          if 'lock' in filedescriptortable[fd]:
+            filedescriptortable[fd]['lock'].acquire(True)
+          _close_helper(fd) # call _close_helper to do the work
+          if 'lock' in filedescriptortable[fd]:
+            filedescriptortable[fd]['lock'].release()
+        
+        filedescriptortable.clear() # clean up the fd-table
 
-    finally:
-      filesystemmetadatalock.release()
-      fs_endtime = time.clock()
+      finally:
+        filesystemmetadatalock.release()
+        fs_endtime = time.clock()
 
-      fs_tot = (fs_endtime - fs_starttime)
+        fs_tot = (fs_endtime - fs_starttime)
 
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-    return 0
-  
-  FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
-  
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+      return 0
+    
+    FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
+    
 
-  
-  ##### FSTATFS  #####
+    
+    ##### FSTATFS  #####
 
 
-  # return statfs data for fstatfs and statfs
-  def _istatfs_helper(inode):
+    # return statfs data for fstatfs and statfs
+    def _istatfs_helper(inode):
 
-    # I need to compute the amount of disk available / used
-    limits, usage, stoptimes = getresources()
+      # I need to compute the amount of disk available / used
+      limits, usage, stoptimes = getresources()
 
-    # I'm going to fake large parts of this.
-    myfsdata = {}
+      # I'm going to fake large parts of this.
+      myfsdata = {}
 
-    myfsdata['f_type'] = 0xBEEFC0DE   # unassigned.   New to us...
+      myfsdata['f_type'] = 0xBEEFC0DE   # unassigned.   New to us...
 
-    myfsdata['f_bsize'] = 4096        # Match the repy V2 block size
+      myfsdata['f_bsize'] = 4096        # Match the repy V2 block size
 
-    myfsdata['f_blocks'] = int(limits['diskused']) / 4096
+      myfsdata['f_blocks'] = int(limits['diskused']) / 4096
 
-    myfsdata['f_bfree'] = (int(limits['diskused']-usage['diskused'])) / 4096
-    # same as above...
-    myfsdata['f_bavail'] = (int(limits['diskused']-usage['diskused'])) / 4096
+      myfsdata['f_bfree'] = (int(limits['diskused']-usage['diskused'])) / 4096
+      # same as above...
+      myfsdata['f_bavail'] = (int(limits['diskused']-usage['diskused'])) / 4096
 
-    # file nodes...   I think this is infinite...
-    myfsdata['f_files'] = 1024*1024*1024
+      # file nodes...   I think this is infinite...
+      myfsdata['f_files'] = 1024*1024*1024
 
-    # free file nodes...   I think this is also infinite...
-    myfsdata['f_files'] = 1024*1024*512
+      # free file nodes...   I think this is also infinite...
+      myfsdata['f_files'] = 1024*1024*512
 
-    myfsdata['f_fsid'] = filesystemmetadata['dev_id']
+      myfsdata['f_fsid'] = filesystemmetadata['dev_id']
 
-    # we don't really have a limit, but let's say 254
-    myfsdata['f_namelen'] = 254
+      # we don't really have a limit, but let's say 254
+      myfsdata['f_namelen'] = 254
 
-    # same as blocksize...
-    myfsdata['f_frsize'] = 4096
+      # same as blocksize...
+      myfsdata['f_frsize'] = 4096
 
-    # it's supposed to be 5 bytes...   Let's try null characters...
-    #CM: should be 8 bytes by my calc
-    myfsdata['f_spare'] = '\x00'*8
+      # it's supposed to be 5 bytes...   Let's try null characters...
+      #CM: should be 8 bytes by my calc
+      myfsdata['f_spare'] = '\x00'*8
 
 
-    return myfsdata
+      return myfsdata
 
 
-  def fstatfs_syscall(fd):
-    """
-      http://linux.die.net/man/2/fstatfs
+    def fstatfs_syscall(fd):
+      """
+        http://linux.die.net/man/2/fstatfs
 
-    """
+      """
 
-    fs_starttime = time.clock()
+      fs_starttime = time.clock()
 
-    try:
-      # is the file descriptor valid?
-      if fd not in filedescriptortable:
-        raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+      try:
+        # is the file descriptor valid?
+        if fd not in filedescriptortable:
+          raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
 
-      # We can't fstat  Pipe or Socket
-      if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
-        raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+        # We can't fstat  Pipe or Socket
+        if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
+          raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
 
 
-      # if so, return the information...
-      return _istatfs_helper(filedescriptortable[fd]['inode'])
+        # if so, return the information...
+        return _istatfs_helper(filedescriptortable[fd]['inode'])
 
-    finally:
-      fs_endtime = time.clock()
+      finally:
+        fs_endtime = time.clock()
 
-      fs_tot = (fs_endtime - fs_starttime)
+        fs_tot = (fs_endtime - fs_starttime)
 
-      if call_log:
-        add_to_log("fs_call", fs_tot)
+        if call_log:
+          add_to_log("fs_call", fs_tot)
 
 
-  FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
+    FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
 
 
 
@@ -672,33 +674,33 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
-  ##### STATFS  #####
+    ##### STATFS  #####
 
 
-  def statfs_syscall(path):
-    """
-      http://linux.die.net/man/2/statfs
-    """
-    # in an abundance of caution, I'll grab a lock...
-    filesystemmetadatalock.acquire(True)
+    def statfs_syscall(path):
+      """
+        http://linux.die.net/man/2/statfs
+      """
+      # in an abundance of caution, I'll grab a lock...
+      filesystemmetadatalock.acquire(True)
 
-    # ... but always release it...
-    try:
-      truepath = normpath(path, CONST_CAGEID)
+      # ... but always release it...
+      try:
+        truepath = normpath(path, CONST_CAGEID)
 
-      # is the path there?
-      if truepath not in fastinodelookuptable:
-        raise SyscallError("statfs_syscall","ENOENT","The path does not exist.")
+        # is the path there?
+        if truepath not in fastinodelookuptable:
+          raise SyscallError("statfs_syscall","ENOENT","The path does not exist.")
 
-      thisinode = fastinodelookuptable[truepath]
+        thisinode = fastinodelookuptable[truepath]
 
-      return _istatfs_helper(thisinode)
+        return _istatfs_helper(thisinode)
 
-    finally:
-      filesystemmetadatalock.release()
+      finally:
+        filesystemmetadatalock.release()
 
 
-  FS_CALL_DICTIONARY["statfs_syscall"] = statfs_syscall
+    FS_CALL_DICTIONARY["statfs_syscall"] = statfs_syscall
 
 
 
@@ -709,2062 +711,2070 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
-  ##### ACCESS  #####
+    ##### ACCESS  #####
 
-  def access_syscall(path, amode):
-    """
-      See: http://linux.die.net/man/2/access
-    """
+    def access_syscall(path, amode):
+      """
+        See: http://linux.die.net/man/2/access
+      """
 
-    fs_starttime = time.clock()
+      fs_starttime = time.clock()
 
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
 
-    # ... but always release the lock
-    try:
+      # ... but always release the lock
+      try:
+
+        # get the actual name.   Remove things like '../foo'
+        truepath = normpath(path, CONST_CAGEID)
+
+        if truepath not in fastinodelookuptable:
+          raise SyscallError("access_syscall","ENOENT","A directory in the path does not exist or file not found.")
+
+        # BUG: This code should really walk the directories instead of using this
+        # table...   This will have to be fixed for symlinks to work.
+        thisinode = fastinodelookuptable[truepath]
+
+
+        # BUG: This should take the UID / GID of the requestor in mind
+
+        # if all of the bits for this file are set as requested, then indicate
+        # success (return 0)
+        if filesystemmetadata['inodetable'][thisinode]['mode'] & amode == amode:
+          return 0
+
+        raise SyscallError("access_syscall","EACCES","The requested access is denied.")
+
+      finally:
+        # release the lock
+        filesystemmetadatalock.release()
+        fs_endtime = time.clock()
+
+        fs_tot = (fs_endtime - fs_starttime)
+
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+
+    FS_CALL_DICTIONARY["access_syscall"] = access_syscall
+
+
+
+
+
+    ##### CHDIR  #####
+
+
+
+
+
+    def chdir_syscall(path):
+      """
+        http://linux.die.net/man/2/chdir
+      """
+
+      # Note: I don't think I need locking here.   I don't modify any state and
+      # only check the fs state once...
 
       # get the actual name.   Remove things like '../foo'
       truepath = normpath(path, CONST_CAGEID)
 
+      # If it doesn't exist...
       if truepath not in fastinodelookuptable:
-        raise SyscallError("access_syscall","ENOENT","A directory in the path does not exist or file not found.")
+        raise SyscallError("chdir_syscall","ENOENT","A directory in the path does not exist.")
 
-      # BUG: This code should really walk the directories instead of using this
-      # table...   This will have to be fixed for symlinks to work.
-      thisinode = fastinodelookuptable[truepath]
+      # let's update and return success (0)
+      fs_calls_context['currentworkingdirectory'] = truepath
 
-
-      # BUG: This should take the UID / GID of the requestor in mind
-
-      # if all of the bits for this file are set as requested, then indicate
-      # success (return 0)
-      if filesystemmetadata['inodetable'][thisinode]['mode'] & amode == amode:
-        return 0
-
-      raise SyscallError("access_syscall","EACCES","The requested access is denied.")
-
-    finally:
-      # release the lock
-      filesystemmetadatalock.release()
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-
-  FS_CALL_DICTIONARY["access_syscall"] = access_syscall
-
-
-
-
-
-  ##### CHDIR  #####
-
-
-
-
-
-  def chdir_syscall(path):
-    """
-      http://linux.die.net/man/2/chdir
-    """
-
-    # Note: I don't think I need locking here.   I don't modify any state and
-    # only check the fs state once...
-
-    # get the actual name.   Remove things like '../foo'
-    truepath = normpath(path, CONST_CAGEID)
-
-    # If it doesn't exist...
-    if truepath not in fastinodelookuptable:
-      raise SyscallError("chdir_syscall","ENOENT","A directory in the path does not exist.")
-
-    # let's update and return success (0)
-    fs_calls_context['currentworkingdirectory'] = truepath
-
-
-    return 0
-
-  FS_CALL_DICTIONARY["chdir_syscall"] = chdir_syscall
-
-
-
-  ##### MKDIR  #####
-
-  def mkdir_syscall(path, mode):
-    """
-      http://linux.die.net/man/2/mkdir
-    """
-
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      if path == '':
-        raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
-
-      truepath = normpath(path, CONST_CAGEID)
-
-      # is the path there?
-      if truepath in fastinodelookuptable:
-        raise SyscallError("mkdir_syscall","EEXIST","The path exists.")
-
-
-      # okay, it doesn't exist (great!).   Does it's parent exist and is it a
-      # dir?
-      trueparentpath = normpath_parent(path, CONST_CAGEID)
-
-      if trueparentpath not in fastinodelookuptable:
-        raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
-
-      parentinode = fastinodelookuptable[trueparentpath]
-      if not IS_DIR(filesystemmetadata['inodetable'][parentinode]['mode']):
-        raise SyscallError("mkdir_syscall","ENOTDIR","Path's parent is not a directory.")
-
-
-      # TODO: I should check permissions...
-
-
-      assert(mode & S_IRWXA == mode)
-
-      # okay, great!!!   We're ready to go!   Let's make the new directory...
-      dirname = truepath.split('/')[-1]
-
-      # first, make the new directory...
-      newinode = filesystemmetadata['nextinode']
-      filesystemmetadata['nextinode'] += 1
-
-      newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID,
-              'mode':mode | S_IFDIR,  # DIR+rwxr-xr-x
-              # BUG: I'm listing some arbitrary time values.  I could keep a time
-              # counter too.
-              'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
-              'linkcount':2,    # the number of dir entries...
-              'filename_to_inode_dict': {'.':newinode, '..':parentinode}}
-
-      # ... and put it in the table..
-      filesystemmetadata['inodetable'][newinode] = newinodeentry
-
-
-      filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname] = newinode
-      # increment the link count on the dir...
-      filesystemmetadata['inodetable'][parentinode]['linkcount'] += 1
-
-      # finally, update the fastinodelookuptable and return success!!!
-      fastinodelookuptable[truepath] = newinode
 
       return 0
 
-    finally:
-      persist_metadata(METADATAFILENAME)
-      filesystemmetadatalock.release()
+    FS_CALL_DICTIONARY["chdir_syscall"] = chdir_syscall
 
-  FS_CALL_DICTIONARY["mkdir_syscall"] = mkdir_syscall
 
 
+    ##### MKDIR  #####
 
+    def mkdir_syscall(path, mode):
+      """
+        http://linux.die.net/man/2/mkdir
+      """
 
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
 
+      # ... but always release it...
+      try:
+        if path == '':
+          raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
 
-  ##### RMDIR  #####
+        truepath = normpath(path, CONST_CAGEID)
 
-  def rmdir_syscall(path):
-    """
-      http://linux.die.net/man/2/rmdir
-    """
+        # is the path there?
+        if truepath in fastinodelookuptable:
+          raise SyscallError("mkdir_syscall","EEXIST","The path exists.")
 
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      truepath = normpath(path, CONST_CAGEID)
-
-      # Is it the root?
-      if truepath == '/':
-        raise SyscallError("rmdir_syscall","EINVAL","Cannot remove the root directory.")
-
-      # is the path there?
-      if truepath not in fastinodelookuptable:
-        raise SyscallError("rmdir_syscall","EEXIST","The path does not exist.")
-
-      thisinode = fastinodelookuptable[truepath]
-
-      # okay, is it a directory?
-      if not IS_DIR(filesystemmetadata['inodetable'][thisinode]['mode']):
-        raise SyscallError("rmdir_syscall","ENOTDIR","Path is not a directory.")
-
-      # Is it empty?
-      if filesystemmetadata['inodetable'][thisinode]['linkcount'] > 2:
-        raise SyscallError("rmdir_syscall","ENOTEMPTY","Path is not empty.")
-
-      # TODO: I should check permissions...
-
-
-      trueparentpath = normpath_parent(path, CONST_CAGEID)
-      parentinode = fastinodelookuptable[trueparentpath]
-
-
-      # remove the entry from the inode table...
-      del filesystemmetadata['inodetable'][thisinode]
-
-
-      # We're ready to go!   Let's clean up the file entry
-      dirname = truepath.split('/')[-1]
-      # remove the entry from the parent...
-
-      del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
-      # decrement the link count on the dir...
-      filesystemmetadata['inodetable'][parentinode]['linkcount'] -= 1
-
-      # finally, clean up the fastinodelookuptable and return success!!!
-      del fastinodelookuptable[truepath]
-
-      return 0
-
-    finally:
-      persist_metadata(METADATAFILENAME)
-      filesystemmetadatalock.release()
-
-  FS_CALL_DICTIONARY["rmdir_syscall"] = rmdir_syscall
-
-
-
-
-
-
-
-
-  ##### LINK  #####
-
-
-  def link_syscall(oldpath, newpath):
-    """
-      http://linux.die.net/man/2/link
-    """
-
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      trueoldpath = normpath(oldpath, CONST_CAGEID)
-
-      # is the old path there?
-      if trueoldpath not in fastinodelookuptable:
-        raise SyscallError("link_syscall","ENOENT","Old path does not exist.")
-
-      oldinode = fastinodelookuptable[trueoldpath]
-      # is oldpath a directory?
-      if IS_DIR(filesystemmetadata['inodetable'][oldinode]['mode']):
-        raise SyscallError("link_syscall","EPERM","Old path is a directory.")
-
-      # TODO: I should check permissions...
-
-      # okay, the old path info seems fine...
-
-      if newpath == '':
-        raise SyscallError("link_syscall","ENOENT","New path does not exist.")
-
-      truenewpath = normpath(newpath, CONST_CAGEID)
-
-      # does the newpath exist?   It shouldn't
-      if truenewpath in fastinodelookuptable:
-        raise SyscallError("link_syscall","EEXIST","newpath already exists.")
-
-      # okay, it doesn't exist (great!).   Does it's parent exist and is it a
-      # dir?
-      truenewparentpath = normpath_parent(newpath, CONST_CAGEID)
-
-      if truenewparentpath not in fastinodelookuptable:
-        raise SyscallError("link_syscall","ENOENT","New path does not exist.")
-
-      newparentinode = fastinodelookuptable[truenewparentpath]
-      if not IS_DIR(filesystemmetadata['inodetable'][newparentinode]['mode']):
-        raise SyscallError("link_syscall","ENOTDIR","New path's parent is not a directory.")
-
-
-      # TODO: I should check permissions...
-
-
-
-      # okay, great!!!   We're ready to go!   Let's make the file...
-      newfilename = truenewpath.split('/')[-1]
-      # first, make the directory entry...
-      filesystemmetadata['inodetable'][newparentinode]['filename_to_inode_dict'][newfilename] = oldinode
-      # increment the link count on the dir...
-      filesystemmetadata['inodetable'][newparentinode]['linkcount'] += 1
-
-      # ... and the file itself
-      filesystemmetadata['inodetable'][oldinode]['linkcount'] += 1
-
-      # finally, update the fastinodelookuptable and return success!!!
-      fastinodelookuptable[truenewpath] = oldinode
-
-      return 0
-
-    finally:
-      persist_metadata(METADATAFILENAME)
-      filesystemmetadatalock.release()
-
-  FS_CALL_DICTIONARY["link_syscall"] = link_syscall
-
-
-
-
-
-  ##### UNLINK  #####
-
-
-
-  def unlink_syscall(path):
-    """
-      http://linux.die.net/man/2/unlink
-    """
-
-    # lock to prevent things from changing while we do this...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      truepath = normpath(path, CONST_CAGEID)
-
-      # is the path there?
-      if truepath not in fastinodelookuptable:
-        raise SyscallError("unlink_syscall","ENOENT","The path does not exist.")
-
-      thisinode = fastinodelookuptable[truepath]
-
-      # okay, is it a directory?
-      if IS_DIR(filesystemmetadata['inodetable'][thisinode]['mode']):
-        raise SyscallError("unlink_syscall","EISDIR","Path is a directory.")
-
-      # TODO: I should check permissions...
-
-
-      trueparentpath = normpath_parent(path, CONST_CAGEID)
-      parentinode = fastinodelookuptable[trueparentpath]
-
-
-
-
-      # We're ready to go!   Let's clean up the file entry
-      dirname = truepath.split('/')[-1]
-      # remove the entry from the parent...
-
-      del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
-      # decrement the link count on the dir...
-      filesystemmetadata['inodetable'][parentinode]['linkcount'] -= 1
-
-      # clean up the fastinodelookuptable
-      del fastinodelookuptable[truepath]
-
-
-      # decrement the link count...
-      filesystemmetadata['inodetable'][thisinode]['linkcount'] -= 1
-
-      # If 0, remove the entry from the inode table if there are no open handles
-      # If open handles exist, flag it to unlink when the last handle is closed
-      if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
-        fdsforinode = _lookup_fds_by_inode(thisinode)
-        if len(fdsforinode) == 0:
-            del filesystemmetadata['inodetable'][thisinode]
-        else:
-            filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
-
-      return 0
-
-    finally:
-      persist_metadata(METADATAFILENAME)
-      filesystemmetadatalock.release()
-
-  FS_CALL_DICTIONARY["unlink_syscall"] = unlink_syscall
-
-
-
-
-
-  ##### STAT  #####
-
-  def stat_syscall(path):
-    """
-      http://linux.die.net/man/2/stat
-    """
-
-    fs_starttime = time.clock()
-
-    # in an abundance of caution, I'll grab a lock...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      truepath = normpath(path, CONST_CAGEID)
-
-      # is the path there?
-      if truepath not in fastinodelookuptable:
-        raise SyscallError("stat_syscall","ENOENT","The path does not exist.")
-
-      thisinode = fastinodelookuptable[truepath]
-
-      # If its a character file, call the helper function.
-      if IS_CHR(filesystemmetadata['inodetable'][thisinode]['mode']):
-        return _istat_helper_chr_file(thisinode)
-
-      return _istat_helper(thisinode)
-
-    finally:
-      filesystemmetadatalock.release()
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-      
-
-
-  FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
-
-
-  ##### FSTAT  #####
-
-  def fstat_syscall(fd):
-    """
-      http://linux.die.net/man/2/fstat
-    """
-    # TODO: I don't handle socket objects.   I should return something like:
-    # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
-    # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
-
-    # is the file descriptor valid?
-    if fd not in filedescriptortable:
-      raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
-
-    # if so, return the information...
-    if IS_PIPE_DESC(fd, CONST_CAGEID):
-      # mocking pipe inode number to 0xfeef0000
-      return _stat_alt_helper(0xfeef0000)
-    
-    inode = filedescriptortable[fd]['inode']
-
-    # this is a stream, lets mock it
-    if inode == STREAMINODE:
-      return _stat_alt_helper(inode)
-
-
-    if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-      return _istat_helper_chr_file(inode)
-    return _istat_helper(inode)
-
-  FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
-
-
-  # private helper routine that returns stat data given an inode
-  def _istat_helper(inode):
-    ret =  (filesystemmetadata['dev_id'],          # st_dev
-            inode,                                 # inode
-            filesystemmetadata['inodetable'][inode]['mode'],
-            filesystemmetadata['inodetable'][inode]['linkcount'],
-            filesystemmetadata['inodetable'][inode]['uid'],
-            filesystemmetadata['inodetable'][inode]['gid'],
-            0,                                     # st_rdev     ignored(?)
-            filesystemmetadata['inodetable'][inode]['size'],
-            0,                                     # st_blksize  ignored(?)
-            0,                                     # st_blocks   ignored(?)
-            filesystemmetadata['inodetable'][inode]['atime'],
-            0,                                     # atime ns
-            filesystemmetadata['inodetable'][inode]['mtime'],
-            0,                                     # mtime ns
-            filesystemmetadata['inodetable'][inode]['ctime'],
-            0,                                     # ctime ns
-          )
-    return ret
-
-  # this is used to configure non-std stats such as pipes or std streams
-  def _stat_alt_helper(inode):
-    ret =  (filesystemmetadata['dev_id'],          # st_dev
-            inode,                                 # inode
-            49590,                                 # mode (these are all the R + W permissions)
-            1,                                     # links
-            DEFAULT_UID,                           # uid
-            DEFAULT_GID,                           #  gid
-            0,                                     # st_rdev     ignored(?)
-            0,                                     # size
-            0,                                     # st_blksize  ignored(?)
-            0,                                     # st_blocks   ignored(?)
-            0,
-            0,                                     # atime ns
-            0,
-            0,                                     # mtime ns
-            0,
-            0,                                     # ctime ns
-          )
-    return ret
-
-
-
-
-
-
-  ##### OPEN  #####
-
-
-  # get the next free file descriptor
-  def get_next_fd(startfd=STARTINGFD):
-    # let's get the next available fd number.   The standard says we need to
-    # return the lowest open fd number.
-    for fd in range(startfd, MAX_FD):
-      if not fd in filedescriptortable:
-        return fd
-
-    raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
-
-  def open_syscall(path, flags, mode):
-    """
-      http://linux.die.net/man/2/open
-    """
-
-    fs_starttime = time.clock()
-
-
-    # in an abundance of caution, lock...   I think this should only be needed
-    # with O_CREAT flags...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      if path == '':
-        raise SyscallError("open_syscall","ENOENT","The file does not exist.")
-
-      truepath = normpath(path, CONST_CAGEID)
-
-      # is the file missing?
-      if truepath not in fastinodelookuptable:
-
-        # did they use O_CREAT?
-        if not O_CREAT & flags:
-          raise SyscallError("open_syscall","ENOENT","The file does not exist.")
 
         # okay, it doesn't exist (great!).   Does it's parent exist and is it a
         # dir?
         trueparentpath = normpath_parent(path, CONST_CAGEID)
 
         if trueparentpath not in fastinodelookuptable:
-          raise SyscallError("open_syscall","ENOENT","Path does not exist.")
+          raise SyscallError("mkdir_syscall","ENOENT","Path does not exist.")
 
         parentinode = fastinodelookuptable[trueparentpath]
         if not IS_DIR(filesystemmetadata['inodetable'][parentinode]['mode']):
-          raise SyscallError("open_syscall","ENOTDIR","Path's parent is not a directory.")
+          raise SyscallError("mkdir_syscall","ENOTDIR","Path's parent is not a directory.")
 
 
+        # TODO: I should check permissions...
 
-        # okay, great!!!   We're ready to go!   Let's make the new file...
-        filename = truepath.split('/')[-1]
 
-        # first, make the new file's entry...
+        assert(mode & S_IRWXA == mode)
+
+        # okay, great!!!   We're ready to go!   Let's make the new directory...
+        dirname = truepath.split('/')[-1]
+
+        # first, make the new directory...
         newinode = filesystemmetadata['nextinode']
         filesystemmetadata['nextinode'] += 1
 
-        # be sure there aren't extra mode bits...   No errno seems to exist for
-        # this.
-        assert(mode & (S_IRWXA|S_FILETYPEFLAGS) == mode)
-
-        effective_mode = (S_IFCHR | mode) if (S_IFCHR & flags) != 0 else (S_IFREG | mode)
-
         newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID,
-              'mode':effective_mode,
-              # BUG: I'm listing some arbitrary time values.  I could keep a time
-              # counter too.
-              'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
-              'linkcount':1}
+                'mode':mode | S_IFDIR,  # DIR+rwxr-xr-x
+                # BUG: I'm listing some arbitrary time values.  I could keep a time
+                # counter too.
+                'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
+                'linkcount':2,    # the number of dir entries...
+                'filename_to_inode_dict': {'.':newinode, '..':parentinode}}
 
         # ... and put it in the table..
         filesystemmetadata['inodetable'][newinode] = newinodeentry
 
 
-        # let's make the parent point to it...
-        filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][filename] = newinode
-        # ... and increment the link count on the dir...
+        filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname] = newinode
+        # increment the link count on the dir...
         filesystemmetadata['inodetable'][parentinode]['linkcount'] += 1
 
-        # finally, update the fastinodelookuptable
+        # finally, update the fastinodelookuptable and return success!!!
         fastinodelookuptable[truepath] = newinode
 
-        # this file must not exist or it's an internal error!!!
-        openfile(FILEDATAPREFIX+str(newinode),True).close()
+        return 0
 
+      finally:
         persist_metadata(METADATAFILENAME)
+        filesystemmetadatalock.release()
 
-      # if the file did exist, were we told to create with exclusion?
-      else:
-        # did they use O_CREAT and O_EXCL?
-        if O_CREAT & flags and O_EXCL & flags:
-          raise SyscallError("open_syscall","EEXIST","The file exists.")
+    FS_CALL_DICTIONARY["mkdir_syscall"] = mkdir_syscall
 
-        # This file should be removed.   If O_RDONLY is set, the behavior
-        # is undefined, so this is okay, I guess...
-        if O_TRUNC & flags:
-          inode = fastinodelookuptable[truepath]
 
-          # if it exists, close the existing file object so I can remove it...
-          if inode in fileobjecttable:
-            fileobjecttable[inode].close()
-            # reset the size to 0
-            filesystemmetadata['inodetable'][inode]['size'] = 0
 
-          # remove the file...
-          removefile(FILEDATAPREFIX+str(inode))
 
-          # always open the file.
-          fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
+
+
+    ##### RMDIR  #####
+
+    def rmdir_syscall(path):
+      """
+        http://linux.die.net/man/2/rmdir
+      """
+
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        truepath = normpath(path, CONST_CAGEID)
+
+        # Is it the root?
+        if truepath == '/':
+          raise SyscallError("rmdir_syscall","EINVAL","Cannot remove the root directory.")
+
+        # is the path there?
+        if truepath not in fastinodelookuptable:
+          raise SyscallError("rmdir_syscall","EEXIST","The path does not exist.")
+
+        thisinode = fastinodelookuptable[truepath]
+
+        # okay, is it a directory?
+        if not IS_DIR(filesystemmetadata['inodetable'][thisinode]['mode']):
+          raise SyscallError("rmdir_syscall","ENOTDIR","Path is not a directory.")
+
+        # Is it empty?
+        if filesystemmetadata['inodetable'][thisinode]['linkcount'] > 2:
+          raise SyscallError("rmdir_syscall","ENOTEMPTY","Path is not empty.")
+
+        # TODO: I should check permissions...
+
+
+        trueparentpath = normpath_parent(path, CONST_CAGEID)
+        parentinode = fastinodelookuptable[trueparentpath]
+
+
+        # remove the entry from the inode table...
+        del filesystemmetadata['inodetable'][thisinode]
+
+
+        # We're ready to go!   Let's clean up the file entry
+        dirname = truepath.split('/')[-1]
+        # remove the entry from the parent...
+
+        del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
+        # decrement the link count on the dir...
+        filesystemmetadata['inodetable'][parentinode]['linkcount'] -= 1
+
+        # finally, clean up the fastinodelookuptable and return success!!!
+        del fastinodelookuptable[truepath]
+
+        return 0
+
+      finally:
+        persist_metadata(METADATAFILENAME)
+        filesystemmetadatalock.release()
+
+    FS_CALL_DICTIONARY["rmdir_syscall"] = rmdir_syscall
+
+
+
+
+
+
+
+
+    ##### LINK  #####
+
+
+    def link_syscall(oldpath, newpath):
+      """
+        http://linux.die.net/man/2/link
+      """
+
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        trueoldpath = normpath(oldpath, CONST_CAGEID)
+
+        # is the old path there?
+        if trueoldpath not in fastinodelookuptable:
+          raise SyscallError("link_syscall","ENOENT","Old path does not exist.")
+
+        oldinode = fastinodelookuptable[trueoldpath]
+        # is oldpath a directory?
+        if IS_DIR(filesystemmetadata['inodetable'][oldinode]['mode']):
+          raise SyscallError("link_syscall","EPERM","Old path is a directory.")
+
+        # TODO: I should check permissions...
+
+        # okay, the old path info seems fine...
+
+        if newpath == '':
+          raise SyscallError("link_syscall","ENOENT","New path does not exist.")
+
+        truenewpath = normpath(newpath, CONST_CAGEID)
+
+        # does the newpath exist?   It shouldn't
+        if truenewpath in fastinodelookuptable:
+          raise SyscallError("link_syscall","EEXIST","newpath already exists.")
+
+        # okay, it doesn't exist (great!).   Does it's parent exist and is it a
+        # dir?
+        truenewparentpath = normpath_parent(newpath, CONST_CAGEID)
+
+        if truenewparentpath not in fastinodelookuptable:
+          raise SyscallError("link_syscall","ENOENT","New path does not exist.")
+
+        newparentinode = fastinodelookuptable[truenewparentpath]
+        if not IS_DIR(filesystemmetadata['inodetable'][newparentinode]['mode']):
+          raise SyscallError("link_syscall","ENOTDIR","New path's parent is not a directory.")
+
+
+        # TODO: I should check permissions...
+
+
+
+        # okay, great!!!   We're ready to go!   Let's make the file...
+        newfilename = truenewpath.split('/')[-1]
+        # first, make the directory entry...
+        filesystemmetadata['inodetable'][newparentinode]['filename_to_inode_dict'][newfilename] = oldinode
+        # increment the link count on the dir...
+        filesystemmetadata['inodetable'][newparentinode]['linkcount'] += 1
+
+        # ... and the file itself
+        filesystemmetadata['inodetable'][oldinode]['linkcount'] += 1
+
+        # finally, update the fastinodelookuptable and return success!!!
+        fastinodelookuptable[truenewpath] = oldinode
+
+        return 0
+
+      finally:
+        persist_metadata(METADATAFILENAME)
+        filesystemmetadatalock.release()
+
+    FS_CALL_DICTIONARY["link_syscall"] = link_syscall
+
+
+
+
+
+    ##### UNLINK  #####
+
+
+
+    def unlink_syscall(path):
+      """
+        http://linux.die.net/man/2/unlink
+      """
+
+      # lock to prevent things from changing while we do this...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        truepath = normpath(path, CONST_CAGEID)
+
+        # is the path there?
+        if truepath not in fastinodelookuptable:
+          raise SyscallError("unlink_syscall","ENOENT","The path does not exist.")
+
+        thisinode = fastinodelookuptable[truepath]
+
+        # okay, is it a directory?
+        if IS_DIR(filesystemmetadata['inodetable'][thisinode]['mode']):
+          raise SyscallError("unlink_syscall","EISDIR","Path is a directory.")
+
+        # TODO: I should check permissions...
+
+
+        trueparentpath = normpath_parent(path, CONST_CAGEID)
+        parentinode = fastinodelookuptable[trueparentpath]
+
+
+
+
+        # We're ready to go!   Let's clean up the file entry
+        dirname = truepath.split('/')[-1]
+        # remove the entry from the parent...
+
+        del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
+        # decrement the link count on the dir...
+        filesystemmetadata['inodetable'][parentinode]['linkcount'] -= 1
+
+        # clean up the fastinodelookuptable
+        del fastinodelookuptable[truepath]
+
+
+        # decrement the link count...
+        filesystemmetadata['inodetable'][thisinode]['linkcount'] -= 1
+
+        # If 0, remove the entry from the inode table if there are no open handles
+        # If open handles exist, flag it to unlink when the last handle is closed
+        if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
+          fdsforinode = _lookup_fds_by_inode(thisinode)
+          if len(fdsforinode) == 0:
+              del filesystemmetadata['inodetable'][thisinode]
+          else:
+              filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
+
+        return 0
+
+      finally:
+        persist_metadata(METADATAFILENAME)
+        filesystemmetadatalock.release()
+
+    FS_CALL_DICTIONARY["unlink_syscall"] = unlink_syscall
+
+
+
+
+
+    ##### STAT  #####
+
+    def stat_syscall(path):
+      """
+        http://linux.die.net/man/2/stat
+      """
+
+      fs_starttime = time.clock()
+
+      # in an abundance of caution, I'll grab a lock...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        truepath = normpath(path, CONST_CAGEID)
+
+        # is the path there?
+        if truepath not in fastinodelookuptable:
+          raise SyscallError("stat_syscall","ENOENT","The path does not exist.")
+
+        thisinode = fastinodelookuptable[truepath]
+
+        # If its a character file, call the helper function.
+        if IS_CHR(filesystemmetadata['inodetable'][thisinode]['mode']):
+          return _istat_helper_chr_file(thisinode)
+
+        return _istat_helper(thisinode)
+
+      finally:
+        filesystemmetadatalock.release()
+        fs_endtime = time.clock()
+
+        fs_tot = (fs_endtime - fs_starttime)
+
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+        
+
+
+    FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
+
+
+    ##### FSTAT  #####
+
+    def fstat_syscall(fd):
+      """
+        http://linux.die.net/man/2/fstat
+      """
+      # TODO: I don't handle socket objects.   I should return something like:
+      # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
+      # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
+
+      # is the file descriptor valid?
+      if fd not in filedescriptortable:
+        raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
+
+      # if so, return the information...
+      if IS_PIPE_DESC(fd, CONST_CAGEID):
+        # mocking pipe inode number to 0xfeef0000
+        return _stat_alt_helper(0xfeef0000)
+      
+      inode = filedescriptortable[fd]['inode']
+
+      # this is a stream, lets mock it
+      if inode == STREAMINODE:
+        return _stat_alt_helper(inode)
+
+
+      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+        return _istat_helper_chr_file(inode)
+      return _istat_helper(inode)
+
+    FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
+
+
+    # private helper routine that returns stat data given an inode
+    def _istat_helper(inode):
+      ret =  (filesystemmetadata['dev_id'],          # st_dev
+              inode,                                 # inode
+              filesystemmetadata['inodetable'][inode]['mode'],
+              filesystemmetadata['inodetable'][inode]['linkcount'],
+              filesystemmetadata['inodetable'][inode]['uid'],
+              filesystemmetadata['inodetable'][inode]['gid'],
+              0,                                     # st_rdev     ignored(?)
+              filesystemmetadata['inodetable'][inode]['size'],
+              0,                                     # st_blksize  ignored(?)
+              0,                                     # st_blocks   ignored(?)
+              filesystemmetadata['inodetable'][inode]['atime'],
+              0,                                     # atime ns
+              filesystemmetadata['inodetable'][inode]['mtime'],
+              0,                                     # mtime ns
+              filesystemmetadata['inodetable'][inode]['ctime'],
+              0,                                     # ctime ns
+            )
+      return ret
+
+    # this is used to configure non-std stats such as pipes or std streams
+    def _stat_alt_helper(inode):
+      ret =  (filesystemmetadata['dev_id'],          # st_dev
+              inode,                                 # inode
+              49590,                                 # mode (these are all the R + W permissions)
+              1,                                     # links
+              DEFAULT_UID,                           # uid
+              DEFAULT_GID,                           #  gid
+              0,                                     # st_rdev     ignored(?)
+              0,                                     # size
+              0,                                     # st_blksize  ignored(?)
+              0,                                     # st_blocks   ignored(?)
+              0,
+              0,                                     # atime ns
+              0,
+              0,                                     # mtime ns
+              0,
+              0,                                     # ctime ns
+            )
+      return ret
+
+
+
+
+
+
+    ##### OPEN  #####
+
+
+    # get the next free file descriptor
+    def get_next_fd(startfd=STARTINGFD):
+      # let's get the next available fd number.   The standard says we need to
+      # return the lowest open fd number.
+      for fd in range(startfd, MAX_FD):
+        if not fd in filedescriptortable:
+          return fd
+
+      raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
+
+    def open_syscall(path, flags, mode):
+      """
+        http://linux.die.net/man/2/open
+      """
+
+      fs_starttime = time.clock()
+
+
+      # in an abundance of caution, lock...   I think this should only be needed
+      # with O_CREAT flags...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        if path == '':
+          raise SyscallError("open_syscall","ENOENT","The file does not exist.")
+
+        truepath = normpath(path, CONST_CAGEID)
+
+        # is the file missing?
+        if truepath not in fastinodelookuptable:
+
+          # did they use O_CREAT?
+          if not O_CREAT & flags:
+            raise SyscallError("open_syscall","ENOENT","The file does not exist.")
+
+          # okay, it doesn't exist (great!).   Does it's parent exist and is it a
+          # dir?
+          trueparentpath = normpath_parent(path, CONST_CAGEID)
+
+          if trueparentpath not in fastinodelookuptable:
+            raise SyscallError("open_syscall","ENOENT","Path does not exist.")
+
+          parentinode = fastinodelookuptable[trueparentpath]
+          if not IS_DIR(filesystemmetadata['inodetable'][parentinode]['mode']):
+            raise SyscallError("open_syscall","ENOTDIR","Path's parent is not a directory.")
+
+
+
+          # okay, great!!!   We're ready to go!   Let's make the new file...
+          filename = truepath.split('/')[-1]
+
+          # first, make the new file's entry...
+          newinode = filesystemmetadata['nextinode']
+          filesystemmetadata['nextinode'] += 1
+
+          # be sure there aren't extra mode bits...   No errno seems to exist for
+          # this.
+          assert(mode & (S_IRWXA|S_FILETYPEFLAGS) == mode)
+
+          effective_mode = (S_IFCHR | mode) if (S_IFCHR & flags) != 0 else (S_IFREG | mode)
+
+          newinodeentry = {'size':0, 'uid':DEFAULT_UID, 'gid':DEFAULT_GID,
+                'mode':effective_mode,
+                # BUG: I'm listing some arbitrary time values.  I could keep a time
+                # counter too.
+                'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
+                'linkcount':1}
+
+          # ... and put it in the table..
+          filesystemmetadata['inodetable'][newinode] = newinodeentry
+
+
+          # let's make the parent point to it...
+          filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][filename] = newinode
+          # ... and increment the link count on the dir...
+          filesystemmetadata['inodetable'][parentinode]['linkcount'] += 1
+
+          # finally, update the fastinodelookuptable
+          fastinodelookuptable[truepath] = newinode
+
+          # this file must not exist or it's an internal error!!!
+          openfile(FILEDATAPREFIX+str(newinode),True).close()
 
           persist_metadata(METADATAFILENAME)
 
+        # if the file did exist, were we told to create with exclusion?
+        else:
+          # did they use O_CREAT and O_EXCL?
+          if O_CREAT & flags and O_EXCL & flags:
+            raise SyscallError("open_syscall","EEXIST","The file exists.")
 
-      # TODO: I should check permissions...
+          # This file should be removed.   If O_RDONLY is set, the behavior
+          # is undefined, so this is okay, I guess...
+          if O_TRUNC & flags:
+            inode = fastinodelookuptable[truepath]
 
-      # At this point, the file will exist...
+            # if it exists, close the existing file object so I can remove it...
+            if inode in fileobjecttable:
+              fileobjecttable[inode].close()
+              # reset the size to 0
+              filesystemmetadata['inodetable'][inode]['size'] = 0
 
-      # Let's find the inode
-      inode = fastinodelookuptable[truepath]
+            # remove the file...
+            removefile(FILEDATAPREFIX+str(inode))
 
+            # always open the file.
+            fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
 
-      # get the next fd so we can use it...
-      thisfd = get_next_fd()
-
-
-      # Note, directories can be opened (to do getdents, etc.).   We shouldn't
-      # actually open something in this case...
-      # Is it a regular file?
-      if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        # this is a regular file.  If it's not open, let's open it! to handle a
-        # posix compliant fork, which involves a duplication of the file table.
-        # Eventually, 
-        if inode not in fileobjecttable:
-          thisfo = openfile(FILEDATAPREFIX+str(inode),False)
-          fileobjecttable[inode] = thisfo
-
-      # I'm going to assume that if you use O_APPEND I only need to
-      # start the pointer in the right place.
-      if O_APPEND & flags:
-        position = filesystemmetadata['inodetable'][inode]['size']
-      else:
-        # else, let's start at the beginning
-        position = 0
+            persist_metadata(METADATAFILENAME)
 
 
-      # TODO handle read / write locking, etc.
+        # TODO: I should check permissions...
 
-      # Add the entry to the table!
+        # At this point, the file will exist...
 
-      filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
-
-      # Done!   Let's return the file descriptor.
-      return thisfd
-
-    finally:
-
-      
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-
-      filesystemmetadatalock.release()
-
-  FS_CALL_DICTIONARY["open_syscall"] = open_syscall
+        # Let's find the inode
+        inode = fastinodelookuptable[truepath]
 
 
+        # get the next fd so we can use it...
+        thisfd = get_next_fd()
+
+
+        # Note, directories can be opened (to do getdents, etc.).   We shouldn't
+        # actually open something in this case...
+        # Is it a regular file?
+        if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          # this is a regular file.  If it's not open, let's open it! to handle a
+          # posix compliant fork, which involves a duplication of the file table.
+          # Eventually, 
+          if inode not in fileobjecttable:
+            thisfo = openfile(FILEDATAPREFIX+str(inode),False)
+            fileobjecttable[inode] = thisfo
+
+        # I'm going to assume that if you use O_APPEND I only need to
+        # start the pointer in the right place.
+        if O_APPEND & flags:
+          position = filesystemmetadata['inodetable'][inode]['size']
+        else:
+          # else, let's start at the beginning
+          position = 0
+
+
+        # TODO handle read / write locking, etc.
+
+        # Add the entry to the table!
+
+        filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
+
+        # Done!   Let's return the file descriptor.
+        return thisfd
+
+      finally:
+
+        
+        fs_endtime = time.clock()
+
+        fs_tot = (fs_endtime - fs_starttime)
+
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+
+        filesystemmetadatalock.release()
+
+    FS_CALL_DICTIONARY["open_syscall"] = open_syscall
 
 
 
 
-  ##### CREAT  #####
-
-  def creat_syscall(pathname, mode):
-    """
-      http://linux.die.net/man/2/creat
-    """
-
-    try:
-
-      return open_syscall(pathname, O_CREAT | O_TRUNC | O_WRONLY, mode)
-
-    except SyscallError, e:
-      # If it's a system call error, return our call name instead.
-      assert(e[0]=='open_syscall')
-
-      raise SyscallError('creat_syscall',e[1],e[2])
-
-  FS_CALL_DICTIONARY["creat_syscall"] = creat_syscall
 
 
+    ##### CREAT  #####
 
+    def creat_syscall(pathname, mode):
+      """
+        http://linux.die.net/man/2/creat
+      """
 
-
-  ##### LSEEK  #####
-
-  def lseek_syscall(fd, offset, whence):
-    """
-      http://linux.die.net/man/2/lseek
-    """
-
-    fs_starttime = time.clock()
-
-
-    # check the fd
-    if fd not in filedescriptortable:
-      raise SyscallError("lseek_syscall","EBADF","Invalid file descriptor.")
-
-    # We can't seek on Pipe or Socket
-    if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
-      raise SyscallError("lseek_syscall","ESPIPE","Invalid seek.")
-
-    # if we are any of the odd handles(stdin, stdout, stderr), we cant seek, so just report we are at 0
-    if filedescriptortable[fd]['inode'] == STREAMINODE:
-      return 0
-    # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
-
-
-    # ... but always release it...
-    try:
-
-      # we will need the file size in a moment, but also need to check the type
       try:
-        inode = filedescriptortable[fd]['inode']
-      except KeyError:
-        raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
 
-      # Let's figure out if this has a length / pointer...
-      if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        # straightforward if it is a file...
-        filesize = filesystemmetadata['inodetable'][inode]['size']
+        return open_syscall(pathname, O_CREAT | O_TRUNC | O_WRONLY, mode)
 
-      elif IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
-        # if a directory, let's use the number of entries
-        filesize = len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'])
-
-      else:
-        # otherwise we don't know
-        raise SyscallError("lseek_syscall","EINVAL","File descriptor does not refer to a regular file or directory.")
-
-
-      # Figure out where we will seek to and check it...
-      if whence == SEEK_SET:
-        eventualpos = offset
-      elif whence == SEEK_CUR:
-        eventualpos = filedescriptortable[fd]['position']+offset
-      elif whence == SEEK_END:
-        eventualpos = filesize+offset
-      else:
-        raise SyscallError("lseek_syscall","EINVAL","Invalid whence.")
-
-      # did we fall off the front?
-      if eventualpos < 0:
-        raise SyscallError("lseek_syscall","EINVAL","Seek before position 0 in file.")
-
-      # did we fall off the back?
-      # if so, we'll handle this when we do a write.   The correct behavior is
-      # to write '\0' bytes between here and that pos.
-
-      # do the seek and return success (the position)!
-      filedescriptortable[fd]['position'] = eventualpos
-
-      return eventualpos
-
-    finally:
-      # ... release the lock
-      filedescriptortable[fd]['lock'].release()
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-
-  FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
-
-  # helper function for pipe reads
-  def _read_from_pipe(fd, count):
-
-    # lets find the pipe number and acquire the readlock
-    pipenumber = filedescriptortable[fd]['pipe']
-    pipetable[pipenumber]['readlock'].acquire(True)
-
-    data = ''
-    num_bytes_read = 0
-    
-    # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    while num_bytes_read < count:
-      try:
-        if len(pipetable[pipenumber]['data']) == 0 and pipetable[pipenumber]['eof'] == True:
-          break
-        # pop the byte from the data list, append it to return data string
-        byte_read = pipetable[pipenumber]['data'].pop(0)
-        data += byte_read
-        num_bytes_read += 1
-
-      except IndexError, e:
-        continue
-
-    #release our readlock  
-    pipetable[pipenumber]['readlock'].release()
-    return data
-
-
-
-  ##### READ  #####
-
-  def read_syscall(fd, count):
-
-    fs_starttime = time.clock()
-
-    """
-      http://linux.die.net/man/2/read
-    """
-    # BUG: I probably need a filedescriptortable lock to prevent an untimely
-    # close call or similar from messing everything up...
-
-
-    try:
-      if filedescriptortable[fd]["stream"] == 0:
-        return ""
-    except KeyError:
-      pass
-
-    # check the fd
-    if fd not in filedescriptortable:
-      raise SyscallError("read_syscall","EBADF","Invalid file descriptor.")
-
-    # Is it open for reading?
-    if IS_WRONLY(filedescriptortable[fd]['flags']):
-      raise SyscallError("read_syscall","EBADF","File descriptor is not open for reading.")
-
-    # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
-
-    # ... but always release it...
-    try:
-
-      # lets check if it's a pipe first, and if so read from that
-      if IS_PIPE_DESC(fd,CONST_CAGEID):
-        return _read_from_pipe(fd, count)
-
-      # get the inode so I can and check the mode (type)
-      inode = filedescriptortable[fd]['inode']
-
-      # If its a character file, call the helper function.
-      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-        return _read_chr_file(inode, count)
-
-      # Is it anything other than a regular file?
-      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
-
-
-      # let's do a readat!
-      position = filedescriptortable[fd]['position']
-      data = fileobjecttable[inode].readat(count,position)
-
-      # and update the position
-      filedescriptortable[fd]['position'] += len(data)
-
-      return data
-
-    finally:
-      # ... release the lock
-      filedescriptortable[fd]['lock'].release()
-
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-
-
-  FS_CALL_DICTIONARY["read_syscall"] = read_syscall
-
-  # helper function for pipe writes
-  def _write_to_pipe(fd, data):
-
-    # find pipe number, and grab lock
-    pipenumber = filedescriptortable[fd]['pipe']
-    pipetable[pipenumber]['writelock'].acquire(True)
-
-    # append data to pipe list byte by byte
-    for byte in data:
-      pipetable[pipenumber]['data'].append(byte)
-
-    # release our write lock     
-    pipetable[pipenumber]['writelock'].release()
-
-    return len(data)
-
-
-
-
-  ##### WRITE  #####
-
-
-
-  def write_syscall(fd, data):
-    """
-      http://linux.die.net/man/2/write
-    """
-    
-    fs_starttime = time.clock()
-
-    # BUG: I probably need a filedescriptortable lock to prevent an untimely
-    # close call or similar from messing everything up...
-
-    # check the fd
-    if fd not in filedescriptortable:
-      raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
-  
-    # if we're going to stdout/err, lets get it over with and print    
-    try:
-      if filedescriptortable[fd]['stream'] in [1,2]:
-        log_stdout(data)
-        return len(data)
-    except KeyError:
-      pass
-
-    # Is it open for writing?
-    if IS_RDONLY(filedescriptortable[fd]['flags']):
-      raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
-    
-    # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-
-      # lets check if it's a pipe first, and if so write to that
-      if IS_PIPE_DESC(fd,CONST_CAGEID):
-        return _write_to_pipe(fd, data)
-
-      # get the inode so I can update the size (if needed) and check the type
-      inode = filedescriptortable[fd]['inode']
-
-      # If its a character file, call the helper function.
-      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-        return _write_chr_file(inode, data)
-
-      # Is it anything other than a regular file?
-      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
-
-
-      # let's get the position...
-      position = filedescriptortable[fd]['position']
-
-      # and the file size...
-      filesize = filesystemmetadata['inodetable'][inode]['size']
-
-      # if the position is past the end of the file, write '\0' bytes to fill
-      # up the gap...
-      blankbytecount = position - filesize
-
-      if blankbytecount > 0:
-        # let's write the blank part at the end of the file...
-        fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
-
-
-      # writeat never writes less than desired in Repy V2.
-      fileobjecttable[inode].writeat(data,position)
-
-      # and update the position
-      filedescriptortable[fd]['position'] += len(data)
-
-      # update the file size if we've extended it
-      if filedescriptortable[fd]['position'] > filesize:
-        filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
-        persist_metadata(METADATAFILENAME)
-
-      # we always write it all, so just return the length of what we were passed.
-      # We do not mention whether we write blank data (if position is after the
-      # end)
-      return len(data)
-
-    finally:
-      # ... release the lock
-      filedescriptortable[fd]['lock'].release()
-      filesystemmetadatalock.release()
-
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-
-
-  FS_CALL_DICTIONARY["write_syscall"] = write_syscall
-
-
-
-
-
-  ##### CLOSE  #####
-
-  # private helper.   Get the fds for an inode (or [] if none)
-  def _lookup_fds_by_inode(inode):
-    returnedfddict = {}
-    for cageid in masterfiledescriptortable.keys():
-      try:
-        for fd in masterfiledescriptortable[cageid].keys():
-          if IS_SOCK_DESC(fd, cageid) or IS_EPOLL_FD(fd, cageid) or IS_PIPE_DESC(fd, cageid):
-            continue
-
-          if masterfiledescriptortable[cageid][fd]['inode'] == inode:
-            if cageid in returnedfddict:
-              returnedfddict[cageid].append(fd)
-            else:
-              returnedfddict[cageid] = [fd]
-      except KeyError as e:
-        print e
-
-
-    return returnedfddict
-
-  # private helper.   Get the references to and end of a pipe 
-  def _lookup_refs_by_pipe_end(pipenumber, flags):
-    pipe_references = 0
-    for cageid in masterfiledescriptortable.keys():
-      try:
-        for fd in masterfiledescriptortable[cageid].keys(): 
-          if IS_PIPE_DESC(fd, cageid):
-            if masterfiledescriptortable[cageid][fd]['pipe'] == pipenumber and masterfiledescriptortable[cageid][fd]['flags'] == flags:
-              pipe_references += 1
-      except KeyError as e:
-        print e
-
-
-    return pipe_references
-
-
-
-  # BAD this is copied from net_calls, but there is no way to get it
-  def _cleanup_socket(fd):
-    if 'socketobjectid' in filedescriptortable[fd]:
-      thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-      try:
-        thesocket.close()
-      except:
-        thesocket.close(False) #In case for some reason it's an emulcomm socket
-      localport = filedescriptortable[fd]['localport']
-      try:
-        _release_localport(localport, filedescriptortable[fd]['protocol'])
-      except KeyError:
-        pass
-      del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
-      del filedescriptortable[fd]['socketobjectid']
-
-      filedescriptortable[fd]['state'] = NOTCONNECTED
-      return 0
-
-  # private helper, handle pipe as each end closes.
-  def _cleanup_pipe(fd):
-    
-    # let's find the pipenumber
-    pipenumber = filedescriptortable[fd]['pipe']
-
-    # and look up how many read ends and write ends are open
-    read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
-    write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
-
-    # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
-    if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
-      pipetable[pipenumber]['eof'] = True
-
-    # if we're closing the last end, we can delete the pipe
-    if (read_references + write_references) == 1:
-      del pipetable[pipenumber]
-
-
-      return 0
-
-
-
-
-  # private helper that allows this to be called in other places (like dup2)
-  # without changing to re-entrant locks
-  def _close_helper(fd):
-
-
-    # don't close streams, which have an inode of 1
-    try:
-      if filedescriptortable[fd]['inode'] == STREAMINODE:
-        return 0
-    except KeyError:
-      pass
-
-    # if we are a socket, we dont change disk metadata
-    if IS_SOCK_DESC(fd,CONST_CAGEID):
-      _cleanup_socket(fd)
-      return 0
-
-    if IS_PIPE_DESC(fd,CONST_CAGEID):
-      _cleanup_pipe(fd)
-      return 0
-
-    if IS_EPOLL_FD(fd,CONST_CAGEID):
-      _epoll_object_deallocator(fd)
-      return 0
-
-
-    # get the inode for the filedescriptor
-    inode = filedescriptortable[fd]['inode']
-
-    # If it's not a regular file, we have nothing to close...
-    if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-
-      # double check that this isn't in the fileobjecttable
-      if inode in fileobjecttable:
-        raise Exception("Internal Error: non-regular file in fileobjecttable")
-
-      # and return success
-      return 0
-
-    # so it's a regular file.
-    
-    # get the list of file descriptors for the inode
-    fdsforinode = _lookup_fds_by_inode(inode)
-
-    # I should be in there!
-    assert(fd in fdsforinode[CONST_CAGEID])
-
-    # I should only close here if it's the last use of the file.   This can
-    # happen due to dup, multiple opens, etc.
-    if len(fdsforinode) > 1 or len(fdsforinode[CONST_CAGEID]) > 1:
-      # Is there more than one descriptor open?   If so, return success
-      return 0
-    # now let's close it and remove it from the table
-    fileobjecttable[inode].close()
-    del fileobjecttable[inode]
-
-    # If this was the last open handle to the file, and the file has been marked
-    # for unlinking, then delete the inode here.
-    # TODO: also delete file here, not just inode
-    if 'unlinked' in filesystemmetadata['inodetable'][inode]:
-        del filesystemmetadata['inodetable'][inode]
-
-    # success!
-    return 0
-
-
-
-  def close_syscall(fd):
-    """
-      http://linux.die.net/man/2/close
-    """
-
-    fs_starttime = time.clock()
-
-
-    # BUG: I probably need a filedescriptortable lock to prevent race conditions
-    # check the fd
-
-
-    # in an abundance of caution, lock...
-    filesystemmetadatalock.acquire(True)
-
-    if fd not in filedescriptortable:
-      raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
-
-    # Acquire the fd lock, if there is one.
-    if 'lock' in filedescriptortable[fd]:
-      filedescriptortable[fd]['lock'].acquire(True)
-
-
-    # ... but always release it...
-    try:
-      return _close_helper(fd)
-
-    finally:
-      # ... release the lock, if there is one
-      if 'lock' in filedescriptortable[fd]:
-        filedescriptortable[fd]['lock'].release()
-      del filedescriptortable[fd]
-      filesystemmetadatalock.release()
-
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
-
-  FS_CALL_DICTIONARY["close_syscall"] = close_syscall
-
-
-
-
-
-
-  ##### DUP2  #####
-
-
-  # private helper that allows this to be used by dup
-  def _dup2_helper(oldfd,newfd):
-
-    # if the new file descriptor is too low or too high
-    # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
-    #      The Lind code may pass me descriptors less than STARTINGFD
-    if newfd >= MAX_FD or newfd < 0:
-      # BUG: the STARTINGFD isn't really too low.   It's just lower than we
-      # support
-      raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
-
-    # if they are equal, return them
-    if newfd == oldfd:
-      return newfd
-
-    # okay, they are different.   If the new fd exists, close it.
-    if newfd in filedescriptortable:
-      # should not result in an error.   This only occurs on a bad fd
-      _close_helper(newfd)
-
-
-    # Okay, we need the new and old to point to the same thing.
-    # NOTE: I am not making a copy here!!!   They intentionally both
-    # refer to the same instance because manipulating the position, etc.
-    # impacts both.
-    filedescriptortable[newfd] = filedescriptortable[oldfd]
-
-    return newfd
-
-
-
-
-  def dup2_syscall(oldfd,newfd):
-    """
-      http://linux.die.net/man/2/dup2
-    """
-  
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # check the fd
-    if oldfd not in filedescriptortable:
-      raise SyscallError("dup2_syscall","EBADF","Invalid old file descriptor.")
-
-    # Acquire the fd lock...
-    filedescriptortable[oldfd]['lock'].acquire(True)
-
-
-    # ... but always release it...
-    try:
-      return _dup2_helper(oldfd, newfd)
-
-    finally:
-      # ... release the locks
-      filedescriptortable[oldfd]['lock'].release()
-      filesystemmetadatalock.release()
-
-
-  FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
-
-
-  ##### DUP  #####
-
-  def dup_syscall(fd, startfd=STARTINGFD):
-    """
-      http://linux.die.net/man/2/dup
-    """
-
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # check the fd
-    if fd not in filedescriptortable and fd >= STARTINGFD:
-      raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
-
-    # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
-
-    try:
-      # get the next available file descriptor
-      try:
-        nextfd = get_next_fd(startfd)
       except SyscallError, e:
-        # If it's an error getting the fd, return our call name instead.
+        # If it's a system call error, return our call name instead.
         assert(e[0]=='open_syscall')
 
-        raise SyscallError('dup_syscall',e[1],e[2])
+        raise SyscallError('creat_syscall',e[1],e[2])
 
-      # this does the work.   It should _never_ raise an exception given the
-      # checks we've made...
-      return _dup2_helper(fd, nextfd)
-
-    finally:
-      # ... release the locks
-      filedescriptortable[fd]['lock'].release()
-      filesystemmetadatalock.release()
-
-
-
-  FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
+    FS_CALL_DICTIONARY["creat_syscall"] = creat_syscall
 
 
 
 
 
-  ##### FCNTL  #####
+    ##### LSEEK  #####
+
+    def lseek_syscall(fd, offset, whence):
+      """
+        http://linux.die.net/man/2/lseek
+      """
+
+      fs_starttime = time.clock()
+
+
+      # check the fd
+      if fd not in filedescriptortable:
+        raise SyscallError("lseek_syscall","EBADF","Invalid file descriptor.")
+
+      # We can't seek on Pipe or Socket
+      if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
+        raise SyscallError("lseek_syscall","ESPIPE","Invalid seek.")
+
+      # if we are any of the odd handles(stdin, stdout, stderr), we cant seek, so just report we are at 0
+      if filedescriptortable[fd]['inode'] == STREAMINODE:
+        return 0
+      # Acquire the fd lock...
+      filedescriptortable[fd]['lock'].acquire(True)
+
+
+      # ... but always release it...
+      try:
+
+        # we will need the file size in a moment, but also need to check the type
+        try:
+          inode = filedescriptortable[fd]['inode']
+        except KeyError:
+          raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
+
+        # Let's figure out if this has a length / pointer...
+        if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          # straightforward if it is a file...
+          filesize = filesystemmetadata['inodetable'][inode]['size']
+
+        elif IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
+          # if a directory, let's use the number of entries
+          filesize = len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'])
+
+        else:
+          # otherwise we don't know
+          raise SyscallError("lseek_syscall","EINVAL","File descriptor does not refer to a regular file or directory.")
+
+
+        # Figure out where we will seek to and check it...
+        if whence == SEEK_SET:
+          eventualpos = offset
+        elif whence == SEEK_CUR:
+          eventualpos = filedescriptortable[fd]['position']+offset
+        elif whence == SEEK_END:
+          eventualpos = filesize+offset
+        else:
+          raise SyscallError("lseek_syscall","EINVAL","Invalid whence.")
+
+        # did we fall off the front?
+        if eventualpos < 0:
+          raise SyscallError("lseek_syscall","EINVAL","Seek before position 0 in file.")
+
+        # did we fall off the back?
+        # if so, we'll handle this when we do a write.   The correct behavior is
+        # to write '\0' bytes between here and that pos.
+
+        # do the seek and return success (the position)!
+        filedescriptortable[fd]['position'] = eventualpos
+
+        return eventualpos
+
+      finally:
+        # ... release the lock
+        filedescriptortable[fd]['lock'].release()
+        fs_endtime = time.clock()
+
+        fs_tot = (fs_endtime - fs_starttime)
+
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+
+    FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
+
+    # helper function for pipe reads
+    def _read_from_pipe(fd, count):
+
+      # lets find the pipe number and acquire the readlock
+      pipenumber = filedescriptortable[fd]['pipe']
+      pipetable[pipenumber]['readlock'].acquire(True)
+
+      data = ''
+      num_bytes_read = 0
+      
+      # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
+      while num_bytes_read < count:
+        try:
+          if len(pipetable[pipenumber]['data']) == 0 and pipetable[pipenumber]['eof'] == True:
+            break
+          # pop the byte from the data list, append it to return data string
+          byte_read = pipetable[pipenumber]['data'].pop(0)
+          data += byte_read
+          num_bytes_read += 1
+
+        except IndexError, e:
+          continue
+
+      #release our readlock  
+      pipetable[pipenumber]['readlock'].release()
+      return data
 
 
 
-  def fcntl_syscall(fd, cmd, *args):
-    """
-      http://linux.die.net/man/2/fcntl
-    """
-    # this call is totally crazy!   I'll just implement the basics and add more
-    # as is needed.
+    ##### READ  #####
 
-    # BUG: I probably need a filedescriptortable lock to prevent race conditions
+    def read_syscall(fd, count):
 
-    # check the fd
-    if fd not in filedescriptortable:
-      raise SyscallError("fcntl_syscall","EBADF","Invalid file descriptor.")
+      fs_starttime = time.clock()
 
-    # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
+      """
+        http://linux.die.net/man/2/read
+      """
+      # BUG: I probably need a filedescriptortable lock to prevent an untimely
+      # close call or similar from messing everything up...
 
-    # ... but always release it...
-    try:
-      # if we're getting the flags, return them... (but this is just CLO_EXEC,
-      # so ignore)
-      if cmd == F_GETFD:
-        if len(args) > 0:
-          raise SyscallError("fcntl_syscall", "EINVAL", "Argument is more than\
-            maximum allowable value.")
-        return int((filedescriptortable[fd]['flags'] & FD_CLOEXEC) != 0)
 
-      # set the flags...
-      elif cmd == F_SETFD:
-        assert(len(args) == 1)
-        filedescriptortable[fd]['flags'] |= FD_CLOEXEC #Linux only supports FD_CLOEXEC
+      try:
+        if filedescriptortable[fd]["stream"] == 0:
+          return ""
+      except KeyError:
+        pass
+
+      # check the fd
+      if fd not in filedescriptortable:
+        raise SyscallError("read_syscall","EBADF","Invalid file descriptor.")
+
+      # Is it open for reading?
+      if IS_WRONLY(filedescriptortable[fd]['flags']):
+        raise SyscallError("read_syscall","EBADF","File descriptor is not open for reading.")
+
+      # Acquire the fd lock...
+      filedescriptortable[fd]['lock'].acquire(True)
+
+      # ... but always release it...
+      try:
+
+        # lets check if it's a pipe first, and if so read from that
+        if IS_PIPE_DESC(fd,CONST_CAGEID):
+          return _read_from_pipe(fd, count)
+
+        # get the inode so I can and check the mode (type)
+        inode = filedescriptortable[fd]['inode']
+
+        # If its a character file, call the helper function.
+        if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+          return _read_chr_file(inode, count)
+
+        # Is it anything other than a regular file?
+        if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
+
+
+        # let's do a readat!
+        position = filedescriptortable[fd]['position']
+        data = fileobjecttable[inode].readat(count,position)
+
+        # and update the position
+        filedescriptortable[fd]['position'] += len(data)
+
+        return data
+
+      finally:
+        # ... release the lock
+        filedescriptortable[fd]['lock'].release()
+
+        fs_endtime = time.clock()
+
+        fs_tot = (fs_endtime - fs_starttime)
+
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+
+
+    FS_CALL_DICTIONARY["read_syscall"] = read_syscall
+
+    # helper function for pipe writes
+    def _write_to_pipe(fd, data):
+
+      # find pipe number, and grab lock
+      pipenumber = filedescriptortable[fd]['pipe']
+      pipetable[pipenumber]['writelock'].acquire(True)
+
+      # append data to pipe list byte by byte
+      for byte in data:
+        pipetable[pipenumber]['data'].append(byte)
+
+      # release our write lock     
+      pipetable[pipenumber]['writelock'].release()
+
+      return len(data)
+
+
+
+
+    ##### WRITE  #####
+
+
+
+    def write_syscall(fd, data):
+      """
+        http://linux.die.net/man/2/write
+      """
+      
+      fs_starttime = time.clock()
+
+      # BUG: I probably need a filedescriptortable lock to prevent an untimely
+      # close call or similar from messing everything up...
+
+      # check the fd
+      if fd not in filedescriptortable:
+        raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
+    
+      # if we're going to stdout/err, lets get it over with and print    
+      try:
+        if filedescriptortable[fd]['stream'] in [1,2]:
+          log_stdout(data)
+          return len(data)
+      except KeyError:
+        pass
+
+      # Is it open for writing?
+      if IS_RDONLY(filedescriptortable[fd]['flags']):
+        raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
+      
+      # Acquire the fd lock...
+      filedescriptortable[fd]['lock'].acquire(True)
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+
+        # lets check if it's a pipe first, and if so write to that
+        if IS_PIPE_DESC(fd,CONST_CAGEID):
+          return _write_to_pipe(fd, data)
+
+        # get the inode so I can update the size (if needed) and check the type
+        inode = filedescriptortable[fd]['inode']
+
+        # If its a character file, call the helper function.
+        if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+          return _write_chr_file(inode, data)
+
+        # Is it anything other than a regular file?
+        if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
+
+
+        # let's get the position...
+        position = filedescriptortable[fd]['position']
+
+        # and the file size...
+        filesize = filesystemmetadata['inodetable'][inode]['size']
+
+        # if the position is past the end of the file, write '\0' bytes to fill
+        # up the gap...
+        blankbytecount = position - filesize
+
+        if blankbytecount > 0:
+          # let's write the blank part at the end of the file...
+          fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
+
+
+        # writeat never writes less than desired in Repy V2.
+        fileobjecttable[inode].writeat(data,position)
+
+        # and update the position
+        filedescriptortable[fd]['position'] += len(data)
+
+        # update the file size if we've extended it
+        if filedescriptortable[fd]['position'] > filesize:
+          filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
+          persist_metadata(METADATAFILENAME)
+
+        # we always write it all, so just return the length of what we were passed.
+        # We do not mention whether we write blank data (if position is after the
+        # end)
+        return len(data)
+
+      finally:
+        # ... release the lock
+        filedescriptortable[fd]['lock'].release()
+        filesystemmetadatalock.release()
+
+        fs_endtime = time.clock()
+
+        fs_tot = (fs_endtime - fs_starttime)
+
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+
+
+    FS_CALL_DICTIONARY["write_syscall"] = write_syscall
+
+
+
+
+
+    ##### CLOSE  #####
+
+    # private helper.   Get the fds for an inode (or [] if none)
+    def _lookup_fds_by_inode(inode):
+      returnedfddict = {}
+      for cageid in masterfiledescriptortable.keys():
+        try:
+          for fd in masterfiledescriptortable[cageid].keys():
+            if IS_SOCK_DESC(fd, cageid) or IS_EPOLL_FD(fd, cageid) or IS_PIPE_DESC(fd, cageid):
+              continue
+
+            if masterfiledescriptortable[cageid][fd]['inode'] == inode:
+              if cageid in returnedfddict:
+                returnedfddict[cageid].append(fd)
+              else:
+                returnedfddict[cageid] = [fd]
+        except KeyError as e:
+          print e
+
+
+      return returnedfddict
+
+    # private helper.   Get the references to and end of a pipe 
+    def _lookup_refs_by_pipe_end(pipenumber, flags):
+      pipe_references = 0
+      for cageid in masterfiledescriptortable.keys():
+        try:
+          for fd in masterfiledescriptortable[cageid].keys(): 
+            if IS_PIPE_DESC(fd, cageid):
+              if masterfiledescriptortable[cageid][fd]['pipe'] == pipenumber and masterfiledescriptortable[cageid][fd]['flags'] == flags:
+                pipe_references += 1
+        except KeyError as e:
+          print e
+
+
+      return pipe_references
+
+
+
+    # BAD this is copied from net_calls, but there is no way to get it
+    def _cleanup_socket(fd):
+      if 'socketobjectid' in filedescriptortable[fd]:
+        thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+        try:
+          thesocket.close()
+        except:
+          thesocket.close(False) #In case for some reason it's an emulcomm socket
+        localport = filedescriptortable[fd]['localport']
+        try:
+          _release_localport(localport, filedescriptortable[fd]['protocol'])
+        except KeyError:
+          pass
+        del socketobjecttable[filedescriptortable[fd]['socketobjectid']]
+        del filedescriptortable[fd]['socketobjectid']
+
+        filedescriptortable[fd]['state'] = NOTCONNECTED
         return 0
 
-      # if we're getting the flags, return them...
-      elif cmd == F_GETFL:
-        assert(len(args) == 0)
-        return filedescriptortable[fd]['flags']
+    # private helper, handle pipe as each end closes.
+    def _cleanup_pipe(fd):
+      
+      # let's find the pipenumber
+      pipenumber = filedescriptortable[fd]['pipe']
 
-      # set the flags...
-      elif cmd == F_SETFL:
-        assert(len(args) == 1)
-        assert(type(args[0]) == int or type(args[0]) == long)
-        filedescriptortable[fd]['flags'] = args[0]
-        return 0
+      # and look up how many read ends and write ends are open
+      read_references = _lookup_refs_by_pipe_end(pipenumber, O_RDONLY)
+      write_references = read_references = _lookup_refs_by_pipe_end(pipenumber, O_WRONLY)
 
-      # lets go to DUP
-      elif cmd == F_DUPFD:
-        assert(len(args) == 1)
-        assert(type(args[0]) == int or type(args[0]) == long)
-        dup_syscall(fd, args[0])
-        return 0
+      # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
+      if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
+        pipetable[pipenumber]['eof'] = True
 
-      # This is saying we'll get signals for this.   Let's punt this...
-      elif cmd == F_GETOWN:
-        assert(len(args) == 0)
-        # Saying traditional SIGIO behavior...
-        return 0
+      # if we're closing the last end, we can delete the pipe
+      if (read_references + write_references) == 1:
+        del pipetable[pipenumber]
 
-      # indicate that we want to receive signals for this FD...
-      elif cmd == F_SETOWN:
-        assert(len(args) == 1)
-        assert(type(args[0]) == int or type(args[0]) == long)
-        # this would almost certainly say our PID (if positive) or our process
-        # group (if negative).   Either way, we do nothing and return success.
+
         return 0
 
 
-      else:
-        # This is either unimplemented or malformed.   Let's raise
-        # an exception.
-        raise UnimplementedError('FCNTL with command '+str(cmd)+' is not yet implemented.')
-
-    finally:
-      # ... release the lock
-      filedescriptortable[fd]['lock'].release()
 
 
-  FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
+    # private helper that allows this to be called in other places (like dup2)
+    # without changing to re-entrant locks
+    def _close_helper(fd):
 
 
+      # don't close streams, which have an inode of 1
+      try:
+        if filedescriptortable[fd]['inode'] == STREAMINODE:
+          return 0
+      except KeyError:
+        pass
+
+      # if we are a socket, we dont change disk metadata
+      if IS_SOCK_DESC(fd,CONST_CAGEID):
+        _cleanup_socket(fd)
+        return 0
+
+      if IS_PIPE_DESC(fd,CONST_CAGEID):
+        _cleanup_pipe(fd)
+        return 0
+
+      if IS_EPOLL_FD(fd,CONST_CAGEID):
+        _epoll_object_deallocator(fd)
+        return 0
 
 
-
-
-
-  ##### GETDENTS  #####
-
-
-
-  def getdents_syscall(fd, quantity):
-    """
-      http://linux.die.net/man/2/getdents
-    """
-
-    # BUG: I probably need a filedescriptortable lock to prevent race conditions
-
-    # BUG BUG BUG: Do I really understand this spec!?!?!?!
-
-    # check the fd
-    if fd not in filedescriptortable:
-      raise SyscallError("getdents_syscall","EBADF","Invalid file descriptor.")
-
-    # We can't getdents on a Pipe or Socket
-    if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
-      raise SyscallError("getdents_syscall","ENOENT","No such directory.")
-
-    # Sanitizing the Input, there are people who would send other types too.
-    if not isinstance(quantity, (int, long)):
-      raise SyscallError("getdents_syscall","EINVAL","Invalid type for buffer size.")
-
-    # This is the minimum number of bytes, that should be provided.
-    if quantity < 24:
-      raise SyscallError("getdents_syscall","EINVAL","Buffer size is too small.")
-
-    # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
-
-    # ... but always release it...
-    try:
-
-      # get the inode so I can read the directory entries
+      # get the inode for the filedescriptor
       inode = filedescriptortable[fd]['inode']
 
-      # Is it a directory?
-      if not IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
-        raise SyscallError("getdents_syscall","EINVAL","File descriptor does not refer to a directory.")
+      # If it's not a regular file, we have nothing to close...
+      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
 
-      returninodefntuplelist = []
-      bufferedquantity = 0
+        # double check that this isn't in the fileobjecttable
+        if inode in fileobjecttable:
+          raise Exception("Internal Error: non-regular file in fileobjecttable")
 
-      # let's move the position forward...
-      startposition = filedescriptortable[fd]['position']
-      # return tuple with inode, name, type tuples...
-      for entryname,entryinode in list(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems())[startposition:]:
-        # getdents returns the mode also (at least on Linux)...
-        entrytype = get_direnttype_from_mode(filesystemmetadata['inodetable'][entryinode]['mode'])
+        # and return success
+        return 0
 
-        # Get the size of each entry, the size should be a multiple of 8.
-        # The size of each entry is determined by sizeof(struct linux_dirent) which is 20 bytes plus the length of name of the file.
-        # So, size of each entry becomes : 21 => 24, 26 => 32, 32 => 32.
-        currentquantity = (((20 + len(entryname)) + 7) / 8) * 8
+      # so it's a regular file.
+      
+      # get the list of file descriptors for the inode
+      fdsforinode = _lookup_fds_by_inode(inode)
 
-        # This is the overall size of entries parsed till now, if size exceeds given size, then stop parsing and return
-        bufferedquantity += currentquantity
-        if bufferedquantity > quantity:
-          break
+      # I should be in there!
+      assert(fd in fdsforinode[CONST_CAGEID])
 
-        returninodefntuplelist.append((entryinode, entryname, entrytype, currentquantity))
+      # I should only close here if it's the last use of the file.   This can
+      # happen due to dup, multiple opens, etc.
+      if len(fdsforinode) > 1 or len(fdsforinode[CONST_CAGEID]) > 1:
+        # Is there more than one descriptor open?   If so, return success
+        return 0
+      # now let's close it and remove it from the table
+      fileobjecttable[inode].close()
+      del fileobjecttable[inode]
 
-      # and move the position along.   Go no further than the end...
-      filedescriptortable[fd]['position'] = min(startposition + len(returninodefntuplelist),\
-        len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict']))
+      # If this was the last open handle to the file, and the file has been marked
+      # for unlinking, then delete the inode here.
+      # TODO: also delete file here, not just inode
+      if 'unlinked' in filesystemmetadata['inodetable'][inode]:
+          del filesystemmetadata['inodetable'][inode]
 
-      return returninodefntuplelist
-
-    finally:
-      # ... release the lock
-      filedescriptortable[fd]['lock'].release()
-
-  FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
+      # success!
+      return 0
 
 
-  #### CHMOD ####
+
+    def close_syscall(fd):
+      """
+        http://linux.die.net/man/2/close
+      """
+
+      fs_starttime = time.clock()
 
 
-  def chmod_syscall(path, mode):
-    """
-      http://linux.die.net/man/2/chmod
-    """
-    # in an abundance of caution, I'll grab a lock...
-    filesystemmetadatalock.acquire(True)
+      # BUG: I probably need a filedescriptortable lock to prevent race conditions
+      # check the fd
 
-    # ... but always release it...
-    try:
+
+      # in an abundance of caution, lock...
+      filesystemmetadatalock.acquire(True)
+
+      if fd not in filedescriptortable:
+        raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
+
+      # Acquire the fd lock, if there is one.
+      if 'lock' in filedescriptortable[fd]:
+        filedescriptortable[fd]['lock'].acquire(True)
+
+
+      # ... but always release it...
+      try:
+        return _close_helper(fd)
+
+      finally:
+        # ... release the lock, if there is one
+        if 'lock' in filedescriptortable[fd]:
+          filedescriptortable[fd]['lock'].release()
+        del filedescriptortable[fd]
+        filesystemmetadatalock.release()
+
+        fs_endtime = time.clock()
+
+        fs_tot = (fs_endtime - fs_starttime)
+
+        if call_log:
+          add_to_log("fs_call", fs_tot)
+
+    FS_CALL_DICTIONARY["close_syscall"] = close_syscall
+
+
+
+
+
+
+    ##### DUP2  #####
+
+
+    # private helper that allows this to be used by dup
+    def _dup2_helper(oldfd,newfd):
+
+      # if the new file descriptor is too low or too high
+      # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
+      #      The Lind code may pass me descriptors less than STARTINGFD
+      if newfd >= MAX_FD or newfd < 0:
+        # BUG: the STARTINGFD isn't really too low.   It's just lower than we
+        # support
+        raise SyscallError("dup2_syscall","EBADF","Invalid new file descriptor.")
+
+      # if they are equal, return them
+      if newfd == oldfd:
+        return newfd
+
+      # okay, they are different.   If the new fd exists, close it.
+      if newfd in filedescriptortable:
+        # should not result in an error.   This only occurs on a bad fd
+        _close_helper(newfd)
+
+
+      # Okay, we need the new and old to point to the same thing.
+      # NOTE: I am not making a copy here!!!   They intentionally both
+      # refer to the same instance because manipulating the position, etc.
+      # impacts both.
+      filedescriptortable[newfd] = filedescriptortable[oldfd]
+
+      return newfd
+
+
+
+
+    def dup2_syscall(oldfd,newfd):
+      """
+        http://linux.die.net/man/2/dup2
+      """
+    
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
+
+      # check the fd
+      if oldfd not in filedescriptortable:
+        raise SyscallError("dup2_syscall","EBADF","Invalid old file descriptor.")
+
+      # Acquire the fd lock...
+      filedescriptortable[oldfd]['lock'].acquire(True)
+
+
+      # ... but always release it...
+      try:
+        return _dup2_helper(oldfd, newfd)
+
+      finally:
+        # ... release the locks
+        filedescriptortable[oldfd]['lock'].release()
+        filesystemmetadatalock.release()
+
+
+    FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
+
+
+    ##### DUP  #####
+
+    def dup_syscall(fd, startfd=STARTINGFD):
+      """
+        http://linux.die.net/man/2/dup
+      """
+
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
+
+      # check the fd
+      if fd not in filedescriptortable and fd >= STARTINGFD:
+        raise SyscallError("dup_syscall","EBADF","Invalid old file descriptor.")
+
+      # Acquire the fd lock...
+      filedescriptortable[fd]['lock'].acquire(True)
+
+      try:
+        # get the next available file descriptor
+        try:
+          nextfd = get_next_fd(startfd)
+        except SyscallError, e:
+          # If it's an error getting the fd, return our call name instead.
+          assert(e[0]=='open_syscall')
+
+          raise SyscallError('dup_syscall',e[1],e[2])
+
+        # this does the work.   It should _never_ raise an exception given the
+        # checks we've made...
+        return _dup2_helper(fd, nextfd)
+
+      finally:
+        # ... release the locks
+        filedescriptortable[fd]['lock'].release()
+        filesystemmetadatalock.release()
+
+
+
+    FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
+
+
+
+
+
+    ##### FCNTL  #####
+
+
+
+    def fcntl_syscall(fd, cmd, *args):
+      """
+        http://linux.die.net/man/2/fcntl
+      """
+      # this call is totally crazy!   I'll just implement the basics and add more
+      # as is needed.
+
+      # BUG: I probably need a filedescriptortable lock to prevent race conditions
+
+      # check the fd
+      if fd not in filedescriptortable:
+        raise SyscallError("fcntl_syscall","EBADF","Invalid file descriptor.")
+
+      # Acquire the fd lock...
+      filedescriptortable[fd]['lock'].acquire(True)
+
+      # ... but always release it...
+      try:
+        # if we're getting the flags, return them... (but this is just CLO_EXEC,
+        # so ignore)
+        if cmd == F_GETFD:
+          if len(args) > 0:
+            raise SyscallError("fcntl_syscall", "EINVAL", "Argument is more than\
+              maximum allowable value.")
+          return int((filedescriptortable[fd]['flags'] & FD_CLOEXEC) != 0)
+
+        # set the flags...
+        elif cmd == F_SETFD:
+          assert(len(args) == 1)
+          filedescriptortable[fd]['flags'] |= FD_CLOEXEC #Linux only supports FD_CLOEXEC
+          return 0
+
+        # if we're getting the flags, return them...
+        elif cmd == F_GETFL:
+          assert(len(args) == 0)
+          return filedescriptortable[fd]['flags']
+
+        # set the flags...
+        elif cmd == F_SETFL:
+          assert(len(args) == 1)
+          assert(type(args[0]) == int or type(args[0]) == long)
+          filedescriptortable[fd]['flags'] = args[0]
+          return 0
+
+        # lets go to DUP
+        elif cmd == F_DUPFD:
+          assert(len(args) == 1)
+          assert(type(args[0]) == int or type(args[0]) == long)
+          dup_syscall(fd, args[0])
+          return 0
+
+        # This is saying we'll get signals for this.   Let's punt this...
+        elif cmd == F_GETOWN:
+          assert(len(args) == 0)
+          # Saying traditional SIGIO behavior...
+          return 0
+
+        # indicate that we want to receive signals for this FD...
+        elif cmd == F_SETOWN:
+          assert(len(args) == 1)
+          assert(type(args[0]) == int or type(args[0]) == long)
+          # this would almost certainly say our PID (if positive) or our process
+          # group (if negative).   Either way, we do nothing and return success.
+          return 0
+
+
+        else:
+          # This is either unimplemented or malformed.   Let's raise
+          # an exception.
+          raise UnimplementedError('FCNTL with command '+str(cmd)+' is not yet implemented.')
+
+      finally:
+        # ... release the lock
+        filedescriptortable[fd]['lock'].release()
+
+
+    FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
+
+
+
+
+
+
+
+    ##### GETDENTS  #####
+
+
+
+    def getdents_syscall(fd, quantity):
+      """
+        http://linux.die.net/man/2/getdents
+      """
+
+      # BUG: I probably need a filedescriptortable lock to prevent race conditions
+
+      # BUG BUG BUG: Do I really understand this spec!?!?!?!
+
+      # check the fd
+      if fd not in filedescriptortable:
+        raise SyscallError("getdents_syscall","EBADF","Invalid file descriptor.")
+
+      # We can't getdents on a Pipe or Socket
+      if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
+        raise SyscallError("getdents_syscall","ENOENT","No such directory.")
+
+      # Sanitizing the Input, there are people who would send other types too.
+      if not isinstance(quantity, (int, long)):
+        raise SyscallError("getdents_syscall","EINVAL","Invalid type for buffer size.")
+
+      # This is the minimum number of bytes, that should be provided.
+      if quantity < 24:
+        raise SyscallError("getdents_syscall","EINVAL","Buffer size is too small.")
+
+      # Acquire the fd lock...
+      filedescriptortable[fd]['lock'].acquire(True)
+
+      # ... but always release it...
+      try:
+
+        # get the inode so I can read the directory entries
+        inode = filedescriptortable[fd]['inode']
+
+        # Is it a directory?
+        if not IS_DIR(filesystemmetadata['inodetable'][inode]['mode']):
+          raise SyscallError("getdents_syscall","EINVAL","File descriptor does not refer to a directory.")
+
+        returninodefntuplelist = []
+        bufferedquantity = 0
+
+        # let's move the position forward...
+        startposition = filedescriptortable[fd]['position']
+        # return tuple with inode, name, type tuples...
+        for entryname,entryinode in list(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict'].iteritems())[startposition:]:
+          # getdents returns the mode also (at least on Linux)...
+          entrytype = get_direnttype_from_mode(filesystemmetadata['inodetable'][entryinode]['mode'])
+
+          # Get the size of each entry, the size should be a multiple of 8.
+          # The size of each entry is determined by sizeof(struct linux_dirent) which is 20 bytes plus the length of name of the file.
+          # So, size of each entry becomes : 21 => 24, 26 => 32, 32 => 32.
+          currentquantity = (((20 + len(entryname)) + 7) / 8) * 8
+
+          # This is the overall size of entries parsed till now, if size exceeds given size, then stop parsing and return
+          bufferedquantity += currentquantity
+          if bufferedquantity > quantity:
+            break
+
+          returninodefntuplelist.append((entryinode, entryname, entrytype, currentquantity))
+
+        # and move the position along.   Go no further than the end...
+        filedescriptortable[fd]['position'] = min(startposition + len(returninodefntuplelist),\
+          len(filesystemmetadata['inodetable'][inode]['filename_to_inode_dict']))
+
+        return returninodefntuplelist
+
+      finally:
+        # ... release the lock
+        filedescriptortable[fd]['lock'].release()
+
+    FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
+
+
+    #### CHMOD ####
+
+
+    def chmod_syscall(path, mode):
+      """
+        http://linux.die.net/man/2/chmod
+      """
+      # in an abundance of caution, I'll grab a lock...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        truepath = normpath(path, CONST_CAGEID)
+
+        # is the path there?
+        if truepath not in fastinodelookuptable:
+          raise SyscallError("chmod_syscall", "ENOENT", "The path does not exist.")
+
+        thisinode = fastinodelookuptable[truepath]
+
+        # be sure there aren't extra mode bits... No errno seems to exist for this
+        assert(mode & (S_IRWXA|S_FILETYPEFLAGS) == mode)
+
+        # should overwrite any previous permissions, according to POSIX.   However,
+        # we want to keep the 'type' part of the mode from before
+        filesystemmetadata['inodetable'][thisinode]['mode'] = (filesystemmetadata['inodetable'][thisinode]['mode'] &~S_IRWXA) | mode
+
+      finally:
+        persist_metadata(METADATAFILENAME)
+        filesystemmetadatalock.release()
+      return 0
+
+    FS_CALL_DICTIONARY["chmod_syscall"] = chmod_syscall
+    #### TRUNCATE  ####
+
+
+    def truncate_syscall(path, length):
+      """
+        http://linux.die.net/man/2/truncate
+      """
+
+      fd = open_syscall(path, O_RDWR, S_IRWXA)
+
+      ret = ftruncate_syscall(fd, length)
+
+      close_syscall(fd)
+
+      return ret
+
+    FS_CALL_DICTIONARY["truncate_syscall"] = truncate_syscall
+
+    #### FTRUNCATE ####
+
+
+    def ftruncate_syscall(fd, new_len):
+      """
+        http://linux.die.net/man/2/ftruncate
+      """
+
+
+      # check the fd
+      if fd not in filedescriptortable and fd >= STARTINGFD:
+        raise SyscallError("ftruncate_syscall","EBADF","Invalid old file descriptor.")
+
+      if new_len < 0:
+        raise SyscallError("ftruncate_syscall", "EINVAL", "Incorrect length passed.")
+
+      # Acquire the fd lock...
+      desc = filedescriptortable[fd]
+      desc['lock'].acquire(True)
+
+      try:
+
+            # we will need the file size in a moment, but also need to check the type
+        try:
+          inode = desc['inode']
+        except KeyError:
+          raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
+
+
+        filesize = filesystemmetadata['inodetable'][inode]['size']
+
+        if filesize < new_len:
+          # we must pad with zeros
+          blankbytecount = new_len - filesize
+          fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
+
+        else:
+          # we must cut
+          to_save = fileobjecttable[inode].readat(new_len,0)
+          fileobjecttable[inode].close()
+          # remove the old file
+          removefile(FILEDATAPREFIX+str(inode))
+          # make a new blank one
+          fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
+
+          fileobjecttable[inode].writeat(to_save, 0)
+
+
+        filesystemmetadata['inodetable'][inode]['size'] = new_len
+
+      finally:
+        desc['lock'].release()
+
+      return 0
+
+    FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
+    #### MKNOD ####
+
+    # for now, I am considering few assumptions:
+    # 1. It is only used for creating character special files.
+    # 2. I am not bothering about S_IRWXA in mode. (I need to fix this).
+    # 3. /dev/null    : (1, 3)
+    #    /dev/random  : (1, 8)
+    #    /dev/urandom : (1, 9)
+    #    The major and minor device number's should be passed in as a 2-tuple.
+
+    def mknod_syscall(path, mode, dev):
+      """
+        http://linux.die.net/man/2/mknod
+      """
+      if path == '':
+        raise SyscallError("mknod_syscall","ENOENT","The file does not exist.")
+
       truepath = normpath(path, CONST_CAGEID)
 
-      # is the path there?
-      if truepath not in fastinodelookuptable:
-        raise SyscallError("chmod_syscall", "ENOENT", "The path does not exist.")
+      # check if file already exists, if so raise an error.
+      if truepath in fastinodelookuptable:
+        raise SyscallError("mknod_syscall", "EEXIST", "file already exists.")
 
-      thisinode = fastinodelookuptable[truepath]
+      # FIXME: mode should also accept user permissions(S_IRWXA)
+      if not mode & S_FILETYPEFLAGS == mode:
+        raise SyscallError("mknod_syscall", "EINVAL", "mode requested creation\
+          of something other than regular file, device special file, FIFO or socket")
 
-      # be sure there aren't extra mode bits... No errno seems to exist for this
-      assert(mode & (S_IRWXA|S_FILETYPEFLAGS) == mode)
+      # FIXME: for now, lets just only create character special file
+      if not IS_CHR(mode):
+        raise UnimplementedError("Only Character special files are supported.")
 
-      # should overwrite any previous permissions, according to POSIX.   However,
-      # we want to keep the 'type' part of the mode from before
-      filesystemmetadata['inodetable'][thisinode]['mode'] = (filesystemmetadata['inodetable'][thisinode]['mode'] &~S_IRWXA) | mode
+      # this has nothing to do with syscall, so I will raise UnimplementedError.
+      if type(dev) is not tuple or len(dev) != 2:
+        raise UnimplementedError("Third argument should be 2-tuple.")
 
-    finally:
-      persist_metadata(METADATAFILENAME)
-      filesystemmetadatalock.release()
-    return 0
+      # Create a file, but don't open it. openning a chr_file should be done only using
+      # open_syscall. S_IFCHR flag will ensure that the file is not opened.
+      fd = open_syscall(path, mode | O_CREAT, S_IRWXA)
 
-  FS_CALL_DICTIONARY["chmod_syscall"] = chmod_syscall
-  #### TRUNCATE  ####
+      # add the major and minor device no.'s, I did it here so that the code can be managed
+      # properly, instead of putting everything in open_syscall.
+      inode = filedescriptortable[fd]['inode']
+      filesystemmetadata['inodetable'][inode]['rdev'] = dev
 
+      # close the file descriptor...
+      close_syscall(fd)
+      return 0
 
-  def truncate_syscall(path, length):
-    """
-      http://linux.die.net/man/2/truncate
-    """
+    FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
 
-    fd = open_syscall(path, O_RDWR, S_IRWXA)
+    #### Helper Functions for Character Files.####
+    # currently supported devices are:
+    # 1. /dev/null
+    # 2. /dev/random
+    # 3. /dev/urandom
 
-    ret = ftruncate_syscall(fd, length)
+    def _read_chr_file(inode, count):
+      """
+      helper function for reading data from chr_file's.
+      """
 
-    close_syscall(fd)
-
-    return ret
-
-  FS_CALL_DICTIONARY["truncate_syscall"] = truncate_syscall
-
-  #### FTRUNCATE ####
-
-
-  def ftruncate_syscall(fd, new_len):
-    """
-      http://linux.die.net/man/2/ftruncate
-    """
-
-
-    # check the fd
-    if fd not in filedescriptortable and fd >= STARTINGFD:
-      raise SyscallError("ftruncate_syscall","EBADF","Invalid old file descriptor.")
-
-    if new_len < 0:
-      raise SyscallError("ftruncate_syscall", "EINVAL", "Incorrect length passed.")
-
-    # Acquire the fd lock...
-    desc = filedescriptortable[fd]
-    desc['lock'].acquire(True)
-
-    try:
-
-          # we will need the file size in a moment, but also need to check the type
-      try:
-        inode = desc['inode']
-      except KeyError:
-        raise SyscallError("lseek_syscall","ESPIPE","This is a socket, not a file.")
+      # check if it's a /dev/null.
+      if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
+        return ''
+      # /dev/random
+      elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
+        return randombytes()[0:count]
+      # /dev/urandom
+      # FIXME: urandom is supposed to be non-blocking.
+      elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 9):
+        return randombytes()[0:count]
+      else:
+        raise UnimplementedError("Given device is not supported.")
 
 
-      filesize = filesystemmetadata['inodetable'][inode]['size']
+    def _write_chr_file(inode, data):
+      """
+      helper function for writing data to chr_file's.
+      """
 
-      if filesize < new_len:
-        # we must pad with zeros
-        blankbytecount = new_len - filesize
-        fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
+      # check if it's a /dev/null.
+      if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
+        return len(data)
+      # /dev/random
+      # There's no real /dev/random file, just vanish it into thin air.
+      elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
+        return len(data)
+      # /dev/urandom
+      # There's no real /dev/random file, just vanish it into thin air.
+      elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 9):
+        return len(data)
+      else:
+        raise UnimplementedError("Given device is not supported.")
+
+
+    def _istat_helper_chr_file(inode):
+      ret =  (5,          # st_dev, its always 5 for chr_file's.
+              inode,                                 # inode
+              filesystemmetadata['inodetable'][inode]['mode'],
+              filesystemmetadata['inodetable'][inode]['linkcount'],
+              filesystemmetadata['inodetable'][inode]['uid'],
+              filesystemmetadata['inodetable'][inode]['gid'],
+              filesystemmetadata['inodetable'][inode]['rdev'],
+              filesystemmetadata['inodetable'][inode]['size'],
+              0,                                     # st_blksize  ignored(?)
+              0,                                     # st_blocks   ignored(?)
+              filesystemmetadata['inodetable'][inode]['atime'],
+              0,                                     # atime ns
+              filesystemmetadata['inodetable'][inode]['mtime'],
+              0,                                     # mtime ns
+              filesystemmetadata['inodetable'][inode]['ctime'],
+              0,                                     # ctime ns
+            )
+      return ret
+
+    #### USER/GROUP IDENTITIES ####
+
+
+    def getuid_syscall():
+      """
+        http://linux.die.net/man/2/getuid
+      """
+      # I will return 1000, since this is also used in stat
+      return DEFAULT_UID
+
+    FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
+
+    def geteuid_syscall():
+      """
+        http://linux.die.net/man/2/geteuid
+      """
+      # I will return 1000, since this is also used in stat
+      return DEFAULT_UID
+
+    FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
+
+    def getgid_syscall():
+      """
+        http://linux.die.net/man/2/getgid
+      """
+      # I will return 1000, since this is also used in stat
+      return DEFAULT_GID
+
+    FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
+
+    def getegid_syscall():
+      """
+        http://linux.die.net/man/2/getegid
+      """
+      # I will return 1000, since this is also used in stat
+      return DEFAULT_GID
+
+    FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
+
+    #### RESOURCE LIMITS  ####
+
+    # FIXME: These constants should be specified in a different file,
+    # it at all additional support needs to be added.
+    NOFILE_CUR = 1024
+    NOFILE_MAX = 4*1024
+
+    STACK_CUR = 8192*1024
+    STACK_MAX = 2**32
+
+
+    def getrlimit_syscall(res_type):
+      """
+        http://linux.die.net/man/2/getrlimit
+
+        NOTE: Second argument is deprecated.
+      """
+      if res_type == RLIMIT_NOFILE:
+        return (NOFILE_CUR, NOFILE_MAX)
+      elif res_type == RLIMIT_STACK:
+        return (STACK_CUR, STACK_MAX)
+      else:
+        raise UnimplementedError("The resource type is unimplemented.")
+
+
+    FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
+
+    def setrlimit_syscall(res_type, limits):
+      """
+        http://linux.die.net/man/2/setrlimit
+      """
+
+      if res_type == RLIMIT_NOFILE:
+        # always make sure that, current value is less than or equal to Max value.
+        if NOFILE_CUR > NOFILE_MAX:
+          raise SyscallException("setrlimit", "EPERM", "Should not exceed Max limit.")
+
+        # FIXME: I should update the value which should be per program.
+        # since, Lind doesn't need this right now, I will pass.
+        return 0
 
       else:
-        # we must cut
-        to_save = fileobjecttable[inode].readat(new_len,0)
-        fileobjecttable[inode].close()
-        # remove the old file
-        removefile(FILEDATAPREFIX+str(inode))
-        # make a new blank one
-        fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
+        raise UnimplementedError("This resource type is unimplemented")
 
-        fileobjecttable[inode].writeat(to_save, 0)
+    FS_CALL_DICTIONARY["setrlimit_syscall"] = setrlimit_syscall
+
+    #### FLOCK SYSCALL  ####
 
 
-      filesystemmetadata['inodetable'][inode]['size'] = new_len
+    def flock_syscall(fd, operation):
+      """
+        http://linux.die.net/man/2/flock
+      """
+      if fd not in filedescriptortable:
+        raise SyscallError("flock_syscall", "EBADF" "Invalid file descriptor.")
 
-    finally:
-      desc['lock'].release()
+      # if we are anything besides the allowed flags, fail
+      if operation & ~(LOCK_SH|LOCK_EX|LOCK_NB|LOCK_UN):
+        raise SyscallError("flock_syscall", "EINVAL", "operation is invalid.")
 
-    return 0
+      if operation & LOCK_SH:
+        raise UnimplementedError("Shared lock is not yet implemented.")
 
-  FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
-  #### MKNOD ####
-
-  # for now, I am considering few assumptions:
-  # 1. It is only used for creating character special files.
-  # 2. I am not bothering about S_IRWXA in mode. (I need to fix this).
-  # 3. /dev/null    : (1, 3)
-  #    /dev/random  : (1, 8)
-  #    /dev/urandom : (1, 9)
-  #    The major and minor device number's should be passed in as a 2-tuple.
-
-  def mknod_syscall(path, mode, dev):
-    """
-      http://linux.die.net/man/2/mknod
-    """
-    if path == '':
-      raise SyscallError("mknod_syscall","ENOENT","The file does not exist.")
-
-    truepath = normpath(path, CONST_CAGEID)
-
-    # check if file already exists, if so raise an error.
-    if truepath in fastinodelookuptable:
-      raise SyscallError("mknod_syscall", "EEXIST", "file already exists.")
-
-    # FIXME: mode should also accept user permissions(S_IRWXA)
-    if not mode & S_FILETYPEFLAGS == mode:
-      raise SyscallError("mknod_syscall", "EINVAL", "mode requested creation\
-        of something other than regular file, device special file, FIFO or socket")
-
-    # FIXME: for now, lets just only create character special file
-    if not IS_CHR(mode):
-      raise UnimplementedError("Only Character special files are supported.")
-
-    # this has nothing to do with syscall, so I will raise UnimplementedError.
-    if type(dev) is not tuple or len(dev) != 2:
-      raise UnimplementedError("Third argument should be 2-tuple.")
-
-    # Create a file, but don't open it. openning a chr_file should be done only using
-    # open_syscall. S_IFCHR flag will ensure that the file is not opened.
-    fd = open_syscall(path, mode | O_CREAT, S_IRWXA)
-
-    # add the major and minor device no.'s, I did it here so that the code can be managed
-    # properly, instead of putting everything in open_syscall.
-    inode = filedescriptortable[fd]['inode']
-    filesystemmetadata['inodetable'][inode]['rdev'] = dev
-
-    # close the file descriptor...
-    close_syscall(fd)
-    return 0
-
-  FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
-
-  #### Helper Functions for Character Files.####
-  # currently supported devices are:
-  # 1. /dev/null
-  # 2. /dev/random
-  # 3. /dev/urandom
-
-  def _read_chr_file(inode, count):
-    """
-     helper function for reading data from chr_file's.
-    """
-
-    # check if it's a /dev/null.
-    if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
-      return ''
-    # /dev/random
-    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
-      return randombytes()[0:count]
-    # /dev/urandom
-    # FIXME: urandom is supposed to be non-blocking.
-    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 9):
-      return randombytes()[0:count]
-    else:
-      raise UnimplementedError("Given device is not supported.")
-
-
-  def _write_chr_file(inode, data):
-    """
-     helper function for writing data to chr_file's.
-    """
-
-    # check if it's a /dev/null.
-    if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
-      return len(data)
-    # /dev/random
-    # There's no real /dev/random file, just vanish it into thin air.
-    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
-      return len(data)
-    # /dev/urandom
-    # There's no real /dev/random file, just vanish it into thin air.
-    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 9):
-      return len(data)
-    else:
-      raise UnimplementedError("Given device is not supported.")
-
-
-  def _istat_helper_chr_file(inode):
-    ret =  (5,          # st_dev, its always 5 for chr_file's.
-            inode,                                 # inode
-            filesystemmetadata['inodetable'][inode]['mode'],
-            filesystemmetadata['inodetable'][inode]['linkcount'],
-            filesystemmetadata['inodetable'][inode]['uid'],
-            filesystemmetadata['inodetable'][inode]['gid'],
-            filesystemmetadata['inodetable'][inode]['rdev'],
-            filesystemmetadata['inodetable'][inode]['size'],
-            0,                                     # st_blksize  ignored(?)
-            0,                                     # st_blocks   ignored(?)
-            filesystemmetadata['inodetable'][inode]['atime'],
-            0,                                     # atime ns
-            filesystemmetadata['inodetable'][inode]['mtime'],
-            0,                                     # mtime ns
-            filesystemmetadata['inodetable'][inode]['ctime'],
-            0,                                     # ctime ns
-          )
-    return ret
-
-  #### USER/GROUP IDENTITIES ####
-
-
-  def getuid_syscall():
-    """
-      http://linux.die.net/man/2/getuid
-    """
-    # I will return 1000, since this is also used in stat
-    return DEFAULT_UID
-
-  FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
-
-  def geteuid_syscall():
-    """
-      http://linux.die.net/man/2/geteuid
-    """
-    # I will return 1000, since this is also used in stat
-    return DEFAULT_UID
-
-  FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
-
-  def getgid_syscall():
-    """
-      http://linux.die.net/man/2/getgid
-    """
-    # I will return 1000, since this is also used in stat
-    return DEFAULT_GID
-
-  FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
-
-  def getegid_syscall():
-    """
-      http://linux.die.net/man/2/getegid
-    """
-    # I will return 1000, since this is also used in stat
-    return DEFAULT_GID
-
-  FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
-
-  #### RESOURCE LIMITS  ####
-
-  # FIXME: These constants should be specified in a different file,
-  # it at all additional support needs to be added.
-  NOFILE_CUR = 1024
-  NOFILE_MAX = 4*1024
-
-  STACK_CUR = 8192*1024
-  STACK_MAX = 2**32
-
-
-  def getrlimit_syscall(res_type):
-    """
-      http://linux.die.net/man/2/getrlimit
-
-      NOTE: Second argument is deprecated.
-    """
-    if res_type == RLIMIT_NOFILE:
-      return (NOFILE_CUR, NOFILE_MAX)
-    elif res_type == RLIMIT_STACK:
-      return (STACK_CUR, STACK_MAX)
-    else:
-      raise UnimplementedError("The resource type is unimplemented.")
-
-
-  FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
-
-  def setrlimit_syscall(res_type, limits):
-    """
-      http://linux.die.net/man/2/setrlimit
-    """
-
-    if res_type == RLIMIT_NOFILE:
-      # always make sure that, current value is less than or equal to Max value.
-      if NOFILE_CUR > NOFILE_MAX:
-        raise SyscallException("setrlimit", "EPERM", "Should not exceed Max limit.")
-
-      # FIXME: I should update the value which should be per program.
-      # since, Lind doesn't need this right now, I will pass.
-      return 0
-
-    else:
-      raise UnimplementedError("This resource type is unimplemented")
-
-  FS_CALL_DICTIONARY["setrlimit_syscall"] = setrlimit_syscall
-
-  #### FLOCK SYSCALL  ####
-
-
-  def flock_syscall(fd, operation):
-    """
-      http://linux.die.net/man/2/flock
-    """
-    if fd not in filedescriptortable:
-      raise SyscallError("flock_syscall", "EBADF" "Invalid file descriptor.")
-
-    # if we are anything besides the allowed flags, fail
-    if operation & ~(LOCK_SH|LOCK_EX|LOCK_NB|LOCK_UN):
-      raise SyscallError("flock_syscall", "EINVAL", "operation is invalid.")
-
-    if operation & LOCK_SH:
-      raise UnimplementedError("Shared lock is not yet implemented.")
-
-    # check whether its a blocking or non-blocking lock...
-    if operation & LOCK_EX and operation & LOCK_NB:
-      if filedescriptortable[fd]['lock'].acquire(False):
+      # check whether its a blocking or non-blocking lock...
+      if operation & LOCK_EX and operation & LOCK_NB:
+        if filedescriptortable[fd]['lock'].acquire(False):
+          return 0
+        else: # raise an error, if there's another lock already holding this
+          raise SyscallError("flock_syscall", "EWOULDBLOCK", "Operation would block.")
+      elif operation & LOCK_EX:
+        filedescriptortable[fd]['lock'].acquire(True)
         return 0
-      else: # raise an error, if there's another lock already holding this
-        raise SyscallError("flock_syscall", "EWOULDBLOCK", "Operation would block.")
-    elif operation & LOCK_EX:
-      filedescriptortable[fd]['lock'].acquire(True)
+
+      if operation & LOCK_UN:
+        filedescriptortable[fd]['lock'].release()
+        return 0
+
+    FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
+
+    #### RENAME SYSCALL  ####
+
+
+    def rename_syscall(old, new):
+      """
+      http://linux.die.net/man/2/rename
+      TODO: this needs to be fixed up.
+      """
+      filesystemmetadatalock.acquire(True)
+      try:
+        true_old_path = normpath(old, CONST_CAGEID)
+        true_new_path = normpath(new, CONST_CAGEID)
+
+        if true_old_path not in fastinodelookuptable:
+          raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
+
+        if true_new_path == '':
+          raise SyscallError("rename_syscall", "ENOENT", "New file does not exist")
+
+        trueparentpath_old = normpath_parent(true_old_path, CONST_CAGEID)
+        parentinode = fastinodelookuptable[trueparentpath_old]
+
+        inode = fastinodelookuptable[true_old_path]
+
+        newname = true_new_path.split('/')[-1]
+        filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][newname] = inode
+
+        fastinodelookuptable[true_new_path] = inode
+
+        oldname = true_old_path.split('/')[-1]
+        del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][oldname]
+        del fastinodelookuptable[true_old_path]
+
+      finally:
+        filesystemmetadatalock.release()
       return 0
 
-    if operation & LOCK_UN:
-      filedescriptortable[fd]['lock'].release()
+    FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
+
+
+    #### PIPE SYSCALL  ####
+
+
+    def get_next_pipe():
+      # let's get the next available pipe number.   
+      for pipenumber in range(STARTING_PIPE, MAX_PIPE):
+        if not pipenumber in pipetable:
+          return pipenumber
+
+      raise SyscallError("pipe_syscall","EMFILE","The maximum number of files are open.")
+
+    def pipe_syscall():
+      """
+      http://linux.die.net/man/2/pipe
+      """
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+
+      try:
+        # get next available pipe number, and set up pipe
+        pipenumber = get_next_pipe()
+        pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+        pipefds = []
+      
+        # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
+        # append each to pipefds list
+
+        for flag in [O_RDONLY, O_WRONLY]:
+          try:
+            nextfd = get_next_fd()
+          except SyscallError, e:
+            assert(e[0]=='open_syscall')
+            raise SyscallError('pipe_syscall',e[1],e[2])
+
+          filedescriptortable[nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
+          pipefds.append(nextfd)    
+
+        return pipefds
+
+      finally:
+        filesystemmetadatalock.release()
+        
+    FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
+      
+
+    # pipe2 currently not implemented
+
+    def pipe2_syscall(flags):
+      """
+      http://linux.die.net/man/2/pipe2
+      """
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        #stuff
+        pass
+      finally:
+        filesystemmetadatalock.release()
+
+    FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
+
+    # NOTE: this is only the part of fork that forks the file table. Most of fork
+    # is implemented in parts of NaCl
+
+    def fork_syscall(child_cageid):
+
+      filesystemmetadatalock.acquire(True)
+
+      try:
+        masterfiledescriptortable[child_cageid] = \
+          repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+        
+        master_fs_calls_context[child_cageid] = \
+          repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+      
+      finally:
+        filesystemmetadatalock.release()
+
+
       return 0
 
-  FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
+    FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
 
-  #### RENAME SYSCALL  ####
+    def mmap_syscall(addr, leng, prot, flags, fildes, off):
+      """
+      http://linux.die.net/man/2/mmap
+      """
 
-
-  def rename_syscall(old, new):
-    """
-    http://linux.die.net/man/2/rename
-    TODO: this needs to be fixed up.
-    """
-    filesystemmetadatalock.acquire(True)
-    try:
-      true_old_path = normpath(old, CONST_CAGEID)
-      true_new_path = normpath(new, CONST_CAGEID)
-
-      if true_old_path not in fastinodelookuptable:
-        raise SyscallError("rename_syscall", "ENOENT", "Old file does not exist")
-
-      if true_new_path == '':
-        raise SyscallError("rename_syscall", "ENOENT", "New file does not exist")
-
-      trueparentpath_old = normpath_parent(true_old_path, CONST_CAGEID)
-      parentinode = fastinodelookuptable[trueparentpath_old]
-
-      inode = fastinodelookuptable[true_old_path]
-
-      newname = true_new_path.split('/')[-1]
-      filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][newname] = inode
-
-      fastinodelookuptable[true_new_path] = inode
-
-      oldname = true_old_path.split('/')[-1]
-      del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][oldname]
-      del fastinodelookuptable[true_old_path]
-
-    finally:
-      filesystemmetadatalock.release()
-    return 0
-
-  FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
+      fs_starttime = time.clock()
 
 
-  #### PIPE SYSCALL  ####
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
+
+      # ... but always release it...
+      try:
+        if leng==0:
+          raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
+
+        if 0 == flags & (MAP_PRIVATE | MAP_SHARED):
+          raise SyscallError("mmap_syscall", "EINVAL", "The value of flags is invalid (neither MAP_PRIVATE nor MAP_SHARED is set)")
+
+        #some ENOMEM guards might be nice, maybe even EAGAIN or EPERM
+        if 0 == flags & MAP_ANONYMOUS:
+          if fildes in filedescriptortable:
+            filedescriptortable[fildes]['lock'].acquire(True)
+
+            thisinode = filedescriptortable[fildes]['inode']
+            mode = filesystemmetadata['inodetable'][thisinode]['mode']
+            fflags = filedescriptortable[fildes]['flags']
+
+            # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
+            # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
+            if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
+              filedescriptortable[fildes]['lock'].release()
+              raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
+            if not (IS_REG(mode) or IS_CHR(mode)):
+              filedescriptortable[fildes]['lock'].release()
+              raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
+
+            filesize = filesystemmetadata['inodetable'][thisinode]['size']
+
+            if off < 0 or off >= filesize:
+              filedescriptortable[fildes]['lock'].release()
+              raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
+
+            if off + leng > filesize:
+              filedescriptortable[fildes]['lock'].release()
+              raise SyscallError("mmap_syscall", "EINVAL", "The file is a regular file and the value of off plus len exceeds" +
+                  " the offset maximum established in the open file description associated with fildes")
+
+            filedescriptortable[fildes]['lock'].release()
+          else:
+            #Some internal NaCl mmaps don't have corresponding repy fds but aren't anonymous
+            #Unfortunately that means we need to rely on this being a valid path
+            #TODO: ensure user mmaps can't reach here
+            pass
+            #raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
 
 
-  def get_next_pipe():
-    # let's get the next available pipe number.   
-    for pipenumber in range(STARTING_PIPE, MAX_PIPE):
-      if not pipenumber in pipetable:
-        return pipenumber
+        return repy_mmap(addr, leng, prot, flags, fildes, off)
+      finally:
+        filesystemmetadatalock.release()
+        fs_endtime = time.clock()
 
-    raise SyscallError("pipe_syscall","EMFILE","The maximum number of files are open.")
+        fs_tot = (fs_endtime - fs_starttime)
 
-  def pipe_syscall():
-    """
-    http://linux.die.net/man/2/pipe
-    """
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
+        if call_log:
+          add_to_log("fs_call", fs_tot)
 
-    # ... but always release it...
-
-    try:
-      # get next available pipe number, and set up pipe
-      pipenumber = get_next_pipe()
-      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
-      pipefds = []
-     
-      # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
-      # append each to pipefds list
-
-      for flag in [O_RDONLY, O_WRONLY]:
-        try:
-          nextfd = get_next_fd()
-        except SyscallError, e:
-          assert(e[0]=='open_syscall')
-          raise SyscallError('pipe_syscall',e[1],e[2])
-
-        filedescriptortable[nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
-        pipefds.append(nextfd)    
-
-      return pipefds
-
-    finally:
-      filesystemmetadatalock.release()
-      
-  FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
+    FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
     
+    def munmap_syscall(addr, leng):
+      """
+      http://linux.die.net/man/2/munmap
+      """
+      # lock to prevent things from changing while we look this up...
+      filesystemmetadatalock.acquire(True)
 
-  # pipe2 currently not implemented
+      # ... but always release it...
+      try:
+        if leng==0:
+          raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
+        return repy_mmap(addr, 
+          leng, 
+          PROT_NONE,
+          MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,
+          -1,
+          0)
+      finally:
+        filesystemmetadatalock.release()
 
-  def pipe2_syscall(flags):
-    """
-    http://linux.die.net/man/2/pipe2
-    """
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      #stuff
-      pass
-    finally:
-      filesystemmetadatalock.release()
-
-  FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
-
-  # NOTE: this is only the part of fork that forks the file table. Most of fork
-  # is implemented in parts of NaCl
-
-  def fork_syscall(child_cageid):
-
-    filesystemmetadatalock.acquire(True)
-
-    try:
-      masterfiledescriptortable[child_cageid] = \
-        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
-      
-      master_fs_calls_context[child_cageid] = \
-        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+    FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
     
-    finally:
-      filesystemmetadatalock.release()
+    # Exec will do the same copying as fork, 
+    # but we want to get rid of all the information from the old cage
+    
+    def exec_syscall(child_cageid):
+      
+      filesystemmetadatalock.acquire(True)
 
+      try:
+        masterfiledescriptortable[child_cageid] = \
+          repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+        
+        master_fs_calls_context[child_cageid] = \
+          repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
 
-    return 0
+        del masterfiledescriptortable[CONST_CAGEID]
+        del master_fs_calls_context[CONST_CAGEID]
+      
+      finally:
+        filesystemmetadatalock.release()
+    
+    FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
-  FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+    if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
+      return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
+    else:
+      exitall(-1)
 
-  def mmap_syscall(addr, leng, prot, flags, fildes, off):
-    """
-    http://linux.die.net/man/2/mmap
-    """
+  finally:
+      closure_endtime = time.clock()
 
-    fs_starttime = time.clock()
-
-
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      if leng==0:
-        raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
-
-      if 0 == flags & (MAP_PRIVATE | MAP_SHARED):
-        raise SyscallError("mmap_syscall", "EINVAL", "The value of flags is invalid (neither MAP_PRIVATE nor MAP_SHARED is set)")
-
-      #some ENOMEM guards might be nice, maybe even EAGAIN or EPERM
-      if 0 == flags & MAP_ANONYMOUS:
-        if fildes in filedescriptortable:
-          filedescriptortable[fildes]['lock'].acquire(True)
-
-          thisinode = filedescriptortable[fildes]['inode']
-          mode = filesystemmetadata['inodetable'][thisinode]['mode']
-          fflags = filedescriptortable[fildes]['flags']
-
-          # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
-          # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
-          if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
-            filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
-          if not (IS_REG(mode) or IS_CHR(mode)):
-            filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
-
-          filesize = filesystemmetadata['inodetable'][thisinode]['size']
-
-          if off < 0 or off >= filesize:
-            filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
-
-          if off + leng > filesize:
-            filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EINVAL", "The file is a regular file and the value of off plus len exceeds" +
-                " the offset maximum established in the open file description associated with fildes")
-
-          filedescriptortable[fildes]['lock'].release()
-        else:
-          #Some internal NaCl mmaps don't have corresponding repy fds but aren't anonymous
-          #Unfortunately that means we need to rely on this being a valid path
-          #TODO: ensure user mmaps can't reach here
-          pass
-          #raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
-
-
-      return repy_mmap(addr, leng, prot, flags, fildes, off)
-    finally:
-      filesystemmetadatalock.release()
-      fs_endtime = time.clock()
-
-      fs_tot = (fs_endtime - fs_starttime)
+      closure_tot = (closure_endtime - closure_starttime)
 
       if call_log:
-        add_to_log("fs_call", fs_tot)
-
-  FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
-   
-  def munmap_syscall(addr, leng):
-    """
-    http://linux.die.net/man/2/munmap
-    """
-    # lock to prevent things from changing while we look this up...
-    filesystemmetadatalock.acquire(True)
-
-    # ... but always release it...
-    try:
-      if leng==0:
-        raise SyscallError("mmap_syscall", "EINVAL", "The value of len is zero")
-      return repy_mmap(addr, 
-        leng, 
-        PROT_NONE,
-        MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED,
-        -1,
-        0)
-    finally:
-      filesystemmetadatalock.release()
-
-  FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
-  
-  # Exec will do the same copying as fork, 
-  # but we want to get rid of all the information from the old cage
-  
-  def exec_syscall(child_cageid):
-    
-    filesystemmetadatalock.acquire(True)
-
-    try:
-      masterfiledescriptortable[child_cageid] = \
-        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
-      
-      master_fs_calls_context[child_cageid] = \
-        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
-
-      del masterfiledescriptortable[CONST_CAGEID]
-      del master_fs_calls_context[CONST_CAGEID]
-    
-    finally:
-      filesystemmetadatalock.release()
-  
-  FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
-
-  if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
-    return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
-  else:
-    exitall(-1)
+        add_to_log("closure", closure_tot)
