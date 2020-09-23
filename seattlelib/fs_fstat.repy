@@ -24,6 +24,7 @@ def lind_fs_fxstat(args):
 
     Pack the struct returned, or error.
     """
+    stub_starttime = time.clock()
 
     filedes = args[0]
     ver = args[1]
@@ -37,7 +38,13 @@ def lind_fs_fxstat(args):
       # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
       # followed by 2Q for each timestamp.   The ns field is set to 0.
       packed = pack_stat_struct(result)
-        
+
+      stub_endtime = time.clock()
+
+      stub_tot = (stub_endtime - stub_starttime)
+
+      add_to_log("stub", stub_tot)
+          
       return SuccessResponseBuilder("fs_fxstat", 0, packed)
 
     else:

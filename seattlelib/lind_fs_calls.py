@@ -128,6 +128,12 @@ def init_log_entry(call_num):
   if (call_num == 12): callstring = "read"
   if (call_num == 13): callstring = "write"
   if (call_num == 11): callstring = "close"
+  if (call_num == 17): callstring = "fstat"
+  if (call_num == 9): callstring = "stat"
+  if (call_num == 21): callstring = "mmap"
+  if (call_num == 30): callstring = "exit"
+
+
 
 
   call_log[call_counter]["call"] = callstring
@@ -550,6 +556,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     http://linux.die.net/man/2/exit
     """
+    fs_starttime = time.clock()
 
     filesystemmetadatalock.acquire(True)
     
@@ -566,6 +573,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
     return 0
   
   FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
@@ -619,19 +632,31 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def fstatfs_syscall(fd):
     """
       http://linux.die.net/man/2/fstatfs
+
     """
 
-    # is the file descriptor valid?
-    if fd not in filedescriptortable:
-      raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+    fs_starttime = time.clock()
 
-    # We can't fstat  Pipe or Socket
-    if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
-      raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+    try:
+      # is the file descriptor valid?
+      if fd not in filedescriptortable:
+        raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+
+      # We can't fstat  Pipe or Socket
+      if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
+        raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
 
 
-    # if so, return the information...
-    return _istatfs_helper(filedescriptortable[fd]['inode'])
+      # if so, return the information...
+      return _istatfs_helper(filedescriptortable[fd]['inode'])
+
+    finally:
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
 
   FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
@@ -1059,6 +1084,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/stat
     """
+
+    fs_starttime = time.clock()
+
     # in an abundance of caution, I'll grab a lock...
     filesystemmetadatalock.acquire(True)
 
@@ -1080,6 +1108,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
+      
 
 
   FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
@@ -2611,6 +2646,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     http://linux.die.net/man/2/mmap
     """
+
+    fs_starttime = time.clock()
+
+
     # lock to prevent things from changing while we look this up...
     filesystemmetadatalock.acquire(True)
 
@@ -2663,6 +2702,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return repy_mmap(addr, leng, prot, flags, fildes, off)
     finally:
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
   FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
    

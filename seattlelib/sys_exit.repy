@@ -12,11 +12,19 @@ the result back up.
 """
 
 def lind_sys_exit(args):
+  stub_starttime = time.clock()
+
   status = args[0]
   try:
     result = get_fs_call(args[-1], "exit_syscall")(status)
   except SyscallError, e:
     return ErrorResponseBuilder("sys_exit", e[1], e[2])
+
+  stub_endtime = time.clock()
+
+  stub_tot = (stub_endtime - stub_starttime)
+
+  add_to_log("stub", stub_tot)
   return SuccessResponseBuilder("sys_exit", result)
 
 
