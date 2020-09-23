@@ -24,7 +24,6 @@ def lind_fs_access(args):
 
     Pack the single int returned, or error.
     """
-    print "in access"
     stub_starttime = time.clock()
 
     mode = args[0]
@@ -33,14 +32,14 @@ def lind_fs_access(args):
         result = get_fs_call(args[-1],"access_syscall")(path, mode)
         print result
     except SyscallError, e:
-        print "access error?"
         return ErrorResponseBuilder("fs_access", e[1], e[2])
 
-    stub_endtime = time.clock()
+    finally:
+        stub_endtime = time.clock()
 
-    stub_tot = (stub_endtime - stub_starttime)
+        stub_tot = (stub_endtime - stub_starttime)
 
-    add_to_log("stub", stub_tot)
+        add_to_log("stub", stub_tot)
 
     return SuccessResponseBuilder("fs_access", result)
 
