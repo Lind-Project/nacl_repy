@@ -33,6 +33,7 @@ def lind_fs_access(args):
         result = get_fs_call(args[-1],"access_syscall")(path, mode)
         print result
     except SyscallError, e:
+        print "access error?"
         return ErrorResponseBuilder("fs_access", e[1], e[2])
 
     stub_endtime = time.clock()
