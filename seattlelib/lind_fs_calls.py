@@ -154,6 +154,9 @@ def print_log():
   global call_log
   global call_counter
 
+  total_syscall_time = 0
+  total_fs_time = 0
+
   for i in range(0, call_counter):
     curr = call_log[i]
     logstring = "Syscall " + curr["call"]
@@ -161,8 +164,13 @@ def print_log():
     logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
     if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
-
+    total_syscall_time += curr["syscall"]
+    total_fs_time += curr["fs_call"]
     print logstring
+
+  print "Total system call time " + str(total_syscall_time * 1000000) + " us"
+  print "Total pure implemtation time " + str(total_fs_time * 1000000) + " us"
+
 
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
