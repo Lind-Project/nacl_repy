@@ -191,6 +191,7 @@ def _tattle_quantity(resource, quantity, resourcesalloweddict, resourcesuseddict
       None.
   """
 
+  return
 
   # I assume that the quantity will never be negative
   if quantity < 0:
