@@ -645,28 +645,20 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     """
 
-    fs_starttime = time.clock()
 
-    try:
-      # is the file descriptor valid?
-      if fd not in filedescriptortable:
-        raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+    # is the file descriptor valid?
+    if fd not in filedescriptortable:
+      raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
 
-      # We can't fstat  Pipe or Socket
-      if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
-        raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
+    # We can't fstat  Pipe or Socket
+    if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
+      raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
 
 
-      # if so, return the information...
-      return _istatfs_helper(filedescriptortable[fd]['inode'])
+    # if so, return the information...
+    return _istatfs_helper(filedescriptortable[fd]['inode'])
 
-    finally:
-      fs_endtime = time.clock()
 
-      fs_tot = (fs_endtime - fs_starttime)
-
-      if call_log:
-        add_to_log("fs_call", fs_tot)
 
 
   FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
@@ -1143,29 +1135,41 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/fstat
     """
-    # TODO: I don't handle socket objects.   I should return something like:
-    # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
-    # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
+    fs_starttime = time.clock()
 
-    # is the file descriptor valid?
-    if fd not in filedescriptortable:
-      raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
+    try:
 
-    # if so, return the information...
-    if IS_PIPE_DESC(fd, CONST_CAGEID):
-      # mocking pipe inode number to 0xfeef0000
-      return _stat_alt_helper(0xfeef0000)
-    
-    inode = filedescriptortable[fd]['inode']
+      # TODO: I don't handle socket objects.   I should return something like:
+      # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
+      # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
 
-    # this is a stream, lets mock it
-    if inode == STREAMINODE:
-      return _stat_alt_helper(inode)
+      # is the file descriptor valid?
+      if fd not in filedescriptortable:
+        raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
+
+      # if so, return the information...
+      if IS_PIPE_DESC(fd, CONST_CAGEID):
+        # mocking pipe inode number to 0xfeef0000
+        return _stat_alt_helper(0xfeef0000)
+      
+      inode = filedescriptortable[fd]['inode']
+
+      # this is a stream, lets mock it
+      if inode == STREAMINODE:
+        return _stat_alt_helper(inode)
 
 
-    if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-      return _istat_helper_chr_file(inode)
-    return _istat_helper(inode)
+      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+        return _istat_helper_chr_file(inode)
+      return _istat_helper(inode)
+
+    finally:
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
   FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
 
@@ -1631,29 +1635,29 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # BUG: I probably need a filedescriptortable lock to prevent an untimely
     # close call or similar from messing everything up...
-
-    # check the fd
-    if fd not in filedescriptortable:
-      raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
-  
-    # if we're going to stdout/err, lets get it over with and print    
-    try:
-      if filedescriptortable[fd]['stream'] in [1,2]:
-        log_stdout(data)
-        return len(data)
-    except KeyError:
-      pass
-
-    # Is it open for writing?
-    if IS_RDONLY(filedescriptortable[fd]['flags']):
-      raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
     
     # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
     filesystemmetadatalock.acquire(True)
-
     # ... but always release it...
+
     try:
+      # check the fd
+      if fd not in filedescriptortable:
+        raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
+    
+      # if we're going to stdout/err, lets get it over with and print    
+      try:
+        if filedescriptortable[fd]['stream'] in [1,2]:
+          log_stdout(data)
+          return len(data)
+      except KeyError:
+        pass
+
+      # Is it open for writing?
+      if IS_RDONLY(filedescriptortable[fd]['flags']):
+        raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
+    
 
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd,CONST_CAGEID):
