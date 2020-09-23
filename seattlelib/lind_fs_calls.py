@@ -133,9 +133,8 @@ def init_log_entry(call_num):
   if (call_num == 21): callstring = "mmap"
   if (call_num == 30): callstring = "exit"
   if (call_num == 2): callstring = "access"
-
-
-
+  if (call_num == 3): callstring = "trace"
+  if (call_num == 23): callstring = "getdents"
 
 
   call_log[call_counter]["call"] = callstring
@@ -2115,6 +2114,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/getdents
     """
+    fs_starttime = time.clock()
 
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
 
@@ -2180,6 +2180,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
   FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
 

@@ -75,6 +75,9 @@ def lind_fs_getdents(args):
 
     """
 
+    stub_starttime = time.clock()
+
+
     # the directory handle
     handle = args[0]
 
@@ -98,6 +101,12 @@ def lind_fs_getdents(args):
         final_structs.append(str_ent)
 
     result = ''.join(final_structs)
+
+    stub_endtime = time.clock()
+
+    stub_tot = (stub_endtime - stub_starttime)
+
+    add_to_log("stub", stub_tot)
 
     return SuccessResponseBuilder("fs_getdents", len(result), result)
 
