@@ -269,8 +269,6 @@ def LindSyscall(call_num, args):
 
   mycontext[LOCK][cageid].acquire(True)
 
-  syscall_midtime = time.clock()
-
 
   mycontext[COMP] = comp_num
   try:
@@ -293,13 +291,6 @@ def LindSyscall(call_num, args):
 
   add_to_log("syscall", syscall_tot)
   inc_logcount()
-
-  syscall1 = (syscall_midtime - syscall_starttime) * 1000000
-  syscall2 = (syscall_endtime - syscall_midtime) * 1000000
-
-  print "1st half us " + str(syscall1)
-  print "2nd half us " + str(syscall2)
-
 
   return response
 
