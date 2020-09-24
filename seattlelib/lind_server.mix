@@ -195,6 +195,8 @@ include sys_getgid.repy
 
 include sys_getegid.repy
 
+include sys_exit.repy
+
 include fs_flock.repy
 
 include fs_rename.repy
@@ -206,6 +208,8 @@ include fs_fork.repy
 include fs_mmap.repy
 
 include fs_munmap.repy
+
+include fs_exec.repy
 
 include debug.repy
 
