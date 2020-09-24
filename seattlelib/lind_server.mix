@@ -290,7 +290,6 @@ def LindSyscall(call_num, args):
   syscall_tot = (syscall_endtime - syscall_starttime)
 
   add_to_log("syscall", syscall_tot)
-  inc_logcount()
 
   return response
 

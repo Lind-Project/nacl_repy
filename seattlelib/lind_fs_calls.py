@@ -112,16 +112,24 @@
 
 import time
 
-call_counter = 0
+global_call_counter = 0
 
 call_log = {}
+
+thread_callcounter = {}
 
 
 def init_log_entry(call_num):
   global call_log
-  global call_counter
+  global global_call_counter
 
-  call_log[call_counter] = {}
+  threadid = threading.get_ident()
+  thread_callcounter[threadid] = global_call_counter
+  call_log[global_call_counter] = {}
+
+
+
+
   callstring = str(call_num)
   if (call_num == 10): callstring = "open"
   if (call_num == 14): callstring = "seek"
@@ -137,27 +145,27 @@ def init_log_entry(call_num):
   if (call_num == 23): callstring = "getdents"
 
 
-  call_log[call_counter]["call"] = callstring
+  call_log[global_call_counter]["call"] = callstring
 
-def inc_logcount():
-  global call_counter
-  call_counter += 1
+  global_call_counter +=1
+
+
 
 
 def add_to_log(handle, time):
   global call_log
-  global call_counter
+  call_counter = thread_callcounter[threading.get_ident()]
   call_log[call_counter][handle] = time
 
 
 def print_log():
   global call_log
-  global call_counter
+  global global_call_counter
 
   total_syscall_time = 0
   total_fs_time = 0
 
-  for i in range(0, call_counter):
+  for i in range(0, global_call_counter):
     curr = call_log[i]
     logstring = "Syscall " + curr["call"]
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
