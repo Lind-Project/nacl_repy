@@ -265,10 +265,12 @@ def LindSyscall(call_num, args):
   if cageid not in mycontext[LOCK]: 
     mycontext[LOCK][cageid] = createlock()
 
-  syscall_midtime = time.clock()
 
 
   mycontext[LOCK][cageid].acquire(True)
+
+  syscall_midtime = time.clock()
+
 
   mycontext[COMP] = comp_num
   try:
