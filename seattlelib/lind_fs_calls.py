@@ -111,7 +111,7 @@
 # This should not be 0 because this is considered to be deleted'
 
 import time
-import threading
+import thread
 
 global_call_counter = 0
 
@@ -124,7 +124,7 @@ def init_log_entry(call_num):
   global call_log
   global global_call_counter
 
-  threadid = threading.get_ident()
+  threadid = thread.get_ident()
   thread_callcounter[threadid] = global_call_counter
   call_log[global_call_counter] = {}
 
@@ -155,7 +155,7 @@ def init_log_entry(call_num):
 
 def add_to_log(handle, time):
   global call_log
-  call_counter = thread_callcounter[threading.get_ident()]
+  call_counter = thread_callcounter[thread.get_ident()]
   call_log[call_counter][handle] = time
 
 
