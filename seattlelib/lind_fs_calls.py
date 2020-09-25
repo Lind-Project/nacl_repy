@@ -143,8 +143,7 @@ def init_log_entry(call_num):
   global global_call_counter
 
   threadid = thread.get_ident()
-  curr_count = global_call_counter.value
-  global_call_counter.increment(1)
+  curr_count = (global_call_counter.increment(1)) - 1
 
   thread_callcounter[threadid] = curr_count
   call_log[curr_count] = {}
