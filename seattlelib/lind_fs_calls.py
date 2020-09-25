@@ -2814,6 +2814,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     
     finally:
       filesystemmetadatalock.release()
+      return 0
   
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
