@@ -188,7 +188,9 @@ def print_log():
   total_fs_time = 0
 
   for i in range(0, global_call_counter.value):
+    print i
     curr = call_log[i]
+    print curr
     logstring = "Syscall " + curr["call"]
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
