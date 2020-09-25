@@ -113,11 +113,28 @@
 import time
 import thread
 
-global_call_counter = 0
+class AtomicCounter:
+    def __init__(self, initial=0):
+        """Initialize a new atomic counter to given initial value (default 0)."""
+        self.value = initial
+        self._lock = createlock()
+
+    def increment(self, num=1):
+        """Atomically increment the counter by num (default 1) and return the
+        new value.
+        """
+        with self._lock:
+            self.value += num
+            return self.value
+
+
+global_call_counter = AtomicCounter()
 
 call_log = {}
 
 thread_callcounter = {}
+
+
 
 
 def init_log_entry(call_num):
@@ -125,8 +142,11 @@ def init_log_entry(call_num):
   global global_call_counter
 
   threadid = thread.get_ident()
-  thread_callcounter[threadid] = global_call_counter
-  call_log[global_call_counter] = {}
+  curr_count = global_call_counter.value
+  global_call_counter.increment(1)
+
+  thread_callcounter[threadid] = curr_count
+  call_log[curr_count] = {}
 
 
 
@@ -146,9 +166,8 @@ def init_log_entry(call_num):
   if (call_num == 23): callstring = "getdents"
 
 
-  call_log[global_call_counter]["call"] = callstring
+  call_log[curr_count]["call"] = callstring
 
-  global_call_counter +=1
 
 
 
@@ -166,7 +185,7 @@ def print_log():
   total_syscall_time = 0
   total_fs_time = 0
 
-  for i in range(0, global_call_counter):
+  for i in range(0, global_call_counter.value):
     curr = call_log[i]
     logstring = "Syscall " + curr["call"]
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
