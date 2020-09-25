@@ -164,6 +164,11 @@ def init_log_entry(call_num):
   if (call_num == 2): callstring = "access"
   if (call_num == 3): callstring = "trace"
   if (call_num == 23): callstring = "getdents"
+  if (call_num == 69): callstring = "exec"
+  if (call_num == 68): callstring = "fork"
+  if (call_num == 66): callstring = "pipe"
+  if (call_num == 25): callstring = "dup2"
+
 
 
   call_log[curr_count]["call"] = callstring
@@ -182,17 +187,13 @@ def print_log():
   global call_log
   global global_call_counter
 
-  print str(global_call_counter.value)
 
   total_syscall_time = 0
   total_fs_time = 0
 
-  print call_log
 
   for i in range(0, global_call_counter.value):
-    print i
     curr = call_log[i]
-    print curr
     logstring = "Syscall " + curr["call"]
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
