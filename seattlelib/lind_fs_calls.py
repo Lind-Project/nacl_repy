@@ -207,7 +207,7 @@ def print_log():
     print logstring
 
   print "Total system call time " + str(total_syscall_time * 1000000) + " us"
-  print "Total pure implemtation time " + str(total_fs_time * 1000000) + " us"
+  print "Total pure implementation time " + str(total_fs_time * 1000000) + " us"
 
 
 ROOTDIRECTORYINODE = 1
@@ -1999,6 +1999,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/dup2
     """
+
+    fs_starttime = time.clock()
+
   
     # lock to prevent things from changing while we look this up...
     filesystemmetadatalock.acquire(True)
@@ -2019,6 +2022,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # ... release the locks
       filedescriptortable[oldfd]['lock'].release()
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
 
   FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
@@ -2471,8 +2480,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/getuid
     """
     # I will return 1000, since this is also used in stat
-    return DEFAULT_UID
+    try:
+      fs_starttime = time.clock()
 
+      return DEFAULT_UID
+    finally:
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
   FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
 
   def geteuid_syscall():
@@ -2480,8 +2498,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/geteuid
     """
     # I will return 1000, since this is also used in stat
-    return DEFAULT_UID
+    try:
+      fs_starttime = time.clock()
 
+      return DEFAULT_UID
+    finally:
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
   FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
 
   def getgid_syscall():
@@ -2489,8 +2516,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/getgid
     """
     # I will return 1000, since this is also used in stat
-    return DEFAULT_GID
+    try:
+      fs_starttime = time.clock()
 
+      return DEFAULT_GID
+    finally:
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
   FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
 
   def getegid_syscall():
@@ -2498,7 +2534,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/getegid
     """
     # I will return 1000, since this is also used in stat
-    return DEFAULT_GID
+    try:
+      fs_starttime = time.clock()
+
+      return DEFAULT_GID
+    finally:
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
   FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
 
@@ -2637,6 +2683,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     http://linux.die.net/man/2/pipe
     """
     # lock to prevent things from changing while we look this up...
+
+    fs_starttime = time.clock()
+
     filesystemmetadatalock.acquire(True)
 
     # ... but always release it...
@@ -2664,6 +2713,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
       
   FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
     
@@ -2690,6 +2745,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # is implemented in parts of NaCl
 
   def fork_syscall(child_cageid):
+    
+    fs_starttime = time.clock()
+
 
     filesystemmetadatalock.acquire(True)
 
@@ -2702,6 +2760,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     
     finally:
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
+      
 
 
     return 0
@@ -2803,6 +2868,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # but we want to get rid of all the information from the old cage
   
   def exec_syscall(child_cageid):
+
+    fs_starttime = time.clock()
+
     
     filesystemmetadatalock.acquire(True)
 
@@ -2818,6 +2886,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     
     finally:
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
       return 0
   
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
