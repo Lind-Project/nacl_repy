@@ -183,6 +183,8 @@ def print_log():
   global call_log
   global global_call_counter
 
+  print str(global_call_counter.value)
+
   total_syscall_time = 0
   total_fs_time = 0
 
