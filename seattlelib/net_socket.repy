@@ -25,17 +25,28 @@ def lind_net_socket(args):
     Pack the single int returned, or error.
     """
 
+    stub_starttime = time.clock()
+
+
     domain = args[0]
     _type = args[1]
     protocol = args[2]
     try:
         result = get_net_call(args[-1],"socket_syscall")(domain, _type, protocol)
+        return SuccessResponseBuilder("net_socket", result)
+
     except SyscallError, e:
         return ErrorResponseBuilder("net_socket", e[1], e[2])
     except UnimplementedError, e:
         return ErrorResponseBuilder("net_socket", "EACCES", "unimplemented!")
 
-    return SuccessResponseBuilder("net_socket", result)
+    finally:
+        stub_endtime = time.clock()
+
+        stub_tot = (stub_endtime - stub_starttime)
+
+        add_to_log("stub", stub_tot)
+
 
 
 def lind_safe_net_socket(args):

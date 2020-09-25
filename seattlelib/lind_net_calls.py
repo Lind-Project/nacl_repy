@@ -309,52 +309,61 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
   # int socket(int domain, int type, int protocol);
   def socket_syscall(domain, socktype, protocol):
+    fs_starttime = time.clock()
+
     """
       http://linux.die.net/man/2/socket
     """
     # this code is basically one huge case statement by domain
 
     # sock type is stored in last 3 or 4 bits, the rest is flags
+    try:
+      real_socktype = socktype & 7 # the type without the extra flags
 
-    real_socktype = socktype & 7 # the type without the extra flags
+      blocking = (socktype & SOCK_NONBLOCK) != 0 # check the non-blocking flag
+      cloexec = (socktype & SOCK_CLOEXEC) != 0 # check the cloexec flag
 
-    blocking = (socktype & SOCK_NONBLOCK) != 0 # check the non-blocking flag
-    cloexec = (socktype & SOCK_CLOEXEC) != 0 # check the cloexec flag
+      if blocking:
+        warning("Warning: trying to create a non-blocking socket - we don't support that yet.")
 
-    if blocking:
-      warning("Warning: trying to create a non-blocking socket - we don't support that yet.")
-
-    # okay, let's do different things depending on the domain...
-    if domain == PF_INET:
-
-
-      if real_socktype == SOCK_STREAM:
-        # If is 0, set to default (IPPROTO_TCP)
-        if protocol == 0:
-          protocol = IPPROTO_TCP
+      # okay, let's do different things depending on the domain...
+      if domain == PF_INET:
 
 
-        if protocol != IPPROTO_TCP:
-          raise UnimplementedError("The only SOCK_STREAM implemented is TCP.  Unknown protocol:"+str(protocol))
+        if real_socktype == SOCK_STREAM:
+          # If is 0, set to default (IPPROTO_TCP)
+          if protocol == 0:
+            protocol = IPPROTO_TCP
 
-        return _socket_initializer(domain,real_socktype,protocol, blocking, cloexec)
+
+          if protocol != IPPROTO_TCP:
+            raise UnimplementedError("The only SOCK_STREAM implemented is TCP.  Unknown protocol:"+str(protocol))
+
+          return _socket_initializer(domain,real_socktype,protocol, blocking, cloexec)
 
 
-      # datagram!
-      elif real_socktype == SOCK_DGRAM:
-        # If is 0, set to default (IPPROTO_UDP)
-        if protocol == 0:
-          protocol = IPPROTO_UDP
+        # datagram!
+        elif real_socktype == SOCK_DGRAM:
+          # If is 0, set to default (IPPROTO_UDP)
+          if protocol == 0:
+            protocol = IPPROTO_UDP
 
-        if protocol != IPPROTO_UDP:
-          raise UnimplementedError("The only SOCK_DGRAM implemented is UDP.  Unknown protocol:"+str(protocol))
+          if protocol != IPPROTO_UDP:
+            raise UnimplementedError("The only SOCK_DGRAM implemented is UDP.  Unknown protocol:"+str(protocol))
 
-        return _socket_initializer(domain,real_socktype,protocol)
+          return _socket_initializer(domain,real_socktype,protocol)
+        else:
+          raise UnimplementedError("Unimplemented sockettype: "+str(real_socktype))
+
       else:
-        raise UnimplementedError("Unimplemented sockettype: "+str(real_socktype))
+        raise UnimplementedError("Unimplemented domain: "+str(domain))
+    finally:
+      fs_endtime = time.clock()
 
-    else:
-      raise UnimplementedError("Unimplemented domain: "+str(domain))
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
 
 

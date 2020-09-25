@@ -2040,6 +2040,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/dup
     """
 
+    fs_starttime = time.clock()
+
+
     # lock to prevent things from changing while we look this up...
     filesystemmetadatalock.acquire(True)
 
@@ -2068,6 +2071,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # ... release the locks
       filedescriptortable[fd]['lock'].release()
       filesystemmetadatalock.release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
 
 
 
