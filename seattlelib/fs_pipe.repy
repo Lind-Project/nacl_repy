@@ -30,6 +30,9 @@ def lind_fs_pipe(args):
 
   Pack the single int returned, or error.
   """
+
+  stub_starttime = time.clock()
+
   try:
     pipefds = get_fs_call(args[-1],"pipe_syscall")()
     data = struct_pack("<i<i", pipefds[0], pipefds[1]) 

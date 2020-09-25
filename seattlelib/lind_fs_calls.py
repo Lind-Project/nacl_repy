@@ -172,6 +172,8 @@ def init_log_entry(call_num):
   if (call_num == 51): callstring = "geteuid"
   if (call_num == 52): callstring = "getgid"
   if (call_num == 53): callstring = "getegid"
+  if (call_num == 24): callstring = "dup"
+  if (call_num == 32): callstring = "socket"
 
 
   call_log[curr_count]["call"] = callstring
