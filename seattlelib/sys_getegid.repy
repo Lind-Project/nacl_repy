@@ -24,17 +24,25 @@ def lind_sys_getegid(args):
 
     Pack the int returned, or error.
     """
+    stub_starttime = time.clock()
 
 
     try:
         result = get_fs_call(args[-1],"getegid_syscall")()
+        data = struct_pack("<i", result)
+        return SuccessResponseBuilder("sys_getegid", len(data), data)
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getegid", e[1], e[2])
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_getegid", 'EINVAL', str(e))
     
-    data = struct_pack("<i", result)
-    return SuccessResponseBuilder("sys_getegid", len(data), data)
+
+    finally:
+        stub_endtime = time.clock()
+
+        stub_tot = (stub_endtime - stub_starttime)
+
+        add_to_log("stub", stub_tot)
 
 
 def lind_safe_sys_getegid(args):

@@ -11,6 +11,8 @@ then calls the repy posix library open system call.  Then packs
 the result back up.
 
 """
+stub_starttime = time.clock()
+
 
 def lind_safe_fs_pipe(args):
   """ pipe calls are dispatched to this function.
@@ -30,12 +32,19 @@ def lind_fs_pipe(args):
   """
   try:
     pipefds = get_fs_call(args[-1],"pipe_syscall")()
+    data = struct_pack("<i<i", pipefds[0], pipefds[1]) 
+    return SuccessResponseBuilder("fs_pipe", 0, data)
   except SyscallError, e:
     return ErrorResponseBuilder("fs_pipe", e[1], e[2])
+  finally:
+    stub_endtime = time.clock()
+
+    stub_tot = (stub_endtime - stub_starttime)
+
+    add_to_log("stub", stub_tot)
 
 
-  data = struct_pack("<i<i", pipefds[0], pipefds[1]) 
-  return SuccessResponseBuilder("fs_pipe", 0, data)
+
 
 
 

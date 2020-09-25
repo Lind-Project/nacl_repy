@@ -24,16 +24,24 @@ def lind_sys_getuid(args):
 
     Pack the int returned, or error.
     """
+    stub_starttime = time.clock()
 
     try:
         result = get_fs_call(args[-1],"getuid_syscall")()
+        data = struct_pack("<i", result)
+        return SuccessResponseBuilder("sys_getuid", len(data), data)
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getuid", e[1], e[2])
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_getuid", 'EINVAL', str(e))
 
-    data = struct_pack("<i", result)
-    return SuccessResponseBuilder("sys_getuid", len(data), data)
+
+    finally:
+        stub_endtime = time.clock()
+
+        stub_tot = (stub_endtime - stub_starttime)
+
+        add_to_log("stub", stub_tot)
 
 
 def lind_safe_sys_getuid(args):

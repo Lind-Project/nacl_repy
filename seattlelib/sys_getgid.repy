@@ -24,15 +24,24 @@ def lind_sys_getgid(args):
 
     Pack the int returned, or error.
     """
+    stub_starttime = time.clock()
+
     try:
         result = get_fs_call(args[-1],"getgid_syscall")()
+        data = struct_pack("<i", result)
+        return SuccessResponseBuilder("sys_getgid", len(data), data)
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getgid", e[1], e[2])
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_getgid", 'EINVAL', str(e))
 
-    data = struct_pack("<i", result)
-    return SuccessResponseBuilder("sys_getgid", len(data), data)
+
+    finally:
+        stub_endtime = time.clock()
+
+        stub_tot = (stub_endtime - stub_starttime)
+
+        add_to_log("stub", stub_tot)
 
 def lind_safe_sys_getgid(args):
     """ Safely wrap the getgid call.

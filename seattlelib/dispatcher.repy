@@ -151,8 +151,6 @@ def dispatch_syscall(call, args):
   with the provided arguments.
   """
 
-  print str(call)
-
   dispatcher_starttime = time.clock()
 
 

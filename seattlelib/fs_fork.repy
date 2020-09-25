@@ -11,6 +11,9 @@ then calls the repy posix library fork system call.  Then packs
 the result back up.
 
 """
+
+stub_starttime = time.clock()
+
 def lind_fs_fork(args):
   """ fork calls are dispatched to this function.
 
@@ -23,11 +26,18 @@ def lind_fs_fork(args):
   child_cageid = args[0]
   try:
     result = get_fs_call(args[-1],"fork_syscall")(child_cageid)
+    return SuccessResponseBuilder("fs_fork", result)
+
   except SyscallError, e:
     message = "Encountered error in fork.\n Parent Cageid: " + args[-1] +  \
       "\nChild Cageid: " + child_cageid
     return ErrorResponseBuilder("fs_fork", e[1], message)
-  return SuccessResponseBuilder("fs_fork", result)
+  finally:
+    stub_endtime = time.clock()
+
+    stub_tot = (stub_endtime - stub_starttime)
+
+    add_to_log("stub", stub_tot)
 
 def lind_safe_fs_fork(args):
   """ Safely wrap the fork call.
