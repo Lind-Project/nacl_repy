@@ -233,6 +233,9 @@ fastinodelookuptable = {}
 #this is a dictionary of dictionaries of file descriptors
 masterfiledescriptortable = {}
 
+# contains parentage informarion for processes, only child processes have entries, populated on fork.
+parentagetable = {}
+
 # contains file objects... (keyed by inode)
 #this is a dictionary of dictionaries of file objects
 fileobjecttable = {}
@@ -2559,6 +2562,28 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
 
+  #TODO: We currently don't handle prctl or subreaper at all
+  def getpid_syscall():
+    """
+      http://linux.die.net/man/2/getpid
+    """
+    return CONST_CAGEID
+
+  FS_CALL_DICTIONARY["getpid_syscall"] = getpid_syscall
+
+  def getppid_syscall():
+    """
+      http://linux.die.net/man/2/getppid
+    """
+    if CONST_CAGEID in parentagetable:
+      return parentagetable[CONST_CAGEID]['ppid']
+    return 0 
+    #NOTE: POSIX specifies that default parent should be
+    #init, with a pid of 1, however pid 1 is a different
+    #process in Lind, so 0 is our pseudo-init
+
+  FS_CALL_DICTIONARY["getppid_syscall"] = getppid_syscall
+
   #### RESOURCE LIMITS  ####
 
   # FIXME: These constants should be specified in a different file,
@@ -2752,7 +2777,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
 
-  # NOTE: this is only the part of fork that forks the file table. Most of fork
+  # NOTE: this is only the part of fork that forks the file table and adds the parentage information. Most of fork
   # is implemented in parts of NaCl
 
   def fork_syscall(child_cageid):
@@ -2769,6 +2794,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       master_fs_calls_context[child_cageid] = \
         repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
     
+      parentagetable[child_cageid] = {'ppid': CONST_CAGEID}
+    
     finally:
       filesystemmetadatalock.release()
       fs_endtime = time.clock()
@@ -2778,7 +2805,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
       
-
 
     return 0
 
