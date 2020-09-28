@@ -1,54 +1,69 @@
 """
 
-Handlers for the getepid system call.
+Handlers for the getpid and getppid system calls.
 
 Called from dispatcher.repy
 
-Safe version checks all parameters, then calls real handler.
+Safe version calls real handler and checks output.
 
-Getepid handler pulls out the arguments, does any mandatory checking
-then calls the repy posix library getepid system call.  Then packs
-the result back up.
+Getpid handler calls the repy posix library getpid
+system call. Then packs the result back up.
 
 """
 
 
 def lind_sys_getpid(args):
-    """ getepid calls are dispatched to this function.
+    """ getpid calls are dispatched to this function.
 
     See dispatcher.repy for details.
 
-    Given the paths in a list,
-    pull them out and make the actual syscall in the
-    file system library.
-
     Pack the int returned, or error.
-
-    For now we dont want processes to know they are different than each other
-
-    maybe this could be a lind specific counter in the future?
-
-    what is the impact of doing this?
-
-    @TODO(cmatthew) this should be moved with the other sys calls.
     """
+    try:
+        result = get_fs_call(args[-1],"getpid_syscall")()
+    except SyscallError, e:
+        return ErrorResponseBuilder("sys_getpid", e[1], e[2])
 
-    DEFAULT_PID = 42
-    result = struct_pack("<i", DEFAULT_PID)
-    return SuccessResponseBuilder("sys_getpid", 0, result)
+    return SuccessResponseBuilder("sys_getpid", result)
 
 
 def lind_safe_sys_getpid(args):
-    """ Safely wrap the getepid call.
+    """ Safely wrap the getpid call.
 
     See dispatcher.repy for details.
 
     Check the paths for consistency,
-    then call the real getepid dispatcher.
-
+    then call the real getpid dispatcher.
     """
 
     result = lind_sys_getpid(args)
-    assert len(result.data) == 4, "we return a sinlge int"
+
+    return result
+
+def lind_sys_getppid(args):
+    """ getppid calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Pack the int returned, or error.
+    """
+    try:
+        result = get_fs_call(args[-1],"getppid_syscall")()
+    except SyscallError, e:
+        return ErrorResponseBuilder("sys_getppid", e[1], e[2])
+
+    return SuccessResponseBuilder("sys_getppid", result)
+
+
+def lind_safe_sys_getppid(args):
+    """ Safely wrap the getppid call.
+
+    See dispatcher.repy for details.
+
+    Check the paths for consistency,
+    then call the real getppid dispatcher.
+    """
+
+    result = lind_sys_getppid(args)
 
     return result
