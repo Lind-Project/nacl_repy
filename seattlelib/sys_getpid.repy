@@ -19,13 +19,22 @@ def lind_sys_getpid(args):
 
     Pack the int returned, or error.
     """
+
+    stub_starttime = time.clock()
+
     try:
         result = get_fs_call(args[-1],"getpid_syscall")()
+        return SuccessResponseBuilder("sys_getpid", result)
+
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getpid", e[1], e[2])
 
-    return SuccessResponseBuilder("sys_getpid", result)
+    finally:
+        stub_endtime = time.clock()
 
+        stub_tot = (stub_endtime - stub_starttime)
+
+        add_to_log("stub", stub_tot)
 
 def lind_safe_sys_getpid(args):
     """ Safely wrap the getpid call.

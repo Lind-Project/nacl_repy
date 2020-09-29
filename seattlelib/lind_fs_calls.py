@@ -174,6 +174,8 @@ def init_log_entry(call_num):
   if (call_num == 53): callstring = "getegid"
   if (call_num == 24): callstring = "dup"
   if (call_num == 32): callstring = "socket"
+  if (call_num == 31): callstring = "getpid"
+
 
 
   call_log[curr_count]["call"] = callstring
@@ -2567,7 +2569,18 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/getpid
     """
-    return CONST_CAGEID
+    try:
+      fs_starttime = time.clock()
+
+      return CONST_CAGEID
+    finally:
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
+ 
 
   FS_CALL_DICTIONARY["getpid_syscall"] = getpid_syscall
 
