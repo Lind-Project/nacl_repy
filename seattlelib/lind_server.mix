@@ -219,6 +219,8 @@ include dispatcher.repy
 
 import time
 
+testlock = createlock()
+
 
 def print_times(times):
   print "\nSummary of System Call Execution Times:"
@@ -249,6 +251,14 @@ def print_times(times):
 
 
 def LindSyscall(call_num, args):
+
+  teststart = time.clock()
+  testlock.acquire(True)
+  testlock.release()
+  testend = time.clock()
+  testtime = (testend - teststart) * 1000000
+
+  print "test lock took " + str(testtime) + " us."
 
   init_log_entry(call_num)
 
