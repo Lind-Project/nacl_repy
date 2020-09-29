@@ -201,14 +201,14 @@ def print_log():
 
   for i in range(0, global_call_counter.value):
     curr = call_log[i]
-    # logstring = "Syscall " + curr["call"]
-    # logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
-    # logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
-    # if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
-    # if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
+    logstring = "Syscall " + curr["call"]
+    logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
+    logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
+    if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
+    if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
     total_syscall_time += curr["syscall"]
     if "fs_call" in curr: total_fs_time += curr["fs_call"]
-    # print logstring
+    print logstring
 
   print "Total system call time " + str(total_syscall_time * 1000000) + " us"
   print "Total pure implementation time " + str(total_fs_time * 1000000) + " us"
