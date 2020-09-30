@@ -218,10 +218,7 @@ include unimplemented_syscalls.repy
 include dispatcher.repy
 
 import time
-import threading
 
-testlock = createlock()
-testlock2 = threading.Lock()
 
 
 def print_times(times):
@@ -253,22 +250,6 @@ def print_times(times):
 
 
 def LindSyscall(call_num, args):
-
-  teststart = time.clock()
-  testlock.acquire(True)
-  testlock.release()
-  testend = time.clock()
-  testtime = (testend - teststart) * 1000000
-
-  print "test lock repy took " + str(testtime) + " us."
-
-  teststart = time.clock()
-  testlock2.acquire(True)
-  testlock2.release()
-  testend = time.clock()
-  testtime = (testend - teststart) * 1000000
-
-  print "test lock normal took " + str(testtime) + " us."
 
   init_log_entry(call_num)
 
