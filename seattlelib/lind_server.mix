@@ -312,6 +312,7 @@ def GetHostFdFromLindFd(lind_fd, cageid):
 
 
 def launch_helper(instance, num):
+  print "is this used?"
   """save the instance and start the server in a thread."""
 
   def closure():
@@ -410,7 +411,7 @@ def finalize():
   print >> sys.stderr,  "Persisting metadata: ..."
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."
-  print_log()
+  # print_log()
 
 
 def main(cageid):
