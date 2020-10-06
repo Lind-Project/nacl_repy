@@ -588,12 +588,16 @@ def IS_PIPE_DESC(fd,cageid):
 # The inclusion of the cageid within system calls is necessary to handle a
 # posix compliant fork, which involves a duplication of the file table.
 # This has been implemented using fs_fork.
+master_fs_call_dictionary = {}
 
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   closure_starttime = time.clock()
-  FS_CALL_DICTIONARY = {}
 
-
+  if CONST_CAGEID not in master_fs_call_dictionary:
+    FS_CALL_DICTIONARY = {}
+  else:
+    FS_CALL_DICTIONARY = master_fs_call_dictionary[CONST_CAGEID]
+    
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
   filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
