@@ -117,7 +117,7 @@ class AtomicCounter:
     def __init__(self, initial=0):
         """Initialize a new atomic counter to given initial value (default 0)."""
         self.value = initial
-        self.lock = createlock()
+        self.lock = threading.Lock()()
 
     def increment(self, num=1):
         """Atomically increment the counter by num (default 1) and return the
@@ -226,7 +226,7 @@ FILEDATAPREFIX = 'linddata.'
 filesystemmetadata = {}
 
 # A lock that prevents inconsistencies in metadata
-filesystemmetadatalock = createlock()
+filesystemmetadatalock = threading.Lock()()
 
 
 # fast lookup table...   (Should I deprecate this?)
@@ -305,9 +305,9 @@ def _load_lower_handle_stubs(cageid):
   # we're going to give all streams an inode of 2 since lind is emulating a single "terminal"
 
   masterfiledescriptortable[cageid] = {}
-  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
-  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
-  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
+  masterfiledescriptortable[cageid][0] = {'position':0, 'inode':STREAMINODE, 'lock':threading.Lock()(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
+  masterfiledescriptortable[cageid][1] = {'position':0, 'inode':STREAMINODE, 'lock':threading.Lock()(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
+  masterfiledescriptortable[cageid][2] = {'position':0, 'inode':STREAMINODE, 'lock':threading.Lock()(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
 
 
 def load_fs(cageid, name=METADATAFILENAME):
@@ -1425,7 +1425,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # Add the entry to the table!
 
-      filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
+      filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':threading.Lock()(), 'flags':flags&O_RDWRFLAGS}
 
       # Done!   Let's return the file descriptor.
  
@@ -2752,7 +2752,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # get next available pipe number, and set up pipe
       pipenumber = get_next_pipe()
-      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':threading.Lock()(), 'readlock':threading.Lock()()}
       pipefds = []
      
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
@@ -2765,7 +2765,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           assert(e[0]=='open_syscall')
           raise SyscallError('pipe_syscall',e[1],e[2])
 
-        filedescriptortable[nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
+        filedescriptortable[nextfd] = {'pipe':pipenumber, 'lock':threading.Lock()(), 'flags':flag}
         pipefds.append(nextfd)    
 
       return pipefds
