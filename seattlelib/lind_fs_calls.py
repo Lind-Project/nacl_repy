@@ -210,8 +210,10 @@ def print_log():
     if "fs_call" in curr: total_fs_time += curr["fs_call"]
     print logstring
 
-  print "Total system call time " + str(total_syscall_time * 1000000) + " us"
-  print "Total pure implementation time " + str(total_fs_time * 1000000) + " us"
+  print str(total_syscall_time * 1000000)
+  print str(total_fs_time * 1000000)
+  # print "Total system call time " + str(total_syscall_time * 1000000) + " us"
+  # print "Total pure implementation time " + str(total_fs_time * 1000000) + " us"
 
 
 ROOTDIRECTORYINODE = 1
