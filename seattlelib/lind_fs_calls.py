@@ -562,7 +562,49 @@ def IS_PIPE_DESC(fd,cageid):
   return 'pipe' in masterfiledescriptortable[cageid][fd]
 
 
+FS_CALL_DICTIONARY = {}
 
+FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
+FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
+FS_CALL_DICTIONARY["statfs_syscall"] = statfs_syscall
+FS_CALL_DICTIONARY["access_syscall"] = access_syscall
+FS_CALL_DICTIONARY["chdir_syscall"] = chdir_syscall
+FS_CALL_DICTIONARY["mkdir_syscall"] = mkdir_syscall
+FS_CALL_DICTIONARY["rmdir_syscall"] = rmdir_syscall
+FS_CALL_DICTIONARY["link_syscall"] = link_syscall
+FS_CALL_DICTIONARY["unlink_syscall"] = unlink_syscall
+FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
+FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
+FS_CALL_DICTIONARY["open_syscall"] = open_syscall
+FS_CALL_DICTIONARY["creat_syscall"] = creat_syscall
+FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
+FS_CALL_DICTIONARY["read_syscall"] = read_syscall
+FS_CALL_DICTIONARY["write_syscall"] = write_syscall
+FS_CALL_DICTIONARY["close_syscall"] = close_syscall
+FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
+FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
+FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
+FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
+FS_CALL_DICTIONARY["chmod_syscall"] = chmod_syscall
+FS_CALL_DICTIONARY["truncate_syscall"] = truncate_syscall
+FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
+FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
+FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
+FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
+FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
+FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
+FS_CALL_DICTIONARY["getpid_syscall"] = getpid_syscall
+FS_CALL_DICTIONARY["getppid_syscall"] = getppid_syscall
+FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
+FS_CALL_DICTIONARY["setrlimit_syscall"] = setrlimit_syscall
+FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
+FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
+FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
+FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
+FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
+FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
+FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
 #################### The actual system calls...   #############################
 
@@ -592,7 +634,6 @@ def IS_PIPE_DESC(fd,cageid):
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   closure_starttime = time.clock()
 
-  FS_CALL_DICTIONARY = {}
 
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
@@ -602,6 +643,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
   #perhaps include an initalization failsafe?
+
+  if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
+    return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
+  else:
+    exitall(-1)
+
 
 
   ##### EXIT  #####
@@ -636,7 +683,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         add_to_log("fs_call", fs_tot)
     return 0
   
-  FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
+  
   
 
   
@@ -706,7 +753,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
-  FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
+  
 
 
 
@@ -743,7 +790,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadatalock.release()
 
 
-  FS_CALL_DICTIONARY["statfs_syscall"] = statfs_syscall
+  
 
 
 
@@ -799,7 +846,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
 
-  FS_CALL_DICTIONARY["access_syscall"] = access_syscall
+  
 
 
 
@@ -832,7 +879,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     return 0
 
-  FS_CALL_DICTIONARY["chdir_syscall"] = chdir_syscall
+  
 
 
 
@@ -907,7 +954,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  FS_CALL_DICTIONARY["mkdir_syscall"] = mkdir_syscall
+  
 
 
 
@@ -974,7 +1021,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  FS_CALL_DICTIONARY["rmdir_syscall"] = rmdir_syscall
+  
 
 
 
@@ -1055,7 +1102,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  FS_CALL_DICTIONARY["link_syscall"] = link_syscall
+  
 
 
 
@@ -1126,7 +1173,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       persist_metadata(METADATAFILENAME)
       filesystemmetadatalock.release()
 
-  FS_CALL_DICTIONARY["unlink_syscall"] = unlink_syscall
+  
 
 
 
@@ -1171,7 +1218,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       
 
 
-  FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
+  
 
 
   ##### FSTAT  #####
@@ -1216,7 +1263,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
 
-  FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
+  
 
 
   # private helper routine that returns stat data given an inode
@@ -1434,7 +1481,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       filesystemmetadatalock.release()
 
-  FS_CALL_DICTIONARY["open_syscall"] = open_syscall
+  
 
 
 
@@ -1458,7 +1505,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       raise SyscallError('creat_syscall',e[1],e[2])
 
-  FS_CALL_DICTIONARY["creat_syscall"] = creat_syscall
+  
 
 
 
@@ -1545,7 +1592,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
 
-  FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
+  
 
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
@@ -1646,7 +1693,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         add_to_log("fs_call", fs_tot)
 
 
-  FS_CALL_DICTIONARY["read_syscall"] = read_syscall
+  
 
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
@@ -1764,7 +1811,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         add_to_log("fs_call", fs_tot)
 
 
-  FS_CALL_DICTIONARY["write_syscall"] = write_syscall
+  
 
 
 
@@ -1960,7 +2007,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
 
-  FS_CALL_DICTIONARY["close_syscall"] = close_syscall
+  
 
 
 
@@ -2037,7 +2084,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         add_to_log("fs_call", fs_tot)
 
 
-  FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
+  
 
 
   ##### DUP  #####
@@ -2087,7 +2134,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
-  FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
+  
 
 
 
@@ -2173,7 +2220,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filedescriptortable[fd]['lock'].release()
 
 
-  FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
+  
 
 
 
@@ -2262,7 +2309,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
 
-  FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
+  
 
 
   #### CHMOD ####
@@ -2297,7 +2344,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadatalock.release()
     return 0
 
-  FS_CALL_DICTIONARY["chmod_syscall"] = chmod_syscall
+  
   #### TRUNCATE  ####
 
 
@@ -2314,7 +2361,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     return ret
 
-  FS_CALL_DICTIONARY["truncate_syscall"] = truncate_syscall
+  
 
   #### FTRUNCATE ####
 
@@ -2371,7 +2418,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     return 0
 
-  FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
+  
   #### MKNOD ####
 
   # for now, I am considering few assumptions:
@@ -2421,7 +2468,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     close_syscall(fd)
     return 0
 
-  FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
+  
 
   #### Helper Functions for Character Files.####
   # currently supported devices are:
@@ -2507,7 +2554,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       if call_log:
         add_to_log("fs_call", fs_tot)
-  FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
+  
 
   def geteuid_syscall():
     """
@@ -2525,7 +2572,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       if call_log:
         add_to_log("fs_call", fs_tot)
-  FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
+  
 
   def getgid_syscall():
     """
@@ -2543,7 +2590,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       if call_log:
         add_to_log("fs_call", fs_tot)
-  FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
+  
 
   def getegid_syscall():
     """
@@ -2562,7 +2609,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
 
-  FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
+  
 
   #TODO: We currently don't handle prctl or subreaper at all
   def getpid_syscall():
@@ -2582,7 +2629,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         add_to_log("fs_call", fs_tot)
  
 
-  FS_CALL_DICTIONARY["getpid_syscall"] = getpid_syscall
+  
 
   def getppid_syscall():
     """
@@ -2595,7 +2642,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     #init, with a pid of 1, however pid 1 is a different
     #process in Lind, so 0 is our pseudo-init
 
-  FS_CALL_DICTIONARY["getppid_syscall"] = getppid_syscall
+  
 
   #### RESOURCE LIMITS  ####
 
@@ -2622,7 +2669,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise UnimplementedError("The resource type is unimplemented.")
 
 
-  FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
+  
 
   def setrlimit_syscall(res_type, limits):
     """
@@ -2641,7 +2688,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     else:
       raise UnimplementedError("This resource type is unimplemented")
 
-  FS_CALL_DICTIONARY["setrlimit_syscall"] = setrlimit_syscall
+  
 
   #### FLOCK SYSCALL  ####
 
@@ -2674,7 +2721,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filedescriptortable[fd]['lock'].release()
       return 0
 
-  FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
+  
 
   #### RENAME SYSCALL  ####
 
@@ -2713,7 +2760,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadatalock.release()
     return 0
 
-  FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
+  
 
 
   #### PIPE SYSCALL  ####
@@ -2769,7 +2816,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
       
-  FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
+  
     
 
   # pipe2 currently not implemented
@@ -2788,7 +2835,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       filesystemmetadatalock.release()
 
-  FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
+  
 
   # NOTE: this is only the part of fork that forks the file table and adds the parentage information. Most of fork
   # is implemented in parts of NaCl
@@ -2821,7 +2868,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     return 0
 
-  FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+  
 
   def mmap_syscall(addr, leng, prot, flags, fildes, off):
     """
@@ -2890,7 +2937,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
 
-  FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
+  
    
   def munmap_syscall(addr, leng):
     """
@@ -2912,7 +2959,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       filesystemmetadatalock.release()
 
-  FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
+  
   
   # Exec will do the same copying as fork, 
   # but we want to get rid of all the information from the old cage
@@ -2943,10 +2990,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if call_log:
         add_to_log("fs_call", fs_tot)
       return 0
-  
-  FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
+   
 
-  if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
-    return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
-  else:
-    exitall(-1)
+
