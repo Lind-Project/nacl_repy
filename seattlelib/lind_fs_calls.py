@@ -562,7 +562,6 @@ def IS_PIPE_DESC(fd,cageid):
   return 'pipe' in masterfiledescriptortable[cageid][fd]
 
 
-FS_CALL_DICTIONARY = {}
 
 
 #################### The actual system calls...   #############################
@@ -592,6 +591,7 @@ FS_CALL_DICTIONARY = {}
 
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   closure_starttime = time.clock()
+  FS_CALL_DICTIONARY = {}
 
 
   if CONST_CAGEID not in masterfiledescriptortable:
