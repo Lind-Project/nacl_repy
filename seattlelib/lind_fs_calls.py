@@ -597,7 +597,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     FS_CALL_DICTIONARY = {}
   else:
     FS_CALL_DICTIONARY = master_fs_call_dictionary[CONST_CAGEID]
-    
+
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
   filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
@@ -1424,13 +1424,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # Add the entry to the table!
 
       filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
-      print filedescriptortable
-      print CONST_CAGEID
+
       # Done!   Let's return the file descriptor.
-      print "open"
-      print thisfd
-      print masterfiledescriptortable
-      print "----"
+ 
       return thisfd
 
     finally:
@@ -1590,17 +1586,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   ##### READ  #####
 
   def read_syscall(fd, count):
-    print CONST_CAGEID
-    print fd
 
-    print masterfiledescriptortable
-
-    print "---"
-    print masterfiledescriptortable[CONST_CAGEID]
-
-    print "---"
-
-    print masterfiledescriptortable[CONST_CAGEID][fd]
 
     fs_starttime = time.clock()
 
