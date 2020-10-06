@@ -205,6 +205,7 @@ def print_log():
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
+    if "closure" in curr: logstring += " closure time " + str(curr["closure"] * 1000000) + " us"
     if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
     total_syscall_time += curr["syscall"]
     if "fs_call" in curr: total_fs_time += curr["fs_call"]
@@ -2947,6 +2948,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
-    return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
+    try:
+      return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
+    finally:
+      closure_endtime = clock()
+      closure_tot = (closure_endtime - closure_starttime)
+      if call_log:
+        add_to_log("closure", closure_tot)
+
   else:
     exitall(-1)
