@@ -564,47 +564,6 @@ def IS_PIPE_DESC(fd,cageid):
 
 FS_CALL_DICTIONARY = {}
 
-FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
-FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
-FS_CALL_DICTIONARY["statfs_syscall"] = statfs_syscall
-FS_CALL_DICTIONARY["access_syscall"] = access_syscall
-FS_CALL_DICTIONARY["chdir_syscall"] = chdir_syscall
-FS_CALL_DICTIONARY["mkdir_syscall"] = mkdir_syscall
-FS_CALL_DICTIONARY["rmdir_syscall"] = rmdir_syscall
-FS_CALL_DICTIONARY["link_syscall"] = link_syscall
-FS_CALL_DICTIONARY["unlink_syscall"] = unlink_syscall
-FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
-FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
-FS_CALL_DICTIONARY["open_syscall"] = open_syscall
-FS_CALL_DICTIONARY["creat_syscall"] = creat_syscall
-FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
-FS_CALL_DICTIONARY["read_syscall"] = read_syscall
-FS_CALL_DICTIONARY["write_syscall"] = write_syscall
-FS_CALL_DICTIONARY["close_syscall"] = close_syscall
-FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
-FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
-FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
-FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
-FS_CALL_DICTIONARY["chmod_syscall"] = chmod_syscall
-FS_CALL_DICTIONARY["truncate_syscall"] = truncate_syscall
-FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
-FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
-FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
-FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
-FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
-FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
-FS_CALL_DICTIONARY["getpid_syscall"] = getpid_syscall
-FS_CALL_DICTIONARY["getppid_syscall"] = getppid_syscall
-FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
-FS_CALL_DICTIONARY["setrlimit_syscall"] = setrlimit_syscall
-FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
-FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
-FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
-FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
-FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
-FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
-FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
-FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
 #################### The actual system calls...   #############################
 
@@ -2991,5 +2950,50 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         add_to_log("fs_call", fs_tot)
       return 0
    
+  FS_CALL_DICTIONARY["exit_syscall"] = exit_syscall
+  FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
+  FS_CALL_DICTIONARY["statfs_syscall"] = statfs_syscall
+  FS_CALL_DICTIONARY["access_syscall"] = access_syscall
+  FS_CALL_DICTIONARY["chdir_syscall"] = chdir_syscall
+  FS_CALL_DICTIONARY["mkdir_syscall"] = mkdir_syscall
+  FS_CALL_DICTIONARY["rmdir_syscall"] = rmdir_syscall
+  FS_CALL_DICTIONARY["link_syscall"] = link_syscall
+  FS_CALL_DICTIONARY["unlink_syscall"] = unlink_syscall
+  FS_CALL_DICTIONARY["stat_syscall"] = stat_syscall
+  FS_CALL_DICTIONARY["fstat_syscall"] = fstat_syscall
+  FS_CALL_DICTIONARY["open_syscall"] = open_syscall
+  FS_CALL_DICTIONARY["creat_syscall"] = creat_syscall
+  FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
+  FS_CALL_DICTIONARY["read_syscall"] = read_syscall
+  FS_CALL_DICTIONARY["write_syscall"] = write_syscall
+  FS_CALL_DICTIONARY["close_syscall"] = close_syscall
+  FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
+  FS_CALL_DICTIONARY["dup_syscall"] = dup_syscall
+  FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
+  FS_CALL_DICTIONARY["getdents_syscall"] = getdents_syscall
+  FS_CALL_DICTIONARY["chmod_syscall"] = chmod_syscall
+  FS_CALL_DICTIONARY["truncate_syscall"] = truncate_syscall
+  FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
+  FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
+  FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
+  FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
+  FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
+  FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
+  FS_CALL_DICTIONARY["getpid_syscall"] = getpid_syscall
+  FS_CALL_DICTIONARY["getppid_syscall"] = getppid_syscall
+  FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
+  FS_CALL_DICTIONARY["setrlimit_syscall"] = setrlimit_syscall
+  FS_CALL_DICTIONARY["flock_syscall"] = flock_syscall
+  FS_CALL_DICTIONARY["rename_syscall"] = rename_syscall
+  FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
+  FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
+  FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
+  FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
+  FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
+  FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
+  if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
+      return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
+    else:
+      exitall(-1)
 
