@@ -1584,6 +1584,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     print CONST_CAGEID
     print fd
 
+    print masterfiledescriptortable
+
+    print "---"
+    print masterfiledescriptortable[CONST_CAGEID]
+
+    print "---"
+
+    print masterfiledescriptortable[CONST_CAGEID][fd]
+
     fs_starttime = time.clock()
 
     """
