@@ -2951,7 +2951,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
     finally:
-      closure_endtime = clock()
+      closure_endtime = time.clock()
       closure_tot = (closure_endtime - closure_starttime)
       if call_log:
         add_to_log("closure", closure_tot)
