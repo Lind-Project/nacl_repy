@@ -1581,6 +1581,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   ##### READ  #####
 
   def read_syscall(fd, count):
+    print CONST_CAGEID
+    print fd
 
     fs_starttime = time.clock()
 
