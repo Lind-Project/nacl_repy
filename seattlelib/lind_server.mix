@@ -264,7 +264,7 @@ def LindSyscall(call_num, args):
   
   #if we acquire a new cageid, we're going to give it a new lock
   if cageid not in mycontext[LOCK]: 
-    mycontext[LOCK][cageid] = threading.Lock()()
+    mycontext[LOCK][cageid] = threading.Lock()
 
 
 
@@ -382,7 +382,7 @@ def lind_factory(cageid):
   setup_component_communication(1)
 
   mycontext[LOCK] = {}
-  mycontext[LOCK][cageid] = threading.Lock()()
+  mycontext[LOCK][cageid] = threading.Lock()
   #_check_file(curr_comp()[PROGRAM])
   #if we are running a compoent, launch another one as a test.
   if "com1" in curr_comp()[PROGRAM]:
