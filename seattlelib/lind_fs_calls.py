@@ -1421,6 +1421,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
       print filedescriptortable
+      print CONST_CAGEID
       # Done!   Let's return the file descriptor.
       print "open"
       print thisfd
