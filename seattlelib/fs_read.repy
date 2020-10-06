@@ -57,8 +57,16 @@ def lind_fs_read(args):
     stub_tot = (stub_endtime - stub_starttime)
 
     add_to_log("stub", stub_tot)
-            
-    return SuccessResponseBuilder("fs_read", len(result), result)
+    
+    resp_starttime = time.clock()
+
+    responseB = SuccessResponseBuilder("fs_read", len(result), result)
+    resp_endtime = time.clock()
+
+    resp_tot = (resp_endtime - resp_starttime)
+
+    print "response took " + str(resp_tot * 1000000) + " us."
+    return responseB
 
 
 def lind_safe_fs_read(args):
