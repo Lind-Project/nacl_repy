@@ -262,7 +262,7 @@ def LindSyscall(call_num, args):
   if TRACE:
     strace_msg = [ "[lind_server][trace]", str(str(curr_comp()[SYSCALL][call_num]).split(" ")[1]), str(args)[:128], " = "]
   
-  if we acquire a new cageid, we're going to give it a new lock
+  #if we acquire a new cageid, we're going to give it a new lock
   if cageid not in mycontext[LOCK]: 
     mycontext[LOCK][cageid] = createlock()
 
