@@ -275,8 +275,8 @@ class emulated_lock (object):
     """
     # Call down
 
-    traceback.print_stack()
-    print "lock acquiring"
+    # traceback.print_stack()
+    # print "lock acquiring"
 
     return self.lock.acquire(blocking)
 

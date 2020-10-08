@@ -1001,8 +1001,15 @@ class NamespaceObjectWrapper(object):
 
       def __do_func_call(*args, **kwargs):
         return wrapped_func(self._wrapped__object, *args, **kwargs)
+      test_starttime = time.clock()
 
-      return __do_func_call
+      try:
+        return __do_func_call
+      finally:
+        test_endtime = time.clock()
+
+        test_tot = (test_endtime - test_starttime) * 1000000
+        print "test lock total " + str(test_tot) + " us."
 
     #TODO: temperory hack
     elif name == 'fobj':
