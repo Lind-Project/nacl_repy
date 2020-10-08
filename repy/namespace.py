@@ -1257,6 +1257,7 @@ class NamespaceAPIFunctionWrapper(object):
 
       wrap1_tot = (wrap1_endtime - wrap1_starttime) * 1000000
       print "wrapper first half lock total " + str(wrap1_tot) + " us."
+      wrap2_starttime = time.clock()
 
       # If it's a string rather than a function, then this is our convention
       # for indicating that we want to wrap the function of this particular
@@ -1280,6 +1281,11 @@ class NamespaceAPIFunctionWrapper(object):
           args_to_use = [args[0]] + args_copy
         else:
           args_to_use = args_copy
+
+      wrap2_endtime = time.clock()
+
+      wrap2_tot = (wrap2_endtime - wrap2_starttime) * 1000000
+      print "wrapper second half lock total " + str(wrap1_tot) + " us."
 
       retval = func_to_call(*args_to_use)
 
