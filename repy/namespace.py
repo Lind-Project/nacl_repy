@@ -1225,6 +1225,8 @@ class NamespaceAPIFunctionWrapper(object):
     <Returns>
       Anything that the underlying function may return.
     """
+    wrap_starttime = time.clock()
+
     try:
       # We don't allow keyword args.
       if kwargs:
@@ -1286,3 +1288,8 @@ class NamespaceAPIFunctionWrapper(object):
       # Any other exception is unexpected and thus is a programming error on
       # our side, so we terminate.
       _handle_internalerror("Unexpected exception from within Repy API", 843)
+    finally:
+      wrap_endtime = time.clock()
+
+      wrap_tot = (wrap_endtime - wrap_starttime) * 1000000
+      print "wrapper lock total " + str(wrap_tot) + " us."
