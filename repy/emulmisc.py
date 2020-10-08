@@ -30,6 +30,7 @@ import threading        # for Lock()
 import thread           # to catch thread.error
 import ctypes           # for mmap/munmap to call out to NaCl
 from exception_hierarchy import *
+import time
 
 libc = ctypes.CDLL('libc.so.6') # imports libc so that mmap/munmap syscall can be performed using ctypes
 libc.mmap.restype = ctypes.c_long

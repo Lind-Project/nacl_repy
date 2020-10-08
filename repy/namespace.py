@@ -120,6 +120,7 @@ import safe # Used to get SafeDict
 import tracebackrepy
 import virtual_namespace
 import mmap
+import time
 
 #from naclimc import * 
 from exception_hierarchy import *
