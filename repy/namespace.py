@@ -1229,6 +1229,8 @@ class NamespaceAPIFunctionWrapper(object):
 
     try:
       # We don't allow keyword args.
+      wrap1_starttime = time.clock()
+
       if kwargs:
         raise RepyArgumentError("Keyword arguments not allowed when calling %s." %
                                 self.__func_name)
@@ -1250,6 +1252,11 @@ class NamespaceAPIFunctionWrapper(object):
       args_copy = self._process_args(args_to_check)
 
       args_to_use = None
+
+      wrap1_endtime = time.clock()
+
+      wrap1_tot = (wrap1_endtime - wrap1_starttime) * 1000000
+      print "wrapper first half lock total " + str(wrap1_tot) + " us."
 
       # If it's a string rather than a function, then this is our convention
       # for indicating that we want to wrap the function of this particular
