@@ -599,21 +599,11 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     _load_lower_handle_stubs(CONST_CAGEID)
   filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
-  closure_mid = time.clock()
 
   if CONST_CAGEID not in master_fs_calls_context:
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
   #perhaps include an initalization failsafe?
-
-  closure_precall = time.clock()
-
-  cl1 = (closure_mid - closure_starttime) * 1000000
-  cl2 = (closure_precall - closure_starttime) * 1000000
-
-  print "closure 1st half" + str(cl1) + " us"
-  print "closure 2nd half" + str(cl2) + " us"
-
 
   ##### EXIT  #####
 
