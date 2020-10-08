@@ -255,11 +255,13 @@ def LindSyscall(call_num, args):
 
   test_starttime = time.clock()
   testlock.acquire(True)
-  testlock.release()
   test_endtime = time.clock()
 
   test_tot = (test_endtime - test_starttime) * 1000000
   print "test lock total " + str(test_tot) + " us."
+  
+  testlock.release()
+
 
   init_log_entry(call_num)
 
