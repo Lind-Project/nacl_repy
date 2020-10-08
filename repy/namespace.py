@@ -1287,7 +1287,14 @@ class NamespaceAPIFunctionWrapper(object):
       wrap2_tot = (wrap2_endtime - wrap2_starttime) * 1000000
       print "wrapper second half lock total " + str(wrap1_tot) + " us."
 
+      func_endtime = time.clock()
+
       retval = func_to_call(*args_to_use)
+
+      func_endtime = time.clock()
+
+      func_tot = (func_endtime - func_starttime) * 1000000
+      print "func to call lock total " + str(wrap1_tot) + " us."
 
       return self._process_retval(retval)
 
