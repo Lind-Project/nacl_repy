@@ -997,12 +997,13 @@ class NamespaceObjectWrapper(object):
     is such a method in there, we return a function that will properly
     invoke the method with the correct 'self' as the first argument.
     """
+    test_starttime = time.clock()
+
     if name in self._wrapped__allowed_functions_dict:
       wrapped_func = self._wrapped__allowed_functions_dict[name]
 
       def __do_func_call(*args, **kwargs):
         return wrapped_func(self._wrapped__object, *args, **kwargs)
-      test_starttime = time.clock()
 
       try:
         return __do_func_call
