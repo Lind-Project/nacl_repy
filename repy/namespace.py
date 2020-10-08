@@ -1296,8 +1296,16 @@ class NamespaceAPIFunctionWrapper(object):
       func_tot = (func_endtime - func_starttime) * 1000000
       print "func to call lock total " + str(wrap1_tot) + " us."
 
-      return self._process_retval(retval)
+      proc_starttime = time.clock()
 
+      ret1 = self._process_retval(retval)
+
+      proc_endtime = time.clock()
+
+      proc_tot = (proc_endtime - proc_starttime) * 1000000
+      print "process lock total " + str(wrap1_tot) + " us."
+
+      return ret1
     except RepyException:
       # TODO: this should be changed to RepyError along with all references to
       # RepyException in the rest of the repy code.
