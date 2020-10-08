@@ -236,9 +236,7 @@ def repy_mmap(addr, leng, prot, flags, filedes, off):
 def repy_munmap(addr, leng):
   return libc.munmap(addr, leng)
 
-import signal, traceback
-def quit_handler(signum,frame):
-  traceback.print_stack()
+import traceback
 
 ##### Class Declarations
 
@@ -277,7 +275,8 @@ class emulated_lock (object):
     """
     # Call down
 
-    signal.signal(signal.SIGQUIT,quit_handler)
+    traceback.print_stack()
+
     return self.lock.acquire(blocking)
 
 
