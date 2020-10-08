@@ -252,7 +252,7 @@ testlock = createlock()
 
 def LindSyscall(call_num, args):
 
-
+  print type(testlock)
   test_starttime = time.clock()
   testlock.acquire(True)
   test_endtime = time.clock()
