@@ -1010,7 +1010,7 @@ class NamespaceObjectWrapper(object):
         test_endtime = time.clock()
 
         test_tot = (test_endtime - test_starttime) * 1000000
-        print "test lock total " + str(test_tot) + " us."
+        print "do func lock total " + str(test_tot) + " us."
 
     #TODO: temperory hack
     elif name == 'fobj':
