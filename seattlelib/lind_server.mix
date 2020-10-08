@@ -253,7 +253,7 @@ testlock = createlock()
 def LindSyscall(call_num, args):
 
 
-  test_endtime = time.clock()
+  test_starttime = time.clock()
   testlock.acquire(True)
   testlock.release()
   test_endtime = time.clock()
