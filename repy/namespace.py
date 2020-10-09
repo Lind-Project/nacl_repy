@@ -1307,6 +1307,7 @@ class NamespaceAPIFunctionWrapper(object):
       # TODO: this should be changed to RepyError along with all references to
       # RepyException in the rest of the repy code.
       # We allow any RepyError to continue up to the client code.
+      print "exception"
       raise
 
     except:
