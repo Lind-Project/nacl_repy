@@ -1229,7 +1229,7 @@ class NamespaceAPIFunctionWrapper(object):
 
     try:
       # We don't allow keyword args.
-      # wrap1_starttime = time.clock()
+      wrap1_starttime = time.clock()
 
       if kwargs:
         raise RepyArgumentError("Keyword arguments not allowed when calling %s." %
