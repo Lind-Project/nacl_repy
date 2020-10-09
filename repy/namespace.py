@@ -1229,7 +1229,7 @@ class NamespaceAPIFunctionWrapper(object):
 
     try:
       # We don't allow keyword args.
-      wrap1_starttime = time.clock()
+      # wrap1_starttime = time.clock()
 
       if kwargs:
         raise RepyArgumentError("Keyword arguments not allowed when calling %s." %
@@ -1253,11 +1253,11 @@ class NamespaceAPIFunctionWrapper(object):
 
       args_to_use = None
 
-      wrap1_endtime = time.clock()
+      # wrap1_endtime = time.clock()
 
-      wrap1_tot = (wrap1_endtime - wrap1_starttime) * 1000000
-      print "wrapper first half lock total " + str(wrap1_tot) + " us."
-      wrap2_starttime = time.clock()
+      # wrap1_tot = (wrap1_endtime - wrap1_starttime) * 1000000
+      # print "wrapper first half lock total " + str(wrap1_tot) + " us."
+      # wrap2_starttime = time.clock()
 
       # If it's a string rather than a function, then this is our convention
       # for indicating that we want to wrap the function of this particular
@@ -1282,28 +1282,28 @@ class NamespaceAPIFunctionWrapper(object):
         else:
           args_to_use = args_copy
 
-      wrap2_endtime = time.clock()
+      # wrap2_endtime = time.clock()
 
-      wrap2_tot = (wrap2_endtime - wrap2_starttime) * 1000000
-      print "wrapper second half lock total " + str(wrap1_tot) + " us."
+      # wrap2_tot = (wrap2_endtime - wrap2_starttime) * 1000000
+      # print "wrapper second half lock total " + str(wrap1_tot) + " us."
 
-      func_starttime = time.clock()
+      # func_starttime = time.clock()
 
       retval = func_to_call(*args_to_use)
 
-      func_endtime = time.clock()
+      # func_endtime = time.clock()
 
-      func_tot = (func_endtime - func_starttime) * 1000000
-      print "func to call lock total " + str(wrap1_tot) + " us."
+      # func_tot = (func_endtime - func_starttime) * 1000000
+      # print "func to call lock total " + str(wrap1_tot) + " us."
 
-      proc_starttime = time.clock()
+      # proc_starttime = time.clock()
 
       ret1 = self._process_retval(retval)
 
-      proc_endtime = time.clock()
+      # proc_endtime = time.clock()
 
-      proc_tot = (proc_endtime - proc_starttime) * 1000000
-      print "process lock total " + str(wrap1_tot) + " us."
+      # proc_tot = (proc_endtime - proc_starttime) * 1000000
+      # print "process lock total " + str(wrap1_tot) + " us."
 
       return ret1
     except RepyException:
