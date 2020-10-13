@@ -249,17 +249,27 @@ def print_times(times):
           "%f" % (exec_after) + ", \"" + str(call_args) + "\""
 
 testlock = createlock()
+import cProfile, pstats, StringIO
 
 def LindSyscall(call_num, args):
+  pr = cProfile.Profile()
+  pr.enable()
 
-  print type(testlock)
-  test_starttime = time.clock()
   testlock.acquire(True)
-  test_endtime = time.clock()
 
-  test_tot = (test_endtime - test_starttime) * 1000000
-  print "test lock total " + str(test_tot) + " us."
+  testlock.release()
   
+  pr.disable()
+  s = StringIO.StringIO()
+  sortby = 'cumulative'
+  ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+  ps.print_stats()
+  print s.getvalue()
+  print type(testlock)
+
+
+  testlock.acquire(True)
+
   testlock.release()
 
 
