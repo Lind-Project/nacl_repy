@@ -1287,11 +1287,3 @@ class NamespaceAPIFunctionWrapper(object):
       # Any other exception is unexpected and thus is a programming error on
       # our side, so we terminate.
       _handle_internalerror("Unexpected exception from within Repy API", 843)
-    finally:
-
-
-
-
-
-
-
