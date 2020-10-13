@@ -96,6 +96,7 @@ def initialize_restrictions(restrictionsfn):
    <Returns>
       None
   """
+  return
   nanny.start_resource_nanny(restrictionsfn)
 
 def enable_restrictions():
