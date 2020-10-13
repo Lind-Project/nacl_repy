@@ -251,7 +251,7 @@ def print_times(times):
 testlock = createlock()
 
 def LindSyscall(call_num, args):
-  pr = cprof()
+  pr = createprof()
   pr.cprofenable()
 
   testlock.acquire(True)
@@ -260,9 +260,9 @@ def LindSyscall(call_num, args):
 
 
   pr.cprofdisable()
-  s = stringioconstruct()
+  s = createstringio()
   sortby = 'cumulative'
-  ps = pstatsstats(pr, stream=s).sort_stats(sortby)
+  ps = createpstat(pr, stream=s).sort_stats(sortby)
   ps.pstatsprint()
   print s.stringiogetvalue()
 

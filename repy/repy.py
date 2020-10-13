@@ -142,6 +142,17 @@ if "fork" in dir(os):
 
 import cProfile, pstats, StringIO
 
+
+def createprof():
+  return cProfile.Profile()
+
+def createstrio():
+  return StringIO.StringIO()
+
+def createpstat(pr, s):
+  return pstats.Stats(pr, stream=s)
+
+
 def main(resourcefn, program, args):
 
   # Armon: Initialize the circular logger before starting the nanny
@@ -180,11 +191,11 @@ def main(resourcefn, program, args):
   usercontext["_context"] = usercontext
 
   # BAD:REMOVE all API imports
-  usercontext["cprof"] = cProfile.Profile
+  usercontext["cprof"] = createprof
   usercontext["cprofenable"] = cProfile.enable
   usercontext["cprofdisable"] = cProfile.disable
-  usercontext["stringioconstruct"] = StringIO.StringIO
-  usercontext["pstatsstats"] = pstats.Stats
+  usercontext["stringioconstruct"] = createstringio
+  usercontext["pstatsstats"] = createpstat
   usercontext["pstatsprint"] = pstats.print_stats
   usercontext["stringiogetvalue"] = StringIO.getvalue
 
