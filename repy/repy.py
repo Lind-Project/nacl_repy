@@ -39,7 +39,7 @@
   --servicelog           : Enable usage of the servicelogger for internal errors
   --safebinary           : Allow safe binaries to be run
 """
-profile = False
+profile = True
 if profile:
   import cProfile
   import pstats
