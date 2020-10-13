@@ -381,7 +381,6 @@ def start_resource_nanny(resourcefilename):
    <Returns>
       None.
   """
-  return
 
   global _resources_allowed_dict
 
@@ -474,7 +473,7 @@ def calculate_cpu_sleep_interval(cpulimit, percentused, elapsedtime):
   # Calculate Stoptime
   #  Mathematically Derived from:
   #  (PercentUsed * TotalTime) / ( TotalTime + StopTime) = CPULimit
-  stoptime = max(((percentused * elapsedtime) / cpulimit) - elapsedtime , 0)
+  # stoptime = max(((percentused * elapsedtime) / cpulimit) - elapsedtime , 0)
 
   # Print debug info
   #rawcpu += percentused*elapsedtime
@@ -484,7 +483,7 @@ def calculate_cpu_sleep_interval(cpulimit, percentused, elapsedtime):
   #print "Stopping: ", stoptime
 
   # Return amount of time to sleep for
-  return stoptime
+  return 0
 
 
 
