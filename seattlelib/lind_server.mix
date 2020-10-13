@@ -218,9 +218,6 @@ include unimplemented_syscalls.repy
 include dispatcher.repy
 
 import time
-import cProfile
-import pstats
-import StringIO
 
 
 
@@ -254,22 +251,7 @@ def print_times(times):
 testlock = createlock()
 
 def LindSyscall(call_num, args):
-  pr = cProfile.Profile()
-  pr.enable()
-
-  testlock.acquire(True)
-
-  testlock.release()
-
-  pr.disable()
-  s = StringIO.StringIO()
-  sortby = 'cumulative'
-  ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-  ps.print_stats()
-  print s.getvalue()
-  print type(testlock)
-
-
+  
   testlock.acquire(True)
 
   testlock.release()
