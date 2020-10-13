@@ -121,6 +121,8 @@ import tracebackrepy
 import virtual_namespace
 import mmap
 import time
+import cProfile, pstats, StringIO
+
 
 #from naclimc import * 
 from exception_hierarchy import *
@@ -1225,11 +1227,12 @@ class NamespaceAPIFunctionWrapper(object):
     <Returns>
       Anything that the underlying function may return.
     """
-    wrap_starttime = time.clock()
+    pr = cProfile.Profile()
+    pr.enable()
+    # ... do something ...
 
     try:
       # We don't allow keyword args.
-      wrap1_starttime = time.clock()
 
       if kwargs:
         raise RepyArgumentError("Keyword arguments not allowed when calling %s." %
@@ -1252,11 +1255,6 @@ class NamespaceAPIFunctionWrapper(object):
       args_copy = self._process_args(args_to_check)
 
       args_to_use = None
-
-      wrap1_endtime = time.clock()
-
-      wrap1_tot = (wrap1_endtime - wrap1_starttime) * 1000000
-      wrap2_starttime = time.clock()
 
       # If it's a string rather than a function, then this is our convention
       # for indicating that we want to wrap the function of this particular
@@ -1281,28 +1279,11 @@ class NamespaceAPIFunctionWrapper(object):
         else:
           args_to_use = args_copy
 
-      wrap2_endtime = time.clock()
-
-      wrap2_tot = (wrap2_endtime - wrap2_starttime) * 1000000
-
-      func_starttime = time.clock()
-
       retval = func_to_call(*args_to_use)
 
-      func_endtime = time.clock()
+   
+      return self._process_retval(retval)
 
-      func_tot = (func_endtime - func_starttime) * 1000000
-      print "func to call lock total " + str(wrap1_tot) + " us."
-
-      proc_starttime = time.clock()
-
-      ret1 = self._process_retval(retval)
-
-      proc_endtime = time.clock()
-
-      proc_tot = (proc_endtime - proc_starttime) * 1000000
-
-      return ret1
     except RepyException:
       # TODO: this should be changed to RepyError along with all references to
       # RepyException in the rest of the repy code.
@@ -1315,14 +1296,14 @@ class NamespaceAPIFunctionWrapper(object):
       # our side, so we terminate.
       _handle_internalerror("Unexpected exception from within Repy API", 843)
     finally:
-      wrap_endtime = time.clock()
 
-      wrap_tot = (wrap_endtime - wrap_starttime) * 1000000
-      print "wrapper lock total " + str(wrap_tot) + " us."
-      print "wrapper first half lock total " + str(wrap1_tot) + " us."
-      print "wrapper second half lock total " + str(wrap1_tot) + " us."
-      print "func to call lock total " + str(wrap1_tot) + " us."
-      print "process lock total " + str(wrap1_tot) + " us."
+      pr.disable()
+      s = StringIO.StringIO()
+      sortby = 'cumulative'
+      ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+      ps.print_stats()
+      print s.getvalue()
+
 
 
 
