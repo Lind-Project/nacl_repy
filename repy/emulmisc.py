@@ -275,9 +275,7 @@ class emulated_lock (object):
      True if the lock was acquired.
     """
     # Call down
-    print "lock acquiring"
 
-    traceback.print_stack()
 
     return self.lock.acquire(blocking)
 
@@ -300,8 +298,6 @@ class emulated_lock (object):
       None
     """
     try:
-      print "release"
-      traceback.print_stack()
 
       self.lock.release()
     except thread.error:
