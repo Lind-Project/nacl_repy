@@ -39,7 +39,7 @@
   --servicelog           : Enable usage of the servicelogger for internal errors
   --safebinary           : Allow safe binaries to be run
 """
-profile = False
+profile = True
 if profile:
   import cProfile
   import pstats
@@ -140,18 +140,6 @@ if "fork" in dir(os):
   os.fork = nonSafe_fork
 
 
-import cProfile, pstats, StringIO
-
-
-def createprof():
-  return cProfile.Profile()
-
-def createstrio():
-  return StringIO.StringIO()
-
-def createpstat(pr, s):
-  return pstats.Stats(pr, stream=s)
-
 
 def main(resourcefn, program, args):
 
@@ -191,15 +179,6 @@ def main(resourcefn, program, args):
   usercontext["_context"] = usercontext
 
   # BAD:REMOVE all API imports
-  usercontext["cprof"] = createprof
-  usercontext["cprofenable"] = cProfile.enable
-  usercontext["cprofdisable"] = cProfile.disable
-  usercontext["stringioconstruct"] = createstringio
-  usercontext["pstatsstats"] = createpstat
-  usercontext["pstatsprint"] = pstats.print_stats
-  usercontext["stringiogetvalue"] = StringIO.getvalue
-
-
   usercontext["getresources"] = nonportable.get_resources
   usercontext["mycontext"]["wallclocktime"] = time.time
   #usercontext["openfile"] = emulfile.emulated_open

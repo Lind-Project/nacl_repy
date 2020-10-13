@@ -251,22 +251,12 @@ def print_times(times):
 testlock = createlock()
 
 def LindSyscall(call_num, args):
-  pr = cprof()
-  pr.cprofenable()
-
+  
   testlock.acquire(True)
 
   testlock.release()
 
-
-  pr.cprofdisable()
-  s = stringioconstruct()
-  sortby = 'cumulative'
-  ps = pstatsstats(pr, stream=s).sort_stats(sortby)
-  ps.pstatsprint()
-  print s.stringiogetvalue()
-
-
+  
   init_log_entry(call_num)
 
   syscall_starttime = time.clock()
