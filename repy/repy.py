@@ -140,6 +140,7 @@ if "fork" in dir(os):
   os.fork = nonSafe_fork
 
 
+import cProfile, pstats, StringIO
 
 def main(resourcefn, program, args):
 
@@ -179,6 +180,15 @@ def main(resourcefn, program, args):
   usercontext["_context"] = usercontext
 
   # BAD:REMOVE all API imports
+  usercontext["cprof"] = cProfile.Profile
+  usercontext["cprofenable"] = cProfile.enable
+  usercontext["cprofdisable"] = cProfile.disable
+  usercontext["stringioconstruct"] = StringIO.StringIO
+  usercontext["pstatsstats"] = pstats.Stats
+  usercontext["pstatsprint"] = pstats.print_stats
+  usercontext["stringiogetvalue"] = StringIO.getvalue
+
+
   usercontext["getresources"] = nonportable.get_resources
   usercontext["mycontext"]["wallclocktime"] = time.time
   #usercontext["openfile"] = emulfile.emulated_open

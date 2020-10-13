@@ -121,7 +121,6 @@ import tracebackrepy
 import virtual_namespace
 import mmap
 import time
-import cProfile, pstats, StringIO
 
 
 #from naclimc import * 
@@ -1221,8 +1220,7 @@ class NamespaceAPIFunctionWrapper(object):
     <Returns>
       Anything that the underlying function may return.
     """
-    pr = cProfile.Profile()
-    pr.enable()
+
     # ... do something ...
 
     try:
@@ -1291,12 +1289,6 @@ class NamespaceAPIFunctionWrapper(object):
       _handle_internalerror("Unexpected exception from within Repy API", 843)
     finally:
 
-      pr.disable()
-      s = StringIO.StringIO()
-      sortby = 'cumulative'
-      ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-      ps.print_stats()
-      print s.getvalue()
 
 
 
