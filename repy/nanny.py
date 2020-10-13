@@ -381,6 +381,7 @@ def start_resource_nanny(resourcefilename):
    <Returns>
       None.
   """
+  return
 
   global _resources_allowed_dict
 
