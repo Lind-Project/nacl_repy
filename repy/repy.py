@@ -231,6 +231,7 @@ def main(resourcefn, program, args):
     tracebackrepy.handle_internalerror("Failed to aquire event for '" + \
               "initialize' event.\n(Exception was: %s)" % e.message, 140)
  
+  print "hey im here"
   try:
     if profile:
       p = cProfile.Profile()
