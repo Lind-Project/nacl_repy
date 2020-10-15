@@ -271,8 +271,7 @@ def LindSyscall(call_num, args):
 
 
 
-  mycontext[LOCK][cageid].acquire(True)
-
+  pass
 
   mycontext[COMP] = comp_num
   try:
@@ -285,7 +284,7 @@ def LindSyscall(call_num, args):
     if TRACE and call_num not in [3]:
       strace_msg.append(str(response)[:128])
       log( ''.join(strace_msg)+'\n')
-  mycontext[LOCK][cageid].release()
+  pass
   if response == None:
     raise Exception()
 
