@@ -309,6 +309,7 @@ def repy_main(argv=sys.argv):
   global simpleexec
   global logfile
 
+  print "Start"
   # Armon: The CMD line path to repy is the first argument
   repy_location = argv[0]
 
@@ -440,6 +441,7 @@ def repy_main(argv=sys.argv):
   # can be found regardless of where we are called from...
   tracebackrepy.initialize(servicelog, absolute_repy_directory)
 
+  print "before main"
   
   try:
     main(resourcefn, progname, progargs)
