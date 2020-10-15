@@ -178,6 +178,7 @@ def main(resourcefn, program, args):
   # Allow some introspection by providing a reference to the context
   usercontext["_context"] = usercontext
 
+  print "monkey patch"
   # BAD:REMOVE all API imports
   usercontext["getresources"] = nonportable.get_resources
   usercontext["mycontext"]["wallclocktime"] = time.time
@@ -237,7 +238,7 @@ def main(resourcefn, program, args):
       p = cProfile.Profile()
       p.runctx('main_namespace.evaluate(usercontext)', globals(), locals(),)
       p = pstats.Stats(p)
-      # p.sort_stats('cumulative')
+      p.sort_stats('cumulative')
       p.print_stats()
     else:
       main_namespace.evaluate(usercontext)
