@@ -294,6 +294,8 @@ def repy_main(argv=sys.argv):
   global simpleexec
   global logfile
 
+  print "repylib"
+
   # Armon: The CMD line path to repy is the first argument
   repy_location = argv[0]
 
