@@ -276,7 +276,7 @@ class emulated_lock (object):
     """
     # Call down
 
-
+    print "acquire"
     return #self.lock.acquire(blocking)
 
 
