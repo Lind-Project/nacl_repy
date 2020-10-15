@@ -197,7 +197,7 @@ def _prepare_wrapped_functions_for_object_wrappers():
   used by functions such as wrap_socket_obj().
   """
   objects_tuples = [(FILE_OBJECT_WRAPPER_INFO, file_object_wrapped_functions_dict),
-                    (LOCK_OBJECT_WRAPPER_INFO, lock_object_wrapped_functions_dict),
+                    # (LOCK_OBJECT_WRAPPER_INFO, lock_object_wrapped_functions_dict),
                     (TCP_SOCKET_OBJECT_WRAPPER_INFO, tcp_socket_object_wrapped_functions_dict),
                     (TCP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, tcp_server_socket_object_wrapped_functions_dict),
                     (UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, udp_server_socket_object_wrapped_functions_dict),
@@ -655,10 +655,10 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emulmisc.exitall,
        'args' : [],
        'return' : None},
-  'createlock' :
-      {'func' : emulmisc.createlock,
-       'args' : [],
-       'return' : Lock()},
+  # 'createlock' :
+  #     {'func' : emulmisc.createlock,
+  #      'args' : [],
+  #      'return' : Lock()},
   'getruntime' :
       {'func' : emulmisc.getruntime,
        'args' : [],
@@ -763,20 +763,20 @@ UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO = {
        'return' : (Str(), Int(), Str())}
 }
 
-LOCK_OBJECT_WRAPPER_INFO = {
-  'acquire' :
-      # A string for the target_func indicates a function by this name on the
-      # instance rather is what should be wrapped.
-      {'func' : 'acquire',
-       'args' : [Bool()],
-       'return' : Bool()},
-  'release' :
-      # A string for the target_func indicates a function by this name on the
-      # instance rather is what should be wrapped.
-      {'func' : 'release',
-       'args' : [],
-       'return' : None},
-}
+# LOCK_OBJECT_WRAPPER_INFO = {
+#   'acquire' :
+#       # A string for the target_func indicates a function by this name on the
+#       # instance rather is what should be wrapped.
+#       {'func' : 'acquire',
+#        'args' : [Bool()],
+#        'return' : Bool()},
+#   'release' :
+#       # A string for the target_func indicates a function by this name on the
+#       # instance rather is what should be wrapped.
+#       {'func' : 'release',
+#        'args' : [],
+#        'return' : None},
+# }
 
 VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO = {
   # Evaluate must take a dict or SafeDict, and can
