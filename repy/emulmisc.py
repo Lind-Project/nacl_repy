@@ -277,7 +277,7 @@ class emulated_lock (object):
     # Call down
 
 
-    return self.lock.acquire(blocking)
+    return #self.lock.acquire(blocking)
 
 
   def release(self):
@@ -297,10 +297,10 @@ class emulated_lock (object):
     <Returns>
       None
     """
-    try:
-
-      self.lock.release()
-    except thread.error:
-      raise LockDoubleReleaseError("Releasing an un-locked lock!")
+    return
+    # try:
+    #   self.lock.release()
+    # except thread.error:
+    #   raise LockDoubleReleaseError("Releasing an un-locked lock!")
 
 
