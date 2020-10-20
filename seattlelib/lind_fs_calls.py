@@ -1019,10 +1019,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     """
 
-    print "in stat"
     # in an abundance of caution, I'll grab a lock...
     filesystemmetadatalock.acquire(True)
-    print "and got lock"
 
     # ... but always release it...
     try:
@@ -1286,18 +1284,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO handle read / write locking, etc.
 
       # Add the entry to the table!
-      print "about to get fd"
       filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
-      print "got fd"
       # Done!   Let's return the file descriptor.
       return thisfd
 
     finally:
-      print "about to release fdtable lock"
       fdtablelock.release()
-      print "about to release metadata lock"
       filesystemmetadatalock.release()
-      print "returning from open"
 
   FS_CALL_DICTIONARY["open_syscall"] = open_syscall
 
