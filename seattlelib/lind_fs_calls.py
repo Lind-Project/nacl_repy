@@ -1699,10 +1699,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     try:
           
-        # don't close streams, which have an inode of 1
-        try:
-          if filedescriptortable[fd]['inode'] == STREAMINODE:
-          return 0
+      # don't close streams, which have an inode of 1
+      try:
+        if filedescriptortable[fd]['inode'] == STREAMINODE:
+        return 0
       except KeyError:
         pass
 
