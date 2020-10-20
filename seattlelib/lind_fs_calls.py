@@ -1726,10 +1726,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # If it's not a regular file, we have nothing to close...
       if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
 
-        # double check that this isn't in the fileobjecttable
-        if inode in fileobjecttable:
-          raise Exception("Internal Error: non-regular file in fileobjecttable")
-
+      # double check that this isn't in the fileobjecttable
+      if inode in fileobjecttable:
+        raise Exception("Internal Error: non-regular file in fileobjecttable")
         # and return success
         return 0
 
