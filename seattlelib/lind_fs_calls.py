@@ -1016,9 +1016,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def stat_syscall(path):
     """
       http://linux.die.net/man/2/stat
+
     """
+
+    print "in stat"
     # in an abundance of caution, I'll grab a lock...
     filesystemmetadatalock.acquire(True)
+    print "and got lock"
 
     # ... but always release it...
     try:
