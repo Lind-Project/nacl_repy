@@ -1293,6 +1293,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       fdtablelock.release()
       filesystemmetadatalock.release()
+      print "returning from open"
 
   FS_CALL_DICTIONARY["open_syscall"] = open_syscall
 
