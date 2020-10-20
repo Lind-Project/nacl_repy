@@ -128,8 +128,10 @@ filesystemmetadatalock = createlock()
 fastinodelookuptable = {}
 
 # contains open file descriptor information... (keyed by fd)
-#this is a dictionary of dictionaries of file descriptors
+# this is a dictionary of dictionaries of file descriptors
+# accompanied with locks per table
 masterfiledescriptortable = {}
+masterfdlocktable = {}
 
 # contains parentage informarion for processes, only child processes have entries, populated on fork.
 parentagetable = {}
@@ -199,7 +201,7 @@ def _load_lower_handle_stubs(cageid):
   # we're going to give all streams an inode of 2 since lind is emulating a single "terminal"
 
   masterfiledescriptortable[cageid] = {}
-  masterfiledescriptortable[cageid]['lock'] = createlock()
+  masterfdlocktable[cageid] = createlock()
   masterfiledescriptortable[cageid][0] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_RDONLY, 'stream':0, 'note':'this is a stdin'}
   masterfiledescriptortable[cageid][1] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':1, 'note':'this is a stdout'}
   masterfiledescriptortable[cageid][2] = {'position':0, 'inode':STREAMINODE, 'lock':createlock(), 'flags':O_WRONLY, 'stream':2, 'note':'this is a stderr'}
@@ -493,6 +495,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
   filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+  fdtablelock = masterfdlocktable[CONST_CAGEID]
 
   if CONST_CAGEID not in master_fs_calls_context:
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
@@ -508,7 +511,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     http://linux.die.net/man/2/exit
     """
 
-    filedescriptortable['lock'].acquire(True)
+    fdtablelock.acquire(True)
     
     try:
       # close all the fds in the fd-table
@@ -518,7 +521,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       
      
     finally:
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
       filedescriptortable.clear() # clean up the fd-table
 
     return 0
@@ -1277,14 +1280,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO handle read / write locking, etc.
 
       # Add the entry to the table!
-      filedescriptortable['lock'].acquire(True)
+      fdtablelock.acquire(True)
       filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
 
       # Done!   Let's return the file descriptor.
       return thisfd
 
     finally:
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["open_syscall"] = open_syscall
@@ -1769,7 +1772,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
 
     # in an abundance of caution, lock...
-    filedescriptortable['lock'].acquire(True)
+    fdtablelock.acquire(True)
 
     if fd not in filedescriptortable:
       raise SyscallError("close_syscall","EBADF","Invalid file descriptor.")
@@ -1780,7 +1783,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       del filedescriptortable[fd]
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
 
   FS_CALL_DICTIONARY["close_syscall"] = close_syscall
 
@@ -1830,7 +1833,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
   
     # lock to prevent things from changing while we look this up...
-    filedescriptortable['lock'].acquire(True)
+    fdtablelock.acquire(True)
 
     # check the fd
     if oldfd not in filedescriptortable:
@@ -1847,7 +1850,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       # ... release the locks
       filedescriptortable[oldfd]['lock'].release()
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
 
 
   FS_CALL_DICTIONARY["dup2_syscall"] = dup2_syscall
@@ -1861,7 +1864,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
 
     # lock to prevent things from changing while we look this up...
-    filedescriptortable['lock'].acquire(True)
+    fdtablelock.acquire(True)
 
     # check the fd
     if fd not in filedescriptortable and fd >= STARTINGFD:
@@ -1887,7 +1890,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     finally:
       # ... release the locks
       filedescriptortable[fd]['lock'].release()
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
 
 
 
@@ -2482,7 +2485,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     http://linux.die.net/man/2/pipe
     """
     # lock to prevent things from changing while we look this up...
-    filedescriptortable['lock'].acquire(True)
+    fdtablelock.acquire(True)
 
     # ... but always release it...
 
@@ -2508,7 +2511,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return pipefds
 
     finally:
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
       
   FS_CALL_DICTIONARY["pipe_syscall"] = pipe_syscall
     
@@ -2520,13 +2523,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     http://linux.die.net/man/2/pipe2
     """
     # lock to prevent things from changing while we look this up...
-    filedescriptortable['lock']
+    fdtablelock
     # ... but always release it...
     try:
       #stuff
       pass
     finally:
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
 
   FS_CALL_DICTIONARY["pipe2_syscall"] = pipe2_syscall
 
@@ -2535,11 +2538,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   def fork_syscall(child_cageid):
 
-    filedescriptortable['lock'].acquire(True)
+    fdtablelock.acquire(True)
 
     try:
       masterfiledescriptortable[child_cageid] = \
         repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+
+      masterfdlocktable[child_cageid] = createlock()
       
       master_fs_calls_context[child_cageid] = \
         repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
@@ -2547,7 +2552,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       parentagetable[child_cageid] = {'ppid': CONST_CAGEID}
     
     finally:
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
 
     return 0
 
@@ -2639,11 +2644,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
   def exec_syscall(child_cageid):
     
-    filedescriptortable['lock'].acquire(True)
+    fdtablelock.acquire(True)
 
     try:
       masterfiledescriptortable[child_cageid] = \
         repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+
+      masterfdlocktable[child_cageid] = createlock()
       
       master_fs_calls_context[child_cageid] = \
         repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
@@ -2652,7 +2659,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       del master_fs_calls_context[CONST_CAGEID]
     
     finally:
-      filedescriptortable['lock'].release()
+      fdtablelock.release()
   
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
