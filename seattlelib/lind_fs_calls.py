@@ -1284,14 +1284,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO handle read / write locking, etc.
 
       # Add the entry to the table!
+      print "about to get fd"
       fdtablelock.acquire(True)
       filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
-
+      print "got fd"
       # Done!   Let's return the file descriptor.
       return thisfd
 
     finally:
+      print "about to release fdtable lock"
       fdtablelock.release()
+      print "about to release metadata lock"
       filesystemmetadatalock.release()
       print "returning from open"
 
