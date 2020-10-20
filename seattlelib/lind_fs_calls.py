@@ -1158,6 +1158,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # in an abundance of caution, lock...   I think this should only be needed
     # with O_CREAT flags...
     filesystemmetadatalock.acquire(True)
+    fdtablelock.acquire(True)
+
 
     # ... but always release it...
     try:
@@ -1285,7 +1287,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # Add the entry to the table!
       print "about to get fd"
-      fdtablelock.acquire(True)
       filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
       print "got fd"
       # Done!   Let's return the file descriptor.
