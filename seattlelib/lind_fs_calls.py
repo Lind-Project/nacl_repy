@@ -587,9 +587,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if IS_SOCK_DESC(fd,CONST_CAGEID) or IS_PIPE_DESC(fd,CONST_CAGEID):
       raise SyscallError("fstatfs_syscall","EBADF","The file descriptor is invalid.")
 
+    # grab the lock
+    filesystemmetadatalock.acquire(True)
 
-    # if so, return the information...
-    return _istatfs_helper(filedescriptortable[fd]['inode'])
+    try:
+      # if so, return the information...
+      return _istatfs_helper(filedescriptortable[fd]['inode'])
+
+    finally:
+      filesystemmetadatalock.release()
 
 
   FS_CALL_DICTIONARY["fstatfs_syscall"] = fstatfs_syscall
@@ -1067,7 +1073,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # if so, return the information...
       if IS_PIPE_DESC(fd, CONST_CAGEID):
         # mocking pipe inode number to 0xfeef0000
-        return _stat_alt_helper(0xfeef0000)
+        return _stat_alt_helper(PIPE_INODE)
       
       inode = filedescriptortable[fd]['inode']
 
@@ -1437,10 +1443,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/read
     """
-    # BUG: I probably need a filedescriptortable lock to prevent an untimely
-    # close call or similar from messing everything up...
-
-
+    
     try:
       if filedescriptortable[fd]["stream"] == 0:
         return ""
@@ -1522,9 +1525,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/write
     """
-
-    # BUG: I probably need a filedescriptortable lock to prevent an untimely
-    # close call or similar from messing everything up...
 
     # check the fd
     if fd not in filedescriptortable:
@@ -1803,6 +1803,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # if the new file descriptor is too low or too high
     # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
     #      The Lind code may pass me descriptors less than STARTINGFD
+
     if newfd >= MAX_FD or newfd < 0:
       # BUG: the STARTINGFD isn't really too low.   It's just lower than we
       # support
@@ -1983,8 +1984,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
   FS_CALL_DICTIONARY["fcntl_syscall"] = fcntl_syscall
-
-
 
 
 
@@ -2175,6 +2174,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     return 0
 
   FS_CALL_DICTIONARY["ftruncate_syscall"] = ftruncate_syscall
+
+
   #### MKNOD ####
 
   # for now, I am considering few assumptions:
@@ -2215,14 +2216,22 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # open_syscall. S_IFCHR flag will ensure that the file is not opened.
     fd = open_syscall(path, mode | O_CREAT, S_IRWXA)
 
-    # add the major and minor device no.'s, I did it here so that the code can be managed
-    # properly, instead of putting everything in open_syscall.
-    inode = filedescriptortable[fd]['inode']
-    filesystemmetadata['inodetable'][inode]['rdev'] = dev
+    # grab the lock
+    filesystemmetadatalock.acquire(True)
 
-    # close the file descriptor...
-    close_syscall(fd)
-    return 0
+    try:
+      # add the major and minor device no.'s, I did it here so that the code can be managed
+      # properly, instead of putting everything in open_syscall.
+      inode = filedescriptortable[fd]['inode']
+      filesystemmetadata['inodetable'][inode]['rdev'] = dev
+
+      # close the file descriptor...
+      close_syscall(fd)
+
+      return 0
+
+    finally:
+      filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
 
@@ -2352,17 +2361,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["getppid_syscall"] = getppid_syscall
 
-  #### RESOURCE LIMITS  ####
-
-  # FIXME: These constants should be specified in a different file,
-  # it at all additional support needs to be added.
-  NOFILE_CUR = 1024
-  NOFILE_MAX = 4*1024
-
-  STACK_CUR = 8192*1024
-  STACK_MAX = 2**32
-
-
+ 
   def getrlimit_syscall(res_type):
     """
       http://linux.die.net/man/2/getrlimit
@@ -2439,7 +2438,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     http://linux.die.net/man/2/rename
     TODO: this needs to be fixed up.
     """
+    # grab the lock
     filesystemmetadatalock.acquire(True)
+
     try:
       true_old_path = normpath(old, CONST_CAGEID)
       true_new_path = normpath(new, CONST_CAGEID)
@@ -2560,6 +2561,30 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
 
+    Exec will do the same copying as fork, 
+  # but we want to get rid of all the information from the old cage
+  
+  def exec_syscall(child_cageid):
+    
+    fdtablelock.acquire(True)
+
+    try:
+      masterfiledescriptortable[child_cageid] = \
+        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
+
+      masterfdlocktable[child_cageid] = createlock()
+      
+      master_fs_calls_context[child_cageid] = \
+        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+
+      del masterfiledescriptortable[CONST_CAGEID]
+      del master_fs_calls_context[CONST_CAGEID]
+    
+    finally:
+      fdtablelock.release()
+  
+  FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
+
   def mmap_syscall(addr, leng, prot, flags, fildes, off):
     """
     http://linux.die.net/man/2/mmap
@@ -2641,30 +2666,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
   
-  # Exec will do the same copying as fork, 
-  # but we want to get rid of all the information from the old cage
-  
-  def exec_syscall(child_cageid):
-    
-    fdtablelock.acquire(True)
-
-    try:
-      masterfiledescriptortable[child_cageid] = \
-        repy_deepcopy(masterfiledescriptortable[CONST_CAGEID])
-
-      masterfdlocktable[child_cageid] = createlock()
-      
-      master_fs_calls_context[child_cageid] = \
-        repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
-
-      del masterfiledescriptortable[CONST_CAGEID]
-      del master_fs_calls_context[CONST_CAGEID]
-    
-    finally:
-      fdtablelock.release()
-  
-  FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
-
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
     return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
