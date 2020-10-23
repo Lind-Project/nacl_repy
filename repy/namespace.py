@@ -171,7 +171,7 @@ def _init_namespace():
     _prepare_wrapped_functions_for_object_wrappers()
 
 
-
+# Lind Note: Lock objects have been removed from namespace and moved to a monkey-patch in repylib.py
 
 
 # These dictionaries will ultimately contain keys whose names are allowed
@@ -179,7 +179,7 @@ def _init_namespace():
 # versions of the functions which are exposed to users. If a dictionary
 # is empty, it means no methods can be called on a wrapped object of that type.
 file_object_wrapped_functions_dict = {}
-lock_object_wrapped_functions_dict = {}
+# lock_object_wrapped_functions_dict = {}
 tcp_socket_object_wrapped_functions_dict = {}
 tcp_server_socket_object_wrapped_functions_dict = {}
 udp_server_socket_object_wrapped_functions_dict = {}
@@ -195,7 +195,7 @@ def _prepare_wrapped_functions_for_object_wrappers():
   used by functions such as wrap_socket_obj().
   """
   objects_tuples = [(FILE_OBJECT_WRAPPER_INFO, file_object_wrapped_functions_dict),
-                    (LOCK_OBJECT_WRAPPER_INFO, lock_object_wrapped_functions_dict),
+                    # (LOCK_OBJECT_WRAPPER_INFO, lock_object_wrapped_functions_dict),
                     (TCP_SOCKET_OBJECT_WRAPPER_INFO, tcp_socket_object_wrapped_functions_dict),
                     (TCP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, tcp_server_socket_object_wrapped_functions_dict),
                     (UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO, udp_server_socket_object_wrapped_functions_dict),
@@ -653,10 +653,10 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emulmisc.exitall,
        'args' : [],
        'return' : None},
-  'createlock' :
-      {'func' : emulmisc.createlock,
-       'args' : [],
-       'return' : Lock()},
+  # 'createlock' :
+  #     {'func' : emulmisc.createlock,
+  #      'args' : [],
+  #      'return' : Lock()},
   'getruntime' :
       {'func' : emulmisc.getruntime,
        'args' : [],
@@ -762,18 +762,18 @@ UDP_SERVER_SOCKET_OBJECT_WRAPPER_INFO = {
 }
 
 LOCK_OBJECT_WRAPPER_INFO = {
-  'acquire' :
-      # A string for the target_func indicates a function by this name on the
-      # instance rather is what should be wrapped.
-      {'func' : 'acquire',
-       'args' : [Bool()],
-       'return' : Bool()},
-  'release' :
-      # A string for the target_func indicates a function by this name on the
-      # instance rather is what should be wrapped.
-      {'func' : 'release',
-       'args' : [],
-       'return' : None},
+  # 'acquire' :
+  #     # A string for the target_func indicates a function by this name on the
+  #     # instance rather is what should be wrapped.
+  #     {'func' : 'acquire',
+  #      'args' : [Bool()],
+  #      'return' : Bool()},
+  # 'release' :
+  #     # A string for the target_func indicates a function by this name on the
+  #     # instance rather is what should be wrapped.
+  #     {'func' : 'release',
+  #      'args' : [],
+  #      'return' : None},
 }
 
 VIRTUAL_NAMESPACE_OBJECT_WRAPPER_INFO = {

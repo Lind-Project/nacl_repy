@@ -191,6 +191,9 @@ def _tattle_quantity(resource, quantity, resourcesalloweddict, resourcesuseddict
       None.
   """
 
+  # Lind: Return here to turn off tattle quantity
+  return
+
 
   # I assume that the quantity will never be negative
   if quantity < 0:
