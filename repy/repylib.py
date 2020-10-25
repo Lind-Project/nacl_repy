@@ -186,8 +186,6 @@ def init_namespace(resourcefn, program, args):
   #usercontext["removefile"] = emulfile.removefile
   #usercontext["exitall"] = emulmisc.exitall
   usercontext["createlock"] = emulmisc.createlock
-  usercontext["emulated_lock"] = emulmisc.emulated_lock
-  
   #usercontext["getruntime"] = emulmisc.getruntime
   #usercontext["randombytes"] = emulmisc.randombytes
   #usercontext["createthread"] = emultimer.createthread

@@ -173,7 +173,7 @@ def _init_namespace():
     _prepare_wrapped_functions_for_object_wrappers()
 
 
-
+# Lind Note: Lock objects have been removed from namespace and moved to a monkey-patch in repylib.py
 
 
 # These dictionaries will ultimately contain keys whose names are allowed
@@ -181,7 +181,7 @@ def _init_namespace():
 # versions of the functions which are exposed to users. If a dictionary
 # is empty, it means no methods can be called on a wrapped object of that type.
 file_object_wrapped_functions_dict = {}
-lock_object_wrapped_functions_dict = {}
+# lock_object_wrapped_functions_dict = {}
 tcp_socket_object_wrapped_functions_dict = {}
 tcp_server_socket_object_wrapped_functions_dict = {}
 udp_server_socket_object_wrapped_functions_dict = {}
