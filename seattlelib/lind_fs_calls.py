@@ -460,6 +460,8 @@ def IS_SOCK_DESC(fd,cageid):
 def IS_PIPE_DESC(fd,cageid):
   return 'pipe' in masterfiledescriptortable[cageid][fd]
 
+def enosys_syscall(*args):
+  raise SyscallError("unavailable_syscall","ENOSYS","No such syscall available")
 
 
 
@@ -502,7 +504,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       return fs_calls_context['syscall_table'][CLOSURE_SYSCALL_NAME]
     except:
-      return None #maybe this should be handled differently
+      return enosys_syscall
 
   FS_CALL_DICTIONARY = {}
 
@@ -2720,4 +2722,4 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
     return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
-    exitall(-1)
+    return enosys_syscall
