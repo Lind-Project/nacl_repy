@@ -460,6 +460,8 @@ def IS_SOCK_DESC(fd,cageid):
 def IS_PIPE_DESC(fd,cageid):
   return 'pipe' in masterfiledescriptortable[cageid][fd]
 
+def enosys_syscall(*args):
+  raise SyscallError("unavailable_syscall","ENOSYS","No such syscall available")
 
 
 
@@ -490,26 +492,31 @@ def IS_PIPE_DESC(fd,cageid):
 
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
-  FS_CALL_DICTIONARY = {}
-
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
-  filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
-  fdtablelock = masterfdlocktable[CONST_CAGEID]
 
   if CONST_CAGEID not in master_fs_calls_context:
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
-  #perhaps include an initalization failsafe?
 
+  # perhaps include an initalization failsafe?
+  if "syscall_table" in fs_calls_context:
+    try:
+      return fs_calls_context['syscall_table'][CLOSURE_SYSCALL_NAME]
+    except:
+      return enosys_syscall
+
+  FS_CALL_DICTIONARY = {}
 
   ##### EXIT  #####
-
 
   def exit_syscall(status):
     """
     http://linux.die.net/man/2/exit
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
 
     fdtablelock.acquire(True)
     
@@ -578,6 +585,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/fstatfs
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # is the file descriptor valid?
     if fd not in filedescriptortable:
@@ -1061,6 +1070,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # st_mode=49590, st_ino=0, st_dev=0L, st_nlink=0, st_uid=501, st_gid=20,
     # st_size=0, st_atime=0, st_mtime=0, st_ctime=0
 
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     # is the file descriptor valid?
     if fd not in filedescriptortable:
       raise SyscallError("fstat_syscall","EBADF","The file descriptor is invalid.")
@@ -1149,7 +1160,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # let's get the next available fd number.   The standard says we need to
     # return the lowest open fd number.
     for fd in range(startfd, MAX_FD):
-      if not fd in filedescriptortable:
+      if not fd in masterfiledescriptortable[CONST_CAGEID]:
         return fd
 
     raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
@@ -1158,6 +1169,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/open
     """
+
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
 
     # in an abundance of caution, lock...   I think this should only be needed
     # with O_CREAT flags...
@@ -1290,7 +1303,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # TODO handle read / write locking, etc.
 
       # Add the entry to the table!
-      filedescriptortable[thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
+      masterfiledescriptortable[CONST_CAGEID][thisfd] = {'position':position, 'inode':inode, 'lock':createlock(), 'flags':flags&O_RDWRFLAGS}
       # Done!   Let's return the file descriptor.
       return thisfd
 
@@ -1334,6 +1347,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/lseek
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
     if fd not in filedescriptortable:
@@ -1412,7 +1427,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _read_from_pipe(fd, count):
 
     # lets find the pipe number and acquire the readlock
-    pipenumber = filedescriptortable[fd]['pipe']
+    pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
     pipetable[pipenumber]['readlock'].acquire(True)
 
     data = ''
@@ -1443,6 +1458,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/read
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
     
     try:
       if filedescriptortable[fd]["stream"] == 0:
@@ -1502,7 +1519,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   def _write_to_pipe(fd, data):
 
     # find pipe number, and grab lock
-    pipenumber = filedescriptortable[fd]['pipe']
+    pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
     pipetable[pipenumber]['writelock'].acquire(True)
 
     # append data to pipe list byte by byte
@@ -1525,6 +1542,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/write
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
     if fd not in filedescriptortable:
@@ -1649,6 +1668,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # BAD this is copied from net_calls, but there is no way to get it
   def _cleanup_socket(fd):
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
     if 'socketobjectid' in filedescriptortable[fd]:
       thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
       try:
@@ -1668,6 +1688,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # private helper, handle pipe as each end closes.
   def _cleanup_pipe(fd):
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
     
     # let's find the pipenumber
     pipenumber = filedescriptortable[fd]['pipe']
@@ -1693,7 +1714,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper that allows this to be called in other places (like dup2)
   # without changing to re-entrant locks
   def _close_helper(fd):
-
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # in an abundance of caution, lock...
     filesystemmetadatalock.acquire(True)
@@ -1773,6 +1794,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/close
     """
 
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
+
     # in an abundance of caution, lock...
     fdtablelock.acquire(True)
 
@@ -1799,6 +1823,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # private helper that allows this to be used by dup
   def _dup2_helper(oldfd,newfd):
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # if the new file descriptor is too low or too high
     # NOTE: I want to support dup2 being used to replace STDERR, STDOUT, etc.
@@ -1834,6 +1860,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/dup2
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
   
     # lock to prevent things from changing while we look this up...
     fdtablelock.acquire(True)
@@ -1865,6 +1894,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/dup
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
 
     # lock to prevent things from changing while we look this up...
     fdtablelock.acquire(True)
@@ -1915,6 +1947,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # as is needed.
 
     # BUG: I probably need a filedescriptortable lock to prevent race conditions
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
     if fd not in filedescriptortable:
@@ -1999,6 +2033,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
 
     # BUG BUG BUG: Do I really understand this spec!?!?!?!
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
     if fd not in filedescriptortable:
@@ -2125,6 +2161,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       http://linux.die.net/man/2/ftruncate
     """
 
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
     if fd not in filedescriptortable and fd >= STARTINGFD:
@@ -2404,6 +2441,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/flock
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     if fd not in filedescriptortable:
       raise SyscallError("flock_syscall", "EBADF" "Invalid file descriptor.")
 
@@ -2488,6 +2527,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     http://linux.die.net/man/2/pipe
     """
     # lock to prevent things from changing while we look this up...
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
+
     fdtablelock.acquire(True)
 
     # ... but always release it...
@@ -2526,7 +2569,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     http://linux.die.net/man/2/pipe2
     """
     # lock to prevent things from changing while we look this up...
-    fdtablelock
+    fdtablelock.acquire(True)
     # ... but always release it...
     try:
       #stuff
@@ -2541,6 +2584,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   def fork_syscall(child_cageid):
 
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
+
     fdtablelock.acquire(True)
 
     try:
@@ -2551,12 +2596,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       
       master_fs_calls_context[child_cageid] = \
         repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
+      del master_fs_calls_context[child_cageid]['syscall_table']
     
       parentagetable[child_cageid] = {'ppid': CONST_CAGEID}
     
     finally:
       fdtablelock.release()
-
     return 0
 
   FS_CALL_DICTIONARY["fork_syscall"] = fork_syscall
@@ -2565,6 +2610,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # but we want to get rid of all the information from the old cage
   
   def exec_syscall(child_cageid):
+
+    fdtablelock = masterfdlocktable[CONST_CAGEID]
     
     fdtablelock.acquire(True)
 
@@ -2574,6 +2621,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       masterfdlocktable[child_cageid] = createlock()
       
+      del master_fs_calls_context[CONST_CAGEID]['syscall_table']
       master_fs_calls_context[child_cageid] = \
         repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
 
@@ -2589,6 +2637,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     http://linux.die.net/man/2/mmap
     """
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     # lock to prevent things from changing while we look this up...
     filesystemmetadatalock.acquire(True)
 
@@ -2665,8 +2716,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadatalock.release()
 
   FS_CALL_DICTIONARY["munmap_syscall"] = munmap_syscall
+
+  fs_calls_context["syscall_table"] = FS_CALL_DICTIONARY
   
   if CLOSURE_SYSCALL_NAME in FS_CALL_DICTIONARY:
     return FS_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
-    exitall(-1)
+    return enosys_syscall
