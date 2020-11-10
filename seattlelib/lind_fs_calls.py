@@ -1851,10 +1851,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if newfd == oldfd:
       return newfd
 
+    print "per close helper"
+
     # okay, they are different.   If the new fd exists, close it.
     if newfd in filedescriptortable:
       # should not result in an error.   This only occurs on a bad fd
       _close_helper(newfd)
+
+    print "post close helper"
 
 
     # Okay, we need the new and old to point to the same thing.
