@@ -1578,7 +1578,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         return _write_to_pipe(fd, data)
 
       try:
-        # Acquire the metadata and fd lock...
+        # Acquire the metadata lock... but always release it
         filesystemmetadatalock.acquire(True)
 
         # get the inode so I can update the size (if needed) and check the type
