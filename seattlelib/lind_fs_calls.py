@@ -1730,6 +1730,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     print "close helper fd" + str(fd)
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
+
+    # don't close streams, which have an inode of 1
+    try:
+      if filedescriptortable[fd]['inode'] == STREAMINODE: return 0
+    except KeyError:
+      pass
     # in an abundance of caution, lock...
     filesystemmetadatalock.acquire(True)
 
@@ -1739,13 +1745,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     print "post fd lock close helper"
     try:
-          
-      # don't close streams, which have an inode of 1
-      try:
-        if filedescriptortable[fd]['inode'] == STREAMINODE: return 0
-      except KeyError:
-        pass
-
       # if we are a socket, we dont change disk metadata
       if IS_SOCK_DESC(fd,CONST_CAGEID):
         _cleanup_socket(fd)
