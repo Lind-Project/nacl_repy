@@ -1727,15 +1727,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # without changing to re-entrant locks
   def _close_helper(fd):
 
-    print "close helper fd" + str(fd)
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
-
 
     # don't close streams, which have an inode of 1
     try:
       if filedescriptortable[fd]['inode'] == STREAMINODE: return 0
     except KeyError:
       pass
+
     # in an abundance of caution, lock...
     filesystemmetadatalock.acquire(True)
 
@@ -1743,7 +1742,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].acquire(True)
 
-    print "post fd lock close helper"
     try:
       # if we are a socket, we dont change disk metadata
       if IS_SOCK_DESC(fd,CONST_CAGEID):
@@ -1853,14 +1851,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if newfd == oldfd:
       return newfd
 
-    print "per close helper"
-
     # okay, they are different.   If the new fd exists, close it.
     if newfd in filedescriptortable:
       # should not result in an error.   This only occurs on a bad fd
       _close_helper(newfd)
-
-    print "post close helper"
 
 
     # Okay, we need the new and old to point to the same thing.
@@ -1892,17 +1886,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # Acquire the fd lock...
     filedescriptortable[oldfd]['lock'].acquire(True)
 
-    print "dup2 old fd " + str(oldfd)
-    print "dup2 new fd " + str(newfd)
 
     # ... but always release it...
     try:
-      print "going into dup2helper"
       return _dup2_helper(oldfd, newfd)
 
     finally:
       # ... release the locks
-      print "leaving dup2"
       filedescriptortable[oldfd]['lock'].release()
       fdtablelock.release()
 
