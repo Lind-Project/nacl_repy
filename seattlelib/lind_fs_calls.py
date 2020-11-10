@@ -1889,10 +1889,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
+      print "going into dup2helper"
       return _dup2_helper(oldfd, newfd)
 
     finally:
       # ... release the locks
+      print "leaving dup2"
       filedescriptortable[oldfd]['lock'].release()
       fdtablelock.release()
 
