@@ -1726,6 +1726,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper that allows this to be called in other places (like dup2)
   # without changing to re-entrant locks
   def _close_helper(fd):
+
+    print "close helper fd" + str(fd)
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # in an abundance of caution, lock...
@@ -1890,6 +1892,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # Acquire the fd lock...
     filedescriptortable[oldfd]['lock'].acquire(True)
 
+    print "dup2 old fd " + str(oldfd)
+    print "dup2 new fd " + str(newfd)
 
     # ... but always release it...
     try:
