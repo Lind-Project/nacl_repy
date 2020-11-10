@@ -1737,6 +1737,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if 'lock' in filedescriptortable[fd]:
       filedescriptortable[fd]['lock'].acquire(True)
 
+    print "post fd lock close helper"
     try:
           
       # don't close streams, which have an inode of 1
