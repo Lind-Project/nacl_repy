@@ -203,7 +203,7 @@ def print_log():
     curr = call_log[i]
     logstring = "Syscall " + curr["call"]
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
-    logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
+    if "dispatcher" in curr: logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
     if "closure" in curr: logstring += " closure time " + str(curr["closure"] * 1000000) + " us"
     if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
