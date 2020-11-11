@@ -2259,7 +2259,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # add the major and minor device no.'s, I did it here so that the code can be managed
       # properly, instead of putting everything in open_syscall.
-      inode = filedescriptortable[fd]['inode']
+      inode = masterfiledescriptortable[CONST_CAGEID][fd]['inode']
       filesystemmetadata['inodetable'][inode]['rdev'] = dev
 
       # close the file descriptor...
@@ -2528,7 +2528,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     # lock to prevent things from changing while we look this up...
 
-    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
     fdtablelock = masterfdlocktable[CONST_CAGEID]
 
     fdtablelock.acquire(True)
@@ -2551,7 +2550,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           assert(e[0]=='open_syscall')
           raise SyscallError('pipe_syscall',e[1],e[2])
 
-        filedescriptortable[nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
+        masterfiledescriptortable[CONST_CAGEID][nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
         pipefds.append(nextfd)    
 
       return pipefds
