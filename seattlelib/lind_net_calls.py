@@ -268,7 +268,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     except:
       return enosys_syscall
 
-  FS_CALL_DICTIONARY = {}
+  NET_CALL_DICTIONARY = {}
 
   def get_next_fd():
 
