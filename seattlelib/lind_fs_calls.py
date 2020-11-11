@@ -2509,16 +2509,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # add the major and minor device no.'s, I did it here so that the code can be managed
       # properly, instead of putting everything in open_syscall.
-      inode = filedescriptortable[fd]['inode']
+      inode = masterfiledescriptortable[CONST_CAGEID][fd]['inode']
       filesystemmetadata['inodetable'][inode]['rdev'] = dev
 
       # close the file descriptor...
-      close_syscall(fd)
 
       return 0
 
     finally:
       filesystemmetadatalock.release()
+      close_syscall(fd)
 
   FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
 
@@ -2826,9 +2826,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     # lock to prevent things from changing while we look this up...
 
+<<<<<<< HEAD
     fs_starttime = time.clock()
 
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+=======
+>>>>>>> origin/fast-closure
     fdtablelock = masterfdlocktable[CONST_CAGEID]
 
     fdtablelock.acquire(True)
@@ -2851,7 +2854,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           assert(e[0]=='open_syscall')
           raise SyscallError('pipe_syscall',e[1],e[2])
 
-        filedescriptortable[nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
+        masterfiledescriptortable[CONST_CAGEID][nextfd] = {'pipe':pipenumber, 'lock':createlock(), 'flags':flag}
         pipefds.append(nextfd)    
 
       return pipefds
@@ -2907,7 +2910,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       master_fs_calls_context[child_cageid] = \
         repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
       del master_fs_calls_context[child_cageid]['syscall_table']
-    
+      del master_fs_calls_context[child_cageid]['netcall_table']
+
       parentagetable[child_cageid] = {'ppid': CONST_CAGEID}
     
     finally:
