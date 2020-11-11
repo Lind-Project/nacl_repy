@@ -254,21 +254,28 @@ def _insert_into_socketobjecttable(socketobj):
 
 def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
-  NET_CALL_DICTIONARY = {}
-
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
-  filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
   if CONST_CAGEID not in master_fs_calls_context:
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
 
+  # perhaps include an initalization failsafe?
+  if "netcall_table" in fs_calls_context:
+    try:
+      return fs_calls_context['netcall_table'][CLOSURE_SYSCALL_NAME]
+    except:
+      return enosys_syscall
+
+  NET_CALL_DICTIONARY = {}
+
   def get_next_fd():
+
     # let's get the next available fd number.   The standard says we need to
     # return the lowest open fd number.
     for fd in range(STARTINGFD, MAX_FD):
-      if not fd in filedescriptortable:
+      if not fd in masterfiledescriptortable[CONST_CAGEID]:
         return fd
 
     raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
@@ -288,7 +295,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
     # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
     # of the calls I did not change break.
-    filedescriptortable[newfd] = {
+    masterfiledescriptortable[CONST_CAGEID][newfd] = {
         'mode':S_IFSOCK|0666, # set rw-rw-rw- perms too. This is what POSIX does.
         'domain':domain,
         'type':socktype,      # I'm using this name because it's used by POSIX.
@@ -372,6 +379,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/bind
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
     if fd not in filedescriptortable:
       raise SyscallError("bind_syscall","EBADF","The file descriptor is invalid.")
 
@@ -449,6 +457,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/connect
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("connect_syscall","EBADF","The file descriptor is invalid.")
@@ -549,6 +558,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/sendto
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("sendto_syscall","EBADF","The file descriptor is invalid.")
@@ -620,6 +630,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/send
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     if fd not in filedescriptortable:
       raise SyscallError("send_syscall","EBADF","The file descriptor is invalid.")
 
@@ -693,6 +705,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/recvfrom
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("recvfrom_syscall","EBADF","The file descriptor is invalid.")
@@ -831,6 +844,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/getsockname
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("getsockname_syscall","EBADF","The file descriptor is invalid.")
@@ -864,6 +878,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/getpeername
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("getpeername_syscall","EBADF","The file descriptor is invalid.")
@@ -898,6 +913,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/listen
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("listen_syscall","EBADF","The file descriptor is invalid.")
@@ -1000,6 +1016,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/accept
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("accept_syscall","EBADF","The file descriptor is invalid.")
@@ -1080,6 +1097,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/getsockopt
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     if fd not in filedescriptortable:
       raise SyscallError("getsockopt_syscall","EBADF","The file descriptor is invalid.")
 
@@ -1166,6 +1185,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/setsockopt
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     if fd not in filedescriptortable:
       raise SyscallError("setsockopt_syscall","EBADF","The file descriptor is invalid.")
 
@@ -1240,6 +1261,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
 
   def _cleanup_socket(fd, partial = False):
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     if 'socketobjectid' in filedescriptortable[fd]:
       thesocket = socketobjecttable[filedescriptortable[fd]['socketobjectid']]
       thesocket.close(partial)
@@ -1262,6 +1285,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     """
       http://linux.die.net/man/2/shutdown
     """
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     if fd not in filedescriptortable:
       raise SyscallError("shutdown_syscall","EBADF","The file descriptor is invalid.")
@@ -1335,6 +1359,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     # if read fails with would block
     #   mark false
     # if read works, do it as a peek, so next time it won't block
+
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     retval = 0
 
@@ -1595,7 +1621,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
     # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
     # of the calls I did not change break.
-    filedescriptortable[newfd] = {
+    masterfiledescriptortable[CONST_CAGEID][newfd] = {
         'mode':0000,
         'lock':createlock(),
         'registered_fds':{},
@@ -1615,6 +1641,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
   NET_CALL_DICTIONARY["epoll_create_syscall"] = epoll_create_syscall
 
   def epoll_ctl_syscall(epfd, op, fd, event):
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     if not IS_EPOLL_FD(epfd):
       raise SyscallError("epoll_ctl_syscall","EBADF","epfd is not a valid FD")
 
@@ -1642,6 +1670,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
   NET_CALL_DICTIONARY["epoll_ctl_syscall"] = epoll_ctl_syscall
 
   def epoll_wait_syscall(epfd, maxevents, timeout):
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
     if not epfd in filedescriptortable:
       raise SyscallError("epoll_wait_syscall","EBADF","epfd is not a valid FD")
 
@@ -1685,6 +1715,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
 
   NET_CALL_DICTIONARY["epoll_wait_syscall"] = epoll_wait_syscall
 
+  fs_calls_context["netcall_table"] = NET_CALL_DICTIONARY
   if CLOSURE_SYSCALL_NAME in NET_CALL_DICTIONARY:
     return NET_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
   else:
