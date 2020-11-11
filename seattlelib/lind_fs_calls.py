@@ -2597,6 +2597,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       master_fs_calls_context[child_cageid] = \
         repy_deepcopy(master_fs_calls_context[CONST_CAGEID])
       del master_fs_calls_context[child_cageid]['syscall_table']
+      del master_fs_calls_context[child_cageid]['netcall_table']
     
       parentagetable[child_cageid] = {'ppid': CONST_CAGEID}
     
