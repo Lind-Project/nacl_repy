@@ -2826,12 +2826,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     # lock to prevent things from changing while we look this up...
 
-<<<<<<< HEAD
     fs_starttime = time.clock()
 
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
-=======
->>>>>>> origin/fast-closure
     fdtablelock = masterfdlocktable[CONST_CAGEID]
 
     fdtablelock.acquire(True)
