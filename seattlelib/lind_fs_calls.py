@@ -2263,12 +2263,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadata['inodetable'][inode]['rdev'] = dev
 
       # close the file descriptor...
-      close_syscall(fd)
 
       return 0
 
     finally:
       filesystemmetadatalock.release()
+      close_syscall(fd)
 
   FS_CALL_DICTIONARY["mknod_syscall"] = mknod_syscall
 
