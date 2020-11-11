@@ -1475,8 +1475,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if IS_WRONLY(filedescriptortable[fd]['flags']):
       raise SyscallError("read_syscall","EBADF","File descriptor is not open for reading.")
 
-    # Acquire the metadata and fd lock...
-    filesystemmetadatalock.acquire(True)
+    # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
 
     # ... but always release it...
@@ -1486,31 +1485,38 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _read_from_pipe(fd, count)
 
-      # get the inode so I can and check the mode (type)
-      inode = filedescriptortable[fd]['inode']
+      try:
+        # Acquire the metadata lock... but always release it
 
-      # If its a character file, call the helper function.
-      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-        return _read_chr_file(inode, count)
+        filesystemmetadatalock.acquire(True)
 
-      # Is it anything other than a regular file?
-      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
+        # get the inode so I can and check the mode (type)
+        inode = filedescriptortable[fd]['inode']
+
+        # If its a character file, call the helper function.
+        if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+          return _read_chr_file(inode, count)
+
+        # Is it anything other than a regular file?
+        if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
 
 
-      # let's do a readat!
-      position = filedescriptortable[fd]['position']
-      data = fileobjecttable[inode].readat(count,position)
+        # let's do a readat!
+        position = filedescriptortable[fd]['position']
+        data = fileobjecttable[inode].readat(count,position)
 
-      # and update the position
-      filedescriptortable[fd]['position'] += len(data)
+        # and update the position
+        filedescriptortable[fd]['position'] += len(data)
 
-      return data
+        return data
+
+      finally:
+        filesystemmetadatalock.release()
 
     finally:
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
-      filesystemmetadatalock.release()
 
 
   FS_CALL_DICTIONARY["read_syscall"] = read_syscall
@@ -1561,8 +1567,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if IS_RDONLY(filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
     
-    # Acquire the metadata and fd lock...
-    filesystemmetadatalock.acquire(True)
+    # Acquire the fd lock...
     filedescriptortable[fd]['lock'].acquire(True)
 
     # ... but always release it...
@@ -1572,53 +1577,60 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _write_to_pipe(fd, data)
 
-      # get the inode so I can update the size (if needed) and check the type
-      inode = filedescriptortable[fd]['inode']
+      try:
+        # Acquire the metadata lock... but always release it
+        filesystemmetadatalock.acquire(True)
 
-      # If its a character file, call the helper function.
-      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-        return _write_chr_file(inode, data)
+        # get the inode so I can update the size (if needed) and check the type
+        inode = filedescriptortable[fd]['inode']
 
-      # Is it anything other than a regular file?
-      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
+        # If its a character file, call the helper function.
+        if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+          return _write_chr_file(inode, data)
 
-
-      # let's get the position...
-      position = filedescriptortable[fd]['position']
-
-      # and the file size...
-      filesize = filesystemmetadata['inodetable'][inode]['size']
-
-      # if the position is past the end of the file, write '\0' bytes to fill
-      # up the gap...
-      blankbytecount = position - filesize
-
-      if blankbytecount > 0:
-        # let's write the blank part at the end of the file...
-        fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
+        # Is it anything other than a regular file?
+        if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
 
 
-      # writeat never writes less than desired in Repy V2.
-      fileobjecttable[inode].writeat(data,position)
+        # let's get the position...
+        position = filedescriptortable[fd]['position']
 
-      # and update the position
-      filedescriptortable[fd]['position'] += len(data)
+        # and the file size...
+        filesize = filesystemmetadata['inodetable'][inode]['size']
 
-      # update the file size if we've extended it
-      if filedescriptortable[fd]['position'] > filesize:
-        filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
-        persist_metadata(METADATAFILENAME)
+        # if the position is past the end of the file, write '\0' bytes to fill
+        # up the gap...
+        blankbytecount = position - filesize
 
-      # we always write it all, so just return the length of what we were passed.
-      # We do not mention whether we write blank data (if position is after the
-      # end)
-      return len(data)
+        if blankbytecount > 0:
+          # let's write the blank part at the end of the file...
+          fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
+
+
+        # writeat never writes less than desired in Repy V2.
+        fileobjecttable[inode].writeat(data,position)
+
+        # and update the position
+        filedescriptortable[fd]['position'] += len(data)
+
+        # update the file size if we've extended it
+        if filedescriptortable[fd]['position'] > filesize:
+          filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
+          persist_metadata(METADATAFILENAME)
+
+        # we always write it all, so just return the length of what we were passed.
+        # We do not mention whether we write blank data (if position is after the
+        # end)
+        return len(data)
+      
+      finally:
+        filesystemmetadatalock.release()
+
 
     finally:
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
-      filesystemmetadatalock.release()
 
 
   FS_CALL_DICTIONARY["write_syscall"] = write_syscall
@@ -1714,7 +1726,14 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # private helper that allows this to be called in other places (like dup2)
   # without changing to re-entrant locks
   def _close_helper(fd):
+
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+
+    # don't close streams, which have an inode of 1
+    try:
+      if filedescriptortable[fd]['inode'] == STREAMINODE: return 0
+    except KeyError:
+      pass
 
     # in an abundance of caution, lock...
     filesystemmetadatalock.acquire(True)
@@ -1724,13 +1743,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filedescriptortable[fd]['lock'].acquire(True)
 
     try:
-          
-      # don't close streams, which have an inode of 1
-      try:
-        if filedescriptortable[fd]['inode'] == STREAMINODE: return 0
-      except KeyError:
-        pass
-
       # if we are a socket, we dont change disk metadata
       if IS_SOCK_DESC(fd,CONST_CAGEID):
         _cleanup_socket(fd)
