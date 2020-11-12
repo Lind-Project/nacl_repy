@@ -195,9 +195,9 @@ def init_namespace(resourcefn, program, args):
   #usercontext["getthreadname"] = emulmisc.getthreadname
   usercontext["createvirtualnamespace"] = virtual_namespace.createvirtualnamespace
   usercontext["getlasterror"] = emulmisc.getlasterror
-  usercontext["struct_pack"] = struct.pack
-  usercontext["struct_unpack"] = struct.unpack
-  usercontext["struct_calcsize"] = struct.calcsize
+  usercontext["struct_pack_new"] = struct.pack
+  usercontext["struct_unpack_new"] = struct.unpack
+  usercontext["struct_calcsize_new"] = struct.calcsize
 
       
   # grab the user code from the file
