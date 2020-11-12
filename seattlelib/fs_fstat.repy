@@ -38,11 +38,14 @@ def lind_fs_fxstat(args):
       # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
       # followed by 2Q for each timestamp.   The ns field is set to 0.
       packed = pack_stat_struct(result)
-      packed_new = pack_stat_struct_new(result)
 
       print "old"
       print packed
       print "----------"
+      
+      
+      packed_new = pack_stat_struct_new(result)
+
       print "new"
       print packed_new
       print "----------"
