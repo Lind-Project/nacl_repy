@@ -13,7 +13,7 @@ def inet_ntoa(ipaddress):
     This is
 
     """
-    a, b, c, d = struct_unpack("BBBB", ipaddress)
+    a, b, c, d = struct_unpack("<B<B<B<B", ipaddress)
     return str(a) + "." + str(b) + "." + str(c) + "." + str(d)
 
 
@@ -22,11 +22,11 @@ def inet_aton(ipaddress):
     Convert an IP address in presentation format to its integer octet format
 
     """
-    return struct_unpack("I", struct_pack("BBBB", \
+    return struct_unpack("<I", struct_pack("<B<B<B<B", \
                                            *map(int, ipaddress.split("."))))[0]
 
 
-struct_sockaddr_format = 'h>HIQ'  # family, port, address, padding
+struct_sockaddr_format = '<h>H<I<Q'  # family, port, address, padding
 
 
 def parse_sockaddr_struct(sock):
@@ -47,7 +47,7 @@ def pack_struct_sockaddr(family, ip, port):
 #     short revents;    /* returned events */
 #     };
 
-single_struct_pollfd_fmt = "Ihh"
+single_struct_pollfd_fmt = "<I<h<h"
 
 
 def parse_struct_pollfds(pollfds_str, nfds):
@@ -87,9 +87,9 @@ def pack_stat_struct(struct_tuple):
     if type(my_st_rdev) == tuple:
         ma = my_st_rdev[0]
         mi = my_st_rdev[1]
-        my_st_rdev = (((ma)  20) | (mi))
+        my_st_rdev = (((ma) << 20) | (mi))
         
-    result = struct_pack('QQQIIIIQqqqQQQQQQ',
+    result = struct_pack('<Q<Q<Q<I<I<I<I<Q<q<q<q<Q<Q<Q<Q<Q<Q',
                          my_st_dev, my_st_ino, my_st_nlink, my_st_mode, \
                          my_st_uid, my_st_gid, 0, my_st_rdev, my_st_size, \
                          my_st_blksize, my_st_blocks, my_st_atime, \
@@ -107,7 +107,7 @@ def pack_stat_struct_new(struct_tuple):
     if type(my_st_rdev) == tuple:
         ma = my_st_rdev[0]
         mi = my_st_rdev[1]
-        my_st_rdev = (((ma)  20) | (mi))
+        my_st_rdev = (((ma) << 20) | (mi))
         
     result = struct_pack_new('<QQQIIIQqqqQQQQQQ',
                          my_st_dev, my_st_ino, my_st_nlink, my_st_mode, \
@@ -143,7 +143,7 @@ def pack_statfs_struct(fsd):
                                       fsd['f_frsize'],
                                       fsd['f_spare'])
 
-    format = 'qqqqqqqQqq8s'
+    format = '<q<q<q<q<q<q<q<Q<q<q8s'
     result = struct_pack(format, tipe, bsize, blocks, bfree, bavail, \
                          files, ffree, fsid, namelen, frsize, spare)
     return result
@@ -158,7 +158,7 @@ def parse_timeval(timeval_str):
     @return a float in seceonds, then each sec and usec member
     """
     
-    tv_sec, tv_usec = struct_unpack("QQ",timeval_str)
+    tv_sec, tv_usec = struct_unpack("<Q<Q",timeval_str)
     return ((tv_sec + (SEC_PER_MICROSEC * tv_usec)), tv_sec, tv_usec)
 
 
@@ -167,7 +167,7 @@ def pack_struct_timeval(tv_sec, tv_usec):
 
     @return a float in seceonds, then each sec and usec member
     """
-    new_struct= struct_pack("QQ",tv_sec, tv_usec)
+    new_struct= struct_pack("<Q<Q",tv_sec, tv_usec)
     return new_struct
 
     
