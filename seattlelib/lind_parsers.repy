@@ -109,7 +109,7 @@ def pack_stat_struct_new(struct_tuple):
         mi = my_st_rdev[1]
         my_st_rdev = (((ma) << 20) | (mi))
         
-    result = struct_pack_new('<QQQIIIQqqqQQQQQQ',
+    result = struct_pack_new('<QQQIIIIQqqqQQQQQQ',
                          my_st_dev, my_st_ino, my_st_nlink, my_st_mode, \
                          my_st_uid, my_st_gid, 0, my_st_rdev, my_st_size, \
                          my_st_blksize, my_st_blocks, my_st_atime, \
