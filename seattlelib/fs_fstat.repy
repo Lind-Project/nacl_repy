@@ -43,9 +43,9 @@ def lind_fs_fxstat(args):
       print "old"
       print packed
       print "----------"
-      print "new"
-      print packed_new
-      print "----------"
+      # print "new"
+      # print packed_new
+      # print "----------"
 
 
       stub_endtime = time.clock()
