@@ -85,6 +85,8 @@ import emulfile
 import emulmisc
 import emultimer
 
+import struct
+
 # threading in python2.7 needs hasattr. It needs to be allowed explicitly. 
 threading.hasattr = hasattr
 
@@ -193,6 +195,10 @@ def init_namespace(resourcefn, program, args):
   #usercontext["getthreadname"] = emulmisc.getthreadname
   usercontext["createvirtualnamespace"] = virtual_namespace.createvirtualnamespace
   usercontext["getlasterror"] = emulmisc.getlasterror
+  usercontext["struct_pack"] = struct.pack
+  usercontext["struct_unpack"] = struct.unpack
+  usercontext["struct_calcsize"] = struct.calcsize
+
       
   # grab the user code from the file
   try:
