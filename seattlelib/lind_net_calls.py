@@ -1721,12 +1721,12 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
   ##### GETHOSTNAME  #####
   
   
-  def gethostname_syscall(name, length):
+  def gethostname_syscall(length):
     """
     https://linux.die.net/man/2/gethostname
     """
     
-    return "";
+    return ""
   
   NET_CALL_DICTIONARY["gethostname_syscall"] = gethostname_syscall
   
