@@ -1,0 +1,41 @@
+"""
+
+Handlers for the gethostname system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+"""
+
+def lind_net_gethostname(args):
+    """ gethostname calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+    
+    TODO: Implement gethostname_syscall in lind_net_calls.py and debug
+    """
+    try:
+      name = args[0]
+      len = args[1]
+    
+      result = get_net_call(args[-1],"gethostname_syscall")(name, len)
+      
+    except SyscallError,e:
+      return ErrorResponseBuilder("net_gethostname", e[1], e[2])
+      
+    return SuccessResponseBuilder("net_gethostname", 0, result)
+
+
+
+def lind_safe_net_getsockname(args):
+  """ Safely wrap the gethostname call.
+
+    See dispatcher.repy for details.
+    
+    TODO: Add Safety Checks
+    """
+    
+  result = lind_net_getsockname(args)
+
+  return result
