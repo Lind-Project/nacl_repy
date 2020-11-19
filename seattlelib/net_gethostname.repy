@@ -28,7 +28,7 @@ def lind_net_gethostname(args):
 
 
 
-def lind_safe_net_getsockname(args):
+def lind_safe_net_gethostname(args):
   """ Safely wrap the gethostname call.
 
     See dispatcher.repy for details.
@@ -36,6 +36,6 @@ def lind_safe_net_getsockname(args):
     TODO: Add Safety Checks
     """
     
-  result = lind_net_getsockname(args)
+  result = lind_net_gethostname(args)
 
   return result
