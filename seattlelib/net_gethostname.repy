@@ -16,10 +16,9 @@ def lind_net_gethostname(args):
     TODO: Implement gethostname_syscall in lind_net_calls.py and debug
     """
     try:
-      name = args[0]
-      len = args[1]
+      len = args[0]
     
-      result = get_net_call(args[-1],"gethostname_syscall")(name, len)
+      result = get_net_call(args[-1],"gethostname_syscall")(len)
       
     except SyscallError,e:
       return ErrorResponseBuilder("net_gethostname", e[1], e[2])
@@ -33,7 +32,7 @@ def lind_safe_net_gethostname(args):
 
     See dispatcher.repy for details.
     
-    TODO: Add Safety Checks
+    TODO: Add Length check, give error or truncate the result if needed.
     """
     
   result = lind_net_gethostname(args)
