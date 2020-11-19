@@ -1714,7 +1714,20 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     return nepoll_return, epoll_return
 
   NET_CALL_DICTIONARY["epoll_wait_syscall"] = epoll_wait_syscall
+  
+  # int gethostname(char *name, size_t len);
 
+  
+  ##### GETHOSTNAME  #####
+  
+  
+  def gethostname_syscall(name, length):
+    
+    return 0;
+  
+  NET_CALL_DICTIONARY["gethostname_syscall"] = gethostname_syscall
+  
+  
   fs_calls_context["netcall_table"] = NET_CALL_DICTIONARY
   if CLOSURE_SYSCALL_NAME in NET_CALL_DICTIONARY:
     return NET_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
