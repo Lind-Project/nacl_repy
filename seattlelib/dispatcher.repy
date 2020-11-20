@@ -61,7 +61,8 @@ def setup_dispatcher(comp_num):
     56:lind_safe_net_epoll_create,
     57:lind_safe_net_epoll_ctl,
     58:lind_safe_net_epoll_wait,
-
+    59:lind_safe_net_gethostname,
+    
     66:lind_safe_fs_pipe,
     67:lind_safe_fs_pipe2,
     68:lind_safe_fs_fork,
@@ -128,7 +129,8 @@ def setup_dispatcher(comp_num):
     56:lind_net_epoll_create,
     57:lind_net_epoll_ctl,
     58:lind_net_epoll_wait,
-
+    59:lind_net_gethostname,
+    
     66:lind_fs_pipe,
     67:lind_fs_pipe2,
     68:lind_fs_fork,
