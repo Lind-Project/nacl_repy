@@ -12,8 +12,6 @@ def lind_net_gethostname(args):
     """ gethostname calls are dispatched to this function.
 
     See dispatcher.repy for details.
-    
-    TODO: Implement gethostname_syscall in lind_net_calls.py
     """
     try:
       length = args[0]
