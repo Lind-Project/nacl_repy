@@ -1730,7 +1730,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     name_length = len(DEFAULT_HOSTNAME)
     result = DEFAULT_HOSTNAME[0,length]
     
-    ##TODO: Implement Errors
+    if(lenth < 0):
+      raise SyscallError("gethostname_syscall","EINVAL","Invalid argument")
     
     return result
   
