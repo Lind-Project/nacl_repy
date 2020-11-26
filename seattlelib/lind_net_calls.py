@@ -1726,6 +1726,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     https://linux.die.net/man/2/gethostname
     """
     
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+    
     #Using the DEFAULT_HOSTNAME ("Lind") for now since we do not let user change the host name at this point.
     name_length = len(DEFAULT_HOSTNAME)
     result = DEFAULT_HOSTNAME[0,length]
