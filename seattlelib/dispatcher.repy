@@ -62,8 +62,6 @@ def setup_dispatcher(comp_num):
     57:lind_safe_net_epoll_ctl,
     58:lind_safe_net_epoll_wait,
     
-    61:lind_safe_net_gethostname,
-    
     66:lind_safe_fs_pipe,
     67:lind_safe_fs_pipe2,
     68:lind_safe_fs_fork,
@@ -72,7 +70,9 @@ def setup_dispatcher(comp_num):
     105:lind_comp_cia,
     106:lind_comp_call,
     107:lind_comp_accept,
-    108:lind_comp_recv
+    108:lind_comp_recv,
+    
+    125:lind_safe_net_gethostname
     }
     
   elif MODE == "fast":
@@ -131,7 +131,7 @@ def setup_dispatcher(comp_num):
     57:lind_net_epoll_ctl,
     58:lind_net_epoll_wait,
     
-    61:lind_net_gethostname,
+    
     
     66:lind_fs_pipe,
     67:lind_fs_pipe2,
@@ -141,7 +141,9 @@ def setup_dispatcher(comp_num):
     105:lind_comp_cia,
     106:lind_comp_call,
     107:lind_comp_accept,
-    108:lind_comp_recv
+    108:lind_comp_recv,
+    
+    125:lind_net_gethostname
 
     }
   else:
