@@ -1730,7 +1730,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     
     print("hello, ", DEFAULT_HOSTNAME, " :: ", length)
     
-    print(DEFAULT_HOSTNAME.Length)
+    print(len(DEFAULT_HOSTNAME))
     
     print(DEFAULT_HOSTNAME[0,2])
     
@@ -1738,7 +1738,7 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
       raise SyscallError("gethostname_syscall","EINVAL","Invalid argument")
       
     #Using the DEFAULT_HOSTNAME ("Lind") for now since we do not let user change the host name at this point.
-    if(DEFAULT_HOSTNAME.Length > length):
+    if(len(DEFAULT_HOSTNAME) > length):
       result = DEFAULT_HOSTNAME[0,length]
     else:
       result = DEFAULT_HOSTNAME
