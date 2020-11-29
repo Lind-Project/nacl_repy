@@ -1730,6 +1730,10 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     
     print("hello, ", DEFAULT_HOSTNAME, " :: ", length)
     
+    print(DEFAULT_HOSTNAME.Length)
+    
+    print(DEFAULT_HOSTNAME[0,2])
+    
     if(length < 0):
       raise SyscallError("gethostname_syscall","EINVAL","Invalid argument")
       
