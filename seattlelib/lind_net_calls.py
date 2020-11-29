@@ -1736,6 +1736,8 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     if(length < 0):
       raise SyscallError("gethostname_syscall","EINVAL","Invalid argument")
     
+    print(result)
+    
     return result
   
   NET_CALL_DICTIONARY["gethostname_syscall"] = gethostname_syscall
