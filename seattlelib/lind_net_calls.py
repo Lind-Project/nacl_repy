@@ -1728,18 +1728,16 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
     
-    print("hello, ", DEFAULT_HOSTNAME, " :: ", length)
+    print("hello::",DEFAULT_HOSTNAME,"::",length,"::",len(DEFAULT_HOSTNAME))
     
-    print(len(DEFAULT_HOSTNAME))
-    
-    print(DEFAULT_HOSTNAME[0,2])
+    print(DEFAULT_HOSTNAME[0:2])
     
     if(length < 0):
       raise SyscallError("gethostname_syscall","EINVAL","Invalid argument")
       
     #Using the DEFAULT_HOSTNAME ("Lind") for now since we do not let user change the host name at this point.
     if(len(DEFAULT_HOSTNAME) > length):
-      result = DEFAULT_HOSTNAME[0,length]
+      result = DEFAULT_HOSTNAME[0:length]
     else:
       result = DEFAULT_HOSTNAME
       
