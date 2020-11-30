@@ -187,6 +187,8 @@ include net_epoll.repy
 
 include net_socketpair.repy
 
+include net_gethostname.repy
+
 include sys_getuid.repy
 
 include sys_geteuid.repy
@@ -216,6 +218,7 @@ include debug.repy
 include unimplemented_syscalls.repy
 
 include dispatcher.repy
+
 
 
 def print_times(times):
