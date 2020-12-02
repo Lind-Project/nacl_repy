@@ -1596,7 +1596,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # lets find the pipe number and read
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
 
-    return pipetable[pipenumber].read(count)
+    return pipetable[pipenumber].piperead(count)
 
 
 
