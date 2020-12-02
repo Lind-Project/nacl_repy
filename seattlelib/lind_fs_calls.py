@@ -112,6 +112,7 @@
 
 import time
 import thread
+import lindpipe
 
 class AtomicCounter:
     def __init__(self, initial=0):
@@ -1592,29 +1593,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
 
-    # lets find the pipe number and acquire the readlock
+    # lets find the pipe number and read
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
-    pipetable[pipenumber]['readlock'].acquire(True)
 
-    data = ''
-    num_bytes_read = 0
-    
-    # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    while num_bytes_read < count:
-      try:
-        if len(pipetable[pipenumber]['data']) == 0 and pipetable[pipenumber]['eof'] == True:
-          break
-        # pop the byte from the data list, append it to return data string
-        byte_read = pipetable[pipenumber]['data'].pop(0)
-        data += byte_read
-        num_bytes_read += 1
-
-      except IndexError, e:
-        continue
-
-    #release our readlock  
-    pipetable[pipenumber]['readlock'].release()
-    return data
+    return pipetable[pipenumber].read(count)
 
 
 
@@ -1700,18 +1682,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
 
-    # find pipe number, and grab lock
+    # find pipe number, and write
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
-    pipetable[pipenumber]['writelock'].acquire(True)
-
-    # append data to pipe list byte by byte
-    for byte in data:
-      pipetable[pipenumber]['data'].append(byte)
-
-    # release our write lock     
-    pipetable[pipenumber]['writelock'].release()
-
-    return len(data)
+ 
+    return pipetable[pipenumber].pipewrite(data)
 
 
 
@@ -1915,7 +1889,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
-      pipetable[pipenumber]['eof'] = True
+      pipetable[pipenumber].seteof()
 
     # if we're closing the last end, we can delete the pipe
     if (read_references + write_references) == 1:
@@ -2838,7 +2812,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
       # get next available pipe number, and set up pipe
       pipenumber = get_next_pipe()
-      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+      pipetable[pipenumber] = lindpipe.LindPipe()
       pipefds = []
      
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
