@@ -1893,7 +1893,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
       print "-----SETTING EOF-----"
-      pipetable[pipenumber].seteof()
+      # pipetable[pipenumber].seteof()
 
     # if we're closing the last end, we can delete the pipe
     if (read_references + write_references) == 1:
