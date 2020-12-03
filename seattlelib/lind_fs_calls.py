@@ -183,10 +183,10 @@ def init_log_entry(call_num):
 
 
 
-def add_cageid_log(cageid):
+def add_cageid_log(cagenum):
   global call_log
   call_counter = thread_callcounter[thread.get_ident()]
-  call_log[call_counter]["cageid"] = cageid
+  call_log[call_counter]["cageid"] = cagenum
 
 
 def add_to_log(handle, time):
@@ -613,7 +613,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
 
-  # add_cageid_log(CONST_CAGEID)
+  add_cageid_log(CONST_CAGEID)
 
   # perhaps include an initalization failsafe?
   if "syscall_table" in fs_calls_context:
