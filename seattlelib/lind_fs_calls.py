@@ -208,7 +208,7 @@ def print_log():
   for i in range(0, global_call_counter.value):
     curr = call_log[i]
     logstring = "Syscall " + curr["call"]
-    if "ceagid" in curr: logstring += "Cage " + str(curr["cageid"]) 
+    if "cageid" in curr: logstring += "Cage " + str(curr["cageid"]) 
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     if "dispatcher" in curr: logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
