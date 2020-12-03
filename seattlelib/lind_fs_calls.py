@@ -184,6 +184,11 @@ def init_log_entry(call_num):
 
 
 
+def add_cageid_log(id):
+  global call_log
+  call_counter = thread_callcounter[thread.get_ident()]
+  call_log[call_counter]["cageid"] = id
+
 
 def add_to_log(handle, time):
   global call_log
@@ -203,6 +208,7 @@ def print_log():
   for i in range(0, global_call_counter.value):
     curr = call_log[i]
     logstring = "Syscall " + curr["call"]
+    if "ceagid" in curr: logstring += "Cage " + str(curr["cageid"]) 
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     if "dispatcher" in curr: logstring += " dispatcher time " + str(curr["dispatcher"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
@@ -598,6 +604,8 @@ def enosys_syscall(*args):
 
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   closure_starttime = time.clock()
+
+  add_cageid_log(CONST_CAGEID)
 
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
