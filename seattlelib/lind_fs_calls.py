@@ -613,7 +613,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
 
-  add_cageid_log(CONST_CAGEID)
+  # add_cageid_log(CONST_CAGEID)
 
   # perhaps include an initalization failsafe?
   if "syscall_table" in fs_calls_context:
