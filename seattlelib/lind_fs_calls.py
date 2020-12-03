@@ -1601,7 +1601,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
-    # print "pipe reading count: " + str(count)
 
     # lets find the pipe number and read
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
@@ -1692,14 +1691,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
 
-    print "pipe writing"
-    print data
-    print "-----"
-
     # find pipe number, and write
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
  
-    return pipetable[pipenumber].pipewrite(str(data))
+    return pipetable[pipenumber].pipewrite(data)
 
 
 
@@ -1903,7 +1898,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and filedescriptortable[fd]['flags'] == O_WRONLY:
-      # print "-----SETTING EOF-----"
       pipetable[pipenumber].seteof()
 
     # if we're closing the last end, we can delete the pipe
