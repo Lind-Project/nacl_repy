@@ -183,7 +183,6 @@ def init_log_entry(call_num):
 
 
 
-
 def add_cageid_log(cageid):
   global call_log
   call_counter = thread_callcounter[thread.get_ident()]
@@ -605,7 +604,6 @@ def enosys_syscall(*args):
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   closure_starttime = time.clock()
 
-  add_cageid_log(CONST_CAGEID)
 
   if CONST_CAGEID not in masterfiledescriptortable:
     _load_lower_handle_stubs(CONST_CAGEID)
@@ -614,6 +612,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   if CONST_CAGEID not in master_fs_calls_context:
     master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
   fs_calls_context = master_fs_calls_context[CONST_CAGEID]
+
+  add_cageid_log(CONST_CAGEID)
+
   # perhaps include an initalization failsafe?
   if "syscall_table" in fs_calls_context:
     try:
