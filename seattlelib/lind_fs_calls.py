@@ -1592,7 +1592,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # helper function for pipe reads
   def _read_from_pipe(fd, count):
-    print "pipe reading count: " + str(count)
+    # print "pipe reading count: " + str(count)
 
     # lets find the pipe number and read
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
@@ -1683,7 +1683,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
 
-    print "pipe writing"
+    # print "pipe writing"
 
     # find pipe number, and write
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
