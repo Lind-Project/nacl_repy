@@ -1692,9 +1692,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # helper function for pipe writes
   def _write_to_pipe(fd, data):
 
-    print "pipe writing"
-    print data
-    print "-----"
+    # print "pipe writing"
+    # print data
+    # print "-----"
 
     # find pipe number, and write
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
