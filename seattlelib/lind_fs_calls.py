@@ -184,10 +184,10 @@ def init_log_entry(call_num):
 
 
 
-def add_cageid_log(id):
+def add_cageid_log(cageid):
   global call_log
   call_counter = thread_callcounter[thread.get_ident()]
-  call_log[call_counter]["cageid"] = id
+  call_log[call_counter]["cageid"] = cageid
 
 
 def add_to_log(handle, time):
