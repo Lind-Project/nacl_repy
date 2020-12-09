@@ -1733,7 +1733,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _write_to_pipe(fd, buf_addr)
 
-      data = addr_to_string(buf_addr)
+      data = addr2string(buf_addr)
       
       # if we're going to stdout/err, lets get it over with and print    
       try:
