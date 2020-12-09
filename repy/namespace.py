@@ -688,7 +688,7 @@ USERCONTEXT_WRAPPER_INFO = {
        'args' : [NonCopiedVarArgs()],
        'return' : None},
   'repy_addr2string' :
-    {'func' : emulmisc.repy_mmap,
+    {'func' : emulmisc.repy_addr2string,
       'args' : [Int()],
       'return' : Str()},
   'repy_mmap' :
