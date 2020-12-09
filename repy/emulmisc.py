@@ -232,11 +232,12 @@ def log_stdout(*args):
   sys.stdout.flush()
 
 def repy_addr2string(addr)
-  print "uh"
-  cstr = ctypes.c_char_p.from_address(addr)
-  print cstr
-  print cstr.value
-  return cstr.value
+  return "string"
+  # print "uh"
+  # cstr = ctypes.c_char_p.from_address(addr)
+  # print cstr
+  # print cstr.value
+  # return cstr.value
 
 def repy_mmap(addr, leng, prot, flags, filedes, off):
   return libc.mmap(addr, leng, prot, flags, filedes, off)
