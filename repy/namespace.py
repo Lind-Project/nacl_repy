@@ -687,6 +687,10 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emulmisc.log_stdout,
        'args' : [NonCopiedVarArgs()],
        'return' : None},
+  'repy_addr2string' :
+    {'func' : emulmisc.repy_mmap,
+      'args' : [Int()],
+      'return' : Str()},
   'repy_mmap' :
       {'func' : emulmisc.repy_mmap,
        'args' : [Int(), Int(), Int(), Int(), Int(min=float('-inf')), Int(min=float('-inf'))],
