@@ -233,8 +233,11 @@ def log_stdout(*args):
 
 def repy_addr2string(addr):
   cstr = ctypes.c_char_p.from_address(addr)
+  print "printing cstr"
   print cstr
+  print "printing cstr value"
   print cstr.value
+  print "leaving addr2string"
   return cstr.value
 
 def repy_mmap(addr, leng, prot, flags, filedes, off):
