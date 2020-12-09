@@ -231,6 +231,12 @@ def log_stdout(*args):
     sys.stdout.write(arg)
   sys.stdout.flush()
 
+def addr_to_string(addr)
+  cstr = ctypes.c_char_p.from_address(addr)
+  print cstr
+  print cstr.value
+  return cstr.value
+
 def repy_mmap(addr, leng, prot, flags, filedes, off):
   return libc.mmap(addr, leng, prot, flags, filedes, off)
 

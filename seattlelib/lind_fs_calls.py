@@ -1703,7 +1703,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
-  def write_syscall(fd, data):
+  def write_syscall(fd, buf_addr):
     """
       http://linux.die.net/man/2/write
     """
@@ -1718,14 +1718,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     if fd not in filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
   
-    # if we're going to stdout/err, lets get it over with and print    
-    try:
-      if filedescriptortable[fd]['stream'] in [1,2]:
-        log_stdout(data)
-        return len(data)
-    except KeyError:
-      pass
-
     # Is it open for writing?
     if IS_RDONLY(filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
@@ -1736,10 +1728,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # ... but always release it...
 
     try:
-      # check the fd
-      if fd not in filedescriptortable:
-        raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
-    
+  
+      # lets check if it's a pipe first, and if so write to that
+      if IS_PIPE_DESC(fd,CONST_CAGEID):
+        return _write_to_pipe(fd, buf_addr)
+
+      data = addr_to_string(buf_addr)
+      
       # if we're going to stdout/err, lets get it over with and print    
       try:
         if filedescriptortable[fd]['stream'] in [1,2]:
@@ -1747,15 +1742,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           return len(data)
       except KeyError:
         pass
-
-      # Is it open for writing?
-      if IS_RDONLY(filedescriptortable[fd]['flags']):
-        raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
-    
-
-      # lets check if it's a pipe first, and if so write to that
-      if IS_PIPE_DESC(fd,CONST_CAGEID):
-        return _write_to_pipe(fd, data)
 
       try:
         # Acquire the metadata lock... but always release it

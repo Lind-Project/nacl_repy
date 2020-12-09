@@ -7,17 +7,17 @@ def lind_fs_write(args):
     fd = args[0]
 
     # slice buffer string to only send size n bytes
-    buffer = args[2][:size]
+    buf_addr = args[2]
     
     if IS_SOCK_DESC(fd,args[-1]):
         try:
-            result = get_fs_call(args[-1],"send_syscall")(fd, buffer, 0)
+            result = get_fs_call(args[-1],"send_syscall")(fd, buf_addr, 0)
         except SyscallError, e:
             print "Write failed with", e
             return ErrorResponseBuilder("fs_write", e[1], e[2])
     else:
         try:
-            result = get_fs_call(args[-1],"write_syscall")(fd, buffer)
+            result = get_fs_call(args[-1],"write_syscall")(fd, buf_addr)
         except SyscallError, e:
             return ErrorResponseBuilder("fs_write", e[1], e[2])
 
@@ -33,9 +33,8 @@ def lind_fs_write(args):
 def lind_safe_fs_write(args):
     size = args[1]
     fd = args[0]
-    buffer = args[2]
+    buf_addr = args[2]
 
-    assert size == len(buffer), "write size does not match buffer size"
     check_valid_fd_handle(fd)
 
     lind_fs_write(args)
