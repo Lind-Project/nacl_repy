@@ -231,20 +231,18 @@ def log_stdout(*args):
     sys.stdout.write(arg)
   sys.stdout.flush()
 
-def addr_to_string(addr)
-  # cstr = ctypes.c_char_p.from_address(addr)
-  # print cstr
-  # print cstr.value
-  # return cstr.value
-  return
+# def addr_to_string(addr)
+#   # cstr = ctypes.c_char_p.from_address(addr)
+#   # print cstr
+#   # print cstr.value
+#   # return cstr.value
+#   return
 
 def repy_mmap(addr, leng, prot, flags, filedes, off):
   return libc.mmap(addr, leng, prot, flags, filedes, off)
 
 def repy_munmap(addr, leng):
   return libc.munmap(addr, leng)
-
-import traceback
 
 ##### Class Declarations
 
@@ -281,8 +279,6 @@ class emulated_lock (object):
     <Returns>
      True if the lock was acquired.
     """
-    # Call down
-
 
     return self.lock.acquire(blocking)
 
@@ -304,6 +300,7 @@ class emulated_lock (object):
     <Returns>
       None
     """
+
     try:
       self.lock.release()
     except thread.error:
