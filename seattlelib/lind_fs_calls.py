@@ -1703,7 +1703,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
-  def write_syscall(fd, buf_addr):
+  def write_syscall(fd, size, buf_addr):
     """
       http://linux.die.net/man/2/write
     """
@@ -1732,8 +1732,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _write_to_pipe(fd, buf_addr)
-      print "buf" + str(buf_addr) + " hex: " + str(hex(buf_addr))
-      data = repy_addr2string(buf_addr)
+
+      print "buf " + str(buf_addr) + " hex: " + str(hex(buf_addr))
+      data = repy_addr2string(buf_addr, size)
       
       # if we're going to stdout/err, lets get it over with and print    
       try:

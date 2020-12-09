@@ -11,13 +11,13 @@ def lind_fs_write(args):
     
     if IS_SOCK_DESC(fd,args[-1]):
         try:
-            result = get_fs_call(args[-1],"send_syscall")(fd, buf_addr, 0)
+            result = get_fs_call(args[-1],"send_syscall")(fd, size, buf_addr, 0)
         except SyscallError, e:
             print "Write failed with", e
             return ErrorResponseBuilder("fs_write", e[1], e[2])
     else:
         try:
-            result = get_fs_call(args[-1],"write_syscall")(fd, buf_addr)
+            result = get_fs_call(args[-1],"write_syscall")(fd, size, buf_addr)
         except SyscallError, e:
             return ErrorResponseBuilder("fs_write", e[1], e[2])
 
