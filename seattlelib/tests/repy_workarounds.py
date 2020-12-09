@@ -5,6 +5,8 @@ from exception_hierarchy import *
 from emulmisc import createlock as createlock
 from emulmisc import getruntime as getruntime
 from emulmisc import randombytes as randombytes
+from emulmisc import repy_move_to_readbuf as repy_move_to_readbuf
+
 
 from emultimer import sleep
 from emultimer import createthread
