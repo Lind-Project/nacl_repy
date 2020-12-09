@@ -29,6 +29,7 @@ from lind_fs_constants import *
 
 import os
 import sys
+import ctypes
 
 
 cageid = -1
@@ -128,9 +129,14 @@ def update_into_lind(fullfilename, rootpath='.'):
     host_content = fd.read()
     fd.close()
 
+    lindbuffer = ctypes.create_string_buffer(lind_size)
+    lind_addr = ctypes.addressof(lindbuffer)
+
     lindfd = lind_test_server.get_fs_call(cageid,"open_syscall")(fullfilename, O_RDONLY, 0)
-    lind_content = lind_test_server.get_fs_call(cageid,"read_syscall")(lindfd, lind_size)
+    lind_test_server.get_fs_call(cageid,"read_syscall")(lindfd, lind_size, lind_addr)
     lind_test_server.get_fs_call(cageid,"close_syscall")(lindfd)
+
+    lind_content = lindbuffer.value
 
     samefile = (host_content == lind_content)
   else:
@@ -255,8 +261,10 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   # make the new file, truncating any existing contents...
   lindfd = lind_test_server.get_fs_call(cageid,"open_syscall")(normalizedlindfn, O_CREAT|O_EXCL|O_TRUNC|O_WRONLY, S_IRWXA)
 
+  lindbuffer = ctypes.create_string_buffer(filecontents)
+  lind_addr = ctypes.addressof(lindbuffer)
   # should write all at once...
-  datalen = lind_test_server.get_fs_call(cageid,"write_syscall")(lindfd, filecontents)
+  datalen = lind_test_server.get_fs_call(cageid,"write_syscall")(lindfd, len(filecontents), lind_addr)
   assert(datalen == len(filecontents))
 
   inode = lind_test_server.get_fs_call(cageid,"fstat_syscall")(lindfd)[1]
