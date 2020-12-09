@@ -232,6 +232,9 @@ def log_stdout(*args):
   sys.stdout.flush()
 
 def repy_addr2string(addr):
+  print "in addr2string"
+  print "buf" + str(addr) + " hex: " + str(hex(addr))
+
   cstr = ctypes.c_char_p.from_address(addr)
   print "printing cstr"
   print cstr
