@@ -1733,7 +1733,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _write_to_pipe(fd, buf_addr)
 
-      print "buf " + str(buf_addr) + " hex: " + str(hex(buf_addr))
+      # print "buf " + str(buf_addr) + " hex: " + str(hex(buf_addr))
       data = repy_addr2string(buf_addr, size)
       
       # if we're going to stdout/err, lets get it over with and print    
