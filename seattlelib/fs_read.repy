@@ -30,6 +30,7 @@ def lind_fs_read(args):
 
     handle = args[0]
     size = args[1]
+    read_buf = args[2]
 
     # so really this should be fixed
     # but right now big requests dont work!
@@ -41,14 +42,14 @@ def lind_fs_read(args):
         try:
             if size == 0:
                 size == TX_BUF_MAX
-            result = get_fs_call(args[-1],"recv_syscall")(handle, size, 0)
+            size_read = get_fs_call(args[-1],"recv_syscall")(handle, size, 0)
         except SocketWouldBlockError as e:
             return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
         except SyscallError, e:
             return ErrorResponseBuilder("fs_read", e[1], e[2])
     else:
         try:
-            result = get_fs_call(args[-1],"read_syscall")(handle, size)
+            size_read = get_fs_call(args[-1],"read_syscall")(handle, size)
         except SyscallError, e:
             return ErrorResponseBuilder("fs_read", e[1], e[2])
 
@@ -58,7 +59,7 @@ def lind_fs_read(args):
 
     add_to_log("stub", stub_tot)
             
-    return SuccessResponseBuilder("fs_read", len(result), result)
+    return SuccessResponseBuilder("fs_read", size_read)
 
 
 def lind_safe_fs_read(args):
@@ -81,4 +82,4 @@ def lind_safe_fs_read(args):
     #if result.is_error == False:
     #    assert(len(result.data) <= TX_BUF_MAX), "returning data larger than transmission buffer."
 
-    return result
+    return size_read

@@ -1600,12 +1600,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   FS_CALL_DICTIONARY["lseek_syscall"] = lseek_syscall
 
   # helper function for pipe reads
-  def _read_from_pipe(fd, count):
+  def _read_from_pipe(fd, buf_addr, count):
 
     # lets find the pipe number and read
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
 
-    return pipetable[pipenumber].piperead(count)
+    return pipetable[pipenumber].piperead(buf_addr, count)
 
 
 
@@ -1642,8 +1642,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     try:
 
       # lets check if it's a pipe first, and if so read from that
-      if IS_PIPE_DESC(fd,CONST_CAGEID):
-        return _read_from_pipe(fd, count)
+      if IS_PIPE_DESC(fd, CONST_CAGEID):
+        return _read_from_pipe(fd, buf_addr, count)
 
       try:
         # Acquire the metadata lock... but always release it
@@ -1655,7 +1655,10 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
         # If its a character file, call the helper function.
         if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
-          return _read_chr_file(inode, count)
+          data = _read_chr_file(inode, count)
+          size_read = len(data)
+          repy_move_to_readbuf(buf_addr, data, size_read)
+          return size_read
 
         # Is it anything other than a regular file?
         if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1665,11 +1668,13 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         # let's do a readat!
         position = filedescriptortable[fd]['position']
         data = fileobjecttable[inode].readat(count,position)
+        size_read = len(data)
+        repy_move_to_readbuf(buf_addr, data, size_read)
 
         # and update the position
-        filedescriptortable[fd]['position'] += len(data)
+        filedescriptortable[fd]['position'] += size_read
 
-        return data
+        return size_read
 
       finally:
         filesystemmetadatalock.release()
@@ -1689,12 +1694,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   FS_CALL_DICTIONARY["read_syscall"] = read_syscall
 
   # helper function for pipe writes
-  def _write_to_pipe(fd, data):
+  def _write_to_pipe(fd, buf_addr):
 
     # find pipe number, and write
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
  
-    return pipetable[pipenumber].pipewrite(data)
+    return pipetable[pipenumber].pipewrite(buf_addr)
 
 
 
@@ -1731,7 +1736,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd,CONST_CAGEID):
-        return _write_to_pipe(fd, buf_addr)
+        return _write_to_pipe(fd, buf_addr, size)
 
       # print "buf " + str(buf_addr) + " hex: " + str(hex(buf_addr))
       data = repy_addr2string(buf_addr, size)

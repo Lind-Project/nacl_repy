@@ -236,6 +236,10 @@ def repy_addr2string(addr, size):
   # print "buf " + str(addr) + " hex: " + str(hex(addr)) + " size: " + str(size)
   return ctypes.string_at(addr, size)
 
+def repy_move_to_readbuf(nacl_buf_addr, repy_read_string, size):
+  ctypes.memmove(nacl_buf_addr, ctypes.c_char_p(repy_read_string), size)
+  
+
 def repy_mmap(addr, leng, prot, flags, filedes, off):
   return libc.mmap(addr, leng, prot, flags, filedes, off)
 

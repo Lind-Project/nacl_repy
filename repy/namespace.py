@@ -691,6 +691,10 @@ USERCONTEXT_WRAPPER_INFO = {
     {'func' : emulmisc.repy_addr2string,
       'args' : [Int(), Int()],
       'return' : Str()},
+  'repy_move_to_readbuf' :
+    {'func' : emulmisc.repy_move_to_readbuf,
+      'args' : [Int(), Str(), Int()],
+      'return' : None},
   'repy_mmap' :
       {'func' : emulmisc.repy_mmap,
        'args' : [Int(), Int(), Int(), Int(), Int(min=float('-inf')), Int(min=float('-inf'))],
