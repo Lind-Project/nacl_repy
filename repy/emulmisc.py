@@ -234,8 +234,8 @@ def log_stdout(*args):
 def repy_addr2string(addr, size):
   print "in addr2string"
   print "buf " + str(addr) + " hex: " + str(hex(addr)) + " size: " + str(size)
-  return ctypes.string_at(addr, size)
-
+  # return ctypes.string_at(addr, size)
+  return "wark"
 
 def repy_mmap(addr, leng, prot, flags, filedes, off):
   return libc.mmap(addr, leng, prot, flags, filedes, off)
