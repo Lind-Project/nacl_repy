@@ -5,7 +5,7 @@ from exception_hierarchy import *
 from emulmisc import createlock as createlock
 from emulmisc import getruntime as getruntime
 from emulmisc import randombytes as randombytes
-# from emulmisc import addr_to_string as addr_to_string
+from emulmisc import repy_addr2string as repy_addr2string
 
 from emultimer import sleep
 from emultimer import createthread

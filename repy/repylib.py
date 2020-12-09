@@ -198,7 +198,7 @@ def init_namespace(resourcefn, program, args):
   usercontext["struct_pack_new"] = struct.pack
   usercontext["struct_unpack_new"] = struct.unpack
   usercontext["struct_calcsize_new"] = struct.calcsize
-  usercontext["addr_to_string"] = emulmisc.addr_to_string
+  usercontext["addr2string"] = emulmisc.repy_addr2string
 
 
       
