@@ -689,7 +689,7 @@ USERCONTEXT_WRAPPER_INFO = {
        'return' : None},
   'repy_addr2string' :
     {'func' : emulmisc.repy_addr2string,
-      'args' : [Int()],
+      'args' : [Int(), Int()],
       'return' : Str()},
   'repy_mmap' :
       {'func' : emulmisc.repy_mmap,
