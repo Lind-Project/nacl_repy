@@ -133,9 +133,10 @@ def update_into_lind(fullfilename, rootpath='.'):
     lind_addr = ctypes.addressof(lindbuffer)
 
     lindfd = lind_test_server.get_fs_call(cageid,"open_syscall")(fullfilename, O_RDONLY, 0)
-    lind_test_server.get_fs_call(cageid,"read_syscall")(lindfd, lind_size, lind_addr)
+    readnum = lind_test_server.get_fs_call(cageid,"read_syscall")(lindfd, lind_size, lind_addr)
     lind_test_server.get_fs_call(cageid,"close_syscall")(lindfd)
 
+    print "readnum = " + str(readnum)
     lind_content = lindbuffer.value
 
     print "------------------READING-----------------------"
