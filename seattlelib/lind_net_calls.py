@@ -1726,8 +1726,6 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
   
   # int gethostname(char *name, size_t len);
 
-<<<<<<< HEAD
-=======
   
   ##### GETHOSTNAME  #####
   
@@ -1753,7 +1751,6 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
   NET_CALL_DICTIONARY["gethostname_syscall"] = gethostname_syscall
   
   
->>>>>>> develop
   fs_calls_context["netcall_table"] = NET_CALL_DICTIONARY
   if CLOSURE_SYSCALL_NAME in NET_CALL_DICTIONARY:
     return NET_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]
