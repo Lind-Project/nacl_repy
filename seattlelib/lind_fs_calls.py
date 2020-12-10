@@ -1743,7 +1743,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
       print "------------------WRITING-----------------------"
-      print "Length: " + str(data)
+      print "Length: " + len(data)
       print data[:100]
       print "------------------------------------------------"
       
