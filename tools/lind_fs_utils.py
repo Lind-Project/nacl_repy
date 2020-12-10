@@ -137,7 +137,7 @@ def update_into_lind(fullfilename, rootpath='.'):
     lind_test_server.get_fs_call(cageid,"close_syscall")(lindfd)
 
     print "readnum = " + str(readnum)
-    lind_content = lindbuffer.value
+    lind_content = ctypes.string_at(lind_addr, lind_size)
 
     print "------------------READING-----------------------"
     print "Length: " + str(len(lind_content))
