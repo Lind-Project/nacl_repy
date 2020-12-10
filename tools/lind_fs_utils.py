@@ -139,6 +139,7 @@ def update_into_lind(fullfilename, rootpath='.'):
     lind_content = lindbuffer.value
 
     print "------------------READING-----------------------"
+    print "Length: " + str(lind_content)
     print lind_content[:100]
     print "------------------------------------------------"
 
