@@ -1652,6 +1652,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
         # get the inode so I can and check the mode (type)
         inode = filedescriptortable[fd]['inode']
+<<<<<<< HEAD
 
         # If its a character file, call the helper function.
         if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1675,6 +1676,26 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         filedescriptortable[fd]['position'] += size_read
 
         return size_read
+=======
+
+        # If its a character file, call the helper function.
+        if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+          return _read_chr_file(inode, count)
+
+        # Is it anything other than a regular file?
+        if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          raise SyscallError("read_syscall","EINVAL","File descriptor does not refer to a regular file.")
+
+
+        # let's do a readat!
+        position = filedescriptortable[fd]['position']
+        data = fileobjecttable[inode].readat(count,position)
+
+        # and update the position
+        filedescriptortable[fd]['position'] += len(data)
+
+        return data
+>>>>>>> develop
 
       finally:
         filesystemmetadatalock.release()
@@ -1738,6 +1759,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _write_to_pipe(fd, buf_addr, size)
 
+<<<<<<< HEAD
       # print "buf " + str(buf_addr) + " hex: " + str(hex(buf_addr))
       data = repy_addr2string(buf_addr, size)
 
@@ -1805,10 +1827,63 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       finally:
         filesystemmetadatalock.release()
 
+=======
+      try:
+        # Acquire the metadata lock... but always release it
+        filesystemmetadatalock.acquire(True)
+
+        # get the inode so I can update the size (if needed) and check the type
+        inode = filedescriptortable[fd]['inode']
+
+        # If its a character file, call the helper function.
+        if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+          return _write_chr_file(inode, data)
+
+        # Is it anything other than a regular file?
+        if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+          raise SyscallError("write_syscall","EINVAL","File descriptor does not refer to a regular file.")
+
+
+        # let's get the position...
+        position = filedescriptortable[fd]['position']
+
+        # and the file size...
+        filesize = filesystemmetadata['inodetable'][inode]['size']
+
+        # if the position is past the end of the file, write '\0' bytes to fill
+        # up the gap...
+        blankbytecount = position - filesize
+
+        if blankbytecount > 0:
+          # let's write the blank part at the end of the file...
+          fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
+
+
+        # writeat never writes less than desired in Repy V2.
+        fileobjecttable[inode].writeat(data,position)
+
+        # and update the position
+        filedescriptortable[fd]['position'] += len(data)
+
+        # update the file size if we've extended it
+        if filedescriptortable[fd]['position'] > filesize:
+          filesystemmetadata['inodetable'][inode]['size'] = filedescriptortable[fd]['position']
+          persist_metadata(METADATAFILENAME)
+
+        # we always write it all, so just return the length of what we were passed.
+        # We do not mention whether we write blank data (if position is after the
+        # end)
+        return len(data)
+      
+      finally:
+        filesystemmetadatalock.release()
+
+>>>>>>> develop
 
     finally:
       # ... release the lock
       filedescriptortable[fd]['lock'].release()
+<<<<<<< HEAD
 
       fs_endtime = time.clock()
 
@@ -1816,6 +1891,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       if call_log:
         add_to_log("fs_call", fs_tot)
+=======
+>>>>>>> develop
 
 
   FS_CALL_DICTIONARY["write_syscall"] = write_syscall
@@ -2807,9 +2884,12 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
     # lock to prevent things from changing while we look this up...
 
+<<<<<<< HEAD
     fs_starttime = time.clock()
 
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+=======
+>>>>>>> develop
     fdtablelock = masterfdlocktable[CONST_CAGEID]
 
     fdtablelock.acquire(True)

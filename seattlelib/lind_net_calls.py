@@ -1723,7 +1723,37 @@ def get_net_call(CONST_CAGEID,CLOSURE_SYSCALL_NAME):
     return nepoll_return, epoll_return
 
   NET_CALL_DICTIONARY["epoll_wait_syscall"] = epoll_wait_syscall
+  
+  # int gethostname(char *name, size_t len);
 
+<<<<<<< HEAD
+=======
+  
+  ##### GETHOSTNAME  #####
+  
+  
+  def gethostname_syscall(length):
+    """
+    https://linux.die.net/man/2/gethostname
+    """
+    
+    filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
+    
+    if(length < 0):
+      raise SyscallError("gethostname_syscall","EINVAL","Invalid argument")
+      
+    #Using the DEFAULT_HOSTNAME ("Lind") for now since we do not let user change the host name at this point.
+    if(len(DEFAULT_HOSTNAME) > length):
+      result = DEFAULT_HOSTNAME[0:length]
+    else:
+      result = DEFAULT_HOSTNAME
+    
+    return result
+  
+  NET_CALL_DICTIONARY["gethostname_syscall"] = gethostname_syscall
+  
+  
+>>>>>>> develop
   fs_calls_context["netcall_table"] = NET_CALL_DICTIONARY
   if CLOSURE_SYSCALL_NAME in NET_CALL_DICTIONARY:
     return NET_CALL_DICTIONARY[CLOSURE_SYSCALL_NAME]

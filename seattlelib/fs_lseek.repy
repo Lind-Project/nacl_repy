@@ -37,12 +37,15 @@ def lind_fs_lseek(args):
     except SyscallError, e:
         return ErrorResponseBuilder("fs_lseek", e[1], e[2])
 
+<<<<<<< HEAD
     stub_endtime = time.clock()
 
     stub_tot = (stub_endtime - stub_starttime)
 
     add_to_log("stub", stub_tot)
 
+=======
+>>>>>>> develop
     return SuccessResponseBuilder("fs_lseek", result)
 
 
