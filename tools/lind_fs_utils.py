@@ -136,13 +136,7 @@ def update_into_lind(fullfilename, rootpath='.'):
     readnum = lind_test_server.get_fs_call(cageid,"read_syscall")(lindfd, lind_size, lind_addr)
     lind_test_server.get_fs_call(cageid,"close_syscall")(lindfd)
 
-    print "readnum = " + str(readnum)
     lind_content = ctypes.string_at(lind_addr, lind_size)
-
-    print "------------------READING-----------------------"
-    print "Length: " + str(len(lind_content))
-    print lind_content[:100]
-    print "------------------------------------------------"
 
     samefile = (host_content == lind_content)
   else:

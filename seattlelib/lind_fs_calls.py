@@ -1740,12 +1740,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # print "buf " + str(buf_addr) + " hex: " + str(hex(buf_addr))
       data = repy_addr2string(buf_addr, size)
-
-
-      print "------------------WRITING-----------------------"
-      print "Length: " + str(len(data))
-      print data[:100]
-      print "------------------------------------------------"
       
       # if we're going to stdout/err, lets get it over with and print    
       try:
