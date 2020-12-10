@@ -138,6 +138,10 @@ def update_into_lind(fullfilename, rootpath='.'):
 
     lind_content = lindbuffer.value
 
+    print "------------------READING-----------------------"
+    print lind_content
+    print "------------------------------------------------"
+
     samefile = (host_content == lind_content)
   else:
     samefile = False
