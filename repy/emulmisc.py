@@ -232,8 +232,6 @@ def log_stdout(*args):
   sys.stdout.flush()
 
 def repy_addr2string(addr, size):
-  # print "in addr2string"
-  # print "buf " + str(addr) + " hex: " + str(hex(addr)) + " size: " + str(size)
   return ctypes.string_at(addr, size)
 
 def repy_move_to_readbuf(nacl_buf_addr, repy_read_string, size):
