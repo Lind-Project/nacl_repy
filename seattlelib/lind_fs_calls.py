@@ -1743,7 +1743,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
       print "------------------WRITING-----------------------"
-      print data
+      print data[250:]
       print "------------------------------------------------"
       
       # if we're going to stdout/err, lets get it over with and print    
