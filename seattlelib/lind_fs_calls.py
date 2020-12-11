@@ -1694,7 +1694,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   FS_CALL_DICTIONARY["read_syscall"] = read_syscall
 
   # helper function for pipe writes
-  def _write_to_pipe(fd, buf_addr):
+  def _write_to_pipe(fd, buf_addr, size):
 
     # find pipe number, and write
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
