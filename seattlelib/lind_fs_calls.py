@@ -1699,7 +1699,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # find pipe number, and write
     pipenumber = masterfiledescriptortable[CONST_CAGEID][fd]['pipe']
  
-    return pipetable[pipenumber].pipewrite(buf_addr)
+    return pipetable[pipenumber].pipewrite(buf_addr, size)
 
 
 
