@@ -1636,7 +1636,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("read_syscall","EBADF","File descriptor is not open for reading.")
 
     # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
+    # filedescriptortable[fd]['lock'].acquire(True)
 
     # ... but always release it...
     try:
@@ -1681,7 +1681,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       # ... release the lock
-      filedescriptortable[fd]['lock'].release()
+      # filedescriptortable[fd]['lock'].release()
 
       fs_endtime = time.clock()
 
@@ -1728,7 +1728,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
     
     # Acquire the fd lock...
-    filedescriptortable[fd]['lock'].acquire(True)
+    # filedescriptortable[fd]['lock'].acquire(True)
 
     # ... but always release it...
 
@@ -1801,7 +1801,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     finally:
       # ... release the lock
-      filedescriptortable[fd]['lock'].release()
+      # filedescriptortable[fd]['lock'].release()
 
       fs_endtime = time.clock()
 
