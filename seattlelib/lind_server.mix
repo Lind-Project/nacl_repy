@@ -111,6 +111,8 @@ include fs_open.repy
 
 include fs_write.repy
 
+include fs_pwrite.repy
+
 include fs_fstatfs.repy
 
 include fs_statfs.repy
@@ -120,6 +122,8 @@ include comp.repy
 include fs_access.repy
 
 include fs_read.repy
+
+include fs_pread.repy
 
 include fs_fstat.repy
 
