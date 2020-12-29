@@ -1,0 +1,47 @@
+"""
+
+Handlers for the pwrite system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Read handler pulls out the arguments, does any mandatory checking
+then calls the repy posix library pwrite system call.  Then packs
+the result back up.
+
+"""
+
+def lind_fs_pwrite(args):
+    size = args[1]
+    fd = args[0]
+    offset = args[2]
+
+    # slice buffer string to only send size n bytes
+    buffer = args[3][:size]
+    
+    if IS_SOCK_DESC(fd,args[-1]):
+        try:
+            result = get_fs_call(args[-1],"send_syscall")(fd, buffer, 0)
+        except SyscallError, e:
+            print "PWrite failed with", e
+            return ErrorResponseBuilder("fs_pwrite", e[1], e[2])
+    else:
+        try:
+            result = get_fs_call(args[-1],"pwrite_syscall")(fd, buffer, offset)
+        except SyscallError, e:
+            return ErrorResponseBuilder("fs_pwrite", e[1], e[2])
+    return SuccessResponseBuilder("fs_pwrite", result)
+
+
+def lind_safe_fs_pwrite(args):
+    size = args[1]
+    fd = args[0]
+    offset = args[2]
+    buffer = args[3]
+    
+    assert size == len(buffer), "write size does not match buffer size"
+    check_valid_fd_handle(fd)
+
+    lind_fs_pwrite(args)
+    return SuccessResponseBuilder("fs_pwrite", size)
