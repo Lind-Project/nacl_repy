@@ -6,7 +6,7 @@ Called from dispatcher.repy
 
 Safe version checks all parameters, then calls real handler.
 
-Read handler pulls out the arguments, does any mandatory checking
+Pread handler pulls out the arguments, does any mandatory checking
 then calls the repy posix library pread system call.  Then packs
 the result back up.
 
@@ -59,7 +59,7 @@ def lind_safe_fs_pread(args):
     See dispatcher.repy for details.
 
     Check the handle, size, and offset for consistency;
-    then call the real read dispatcher.
+    then call the real pread dispatcher.
 
     """
 
