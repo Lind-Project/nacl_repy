@@ -53,7 +53,7 @@ def lind_safe_fs_pwrite(args):
     
     assert isinstance(size, int)
     assert isinstance(offset, int)
-    #assert size == len(buffer), "pwrite size does not match buffer size"
+    assert size == len(buffer), "pwrite size does not match buffer size"
     check_valid_fd_handle(fd)
 
     lind_fs_pwrite(args)
