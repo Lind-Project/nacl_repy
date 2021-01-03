@@ -1709,7 +1709,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       https://linux.die.net/man/2/pwrite
     """
-    print "Pwrite ",data, " ",offset" \n"
+    print "Pwrite ",data," ",offset,"\n"
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
