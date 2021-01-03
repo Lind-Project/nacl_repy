@@ -1613,15 +1613,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         position = filedescriptortable[fd]['position']        
       else: #pwrite
         position = offset
-
+      print "File_Pos: ",filedescriptortable[fd]['position']," Write_to:", position,"\n"
       # and the file size...
       filesize = filesystemmetadata['inodetable'][inode]['size']
 
       # if the position is past the end of the file, write '\0' bytes to fill
       # up the gap...
       blankbytecount = position - filesize
+      print "blankbytecount: ",blankbytecount,"\n"
       if blankbytecount > 0:
-        print "blankbytecount ",blankbytecount," ",'\0'*blankbytecount,"\n"
+        print "blankbytecount: ",blankbytecount," ",'\0'*blankbytecount,"\n"
         # let's write the blank part at the end of the file...
         fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
         filesystemmetadata['inodetable'][inode]['size'] = position
@@ -1709,7 +1710,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       https://linux.die.net/man/2/pwrite
     """
-    print "Pwrite ",data," ",offset,"\n"
+    
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
