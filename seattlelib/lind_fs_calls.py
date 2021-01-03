@@ -1519,7 +1519,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _read_from_pipe(fd, count)
 
-      read_from_file("read_syscall", fd, count, 0, filedescriptortable)
+      return read_from_file("read_syscall", fd, count, 0, filedescriptortable)
 
     finally:
       # ... release the lock
@@ -1559,7 +1559,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # ... but always release it...
     try:
 
-      read_from_file("pread_syscall", fd, count, offset, filedescriptortable)
+      return read_from_file("pread_syscall", fd, count, offset, filedescriptortable)
 
     finally:
       # ... release the lock
@@ -1687,7 +1687,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       if IS_PIPE_DESC(fd,CONST_CAGEID):
         return _write_to_pipe(fd, data)
 
-      write_to_file("write_syscall", fd, data, 0, filedescriptortable)
+      return write_to_file("write_syscall", fd, data, 0, filedescriptortable)
 
     finally:
       # ... release the lock
@@ -1730,7 +1730,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # ... but always release it...
     try:
 
-      write_to_file("pwrite_syscall", fd, data, offset, filedescriptortable)
+      return write_to_file("pwrite_syscall", fd, data, offset, filedescriptortable)
 
     finally:
       # ... release the lock
