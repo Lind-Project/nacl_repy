@@ -1621,8 +1621,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       if blankbytecount > 0:
         # let's write the blank part at the end of the file...
+        filesystemmetadata['inodetable'][inode]['size'] = position
         fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
-
+        filesize = position
 
       # writeat never writes less than desired in Repy V2.
       fileobjecttable[inode].writeat(data,position)
@@ -1639,7 +1640,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       
       else: #pwrite
         # update the file size if we've extended it
-        if position + len(data) > filesize:
+        if (position + len(data)) > filesize:
           filesystemmetadata['inodetable'][inode]['size'] = position + len(data)
           persist_metadata(METADATAFILENAME)
 
