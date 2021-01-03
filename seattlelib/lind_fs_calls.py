@@ -1620,8 +1620,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       # if the position is past the end of the file, write '\0' bytes to fill
       # up the gap...
       blankbytecount = position - filesize
-      
       if blankbytecount > 0:
+        print "blankbytecount ",blankbytecount," ",'\0'*blankbytecount,"\n"
         # let's write the blank part at the end of the file...
         fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
         filesystemmetadata['inodetable'][inode]['size'] = position
