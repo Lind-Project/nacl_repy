@@ -1592,7 +1592,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #helper funtion for read/pread
   def write_to_file(syscall_name, fd, data, offset, filedescriptortable):
     
-    print("write_to_file",syscall_name,data, offset,sep=' ',end='\n')
+    print "write_to_file ",syscall_name," ",data, " ",offset,"\n"
     try:
       # Acquire the metadata lock... but always release it
       filesystemmetadatalock.acquire(True)
@@ -1709,7 +1709,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     """
       https://linux.die.net/man/2/pwrite
     """
-    print("Pwrite",data, offset,sep=' ',end='\n')
+    print "Pwrite ",data, " ",offset" \n"
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
     # check the fd
