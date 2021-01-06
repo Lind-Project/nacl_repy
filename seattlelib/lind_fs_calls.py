@@ -1559,7 +1559,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-
+      if IS_PIPE_DESC(fd,CONST_CAGEID):
+        raise SyscallError("pread_syscall","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
+      
       return read_from_file("pread_syscall", fd, count, offset, filedescriptortable)
 
     finally:
@@ -1734,7 +1736,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     # ... but always release it...
     try:
-
+      if IS_PIPE_DESC(fd,CONST_CAGEID):
+        raise SyscallError("pwrite_syscall","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
+        
       return write_to_file("pwrite_syscall", fd, data, offset, filedescriptortable)
 
     finally:
