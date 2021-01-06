@@ -1256,8 +1256,9 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
           # if it exists, close the existing file object so I can remove it...
           if inode in fileobjecttable:
             fileobjecttable[inode].close()
-            # reset the size to 0
-            filesystemmetadata['inodetable'][inode]['size'] = 0
+            
+          # reset the size to 0
+          filesystemmetadata['inodetable'][inode]['size'] = 0
 
           # remove the file...
           removefile(FILEDATAPREFIX+str(inode))
@@ -1626,7 +1627,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         # let's write the blank part at the end of the file...
         fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
         filesystemmetadata['inodetable'][inode]['size'] = position
-        persist_metadata(METADATAFILENAME)
         filesize = position
 
       # writeat never writes less than desired in Repy V2.
