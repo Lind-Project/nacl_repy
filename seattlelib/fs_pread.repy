@@ -36,7 +36,7 @@ def lind_fs_pread(args):
     #    size = TX_BUF_MAX
 
     if IS_SOCK_DESC(handle,args[-1]):
-        return ErrorResponseBuilder("pread_syscall","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
+        return ErrorResponseBuilder("fs_pread","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
         
     else:
         try:
