@@ -1595,7 +1595,6 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #helper funtion for read/pread
   def write_to_file(syscall_name, fd, data, offset, filedescriptortable):
     
-    print "write_to_file | Origin:",syscall_name," | Offset:",offset," | Data:",data,"\n"
     try:
       # Acquire the metadata lock... but always release it
       filesystemmetadatalock.acquire(True)
@@ -1616,16 +1615,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         position = filedescriptortable[fd]['position']        
       else: #pwrite
         position = offset
-      print "File_Pos: ",filedescriptortable[fd]['position']," | Write_to:", position," | Filesize:",filesystemmetadata['inodetable'][inode]['size'],"\n"
+      
       # and the file size...
       filesize = filesystemmetadata['inodetable'][inode]['size']
 
       # if the position is past the end of the file, write '\0' bytes to fill
       # up the gap...
       blankbytecount = position - filesize
-      print " Filesize:",filesize , " | Blankbytecount: ",blankbytecount,"\n"
+      
       if blankbytecount > 0:
-        print "blankbytecount: ",blankbytecount," ",'\0'*blankbytecount,"\n"
         # let's write the blank part at the end of the file...
         fileobjecttable[inode].writeat('\0'*blankbytecount,filesize)
         filesystemmetadata['inodetable'][inode]['size'] = position
