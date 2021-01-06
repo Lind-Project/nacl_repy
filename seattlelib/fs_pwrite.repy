@@ -22,7 +22,7 @@ def lind_fs_pwrite(args):
     buffer = args[3][:size]
     
     if IS_SOCK_DESC(fd,args[-1]):
-        return ErrorResponseBuilder("pwrite_syscall","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
+        return ErrorResponseBuilder("fs_pwrite","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
         
     else:
         try:
