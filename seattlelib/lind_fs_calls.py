@@ -1725,7 +1725,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # private helper that allows this to be called in other places (like dup2)
   # without changing to re-entrant locks
-  def _close_helper(fd):
+  def _close_helper(fd, filelock = True):
 
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
 
@@ -1739,7 +1739,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     filesystemmetadatalock.acquire(True)
 
     # Acquire the fd lock, if there is one.
-    if 'lock' in filedescriptortable[fd]:
+    if 'lock' in filedescriptortable[fd] and filelock:
       filedescriptortable[fd]['lock'].acquire(True)
 
     try:
@@ -1796,7 +1796,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       return 0
     finally:
       # ... release the lock, if there is one
-      if 'lock' in filedescriptortable[fd]:
+      if 'lock' in filedescriptortable[fd] and filelock:
         filedescriptortable[fd]['lock'].release()
       filesystemmetadatalock.release()
 
@@ -1854,7 +1854,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     # okay, they are different.   If the new fd exists, close it.
     if newfd in filedescriptortable:
       # should not result in an error.   This only occurs on a bad fd
-      _close_helper(newfd)
+      _close_helper(newfd, filelock = False)
 
 
     # Okay, we need the new and old to point to the same thing.
