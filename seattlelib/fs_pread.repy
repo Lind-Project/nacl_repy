@@ -35,14 +35,11 @@ def lind_fs_pread(args):
     #if size > TX_BUF_MAX:
     #    size = TX_BUF_MAX
 
-    if IS_SOCK_DESC(handle,args[-1]):
-        return ErrorResponseBuilder("fs_pread","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
+    try:
+        result = get_fs_call(args[-1],"pread_syscall")(handle, size, offset)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_pread", e[1], e[2])
         
-    else:
-        try:
-            result = get_fs_call(args[-1],"pread_syscall")(handle, size, offset)
-        except SyscallError, e:
-            return ErrorResponseBuilder("fs_pread", e[1], e[2])
             
     return SuccessResponseBuilder("fs_pread", len(result), result)
 
