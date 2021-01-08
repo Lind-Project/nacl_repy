@@ -25,7 +25,7 @@ def lind_sys_getgid(args):
     Pack the int returned, or error.
     """
     try:
-        result = get_fs_call(args[-1],"getgid_syscall")()
+        result = get_fscall_obj(args[-1],"getgid_syscall")()
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getgid", e[1], e[2])
     except UnimplementedError, e:

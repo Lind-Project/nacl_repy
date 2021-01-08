@@ -20,7 +20,7 @@ def lind_sys_getpid(args):
     Pack the int returned, or error.
     """
     try:
-        result = get_fs_call(args[-1],"getpid_syscall")()
+        result = get_fscall_obj(args[-1],"getpid_syscall")()
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getpid", e[1], e[2])
 
@@ -48,7 +48,7 @@ def lind_sys_getppid(args):
     Pack the int returned, or error.
     """
     try:
-        result = get_fs_call(args[-1],"getppid_syscall")()
+        result = get_fscall_obj(args[-1],"getppid_syscall")()
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getppid", e[1], e[2])
 

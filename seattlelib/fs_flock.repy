@@ -29,7 +29,7 @@ def lind_fs_flock(args):
     operation = args[1]
 
     try:
-        result = get_fs_call(args[-1],"flock_syscall")(fd, operation)
+        result = get_fscall_obj(args[-1]).flock_syscall(fd, operation)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_flock", e[1], e[2])
 

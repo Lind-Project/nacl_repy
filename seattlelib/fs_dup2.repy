@@ -36,7 +36,7 @@ def lind_fs_dup2(args):
               handle, handle2, ")"
 
     try:
-        result = get_fs_call(args[-1],"dup2_syscall")(handle, handle2)
+        result = get_fscall_obj(args[-1]).dup2_syscall(handle, handle2)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_dup2", e[1], e[2])
     return SuccessResponseBuilder("fs_dup2", result)
