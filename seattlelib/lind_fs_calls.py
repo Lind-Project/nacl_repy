@@ -508,6 +508,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY = {}
 
+  ##### GETCWD #####
+  def getcwd_syscall(size):
+    """
+    http://linux.die.net/man/2/getcwd
+    """
+    return master_fs_calls_context[CONST_CAGEID]['currentworkingdirectory']
+  
+  FS_CALL_DICTIONARY["getcwd_syscall"] = getcwd_syscall
+
+
   ##### EXIT  #####
 
   def exit_syscall(status):

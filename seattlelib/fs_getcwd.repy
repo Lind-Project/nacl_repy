@@ -1,0 +1,26 @@
+"""
+Handlers for the getcwd system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls the real handler.
+
+The handlers pull out arguments, do any mandatory checking
+then call the repy posix library getcwd system call, then pack
+the result back up.
+
+"""
+
+def lind_fs_getcwd(args):
+  size = args[0]
+  try:
+    cwd = get_fs_call(args[-1], "getcwd_syscall")(size)
+  except SyscallError, e:
+    return ErrorResponseBuilder("fs_getcwd", e[1], e[2])
+  return SuccessResponseBuilder("fs_getcwd", cwd)
+
+
+def lind_safe_fs_getcwd(args):
+  size = args[0]
+  assert isinstance(size, int)
+  return lind_fs_getcwd(args)
