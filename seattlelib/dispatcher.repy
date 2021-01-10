@@ -72,7 +72,10 @@ def setup_dispatcher(comp_num):
     107:lind_comp_accept,
     108:lind_comp_recv,
     
-    125:lind_safe_net_gethostname
+    125:lind_safe_net_gethostname,
+    
+    126:lind_safe_fs_pread,
+    127:lind_safe_fs_pwrite
     }
     
   elif MODE == "fast":
@@ -141,8 +144,10 @@ def setup_dispatcher(comp_num):
     107:lind_comp_accept,
     108:lind_comp_recv,
     
-    125:lind_net_gethostname
-
+    125:lind_net_gethostname,
+    
+    126:lind_fs_pread,
+    127:lind_fs_pwrite
     }
   else:
     assert False, "Invalid mode setting"
