@@ -492,10 +492,13 @@ def get_fscall_obj(CONST_CAGEID):
   return fs_calls_context['syscall_table']
 
 class fs_call_dictionary:
-  def __init__(self, CONST_CAGEID):
+  def __init__(self, CONST_CAGEID, fdtable = None):
     self.cageid = CONST_CAGEID
-    self.filedescriptortable = {}
-    _load_lower_handle_stubs(self.filedescriptortable)
+    if fdtable is None:
+      self.filedescriptortable = {}
+      _load_lower_handle_stubs(self.filedescriptortable)
+    else:
+      self.filedescriptortable = {key: value for key, value in fdtable.iteritems()}
     self.fdtablelock = createlock()
 
   _socket_initializer = _socket_initializer
@@ -1692,11 +1695,6 @@ class fs_call_dictionary:
       fdsforinode = self._lookup_fds_by_inode(inode)
 
       # I should be in there!
-      if not (self.cageid in fdsforinode and fd in fdsforinode[self.cageid]):
-        print fdsforinode
-        print fd
-        print self.cageid
-
       assert(self.cageid in fdsforinode and fd in fdsforinode[self.cageid])
 
       # I should only close here if it's the last use of the file.   This can
@@ -2439,7 +2437,7 @@ class fs_call_dictionary:
     try:
       master_fs_calls_context[child_cageid] = {"currentworkingdirectory": 
               master_fs_calls_context[self.cageid]["currentworkingdirectory"],
-              'syscall_table': fs_call_dictionary(child_cageid)}
+              'syscall_table': fs_call_dictionary(child_cageid, self.filedescriptortable)}
 
       parentagetable[child_cageid] = {'ppid': self.cageid}
     
