@@ -6,9 +6,9 @@ from lind_fs_constants import *
 # load up the metadata.
 server.load_fs(-1)
 
-server.get_fs_call(-1,"stat_syscall")("/dev")
+server.get_fscall_obj(-1).stat_syscall("/dev")
 
 # Check If the special files have been created...
-assert(server.get_fs_call(-1,"stat_syscall")("/dev/null")[6] == (1, 3))
-assert(server.get_fs_call(-1,"stat_syscall")("/dev/random")[6] == (1, 8))
-assert(server.get_fs_call(-1,"stat_syscall")("/dev/urandom")[6] == (1, 9))
+assert(server.get_fscall_obj(-1).stat_syscall("/dev/null")[6] == (1, 3))
+assert(server.get_fscall_obj(-1).stat_syscall("/dev/random")[6] == (1, 8))
+assert(server.get_fscall_obj(-1).stat_syscall("/dev/urandom")[6] == (1, 9))

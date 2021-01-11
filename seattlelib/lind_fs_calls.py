@@ -1700,26 +1700,6 @@ class fs_call_dictionary:
     return pipe_references
 
 
-
-  # BAD this is copied from net_calls, but there is no way to get it
-  def _cleanup_socket(self, fd):
-    if 'socketobjectid' in self.filedescriptortable[fd]:
-      thesocket = socketobjecttable[self.filedescriptortable[fd]['socketobjectid']]
-      try:
-        thesocket.close()
-      except:
-        thesocket.close(False) #In case for some reason it's an emulcomm socket
-      localport = self.filedescriptortable[fd]['localport']
-      try:
-        _release_localport(localport, self.filedescriptortable[fd]['protocol'])
-      except KeyError:
-        pass
-      del socketobjecttable[self.filedescriptortable[fd]['socketobjectid']]
-      del self.filedescriptortable[fd]['socketobjectid']
-
-      self.filedescriptortable[fd]['state'] = NOTCONNECTED
-      return 0
-
   # private helper, handle pipe as each end closes.
   def _cleanup_pipe(self, fd):
     # let's find the pipenumber
@@ -1739,8 +1719,6 @@ class fs_call_dictionary:
 
 
       return 0
-
-
 
 
   # private helper that allows this to be called in other places (like dup2)
@@ -1763,7 +1741,7 @@ class fs_call_dictionary:
     try:
       # if we are a socket, we dont change disk metadata
       if IS_SOCK_DESC(fd, self.filedescriptortable):
-        self._cleanup_socket(fd)
+        self._cleanup_socket(fd, False)
         return 0
 
       if IS_PIPE_DESC(fd, self.filedescriptortable):
@@ -2152,7 +2130,7 @@ class fs_call_dictionary:
 
     # Acquire the fd lock...
     filesystemmetadatalock.acquire(True)
-    self.filedescriptortable[fd].acquire(True)
+    self.filedescriptortable[fd]["lock"].acquire(True)
 
     try:
 

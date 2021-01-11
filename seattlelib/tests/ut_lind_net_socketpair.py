@@ -15,10 +15,10 @@ SyscallError = lind_test_server.SyscallError
 # other end of communicator...
 def helper():
   msg = None
-  msg = lind_test_server.get_net_call(-1,"recv_syscall")(sockets[0], 1024, 0)
+  msg = lind_test_server.get_fscall_obj(-1).recv_syscall(sockets[0], 1024, 0)
   assert msg != None, "Sockpair recv failed in helper..."
 
-  lind_test_server.get_net_call(-1,"send_syscall")(sockets[0], "SocketPair test.", 0)
+  lind_test_server.get_fscall_obj(-1).send_syscall(sockets[0], "SocketPair test.", 0)
 
   return
 
@@ -28,28 +28,28 @@ def tester():
   emultimer.createthread(helper)
   emultimer.sleep(0.1)
 
-  lind_test_server.get_net_call(-1,"send_syscall")(sockets[1], "SocketPair test.", 0)
+  lind_test_server.get_fscall_obj(-1).send_syscall(sockets[1], "SocketPair test.", 0)
 
   msg = None
-  msg = lind_test_server.get_net_call(-1,"recv_syscall")(sockets[1], 1024, 0)
+  msg = lind_test_server.get_fscall_obj(-1).recv_syscall(sockets[1], 1024, 0)
   assert msg != None, "Sockpair recv failed in tester..."
 
   emultimer.sleep(0.1)
 
-  lind_test_server.get_fs_call(-1,"close_syscall")(sockets[1])
-  lind_test_server.get_fs_call(-1,"close_syscall")(sockets[0])
+  lind_test_server.get_fscall_obj(-1).close_syscall(sockets[1])
+  lind_test_server.get_fscall_obj(-1).close_syscall(sockets[0])
 
   return
 
 # Let's get a piar of sockets and check if a two way communication
 # is possible. This is TCP sockpair.
-sockets = lind_test_server.get_net_call(-1,"socketpair_syscall")(AF_INET, SOCK_STREAM, 0)[1]
+sockets = lind_test_server.get_fscall_obj(-1).socketpair_syscall(AF_INET, SOCK_STREAM, 0)[1]
 
 # performs message passing among the sockets...
 tester()
 
 # Test for UDP connection...
-sockets = lind_test_server.get_net_call(-1,"socketpair_syscall")(AF_INET, SOCK_DGRAM, 0)[1]
+sockets = lind_test_server.get_fscall_obj(-1).socketpair_syscall(AF_INET, SOCK_DGRAM, 0)[1]
 
 # performs message passing among the sockets...
 tester()

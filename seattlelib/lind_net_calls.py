@@ -79,7 +79,7 @@ class CompositeTCPSocket:
     self.c1 = listenforconnection(ip1, port)
     self.c2 = listenforconnection(ip2, port)
 
-  def close(self):
+  def close(self, partial=False):
     self.c1.close()
     self.c2.close()
 
@@ -104,7 +104,7 @@ class CompositeUDPSocket:
     self.c1 = listenformessage(ip1, port)
     self.c2 = listenformessage(ip2, port)
 
-  def close(self):
+  def close(self, partial=False):
     self.c1.close()
     self.c2.close()
 
@@ -237,7 +237,7 @@ def _insert_into_socketobjecttable(socketobj):
 #
 # The functions are stored in NET_CALL_DICTIONARY, and each function is indexed
 # by its name, and is added to the dictionary after its definition as a nested
-# function. The variables CONST_CAGEID, CLOSURE_SYSCALL_NAME, and 
+# function. The variables CONST_CAGEID, CLOSURE_SYSCALL_NAME, and
 # NET_CALL_DICTIONARY should NOT be modified from within the scope of the 
 # enclosed system calls.
 #
@@ -1105,7 +1105,7 @@ def setsockopt_syscall(self, fd, level, optname, optval):
     raise UnimplementedError("Unknown level in setsockopt()")
 
 
-def _cleanup_socket(self, fd, partial = False):
+def _cleanup_socket(self, fd, partial):
   if 'socketobjectid' in self.filedescriptortable[fd]:
     thesocket = socketobjecttable[self.filedescriptortable[fd]['socketobjectid']]
     thesocket.close(partial)
@@ -1216,7 +1216,7 @@ def select_syscall(self, nfds, readfds, writefds, exceptfds, time):
         raise SyscallError("select_syscall","EBADF","The file descriptor is invalid.")
 
       desc = self.filedescriptortable[fd]
-      if not IS_SOCK_DESC(fd,CONST_CAGEID) and fd != 0:
+      if not IS_SOCK_DESC(fd,self.filedescriptortable) and fd != 0:
         # files never block, so always say yes for them
         new_readfds.append(fd)
         retval += 1
@@ -1245,7 +1245,7 @@ def select_syscall(self, nfds, readfds, writefds, exceptfds, time):
         raise SyscallError("select_syscall","EBADF","The file descriptor is invalid.")
 
       desc = self.filedescriptortable[fd]
-      if not IS_SOCK_DESC(fd,CONST_CAGEID) or fd == 1 or fd == 2:
+      if not IS_SOCK_DESC(fd,self.filedescriptortable) or fd == 1 or fd == 2:
         # files never block, so always say yes for them
         new_writefds.append(fd)
         retval += 1
@@ -1444,7 +1444,7 @@ def _epoll_object_allocator(self):
 
   # NOTE: I'm intentionally omitting the 'inode' field.  This will make most
   # of the calls I did not change break.
-  masterfiledescriptortable[CONST_CAGEID][newfd] = {
+  self.filedescriptortable[newfd] = {
       'mode':0000,
       'lock':createlock(),
       'registered_fds':{},

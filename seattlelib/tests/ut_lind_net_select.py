@@ -17,16 +17,16 @@ SyscallError = lind_test_server.SyscallError
 lind_test_server._blank_fs_init()
 
 #Create a file, to read/write using select.
-filefd = lind_test_server.get_fs_call(-1,"open_syscall")('/foo.txt', O_CREAT | O_EXCL | O_RDWR, S_IRWXA)
+filefd = lind_test_server.get_fscall_obj(-1).open_syscall('/foo.txt', O_CREAT | O_EXCL | O_RDWR, S_IRWXA)
  
 #Create 3 socket, one for server and two client sockets.
-serversockfd = lind_test_server.get_net_call(-1,"socket_syscall")(AF_INET, SOCK_STREAM, 0)
-clientsockfd = lind_test_server.get_net_call(-1,"socket_syscall")(AF_INET, SOCK_STREAM, 0)
-client2sockfd = lind_test_server.get_net_call(-1,"socket_syscall")(AF_INET, SOCK_STREAM, 0)
+serversockfd = lind_test_server.get_fscall_obj(-1).socket_syscall(AF_INET, SOCK_STREAM, 0)
+clientsockfd = lind_test_server.get_fscall_obj(-1).socket_syscall(AF_INET, SOCK_STREAM, 0)
+client2sockfd = lind_test_server.get_fscall_obj(-1).socket_syscall(AF_INET, SOCK_STREAM, 0)
 
 #Bind and listen the socket to a particular address.
-lind_test_server.get_net_call(-1,"bind_syscall")(serversockfd, '127.0.0.1', 50300)
-lind_test_server.get_net_call(-1,"listen_syscall")(serversockfd, 4)
+lind_test_server.get_fscall_obj(-1).bind_syscall(serversockfd, '127.0.0.1', 50300)
+lind_test_server.get_fscall_obj(-1).listen_syscall(serversockfd, 4)
 
 #Will contain list of sockets that select needs to watch for. By default we
 #provide server socket and file, new sockets will be added to monitor by server. 
@@ -42,26 +42,26 @@ def process_request():
   while True:
     #Pass list of Inputs, Outputs for select which returns if any activity
     #occurs on any socket.
-    ret = lind_test_server.get_net_call(-1,"select_syscall")(11, inputs, outputs, excepts, 5)
+    ret = lind_test_server.get_fscall_obj(-1).select_syscall(11, inputs, outputs, excepts, 5)
 
     #Check for any activity in any of the Input sockets...
     for sock in ret[1]:
       #If the socket returned was listerner socket, then there's a new conn.
       #so we accept it, and put the client socket in the list of Inputs.
       if sock is serversockfd:
-        newsockfd = lind_test_server.get_net_call(-1,"accept_syscall")(sock)
+        newsockfd = lind_test_server.get_fscall_obj(-1).accept_syscall(sock)
         inputs.append(newsockfd[2])
       #Write to a file...
       elif sock is filefd:
         emultimer.sleep(1)
-        assert lind_test_server.get_fs_call(-1,"write_syscall")(sock, 'test') == 4, \
+        assert lind_test_server.get_fscall_obj(-1).write_syscall(sock, 'test') == 4, \
           "Failed to write into a file..."
-        lind_test_server.get_fs_call(-1,"lseek_syscall")(sock, 0, SEEK_SET)
+        lind_test_server.get_fscall_obj(-1).lseek_syscall(sock, 0, SEEK_SET)
         inputs.remove(sock)
       #If the socket is in established conn., then we recv the data, if
       #there's no data, then close the client socket.
       else:
-        data = lind_test_server.get_net_call(-1,"recv_syscall")(sock, 100, 0)
+        data = lind_test_server.get_fscall_obj(-1).recv_syscall(sock, 100, 0)
         if data:
           assert data == "test", "Recv failed in select..."
           #We make the ouput ready, so that it sends out data... 
@@ -70,23 +70,23 @@ def process_request():
         else:         
           #No data means remote socket closed, hence close the client socket
           #in server, also remove this socket from readfd's. 
-          lind_test_server.get_fs_call(-1,"close_syscall")(sock)
+          lind_test_server.get_fscall_obj(-1).close_syscall(sock)
           inputs.remove(sock)
     
     #Check for any activity in any of the output sockets...
     for sock in ret[2]:
       if sock is filefd:
-        assert lind_test_server.get_fs_call(-1,"read_syscall")(sock, 4) == "test", \
+        assert lind_test_server.get_fscall_obj(-1).read_syscall(sock, 4) == "test", \
           "Failed to read from a file..."
         #test for file finished, remove from monitoring.
         outputs.remove(sock)
       else:
-        lind_test_server.get_net_call(-1,"send_syscall")(sock, data, 0)
+        lind_test_server.get_fscall_obj(-1).send_syscall(sock, data, 0)
         #Data is sent out this socket, it's no longer ready for writing
         #remove this socket from writefd's. 
         outputs.remove(sock)
 
-  lind_test_server.get_fs_call(-1,"close_syscall")(serversockfd)
+  lind_test_server.get_fscall_obj(-1).close_syscall(serversockfd)
 
 #Thread for running server ...
 emultimer.createthread(process_request)
@@ -97,15 +97,15 @@ def client1():
   <Purpose>
     Thread for client 1 to connect to server, and send/recv data...
   """
-  lind_test_server.get_net_call(-1,"connect_syscall")(clientsockfd, '127.0.0.1', 50300)
+  lind_test_server.get_fscall_obj(-1).connect_syscall(clientsockfd, '127.0.0.1', 50300)
   
-  lind_test_server.get_net_call(-1,"send_syscall")(clientsockfd, "test", 0)
+  lind_test_server.get_fscall_obj(-1).send_syscall(clientsockfd, "test", 0)
   #Short sleeps are not working, give enough time...
   emultimer.sleep(1)
-  assert lind_test_server.get_net_call(-1,"recv_syscall")(clientsockfd, 100, 0) == "test", \
+  assert lind_test_server.get_fscall_obj(-1).recv_syscall(clientsockfd, 100, 0) == "test", \
      "Write failed in select while processing client 1..."
 
-  lind_test_server.get_fs_call(-1,"close_syscall")(clientsockfd)
+  lind_test_server.get_fscall_obj(-1).close_syscall(clientsockfd)
 
 #Thread for running client 1, I did so because to show that server can handle
 #multiple connections simultaneously...
@@ -113,15 +113,15 @@ emultimer.createthread(client1)
 emultimer.sleep(.1)
 
 #Client 2 connects to server, and send/recv data...
-lind_test_server.get_net_call(-1,"connect_syscall")(client2sockfd, '127.0.0.1', 50300)
+lind_test_server.get_fscall_obj(-1).connect_syscall(client2sockfd, '127.0.0.1', 50300)
 
-lind_test_server.get_net_call(-1,"send_syscall")(client2sockfd, "test", 0)
+lind_test_server.get_fscall_obj(-1).send_syscall(client2sockfd, "test", 0)
 #Short sleeps are not working, give enough time...
 emultimer.sleep(.1)
-assert lind_test_server.get_net_call(-1,"recv_syscall")(client2sockfd, 100, 0) == "test", \
+assert lind_test_server.get_fscall_obj(-1).recv_syscall(client2sockfd, 100, 0) == "test", \
   "Write failed in select while processing client 2..."
 
-lind_test_server.get_fs_call(-1,"close_syscall")(client2sockfd)
+lind_test_server.get_fscall_obj(-1).close_syscall(client2sockfd)
 
 #Exit all threads, no better way to close server thread which is in infinity
 #loop...
