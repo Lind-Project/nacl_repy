@@ -110,6 +110,21 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
+import time
+
+timerlock = createlock()
+
+def log_time(func):
+  def wrapper(*arg):
+    t0 = time.time()
+    retval = func(*arg)
+    timedif = time.time() - t0
+    timerlock.acquire(True)
+    print func.func_name, str(int(timedif * 1000000000))
+    timerlock.release()
+    return retval
+  return wrapper
+
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 
@@ -524,6 +539,7 @@ class fs_call_dictionary:
   
   ##### EXIT  #####
 
+  @log_time
   def exit_syscall(self, status):
     """
     http://linux.die.net/man/2/exit
@@ -589,6 +605,7 @@ class fs_call_dictionary:
     return myfsdata
 
 
+  @log_time
   def fstatfs_syscall(self, fd):
     """
       http://linux.die.net/man/2/fstatfs
@@ -617,6 +634,7 @@ class fs_call_dictionary:
   ##### STATFS  #####
 
 
+  @log_time
   def statfs_syscall(self, path):
     """
       http://linux.die.net/man/2/statfs
@@ -642,6 +660,7 @@ class fs_call_dictionary:
 
   ##### ACCESS  #####
 
+  @log_time
   def access_syscall(self, path, amode):
     """
       See: http://linux.die.net/man/2/access
@@ -682,6 +701,7 @@ class fs_call_dictionary:
 
   ##### CHDIR  #####
 
+  @log_time
   def chdir_syscall(self, path):
     """
       http://linux.die.net/man/2/chdir
@@ -706,6 +726,7 @@ class fs_call_dictionary:
 
   ##### MKDIR  #####
 
+  @log_time
   def mkdir_syscall(self, path, mode):
     """
       http://linux.die.net/man/2/mkdir
@@ -778,6 +799,7 @@ class fs_call_dictionary:
 
   ##### RMDIR  #####
 
+  @log_time
   def rmdir_syscall(self, path):
     """
       http://linux.die.net/man/2/rmdir
@@ -839,6 +861,7 @@ class fs_call_dictionary:
 
   ##### LINK  #####
 
+  @log_time
   def link_syscall(self, oldpath, newpath):
     """
       http://linux.die.net/man/2/link
@@ -911,6 +934,7 @@ class fs_call_dictionary:
 
   ##### UNLINK  #####
 
+  @log_time
   def unlink_syscall(self, path):
     """
       http://linux.die.net/man/2/unlink
@@ -975,6 +999,7 @@ class fs_call_dictionary:
 
   ##### STAT  #####
 
+  @log_time
   def stat_syscall(self, path):
     """
       http://linux.die.net/man/2/stat
@@ -1006,6 +1031,7 @@ class fs_call_dictionary:
 
   ##### FSTAT  #####
 
+  @log_time
   def fstat_syscall(self, fd):
     """
       http://linux.die.net/man/2/fstat
@@ -1105,6 +1131,7 @@ class fs_call_dictionary:
 
     raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
 
+  @log_time
   def open_syscall(self, path, flags, mode):
     """
       http://linux.die.net/man/2/open
@@ -1253,6 +1280,7 @@ class fs_call_dictionary:
 
   ##### CREAT  #####
 
+  @log_time
   def creat_syscall(self, pathname, mode):
     """
       http://linux.die.net/man/2/creat
@@ -1271,6 +1299,7 @@ class fs_call_dictionary:
 
   ##### LSEEK  #####
 
+  @log_time
   def lseek_syscall(self, fd, offset, whence):
     """
       http://linux.die.net/man/2/lseek
@@ -1417,6 +1446,7 @@ class fs_call_dictionary:
         
   ##### READ  #####
 
+  @log_time
   def read_syscall(self, fd, count):
     """
       http://linux.die.net/man/2/read
@@ -1455,6 +1485,7 @@ class fs_call_dictionary:
   
   ##### PREAD  #####
   
+  @log_time
   def pread_syscall(self, fd, count, offset):
     """
       https://linux.die.net/man/2/pread
@@ -1573,6 +1604,7 @@ class fs_call_dictionary:
 
   ##### WRITE  #####
 
+  @log_time
   def write_syscall(self, fd, data):
     """
       http://linux.die.net/man/2/write
@@ -1613,6 +1645,7 @@ class fs_call_dictionary:
   
   ##### PWRITE  #####
 
+  @log_time
   def pwrite_syscall(self, fd, data, offset):
     """
       https://linux.die.net/man/2/pwrite
@@ -1789,6 +1822,7 @@ class fs_call_dictionary:
       filesystemmetadatalock.release()
 
 
+  @log_time
   def close_syscall(self, fd):
     """
       http://linux.die.net/man/2/close
@@ -1845,6 +1879,7 @@ class fs_call_dictionary:
 
 
 
+  @log_time
   def dup2_syscall(self, oldfd,newfd):
     """
       http://linux.die.net/man/2/dup2
@@ -1872,6 +1907,7 @@ class fs_call_dictionary:
 
   ##### DUP  #####
 
+  @log_time
   def dup_syscall(self, fd, startfd=STARTINGFD):
     """
       http://linux.die.net/man/2/dup
@@ -1909,6 +1945,7 @@ class fs_call_dictionary:
 
   ##### FCNTL  #####
 
+  @log_time
   def fcntl_syscall(self, fd, cmd, *args):
     """
       http://linux.die.net/man/2/fcntl
@@ -1987,6 +2024,7 @@ class fs_call_dictionary:
 
   ##### GETDENTS  #####
 
+  @log_time
   def getdents_syscall(self, fd, quantity):
     """
       http://linux.die.net/man/2/getdents
@@ -2060,6 +2098,7 @@ class fs_call_dictionary:
 
   #### CHMOD ####
 
+  @log_time
   def chmod_syscall(self, path, mode):
     """
       http://linux.die.net/man/2/chmod
@@ -2092,6 +2131,7 @@ class fs_call_dictionary:
 
   #### TRUNCATE  ####
 
+  @log_time
   def truncate_syscall(self, path, length):
     """
       http://linux.die.net/man/2/truncate
@@ -2108,6 +2148,7 @@ class fs_call_dictionary:
 
   #### FTRUNCATE ####
 
+  @log_time
   def ftruncate_syscall(self, fd, new_len):
     """
       http://linux.die.net/man/2/ftruncate
@@ -2171,6 +2212,7 @@ class fs_call_dictionary:
   #    /dev/urandom : (1, 9)
   #    The major and minor device number's should be passed in as a 2-tuple.
 
+  @log_time
   def mknod_syscall(self, path, mode, dev):
     """
       http://linux.die.net/man/2/mknod
@@ -2286,6 +2328,7 @@ class fs_call_dictionary:
   #### USER/GROUP IDENTITIES ####
 
 
+  @log_time
   def getuid_syscall(self):
     """
       http://linux.die.net/man/2/getuid
@@ -2293,6 +2336,7 @@ class fs_call_dictionary:
     # I will return 1000, since this is also used in stat
     return DEFAULT_UID
 
+  @log_time
   def geteuid_syscall(self):
     """
       http://linux.die.net/man/2/geteuid
@@ -2300,6 +2344,7 @@ class fs_call_dictionary:
     # I will return 1000, since this is also used in stat
     return DEFAULT_UID
 
+  @log_time
   def getgid_syscall(self):
     """
       http://linux.die.net/man/2/getgid
@@ -2307,6 +2352,7 @@ class fs_call_dictionary:
     # I will return 1000, since this is also used in stat
     return DEFAULT_GID
 
+  @log_time
   def getegid_syscall(self):
     """
       http://linux.die.net/man/2/getegid
@@ -2315,12 +2361,14 @@ class fs_call_dictionary:
     return DEFAULT_GID
 
   #TODO: We currently don't handle prctl or subreaper at all
+  @log_time
   def getpid_syscall(self):
     """
       http://linux.die.net/man/2/getpid
     """
     return self.cageid
 
+  @log_time
   def getppid_syscall(self):
     """
       http://linux.die.net/man/2/getppid
@@ -2332,6 +2380,7 @@ class fs_call_dictionary:
     #init, with a pid of 1, however pid 1 is a different
     #process in Lind, so 0 is our pseudo-init
 
+  @log_time
   def getrlimit_syscall(self, res_type):
     """
       http://linux.die.net/man/2/getrlimit
@@ -2345,6 +2394,7 @@ class fs_call_dictionary:
     else:
       raise UnimplementedError("The resource type is unimplemented.")
 
+  @log_time
   def setrlimit_syscall(self, res_type, limits):
     """
       http://linux.die.net/man/2/setrlimit
@@ -2365,6 +2415,7 @@ class fs_call_dictionary:
   #### FLOCK SYSCALL  ####
 
 
+  @log_time
   def flock_syscall(self, fd, operation):
     """
       http://linux.die.net/man/2/flock
@@ -2397,6 +2448,7 @@ class fs_call_dictionary:
   #### RENAME SYSCALL  ####
 
 
+  @log_time
   def rename_syscall(self, old, new):
     """
     http://linux.die.net/man/2/rename
@@ -2444,6 +2496,7 @@ class fs_call_dictionary:
 
     raise SyscallError("pipe_syscall","EMFILE","The maximum number of files are open.")
 
+  @log_time
   def pipe_syscall(self):
     """
     http://linux.die.net/man/2/pipe
@@ -2481,6 +2534,7 @@ class fs_call_dictionary:
 
   # pipe2 currently not implemented
 
+  @log_time
   def pipe2_syscall(self, flags):
     """
     http://linux.die.net/man/2/pipe2
@@ -2498,6 +2552,7 @@ class fs_call_dictionary:
   # NOTE: this is only the part of fork that forks the file table and adds the parentage information. Most of fork
   # is implemented in parts of NaCl
 
+  @log_time
   def fork_syscall(self, child_cageid):
 
     self.fdtablelock.acquire(True)
@@ -2517,6 +2572,7 @@ class fs_call_dictionary:
   # Exec will do the same copying as fork, 
   # but we want to get rid of all the information from the old cage
   
+  @log_time
   def exec_syscall(self, child_cageid):
 
     self.fdtablelock.acquire(True)
@@ -2534,6 +2590,7 @@ class fs_call_dictionary:
       self.fdtablelock.release()
   
 
+  @log_time
   def mmap_syscall(self, addr, leng, prot, flags, fildes, off):
     """
     http://linux.die.net/man/2/mmap
@@ -2593,6 +2650,7 @@ class fs_call_dictionary:
       filesystemmetadatalock.release()
 
    
+  @log_time
   def munmap_syscall(self, addr, leng):
     """
     http://linux.die.net/man/2/munmap
