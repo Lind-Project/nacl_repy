@@ -753,7 +753,7 @@ def getpeername_syscall(self, fd):
   if fd not in self.filedescriptortable:
     raise SyscallError("getpeername_syscall","EBADF","The file descriptor is invalid.")
 
-  if not IS_SOCK(self.filedescriptortable[fd]['mode']):
+  if 'mode' not in self.filedescriptortable[fd] or not IS_SOCK(self.filedescriptortable[fd]['mode']):
     raise SyscallError("getpeername_syscall","ENOTSOCK","The descriptor is not a socket.")
 
 
