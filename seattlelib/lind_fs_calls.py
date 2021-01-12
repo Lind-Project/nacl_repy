@@ -115,9 +115,9 @@ import time
 timerlock = createlock()
 
 def log_time(func):
-  def wrapper(*arg):
+  def wrapper(*arg, **kwargs):
     t0 = time.time()
-    retval = func(*arg)
+    retval = func(*arg, **kwargs)
     timedif = time.time() - t0
     timerlock.acquire(True)
     print func.func_name, str(int(timedif * 1000000000))
@@ -1692,11 +1692,11 @@ class fs_call_dictionary:
   @log_time
   def _lookup_fds_by_inode(self, inode):
     returnedfddict = {}
-    for cageid in master_fs_calls_context.keys():
-      table = get_fscall_obj(cageid).filedescriptortable
+    for cageid, ctx in master_fs_calls_context.items():
+      table = ctx['syscall_table'].filedescriptortable
       try:
         for fd in table.keys():
-          if IS_SOCK_DESC(fd, table) or IS_EPOLL_FD(fd, table) or IS_PIPE_DESC(fd, table):
+          if 'inode' not in table[fd]:
             continue
 
           if table[fd]['inode'] == inode:
@@ -1714,8 +1714,8 @@ class fs_call_dictionary:
   @log_time
   def _lookup_refs_by_pipe_end(self, pipenumber, flags):
     pipe_references = 0
-    for cageid in master_fs_calls_context.keys():
-      table = get_fscall_obj(cageid).filedescriptortable
+    for cageid, ctx in master_fs_calls_context.items():
+      table = ctx['syscall_table'].filedescriptortable
       try:
         for fd in table.keys(): 
           if IS_PIPE_DESC(fd, table):
@@ -1751,6 +1751,7 @@ class fs_call_dictionary:
 
   # private helper that allows this to be called in other places (like dup2)
   # without changing to re-entrant locks
+  @log_time
   def _close_helper(self, fd, filelock = True):
 
     # don't close streams, which have an inode of 1
