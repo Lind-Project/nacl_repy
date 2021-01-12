@@ -950,11 +950,10 @@ class cageobj:
       # If 0, remove the entry from the inode table if there are no open handles
       # If open handles exist, flag it to unlink when the last handle is closed
       if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
-        fdsforinode = self._lookup_fds_by_inode(thisinode)
-        if len(fdsforinode) == 0:
-            del filesystemmetadata['inodetable'][thisinode]
+        if filesystemmetadata['inodetable'][thisinode]['refcount'] == 0:
+          del filesystemmetadata['inodetable'][thisinode]
         else:
-            filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
+          filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
 
       return 0
 
