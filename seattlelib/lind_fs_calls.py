@@ -142,9 +142,6 @@ filesystemmetadatalock = createlock()
 #this is a dictionary of lookup tables
 fastinodelookuptable = {}
 
-# contains parentage informarion for processes, only child processes have entries, populated on fork.
-parentagetable = {}
-
 # contains file objects... (keyed by inode)
 #this is a dictionary of dictionaries of file objects
 fileobjecttable = {}
@@ -153,15 +150,9 @@ fileobjecttable = {}
 #this is a dictionary of pipes which contains data and appropriate locks
 pipetable = {}
 
-# I use this so that I can assign to a global string (currentworkingdirectory)
-# without using global, which is blocked by RepyV2
-#this is a dictionary of dictionaries of contexts
-master_fs_calls_context = {}
+#this is a dictionary of cage objects
+master_cage_context = {}
 
-# Where we currently are at...
-
-#fs_calls_context['currentworkingdirectory'] = '/'
-#We can't initialize it here
 SILENT=True
 
 def warning(*msg):
@@ -220,7 +211,7 @@ def load_fs(cageid, name=METADATAFILENAME):
 
   This is the best entry point for programs loading the file subsystem.
   """
-  master_fs_calls_context[cageid] = {'currentworkingdirectory': '/', 'syscall_table': fs_call_dictionary(cageid)}
+  master_cage_context[cageid] = cageobj(cageid, '/')
   try:
     # lets see if the metadata file is already here?
     f = openfile(name, False)
@@ -441,7 +432,7 @@ def normpath(path, cageid):
 
   # If it's a relative path, prepend the CWD...
   if path[0] != '/':
-    path = master_fs_calls_context[cageid]['currentworkingdirectory'] + '/' + path
+    path = master_cage_context[cageid].currentworkingdirectory + '/' + path
 
   return normpath2(path)
 
@@ -489,19 +480,17 @@ def enosys_syscall(*args):
 # posix compliant fork, which involves a duplication of the file table.
 
 @log_time
-def get_fscall_obj(CONST_CAGEID):
+def get_fscall_obj(cageid):
+  if cageid not in master_cage_context:
+    master_cage_context[cageid] = cageobj(cageid, '/')
+  return master_cage_context[cageid]
 
-  if CONST_CAGEID not in master_fs_calls_context:
-    master_fs_calls_context[CONST_CAGEID] = {'currentworkingdirectory':'/'}
-  fs_calls_context = master_fs_calls_context[CONST_CAGEID]
 
-  if 'syscall_table' not in fs_calls_context:
-    fs_calls_context['syscall_table'] = fs_call_dictionary(CONST_CAGEID)
-  return fs_calls_context['syscall_table']
-
-class fs_call_dictionary:
-  def __init__(self, CONST_CAGEID, fdtable = None):
+class cageobj:
+  def __init__(self, CONST_CAGEID, workingdir, fdtable = None, parent = 0):
     self.cageid = CONST_CAGEID
+    self.currentworkingdirectory = workingdir
+    self.parent = parent
     if fdtable is None:
       self.filedescriptortable = {}
       _load_lower_handle_stubs(self.filedescriptortable)
@@ -552,8 +541,7 @@ class fs_call_dictionary:
       # close all the fds in the fd-table
       for fd in self.filedescriptortable:
         self._close_helper(fd) # call _close_helper to do the work
-    
-      
+      # remove/reparent children
      
     finally:
       self.fdtablelock.release()
@@ -719,7 +707,7 @@ class fs_call_dictionary:
       raise SyscallError("chdir_syscall","ENOENT","A directory in the path does not exist.")
 
     # let's update and return success (0)
-    master_fs_calls_context[self.cageid]['currentworkingdirectory'] = truepath
+    master_cage_context[self.cageid].currentworkingdirectory = truepath
 
 
     return 0
@@ -1142,7 +1130,6 @@ class fs_call_dictionary:
     # with O_CREAT flags...
     filesystemmetadatalock.acquire(True)
     self.fdtablelock.acquire(True)
-
 
     # ... but always release it...
     try:
@@ -1692,8 +1679,8 @@ class fs_call_dictionary:
   @log_time
   def _lookup_fds_by_inode(self, inode):
     returnedfddict = {}
-    for cageid, ctx in master_fs_calls_context.items():
-      table = ctx['syscall_table'].filedescriptortable
+    for cageid, ctx in master_cage_context.items():
+      table = ctx.filedescriptortable
       try:
         for fd in table.keys():
           if 'inode' not in table[fd]:
@@ -1714,8 +1701,8 @@ class fs_call_dictionary:
   @log_time
   def _lookup_refs_by_pipe_end(self, pipenumber, flags):
     pipe_references = 0
-    for cageid, ctx in master_fs_calls_context.items():
-      table = ctx['syscall_table'].filedescriptortable
+    for cageid, ctx in master_cage_context.items():
+      table = ctx.filedescriptortable
       try:
         for fd in table.keys(): 
           if IS_PIPE_DESC(fd, table):
@@ -2377,9 +2364,7 @@ class fs_call_dictionary:
     """
       http://linux.die.net/man/2/getppid
     """
-    if self.cageid in parentagetable:
-      return parentagetable[self.cageid]['ppid']
-    return 0 
+    return master_cage_context[self.cageid].parent
     #NOTE: POSIX specifies that default parent should be
     #init, with a pid of 1, however pid 1 is a different
     #process in Lind, so 0 is our pseudo-init
@@ -2562,11 +2547,7 @@ class fs_call_dictionary:
     self.fdtablelock.acquire(True)
 
     try:
-      master_fs_calls_context[child_cageid] = {"currentworkingdirectory": 
-              master_fs_calls_context[self.cageid]["currentworkingdirectory"],
-              'syscall_table': fs_call_dictionary(child_cageid, self.filedescriptortable)}
-
-      parentagetable[child_cageid] = {'ppid': self.cageid}
+      master_cage_context[child_cageid] = cageobj(child_cageid, self.currentworkingdirectory, self.filedescriptortable, self.cageid)
       return child_cageid
     
     finally:
@@ -2583,11 +2564,10 @@ class fs_call_dictionary:
 
     try:
       #is CLOEXEC handled?
-      master_fs_calls_context[child_cageid] = {"currentworkingdirectory":
-              master_fs_calls_context[self.cageid]["currentworkingdirectory"]}
-      master_fs_calls_context[child_cageid]['syscall_table'] = self
-      del master_fs_calls_context[self.cageid]
+      master_cage_context[child_cageid] = self
+      del master_cage_context[self.cageid]
       self.cageid = child_cageid
+      # remove/reparent children
       return 0 #dummy for SuccessResponseBuilder
     
     finally:
