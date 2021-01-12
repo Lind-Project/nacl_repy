@@ -225,32 +225,9 @@ def _insert_into_socketobjecttable(socketobj):
 
 #################### The actual system calls...   #############################
   
-# JS: The following function provides an enclosing scope for the network
-# system calls. This design structure allows the system calls enclosed by 
-# get_net_call to access the cageid without having a signature that contradicts
-# the POSIX specification (by having a cageid parameter on each one). Although
-# such a change would not adversely affect the functioning of the program, it
-# would be ugly and also confusing.
-#
-# The syscalls should be called using the following syntax:
-# get_net_call(<cageid>,<syscall name>)(arg1,arg2...)
-#
-# The functions are stored in NET_CALL_DICTIONARY, and each function is indexed
-# by its name, and is added to the dictionary after its definition as a nested
-# function. The variables CONST_CAGEID, CLOSURE_SYSCALL_NAME, and
-# NET_CALL_DICTIONARY should NOT be modified from within the scope of the 
-# enclosed system calls.
-#
-# A similar function exists for file system system calls, named get_fs_call. It
-# is located in lind_fs_calls.py, and has the same syntax.
-#
-# The inclusion of the cageid within system calls is necessary to handle a
-# posix compliant fork, which involves a duplication of the file table.
-# Eventually, filesystemmetadata, socketobjecttable and filesystemmetadatalock
-# will need to be turned into lists or dictionaries indexed by cageid (so that
-# each cage will have its own independently accessible file descriptor table),
-# and part of the fork system call will need to be implemented in repy, however
-# as of Aug 2019 that has not happened.
+# JS: The following functions are populated into the system call object from
+# lind_fs_calls.py. They can access the enclosing syscall class, including the
+# cageid and the filedescriptortable.
 
 ##### SOCKET  #####
 

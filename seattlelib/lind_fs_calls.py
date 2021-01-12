@@ -458,28 +458,20 @@ def enosys_syscall(*args):
 
 #################### The actual system calls...   #############################
 
-# JS: The following function provides an enclosing scope for all of the file
+# JS: The following class provides an enclosing scope for all of the file
 # system system calls. This structure allows the system calls enclosed by 
-# get_fs_call to access the cageid without having a signature that contradicts
+# the class to access the cageid without having a signature that contradicts
 # the POSIX specification (by having a cageid parameter on each one). Although
 # such a change would not adversely affect the functioning of the program, it
 # would be ugly and also confusing.
 #
 # The syscalls should be called using the following syntax:
-# get_fs_call(<cageid>,<syscall name>)(arg1,arg2...)
+# get_fscall_obj(<cageid>).<syscall name>(arg1,arg2...)
 #
-# The functions are stored in FS_CALL_DICTIONARY, and each function is indexed
-# by its name, and is added to the dictionary after its definition as a nested
-# function. The variables CONST_CAGEID, CLOSURE_SYSCALL_NAME, and 
-# FS_CALL_DICTIONARY should NOT be modified from within the scope of the
-# enclosed system calls.
-#
-# A similar function exists for networking system calls, named get_net_call. 
-# It is located in lind_net_calls.py, and has the same syntax.
+# The networking system calls are in lind_net_calls.py and put into this class
 #
 # The inclusion of the cageid within system calls is necessary to handle a
 # posix compliant fork, which involves a duplication of the file table.
-# This has been implemented using fs_fork.
 
 def get_fscall_obj(CONST_CAGEID):
 
