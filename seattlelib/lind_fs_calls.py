@@ -488,6 +488,7 @@ def enosys_syscall(*args):
 # The inclusion of the cageid within system calls is necessary to handle a
 # posix compliant fork, which involves a duplication of the file table.
 
+@log_time
 def get_fscall_obj(CONST_CAGEID):
 
   if CONST_CAGEID not in master_fs_calls_context:
@@ -1688,6 +1689,7 @@ class fs_call_dictionary:
   ##### CLOSE  #####
 
   # private helper.   Get the fds for an inode (or [] if none)
+  @log_time
   def _lookup_fds_by_inode(self, inode):
     returnedfddict = {}
     for cageid in master_fs_calls_context.keys():
@@ -1709,6 +1711,7 @@ class fs_call_dictionary:
     return returnedfddict
 
   # private helper.   Get the references to and end of a pipe 
+  @log_time
   def _lookup_refs_by_pipe_end(self, pipenumber, flags):
     pipe_references = 0
     for cageid in master_fs_calls_context.keys():
