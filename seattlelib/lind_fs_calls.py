@@ -110,6 +110,22 @@
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
+import time
+
+timerlock = createlock()
+
+def log_time(func):
+  def wrapper(*arg):
+    t0 = time.time()
+    retval = func(*arg)
+    timedif = time.time() - t0
+    timerlock.acquire(True)
+    print func.func_name, str(int(timedif * 1000000000))
+    timerlock.release()
+    return retval
+  return wrapper
+
+
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 
@@ -490,6 +506,7 @@ def enosys_syscall(*args):
 # posix compliant fork, which involves a duplication of the file table.
 # This has been implemented using fs_fork.
 
+@log_time
 def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   if CONST_CAGEID not in masterfiledescriptortable:
@@ -510,6 +527,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### EXIT  #####
 
+  @log_time
   def exit_syscall(status):
     """
     http://linux.die.net/man/2/exit
@@ -581,6 +599,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     return myfsdata
 
 
+  @log_time
   def fstatfs_syscall(fd):
     """
       http://linux.die.net/man/2/fstatfs
@@ -621,6 +640,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   ##### STATFS  #####
 
 
+  @log_time
   def statfs_syscall(path):
     """
       http://linux.die.net/man/2/statfs
@@ -657,6 +677,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### ACCESS  #####
 
+  @log_time
   def access_syscall(path, amode):
     """
       See: http://linux.die.net/man/2/access
@@ -705,6 +726,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
+  @log_time
   def chdir_syscall(path):
     """
       http://linux.die.net/man/2/chdir
@@ -732,6 +754,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### MKDIR  #####
 
+  @log_time
   def mkdir_syscall(path, mode):
     """
       http://linux.die.net/man/2/mkdir
@@ -810,6 +833,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### RMDIR  #####
 
+  @log_time
   def rmdir_syscall(path):
     """
       http://linux.die.net/man/2/rmdir
@@ -880,6 +904,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   ##### LINK  #####
 
 
+  @log_time
   def link_syscall(oldpath, newpath):
     """
       http://linux.die.net/man/2/link
@@ -959,6 +984,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
+  @log_time
   def unlink_syscall(path):
     """
       http://linux.die.net/man/2/unlink
@@ -1028,6 +1054,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### STAT  #####
 
+  @log_time
   def stat_syscall(path):
     """
       http://linux.die.net/man/2/stat
@@ -1062,6 +1089,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### FSTAT  #####
 
+  @log_time
   def fstat_syscall(fd):
     """
       http://linux.die.net/man/2/fstat
@@ -1165,6 +1193,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     raise SyscallError("open_syscall","EMFILE","The maximum number of files are open.")
 
+  @log_time
   def open_syscall(path, flags, mode):
     """
       http://linux.die.net/man/2/open
@@ -1321,6 +1350,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### CREAT  #####
 
+  @log_time
   def creat_syscall(pathname, mode):
     """
       http://linux.die.net/man/2/creat
@@ -1344,6 +1374,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### LSEEK  #####
 
+  @log_time
   def lseek_syscall(fd, offset, whence):
     """
       http://linux.die.net/man/2/lseek
@@ -1489,6 +1520,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         
   ##### READ  #####
 
+  @log_time
   def read_syscall(fd, count):
     """
       http://linux.die.net/man/2/read
@@ -1533,6 +1565,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
   ##### PREAD  #####
   
+  @log_time
   def pread_syscall(fd, count, offset):
     """
       https://linux.die.net/man/2/pread
@@ -1659,6 +1692,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### WRITE  #####
 
+  @log_time
   def write_syscall(fd, data):
     """
       http://linux.die.net/man/2/write
@@ -1706,6 +1740,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
   ##### PWRITE  #####
 
+  @log_time
   def pwrite_syscall(fd, data, offset):
     """
       https://linux.die.net/man/2/pwrite
@@ -1912,6 +1947,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
       filesystemmetadatalock.release()
 
 
+  @log_time
   def close_syscall(fd):
     """
       http://linux.die.net/man/2/close
@@ -1979,6 +2015,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
+  @log_time
   def dup2_syscall(oldfd,newfd):
     """
       http://linux.die.net/man/2/dup2
@@ -2013,6 +2050,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   ##### DUP  #####
 
+  @log_time
   def dup_syscall(fd, startfd=STARTINGFD):
     """
       http://linux.die.net/man/2/dup
@@ -2062,6 +2100,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
+  @log_time
   def fcntl_syscall(fd, cmd, *args):
     """
       http://linux.die.net/man/2/fcntl
@@ -2150,6 +2189,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
 
 
+  @log_time
   def getdents_syscall(fd, quantity):
     """
       http://linux.die.net/man/2/getdents
@@ -2228,6 +2268,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #### CHMOD ####
 
 
+  @log_time
   def chmod_syscall(path, mode):
     """
       http://linux.die.net/man/2/chmod
@@ -2261,6 +2302,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #### TRUNCATE  ####
 
 
+  @log_time
   def truncate_syscall(path, length):
     """
       http://linux.die.net/man/2/truncate
@@ -2279,6 +2321,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #### FTRUNCATE ####
 
 
+  @log_time
   def ftruncate_syscall(fd, new_len):
     """
       http://linux.die.net/man/2/ftruncate
@@ -2346,6 +2389,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #    /dev/urandom : (1, 9)
   #    The major and minor device number's should be passed in as a 2-tuple.
 
+  @log_time
   def mknod_syscall(path, mode, dev):
     """
       http://linux.die.net/man/2/mknod
@@ -2463,6 +2507,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #### USER/GROUP IDENTITIES ####
 
 
+  @log_time
   def getuid_syscall():
     """
       http://linux.die.net/man/2/getuid
@@ -2472,6 +2517,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["getuid_syscall"] = getuid_syscall
 
+  @log_time
   def geteuid_syscall():
     """
       http://linux.die.net/man/2/geteuid
@@ -2481,6 +2527,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["geteuid_syscall"] = geteuid_syscall
 
+  @log_time
   def getgid_syscall():
     """
       http://linux.die.net/man/2/getgid
@@ -2490,6 +2537,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["getgid_syscall"] = getgid_syscall
 
+  @log_time
   def getegid_syscall():
     """
       http://linux.die.net/man/2/getegid
@@ -2500,6 +2548,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   FS_CALL_DICTIONARY["getegid_syscall"] = getegid_syscall
 
   #TODO: We currently don't handle prctl or subreaper at all
+  @log_time
   def getpid_syscall():
     """
       http://linux.die.net/man/2/getpid
@@ -2508,6 +2557,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["getpid_syscall"] = getpid_syscall
 
+  @log_time
   def getppid_syscall():
     """
       http://linux.die.net/man/2/getppid
@@ -2522,6 +2572,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   FS_CALL_DICTIONARY["getppid_syscall"] = getppid_syscall
 
  
+  @log_time
   def getrlimit_syscall(res_type):
     """
       http://linux.die.net/man/2/getrlimit
@@ -2538,6 +2589,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["getrlimit_syscall"] = getrlimit_syscall
 
+  @log_time
   def setrlimit_syscall(res_type, limits):
     """
       http://linux.die.net/man/2/setrlimit
@@ -2560,6 +2612,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #### FLOCK SYSCALL  ####
 
 
+  @log_time
   def flock_syscall(fd, operation):
     """
       http://linux.die.net/man/2/flock
@@ -2595,6 +2648,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   #### RENAME SYSCALL  ####
 
 
+  @log_time
   def rename_syscall(old, new):
     """
     http://linux.die.net/man/2/rename
@@ -2645,6 +2699,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
     raise SyscallError("pipe_syscall","EMFILE","The maximum number of files are open.")
 
+  @log_time
   def pipe_syscall():
     """
     http://linux.die.net/man/2/pipe
@@ -2686,6 +2741,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # pipe2 currently not implemented
 
+  @log_time
   def pipe2_syscall(flags):
     """
     http://linux.die.net/man/2/pipe2
@@ -2704,6 +2760,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # NOTE: this is only the part of fork that forks the file table and adds the parentage information. Most of fork
   # is implemented in parts of NaCl
 
+  @log_time
   def fork_syscall(child_cageid):
 
     fdtablelock = masterfdlocktable[CONST_CAGEID]
@@ -2732,6 +2789,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   # Exec will do the same copying as fork, 
   # but we want to get rid of all the information from the old cage
   
+  @log_time
   def exec_syscall(child_cageid):
 
     fdtablelock = masterfdlocktable[CONST_CAGEID]
@@ -2756,6 +2814,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
   FS_CALL_DICTIONARY["exec_syscall"] = exec_syscall
 
+  @log_time
   def mmap_syscall(addr, leng, prot, flags, fildes, off):
     """
     http://linux.die.net/man/2/mmap
@@ -2818,7 +2877,8 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   FS_CALL_DICTIONARY["mmap_syscall"] = mmap_syscall
    
-  def munmap_syscall(addr, leng):
+  @log_time
+  def munmap_syscall(addr, leng): 
     """
     http://linux.die.net/man/2/munmap
     """
