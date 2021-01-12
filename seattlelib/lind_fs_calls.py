@@ -115,9 +115,9 @@ import time
 timerlock = createlock()
 
 def log_time(func):
-  def wrapper(*arg):
+  def wrapper(*args, **kwargs):
     t0 = time.time()
-    retval = func(*arg)
+    retval = func(*args, **kwargs)
     timedif = time.time() - t0
     timerlock.acquire(True)
     print func.func_name, str(int(timedif * 1000000000))
@@ -1873,6 +1873,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
   # private helper that allows this to be called in other places (like dup2)
   # without changing to re-entrant locks
+  @log_time
   def _close_helper(fd, filelock = True):
 
     filedescriptortable = masterfiledescriptortable[CONST_CAGEID]
