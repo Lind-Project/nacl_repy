@@ -2456,7 +2456,7 @@ class fs_call_dictionary:
 
     try:
       # get next available pipe number, and set up pipe
-      pipenumber = get_next_pipe()
+      pipenumber = self.get_next_pipe()
       pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
       pipefds = []
      
@@ -2528,6 +2528,7 @@ class fs_call_dictionary:
       master_fs_calls_context[child_cageid]['syscall_table'] = self
       del master_fs_calls_context[self.cageid]
       self.cageid = child_cageid
+      return 0 #dummy for SuccessResponseBuilder
     
     finally:
       self.fdtablelock.release()
