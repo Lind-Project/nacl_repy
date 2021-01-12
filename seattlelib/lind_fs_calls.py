@@ -1788,6 +1788,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   ##### CLOSE  #####
 
   # private helper.   Get the fds for an inode (or [] if none)
+  @log_time
   def _lookup_fds_by_inode(inode):
     returnedfddict = {}
     for cageid in masterfiledescriptortable.keys():
@@ -1808,6 +1809,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     return returnedfddict
 
   # private helper.   Get the references to and end of a pipe 
+  @log_time
   def _lookup_refs_by_pipe_end(pipenumber, flags):
     pipe_references = 0
     for cageid in masterfiledescriptortable.keys():
