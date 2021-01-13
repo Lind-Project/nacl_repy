@@ -21,7 +21,7 @@ def setup_dispatcher(comp_num):
     12:lind_safe_fs_read,
     13:lind_safe_fs_write,
     14:lind_safe_fs_lseek,
-    15:lind_fs_ioctl,
+    15:lind_safe_fs_ioctl,
     17:lind_safe_fs_fxstat,
     19:lind_safe_fs_fstatfs,
     21:lind_safe_fs_mmap,
