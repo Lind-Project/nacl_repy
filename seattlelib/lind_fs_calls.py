@@ -510,7 +510,6 @@ class cageobj:
   epoll_ctl_syscall = epoll_ctl_syscall
   epoll_wait_syscall = epoll_wait_syscall
   gethostname_syscall = gethostname_syscall
-  fcntl_syscall = fcntl_syscall
   ioctl_syscall = ioctl_syscall
   ##### EXIT  #####
 
