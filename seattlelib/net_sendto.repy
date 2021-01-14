@@ -12,7 +12,7 @@ def lind_net_sendto(args):
   ipaddr = inet_ntoa(struct_pack("<I", ip))
 
   try:
-    result = get_net_call(args[-1],"sendto_syscall")(sockfd, buf, ipaddr, port, flags)
+    result = get_fscall_obj(args[-1]).sendto_syscall(sockfd, buf, ipaddr, port, flags)
   except SyscallError,e:
     return ErrorResponseBuilder("net_sendto", e[1], e[2])
   

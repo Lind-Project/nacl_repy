@@ -14,7 +14,7 @@ the result back up.
 def lind_sys_exit(args):
   status = args[0]
   try:
-    result = get_fs_call(args[-1], "exit_syscall")(status)
+    result = get_fscall_obj(args[-1]).exit_syscall(status)
   except SyscallError, e:
     return ErrorResponseBuilder("sys_exit", e[1], e[2])
   return SuccessResponseBuilder("sys_exit", result)

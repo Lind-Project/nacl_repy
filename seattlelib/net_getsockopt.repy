@@ -10,7 +10,7 @@ def lind_net_getsockopt(args):
     optname = args[2]
     optlen = args[3]
 
-    result = get_net_call(args[-1],"getsockopt_syscall")(fd, level, optname)
+    result = get_fscall_obj(args[-1]).getsockopt_syscall(fd, level, optname)
   except SyscallError,e:
     return ErrorResponseBuilder("net_getsockopt", e[1], e[2])
 

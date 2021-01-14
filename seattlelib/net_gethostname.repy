@@ -16,7 +16,7 @@ def lind_net_gethostname(args):
     try:
       length = args[0]
     
-      result = get_net_call(args[-1],"gethostname_syscall")(length)
+      result = get_fscall_obj(args[-1]).gethostname_syscall(length)
       
     except SyscallError,e:
       return ErrorResponseBuilder("net_gethostname", e[1], e[2])

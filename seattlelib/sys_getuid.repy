@@ -26,7 +26,7 @@ def lind_sys_getuid(args):
     """
 
     try:
-        result = get_fs_call(args[-1],"getuid_syscall")()
+        result = get_fscall_obj(args[-1]).getuid_syscall()
     except SyscallError, e:
         return ErrorResponseBuilder("sys_getuid", e[1], e[2])
     except UnimplementedError, e:

@@ -22,7 +22,7 @@ def lind_fs_fork(args):
   """
   child_cageid = args[0]
   try:
-    result = get_fs_call(args[-1],"fork_syscall")(child_cageid)
+    result = get_fscall_obj(args[-1]).fork_syscall(child_cageid)
   except SyscallError, e:
     message = "Encountered error in fork.\n Parent Cageid: " + args[-1] +  \
       "\nChild Cageid: " + child_cageid
