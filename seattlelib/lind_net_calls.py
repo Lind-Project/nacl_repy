@@ -1526,3 +1526,12 @@ def gethostname_syscall(self, length):
     result = DEFAULT_HOSTNAME
   
   return result
+
+
+#helper function for net operations in ioctl
+
+def _ioctl_net_helper(self, handle, request, arg):
+  
+  result = 0;
+  
+  return result;
