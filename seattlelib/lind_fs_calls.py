@@ -510,7 +510,7 @@ class cageobj:
   epoll_ctl_syscall = epoll_ctl_syscall
   epoll_wait_syscall = epoll_wait_syscall
   gethostname_syscall = gethostname_syscall
-  ioctl_syscall = ioctl_syscall
+  _ioctl_net_helper = _ioctl_net_helper
   ##### EXIT  #####
 
   def exit_syscall(self, status):
