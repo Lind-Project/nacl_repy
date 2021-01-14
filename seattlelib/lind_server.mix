@@ -151,6 +151,8 @@ include fs_dup2.repy
 
 include fs_fcntl.repy
 
+include fs_ioctl.repy
+
 include sys_getpid.repy
 
 include net_socket.repy
