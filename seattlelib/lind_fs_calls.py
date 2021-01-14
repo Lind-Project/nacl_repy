@@ -1975,7 +1975,7 @@ class cageobj:
   
    ##### IOCTL  #####
 
-  def ioctl_syscall(self, handle, request, arg):
+  def ioctl_syscall(self, fd, request, arg):
     """
       https://linux.die.net/man/2/ioctl
     """
@@ -1994,7 +1994,7 @@ class cageobj:
       # so ignore)
       if request == FIONBIO:
         
-        return _ioctl_net_helper(self, handle, request, arg)
+        return _ioctl_net_helper(self, fd, request, arg)
 
       else:
         # This is either unimplemented or malformed.   Let's raise
