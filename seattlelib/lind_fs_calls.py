@@ -510,7 +510,8 @@ class cageobj:
   epoll_ctl_syscall = epoll_ctl_syscall
   epoll_wait_syscall = epoll_wait_syscall
   gethostname_syscall = gethostname_syscall
-  
+  fcntl_syscall = fcntl_syscall
+  ioctl_syscall = ioctl_syscall
   ##### EXIT  #####
 
   def exit_syscall(self, status):
@@ -1971,7 +1972,41 @@ class cageobj:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
 
+  
+   ##### IOCTL  #####
 
+  def ioctl_syscall(self, handle, request, arg):
+    """
+      https://linux.die.net/man/2/ioctl
+    """
+    # Only part of the call is implemented, more functionality can be added when needed
+
+    # check the fd
+    if fd not in self.filedescriptortable:
+      raise SyscallError("ioctl_syscall","EBADF","Invalid file descriptor.")
+
+    # Acquire the fd lock...
+    self.filedescriptortable[fd]['lock'].acquire(True)
+
+    # ... but always release it...
+    try:
+      # if we're getting the flags, return them... (but this is just CLO_EXEC,
+      # so ignore)
+      if request == FIONBIO:
+        
+        return _ioctl_net_helper(self, handle, request, arg)
+
+      else:
+        # This is either unimplemented or malformed.   Let's raise
+        # an exception.
+        raise UnimplementedError('IOCTL with request '+str(request)+' is not yet implemented.')
+
+    finally:
+      # ... release the lock
+      self.filedescriptortable[fd]['lock'].release()
+      
+      
+  
   ##### GETDENTS  #####
 
   def getdents_syscall(self, fd, quantity):
