@@ -480,7 +480,15 @@ class cageobj:
       self.filedescriptortable = {}
       _load_lower_handle_stubs(self.filedescriptortable)
     else:
-      self.filedescriptortable = {key: value for key, value in fdtable.iteritems()}
+      self.filedescriptortable = {}
+      self.filesystemmetadatalock.acquire(True)
+      for key, value in fdtable.iteritems():
+        self.filedescriptortable[key] = value
+        try:
+         filesystemmetadata['inodetable'][value['inode']]['refcount'] += 1
+        except KeyError:
+          pass
+      self.filesystemmetadatalock.release()
     self.fdtablelock = createlock()
 
   _socket_initializer = _socket_initializer
