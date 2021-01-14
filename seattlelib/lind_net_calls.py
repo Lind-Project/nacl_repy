@@ -1530,8 +1530,27 @@ def gethostname_syscall(self, length):
 
 #helper function for net operations in ioctl
 
-def _ioctl_net_helper(self, handle, request, arg):
+def _ioctl_net_helper(self, fd, request, arg):
+  
+  #validity of fd is checked before thi function is called
+  
+  #make sute the fd is a socket
+  if not IS_SOCK_DESC(fd, self.filedescriptortable):
+    raise SyscallError("ioctl_syscall","ENOTTY","The specified request does not apply to the kind of object that the file descriptor fd references.")
   
   result = 0;
+  
+  if request == FIONBIO:
+        
+    if arg == 0: #clear non-blocking I/O
+      self.filedescriptortable[fd]['flags'] = self.filedescriptortable[fd]['flags'] & (~ O_NONBLOCK)
+      
+    else: #set for non-blocking I/O
+      self.filedescriptortable[fd]['flags'] = self.filedescriptortable[fd]['flags'] | O_NONBLOCK
+      
+  else:
+    # This is either unimplemented or malformed.   Let's raise
+    # an exception.
+    raise UnimplementedError('IOCTL with request '+str(request)+' is not yet implemented.')
   
   return result;
