@@ -1600,7 +1600,6 @@ class cageobj:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
 
-
   
   ##### PWRITE  #####
 
