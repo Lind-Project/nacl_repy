@@ -657,16 +657,24 @@ class cageobj:
       if truepath not in fastinodelookuptable:
         raise SyscallError("access_syscall","ENOENT","A directory in the path does not exist or file not found.")
 
+      newmode = 0
+      # assume current user owns the file
+      if amode & X_OK:
+        newmode |= 00100
+      if amode & W_OK:
+        newmode |= 00200
+      if amode & R_OK:
+        newmode |= 00400
+
       # BUG: This code should really walk the directories instead of using this
       # table...   This will have to be fixed for symlinks to work.
       thisinode = fastinodelookuptable[truepath]
-
 
       # BUG: This should take the UID / GID of the requestor in mind
 
       # if all of the bits for this file are set as requested, then indicate
       # success (return 0)
-      if filesystemmetadata['inodetable'][thisinode]['mode'] & amode == amode:
+      if filesystemmetadata['inodetable'][thisinode]['mode'] & newmode == newmode:
         return 0
 
       raise SyscallError("access_syscall","EACCES","The requested access is denied.")
