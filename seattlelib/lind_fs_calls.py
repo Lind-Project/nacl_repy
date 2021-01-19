@@ -369,50 +369,29 @@ def normpath2(path):
 
   # let's remove the leading ''
   assert(pathlist[0] == '')
-  pathlist = pathlist[1:]
-
-  # Now, let's remove any '.' entries...
-  while True:
-    try:
-      pathlist.remove('.')
-    except ValueError:
-      break
-
-  # Also remove any '' entries...
-  while True:
-    try:
-      pathlist.remove('')
-    except ValueError:
-      break
 
   # NOTE: This makes '/foo/bar/' -> '/foo/bar'.   I think this is okay.
 
   # for a '..' entry, remove the previous entry (if one exists).   This will
   # only work if we go left to right.
+  newpathlist = []
   position = 0
-  while position < len(pathlist):
-    if pathlist[position] == '..':
+  for node in pathlist:
+    if node == '.':
+      continue
+    elif node == '':
+      continue
+    elif node == '..':
       # if there is a parent, remove it and this entry.
-      if position > 0:
-        del pathlist[position]
-        del pathlist[position-1]
-
-        # go back one position and continue...
-        position = position -1
-        continue
-
-      else:
-        # I'm at the beginning.   Remove this, but no need to adjust position
-        del pathlist[position]
-        continue
-
+      if len(newpathlist) > 0:
+        newpathlist.pop()
+      # If not, this is a no-op
     else:
-      # it's a normal entry...   move along...
-      position = position + 1
+      newpathlist.append(node)
 
 
   # now let's join the pathlist!
-  return '/'+'/'.join(pathlist)
+  return '/'+'/'.join(newpathlist)
 
 # private helper function that converts a relative path or a path with things
 # like foo/../bar to a normal path.
@@ -755,7 +734,7 @@ class cageobj:
       assert(mode & S_IRWXA == mode)
 
       # okay, great!!!   We're ready to go!   Let's make the new directory...
-      dirname = truepath.split('/')[-1]
+      dirname = truepath.rsplit('/', 1)[-1]
 
       # first, make the new directory...
       newinode = filesystemmetadata['nextinode']
@@ -832,7 +811,7 @@ class cageobj:
 
 
       # We're ready to go!   Let's clean up the file entry
-      dirname = truepath.split('/')[-1]
+      dirname = truepath.rsplit('/', 1)[-1]
       # remove the entry from the parent...
 
       del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
@@ -902,7 +881,7 @@ class cageobj:
 
 
       # okay, great!!!   We're ready to go!   Let's make the file...
-      newfilename = truenewpath.split('/')[-1]
+      newfilename = truenewpath.rsplit('/', 1)[-1]
       # first, make the directory entry...
       filesystemmetadata['inodetable'][newparentinode]['filename_to_inode_dict'][newfilename] = oldinode
       # increment the link count on the dir...
@@ -955,7 +934,7 @@ class cageobj:
 
 
       # We're ready to go!   Let's clean up the file entry
-      dirname = truepath.split('/')[-1]
+      dirname = truepath.rsplit('/', 1)[-1]
       # remove the entry from the parent...
 
       del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
@@ -974,6 +953,7 @@ class cageobj:
       if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
         if filesystemmetadata['inodetable'][thisinode]['refcount'] == 0:
           del filesystemmetadata['inodetable'][thisinode]
+          removefile(FILEDATAPREFIX+str(thisinode))
         else:
           filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
 
@@ -1154,7 +1134,7 @@ class cageobj:
 
 
         # okay, great!!!   We're ready to go!   Let's make the new file...
-        filename = truepath.split('/')[-1]
+        filename = truepath.rsplit('/', 1)[-1]
 
         # first, make the new file's entry...
         newinode = filesystemmetadata['nextinode']
@@ -1236,9 +1216,7 @@ class cageobj:
       # actually open something in this case...
       # Is it a regular file?
       if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        # this is a regular file.  If it's not open, let's open it! to handle a
-        # posix compliant fork, which involves a duplication of the file table.
-        # Eventually, 
+        # this is a regular file.  If it's not open, let's open it!
         if inode not in fileobjecttable:
           thisfo = openfile(FILEDATAPREFIX+str(inode),False)
           fileobjecttable[inode] = thisfo
@@ -1781,9 +1759,9 @@ class cageobj:
 
       # If this was the last open handle to the file, and the file has been marked
       # for unlinking, then delete the inode here.
-      # TODO: also delete file here, not just inode
       if 'unlinked' in filesystemmetadata['inodetable'][inode]:
           del filesystemmetadata['inodetable'][inode]
+          removefile(FILEDATAPREFIX+str(inode))
 
       # success!
       return 0
@@ -2432,12 +2410,12 @@ class cageobj:
 
       inode = fastinodelookuptable[true_old_path]
 
-      newname = true_new_path.split('/')[-1]
+      newname = true_new_path.rsplit('/', 1)[-1]
       filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][newname] = inode
 
       fastinodelookuptable[true_new_path] = inode
 
-      oldname = true_old_path.split('/')[-1]
+      oldname = true_old_path.rsplit('/', 1)[-1]
       del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][oldname]
       del fastinodelookuptable[true_old_path]
 
@@ -2593,9 +2571,9 @@ class cageobj:
           #TODO: ensure user mmaps can't reach here
           pass
           #raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
-
-
       return repy_mmap(addr, leng, prot, flags, fildes, off)
+
+
     finally:
       filesystemmetadatalock.release()
 
