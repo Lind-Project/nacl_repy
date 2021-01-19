@@ -215,7 +215,7 @@ def load_fs(cageid, name=METADATAFILENAME):
 
 def load_fs_special_files(cageid):
   """ If called adds special files in standard locations.
-  Specifically /dev/null, /dev/urandom and /dev/random
+  Specifically /dev/null, /dev/zero, /dev/urandom and /dev/random
   """
   try:
      get_fscall_obj(cageid).mkdir_syscall("/dev", S_IRWXA)
@@ -227,6 +227,12 @@ def load_fs_special_files(cageid):
     get_fscall_obj(cageid).mknod_syscall("/dev/null", S_IFCHR, (1,3))
   except SyscallError as e:
     warning("making /dev/null failed. Skipping", str(e))
+
+  # load /dev/zero
+  try:
+    get_fscall_obj(cageid).mknod_syscall("/dev/zero", S_IFCHR, (1,5))
+  except SyscallError as e:
+    warning("making /dev/zero failed. Skipping", str(e))
 
   # load /dev/urandom
   try:
@@ -2154,6 +2160,7 @@ class cageobj:
   # 1. It is only used for creating character special files.
   # 2. I am not bothering about S_IRWXA in mode. (I need to fix this).
   # 3. /dev/null    : (1, 3)
+  #    /dev/zero    : (1, 5)
   #    /dev/random  : (1, 8)
   #    /dev/urandom : (1, 9)
   #    The major and minor device number's should be passed in as a 2-tuple.
@@ -2208,8 +2215,9 @@ class cageobj:
   #### Helper Functions for Character Files.####
   # currently supported devices are:
   # 1. /dev/null
-  # 2. /dev/random
-  # 3. /dev/urandom
+  # 2. /dev/zero
+  # 3. /dev/random
+  # 4. /dev/urandom
 
   def _read_chr_file(self, inode, count):
     """
@@ -2219,6 +2227,9 @@ class cageobj:
     # check if it's a /dev/null.
     if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
       return ''
+    # /dev/zero
+    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 5):
+      return '\0' * count
     # /dev/random
     elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
       return randombytes()[0:count]
@@ -2237,6 +2248,10 @@ class cageobj:
 
     # check if it's a /dev/null.
     if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
+      return len(data)
+    # /dev/zero
+    # There's no real /dev/zero file, just vanish it into thin air.
+    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 5):
       return len(data)
     # /dev/random
     # There's no real /dev/random file, just vanish it into thin air.
