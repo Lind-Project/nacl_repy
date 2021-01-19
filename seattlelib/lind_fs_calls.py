@@ -1644,7 +1644,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
       # lets check if it's a pipe first, and if so read from that
       if IS_PIPE_DESC(fd, CONST_CAGEID):
-        return _read_from_pipe(fd, buf_addr, count)
+        readp_start = time.clock()
+        ret = _read_from_pipe(fd, buf_addr, count)
+        readp_end = time.clock()
+
+        readp_tot = (readp_end - readp_start)
+
+        if call_log:
+          add_to_log("other", readp_tot)
+        return ret
 
       try:
         # Acquire the metadata lock... but always release it
@@ -1669,16 +1677,16 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
         # let's do a readat!
         position = filedescriptortable[fd]['position']
 
-        write_start = time.clock()
+        read_start = time.clock()
         data = fileobjecttable[inode].readat(count,position)
-        write_end = time.clock()
+        read_end = time.clock()
 
-        write_tot = (write_end - write_start)
+        read_tot = (read_end - read_start)
 
         if call_log:
-          add_to_log("other", write_tot)
+          add_to_log("other", read_tot)
         size_read = len(data)
-        
+
         repy_move_to_readbuf(buf_addr, data, size_read)
 
         # and update the position
@@ -1746,7 +1754,15 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
   
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd,CONST_CAGEID):
-        return _write_to_pipe(fd, buf_addr, size)
+        writep_start = time.clock()
+        ret = _write_to_pipe(fd, buf_addr, size)
+        writep_end = time.clock()
+
+        writep_tot = (writep_end - writep_start)
+
+        if call_log:
+          add_to_log("other", writep_tot)
+        return ret
 
       # print "buf " + str(buf_addr) + " hex: " + str(hex(buf_addr))
       data = repy_addr2string(buf_addr, size)
