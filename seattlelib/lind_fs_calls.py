@@ -1668,8 +1668,17 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
 
         # let's do a readat!
         position = filedescriptortable[fd]['position']
+
+        write_start = time.clock()
         data = fileobjecttable[inode].readat(count,position)
+        write_end = time.clock()
+
+        write_tot = (write_end - write_start)
+
+        if call_log:
+          add_to_log("other", write_tot)
         size_read = len(data)
+        
         repy_move_to_readbuf(buf_addr, data, size_read)
 
         # and update the position
