@@ -261,6 +261,7 @@ def _blank_fs_init():
             'mode':S_IFDIR | S_IRWXA, # directory + all permissions
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
             'linkcount':2,    # the number of dir entries...
+            'refcount': 0, # no open handles to the file
             'filename_to_inode_dict': {'.':ROOTDIRECTORYINODE,
             '..':ROOTDIRECTORYINODE}}
 
@@ -479,7 +480,15 @@ class cageobj:
       self.filedescriptortable = {}
       _load_lower_handle_stubs(self.filedescriptortable)
     else:
-      self.filedescriptortable = {key: value for key, value in fdtable.iteritems()}
+      self.filedescriptortable = {}
+      filesystemmetadatalock.acquire(True)
+      for key, value in fdtable.iteritems():
+        self.filedescriptortable[key] = value
+        try:
+         filesystemmetadata['inodetable'][value['inode']]['refcount'] += 1
+        except KeyError:
+          pass
+      filesystemmetadatalock.release()
     self.fdtablelock = createlock()
 
   _socket_initializer = _socket_initializer
@@ -744,6 +753,7 @@ class cageobj:
               # counter too.
               'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
               'linkcount':2,    # the number of dir entries...
+              'refcount': 0, # no open handles to the file
               'filename_to_inode_dict': {'.':newinode, '..':parentinode}}
 
       # ... and put it in the table..
@@ -948,11 +958,10 @@ class cageobj:
       # If 0, remove the entry from the inode table if there are no open handles
       # If open handles exist, flag it to unlink when the last handle is closed
       if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
-        fdsforinode = self._lookup_fds_by_inode(thisinode)
-        if len(fdsforinode) == 0:
-            del filesystemmetadata['inodetable'][thisinode]
+        if filesystemmetadata['inodetable'][thisinode]['refcount'] == 0:
+          del filesystemmetadata['inodetable'][thisinode]
         else:
-            filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
+          filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
 
       return 0
 
@@ -1148,6 +1157,7 @@ class cageobj:
               # BUG: I'm listing some arbitrary time values.  I could keep a time
               # counter too.
               'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
+              'refcount': 0, # no open handles to the file
               'linkcount':1}
 
         # ... and put it in the table..
@@ -1200,6 +1210,8 @@ class cageobj:
 
       # Let's find the inode
       inode = fastinodelookuptable[truepath]
+
+      filesystemmetadata['inodetable'][inode]['refcount'] += 1 #add a reference to the file
 
 
       # get the next fd so we can use it...
@@ -1596,7 +1608,6 @@ class cageobj:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
 
-
   
   ##### PWRITE  #####
 
@@ -1734,6 +1745,7 @@ class cageobj:
 
       # get the inode for the filedescriptor
       inode = self.filedescriptortable[fd]['inode']
+      filesystemmetadata['inodetable'][inode]['refcount'] -= 1 # close a reference to the file
 
       # If it's not a regular file, we have nothing to close...
       if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1744,17 +1756,9 @@ class cageobj:
         # and return success
         return 0
 
-      # so it's a regular file.
-      
-      # get the list of file descriptors for the inode
-      fdsforinode = self._lookup_fds_by_inode(inode)
-
-      # I should be in there!
-      assert(self.cageid in fdsforinode and fd in fdsforinode[self.cageid])
-
       # I should only close here if it's the last use of the file.   This can
       # happen due to dup, multiple opens, etc.
-      if len(fdsforinode) > 1 or len(fdsforinode[self.cageid]) > 1:
+      if filesystemmetadata['inodetable'][inode]['refcount'] != 0:
         # Is there more than one descriptor open?   If so, return success
         return 0
       # now let's close it and remove it from the table
