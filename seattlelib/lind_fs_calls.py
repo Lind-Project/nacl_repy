@@ -563,7 +563,7 @@ def get_fs_call(CONST_CAGEID, CLOSURE_SYSCALL_NAME):
     myfsdata['f_files'] = 1024*1024*1024
 
     # free file nodes...   I think this is also infinite...
-    myfsdata['f_files'] = 1024*1024*512
+    myfsdata['f_ffree'] = 1024*1024*512
 
     myfsdata['f_fsid'] = filesystemmetadata['dev_id']
 
