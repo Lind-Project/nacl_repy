@@ -1,0 +1,69 @@
+"""
+
+Handlers for the pread system call.
+
+Called from dispatcher.repy
+
+Safe version checks all parameters, then calls real handler.
+
+Pread handler pulls out the arguments, does any mandatory checking
+then calls the repy posix library pread system call.  Then packs
+the result back up.
+
+"""
+
+
+def lind_fs_pread(args):
+    """ pread calls are dispatched to this function.
+
+    See dispatcher.repy for details.
+
+    Given the handle, size, and offset in a list;
+    pull them out and make the actual syscall in the
+    file system library.
+
+    Pack the single int returned, or error.
+    """
+
+    handle = args[0]
+    size = args[1]
+    offset = args[2]
+
+    # so really this should be fixed
+    # but right now big requests dont work!
+    # so truncate the request
+    #if size > TX_BUF_MAX:
+    #    size = TX_BUF_MAX
+
+    try:
+        result = get_fscall_obj(args[-1]).pread_syscall(handle, size, offset)
+    except SyscallError, e:
+        return ErrorResponseBuilder("fs_pread", e[1], e[2])
+        
+            
+    return SuccessResponseBuilder("fs_pread", len(result), result)
+
+
+def lind_safe_fs_pread(args):
+    """ Safely wrap the pread call.
+
+    See dispatcher.repy for details.
+
+    Check the handle, size, and offset for consistency;
+    then call the real pread dispatcher.
+
+    """
+
+    handle = args[0]
+    size = args[1]
+    offset = args[2]
+    check_valid_fd_handle(handle)
+    assert isinstance(size, int)
+    assert isinstance(offset, int)
+    
+    result = lind_fs_pread(args)
+
+    #if result.is_error == False:
+    #    assert(len(result.data) <= TX_BUF_MAX), "returning data larger than transmission buffer."
+
+    return result

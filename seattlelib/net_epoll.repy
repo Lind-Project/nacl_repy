@@ -44,7 +44,7 @@ def lind_net_epoll_create(args):
     size = args[0]
     result = 0
     try:
-        result = get_net_call(args[-1],"epoll_create_syscall")(size)
+        result = get_fscall_obj(args[-1]).epoll_create_syscall(size)
     except SyscallError, e:
         return ErrorResponseBuilder("net_epoll_create", e[1], e[2])
 
@@ -74,7 +74,7 @@ def lind_net_epoll_ctl(args):
     
     result=0
     try:
-        result=get_net_call(args[-1],"epoll_ctl_syscall")(epfd, op, fd, epstruct)
+        result=get_fscall_obj(args[-1]).epoll_ctl_syscall(epfd, op, fd, epstruct)
     except SyscallError, e:
         return ErrorResponseBuilder("net_epoll_ctl", e[1], e[2])
     
@@ -94,7 +94,7 @@ def lind_net_epoll_wait(args):
     
     result=0
     try:
-        result=get_net_call(args[-1],"epoll_wait_syscall")(epfd, maxevents, timeout)
+        result=get_fscall_obj(args[-1]).epoll_wait_syscall(epfd, maxevents, timeout)
     except SyscallError, e:
         return ErrorResponseBuilder("net_epoll_wait", e[1], e[2])
     

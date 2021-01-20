@@ -31,7 +31,7 @@ def lind_net_poll(args):
     fds = parse_struct_pollfds(fds_str, nfds)
     result = 0
     try:
-        result = get_net_call(args[-1],"poll_syscall")(fds, timeout)
+        result = get_fscall_obj(args[-1]).poll_syscall(fds, timeout)
     except SyscallError, e:
         return ErrorResponseBuilder("net_poll", e[1], e[2])
 

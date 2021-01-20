@@ -103,13 +103,15 @@ include lind_net_constants.py
 
 include serialize.repy
 
-include lind_fs_calls.py
-
 include lind_net_calls.py
+
+include lind_fs_calls.py
 
 include fs_open.repy
 
 include fs_write.repy
+
+include fs_pwrite.repy
 
 include fs_fstatfs.repy
 
@@ -120,6 +122,8 @@ include comp.repy
 include fs_access.repy
 
 include fs_read.repy
+
+include fs_pread.repy
 
 include fs_fstat.repy
 
@@ -279,10 +283,10 @@ def GetHostFdFromLindFd(lind_fd, cageid):
   assert isinstance(lind_fd, int)
   if lind_fd < 0:
     return -1
-  if not lind_fd in masterfiledescriptortable[cageid].keys():
+  if not lind_fd in get_fscall_obj(cageid).filedescriptortable.keys():
     print >> sys.stderr,  "GetHostFdFromLindFd: fd "+str(lind_fd+" not found")
     return -1
-  inode = masterfiledescriptortable[cageid][lind_fd]["inode"]
+  inode = get_fscall_obj(cageid).filedescriptortable[lind_fd]["inode"]
   if not inode in fileobjecttable.keys():
     print >> sys.stderr,  "GetHostFdFromLindFd: inode "+str(inode+" not found")
   fobj = fileobjecttable[inode].fobj

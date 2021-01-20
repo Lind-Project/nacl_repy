@@ -22,6 +22,6 @@ def log(msg):
 
 # execute these as scripts.   This means importing them into the current 
 # namespace as though they were included here...
-execfile('lind_fs_calls.py')
 execfile('lind_net_calls.py')
+execfile('lind_fs_calls.py')
 
