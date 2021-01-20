@@ -645,11 +645,11 @@ class cageobj:
       newmode = 0
       # assume current user owns the file
       if amode & X_OK:
-        newmode |= 00100
+        newmode |= S_IXUSR
       if amode & W_OK:
-        newmode |= 00200
+        newmode |= S_IWUSR
       if amode & R_OK:
-        newmode |= 00400
+        newmode |= S_IRUSR
 
       # BUG: This code should really walk the directories instead of using this
       # table...   This will have to be fixed for symlinks to work.
