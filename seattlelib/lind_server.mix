@@ -278,22 +278,6 @@ def LindSyscall(call_num, args):
   return response
 
 
-def GetHostFdFromLindFd(lind_fd, cageid):
-
-  assert isinstance(lind_fd, int)
-  if lind_fd < 0:
-    return -1
-  if not lind_fd in get_fscall_obj(cageid).filedescriptortable.keys():
-    print >> sys.stderr,  "GetHostFdFromLindFd: fd "+str(lind_fd+" not found")
-    return -1
-  inode = get_fscall_obj(cageid).filedescriptortable[lind_fd]["inode"]
-  if not inode in fileobjecttable.keys():
-    print >> sys.stderr,  "GetHostFdFromLindFd: inode "+str(inode+" not found")
-  fobj = fileobjecttable[inode].fobj
-  return fobj.fileno()
-
-
-
 def launch_helper(instance, num):
   """save the instance and start the server in a thread."""
 
