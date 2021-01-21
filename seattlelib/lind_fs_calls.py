@@ -1931,7 +1931,7 @@ class cageobj:
       # if we're getting the flags, return them...
       elif cmd == F_GETFL:
         assert(len(args) == 0)
-        print "Flags value:", self.filedescriptortable[fd]['flags']
+        print "Flags value:", int(self.filedescriptortable[fd]['flags'])
         return self.filedescriptortable[fd]['flags']
 
       # set the flags...
