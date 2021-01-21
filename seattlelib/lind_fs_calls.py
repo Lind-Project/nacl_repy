@@ -553,7 +553,7 @@ class cageobj:
     myfsdata['f_files'] = 1024*1024*1024
 
     # free file nodes...   I think this is also infinite...
-    myfsdata['f_files'] = 1024*1024*512
+    myfsdata['f_ffree'] = 1024*1024*512
 
     myfsdata['f_fsid'] = filesystemmetadata['dev_id']
 
