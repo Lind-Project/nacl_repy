@@ -1541,13 +1541,13 @@ def _ioctl_net_helper(self, fd, request, arg):
   result = 0;
   
   if request == FIONBIO:
-    print "Flags value before:", oct(self.filedescriptortable[fd]['flags']) 
+
     if arg == 0: #clear non-blocking I/O
       self.filedescriptortable[fd]['flags'] = self.filedescriptortable[fd]['flags'] & (~ O_NONBLOCK)
       
     else: #set for non-blocking I/O
       self.filedescriptortable[fd]['flags'] = self.filedescriptortable[fd]['flags'] | O_NONBLOCK
-    print "Flags value after:", oct(self.filedescriptortable[fd]['flags'])
+
   else:
     # This is either unimplemented or malformed.   Let's raise
     # an exception.
