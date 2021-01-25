@@ -1,7 +1,9 @@
-NOOP_CALL_NUM=1
-
 # MODE="safe"
 MODE="fast"
+
+#dummy so that lind_strace and no-op doesn't break anything
+syscall_table[1] = lambda x: SuccessResponseBuilder("no-op dummy", 0)
+syscall_table[3] = lambda x: SuccessResponseBuilder("trace dummy", 0)
 
 # map a systemcall number to a particular function
 if MODE == "safe":
@@ -73,8 +75,8 @@ elif MODE == "fast":
   syscall_table[5] = lind_fs_link
   syscall_table[6] = lind_fs_chdir
   syscall_table[7] = lind_fs_mkdir
-  syscall_table[8] = lind_fs_rmdir,                     
-  syscall_table[9] = lind_fs_xstat,                     
+  syscall_table[8] = lind_fs_rmdir
+  syscall_table[9] = lind_fs_xstat
   syscall_table[10] = lind_fs_open
   syscall_table[11] = lind_fs_close
   syscall_table[12] = lind_fs_read

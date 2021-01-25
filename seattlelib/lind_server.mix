@@ -179,27 +179,7 @@ include unimplemented_syscalls.repy
 include dispatcher.repy
 
 
-def LindSyscall(call_num, args):
-  response = None
-  cageid = args[-1]
-  response = dispatch_syscall(call_num, args)
-  return response
-
-
-def GetHostFdFromLindFd(lind_fd, cageid):
-
-  assert isinstance(lind_fd, int)
-  if lind_fd < 0:
-    return -1
-  if not lind_fd in get_fscall_obj(cageid).filedescriptortable.keys():
-    print >> sys.stderr,  "GetHostFdFromLindFd: fd "+str(lind_fd+" not found")
-    return -1
-  inode = get_fscall_obj(cageid).filedescriptortable[lind_fd]["inode"]
-  if not inode in fileobjecttable.keys():
-    print >> sys.stderr,  "GetHostFdFromLindFd: inode "+str(inode+" not found")
-  fobj = fileobjecttable[inode].fobj
-  return fobj.fileno()
-
+LindSyscall = dispatch_syscall
 
 def _check_file(name):
   if name.startswith("/"):
@@ -217,16 +197,6 @@ def _check_file(name):
     print "File not found:", name
     exitall()
 
-
-
-def new_component(cageid):
-  """add a new component to the system"""
-
-  code_loc = "liblind/com2.nexe"
-  setup_filetable(cageid)
-  nacl = safelyexecutenativecode(code_loc, [])
-
-
 def setup_filetable(cageid):
   print >> sys.stderr, "Opening file system..."
   load_fs(cageid)
@@ -239,12 +209,10 @@ def finalize():
   persist_metadata(DEFAULT_METADATA_FILENAME)
   print >> sys.stderr,  "Done persisting metadata."
 
-
 def main(cageid):
   if callfunc == "initialize":
     print >> sys.stderr, "Lind v" + VERSION
     lind_factory(cageid)
-
 
 main(1)
 
