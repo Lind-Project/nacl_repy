@@ -19,11 +19,6 @@ include struct.repy
 
 VERSION = "1.0-rc2"
 
-# the size of the transmission buffer.  We should never send something
-# bigger than this!
-TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
-RX_BUF_MAX = (4096 * 4)
-
 syscall_table = [None] * 256 #initial length of 256
 
 def warning(*msg):
@@ -201,9 +196,6 @@ def setup_filetable(cageid):
   print >> sys.stderr, "Opening file system..."
   load_fs(cageid)
 
-def lind_factory(cageid):
-  setup_filetable(cageid)
-
 def finalize():
   print >> sys.stderr,  "Persisting metadata: ..."
   persist_metadata(DEFAULT_METADATA_FILENAME)
@@ -212,7 +204,7 @@ def finalize():
 def main(cageid):
   if callfunc == "initialize":
     print >> sys.stderr, "Lind v" + VERSION
-    lind_factory(cageid)
+    setup_filetable(cageid)
 
 main(1)
 

@@ -133,8 +133,6 @@ elif MODE == "fast":
 else:
   assert False, "Invalid mode setting"
 
-dispatch_syscall = None
- 
 if MODE=="safe":
   def ds(call, args):
     assert isinstance(args[-1], int), "the cageid should be an int"
@@ -145,11 +143,10 @@ if MODE=="safe":
 
     try:
       call_fun = syscall_table[call]
+      syscall_response = call_fun(args)
     except KeyError,e:
       log("[ERROR][dispatch] Failed to look up " + str(call) +" with error "+ str(e) + "\n")
       syscall_response =  ErrorResponseBuilder("dispatcher", "ENOSYS", "The system call is not in the system call table. Call="+str(call))
-    else:
-      syscall_response = call_fun(args)
 
     assert isinstance(syscall_response, Response), "Returning something that is not a response. Check system calls: " + str(type(syscall_response)) + " form " + str(call)
     return syscall_response

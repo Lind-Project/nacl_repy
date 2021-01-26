@@ -2549,6 +2549,9 @@ class cageobj:
         thisinode = self.filedescriptortable[fildes]['inode']
         mode = filesystemmetadata['inodetable'][thisinode]['mode']
         fflags = self.filedescriptortable[fildes]['flags']
+
+        # We cannot mmap a repy file object in the way we want, so we get the
+        # system file descriptor from the file object corresponding to the inode
         fobjno = fileobjecttable[thisinode].fobj.fileno()
 
         # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
