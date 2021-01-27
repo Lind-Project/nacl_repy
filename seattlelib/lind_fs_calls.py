@@ -2536,43 +2536,44 @@ class cageobj:
         raise SyscallError("mmap_syscall", "EINVAL", "The value of flags is invalid (neither MAP_PRIVATE nor MAP_SHARED is set)")
 
       #some ENOMEM guards might be nice, maybe even EAGAIN or EPERM
-      if 0 == flags & MAP_ANONYMOUS:
-        if fildes in self.filedescriptortable:
-          self.filedescriptortable[fildes]['lock'].acquire(True)
 
-          thisinode = self.filedescriptortable[fildes]['inode']
-          mode = filesystemmetadata['inodetable'][thisinode]['mode']
-          fflags = self.filedescriptortable[fildes]['flags']
+      if 0 != flags & MAP_ANONYMOUS:
+        return repy_mmap(addr, leng, prot, flags, -1, 0)
 
-          # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
-          # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
-          if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
-          if not (IS_REG(mode) or IS_CHR(mode)):
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
+      if fildes not in self.filedescriptortable:
+        raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
 
-          filesize = filesystemmetadata['inodetable'][thisinode]['size']
+      self.filedescriptortable[fildes]['lock'].acquire(True)
 
-          if off < 0 or off >= filesize:
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
+      try:
+        thisinode = self.filedescriptortable[fildes]['inode']
+        mode = filesystemmetadata['inodetable'][thisinode]['mode']
+        fflags = self.filedescriptortable[fildes]['flags']
 
-          if off + leng > filesize:
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EINVAL", "The file is a regular file and the value of off plus len exceeds" +
-                " the offset maximum established in the open file description associated with fildes")
+        # We cannot mmap a repy file object in the way we want, so we get the
+        # system file descriptor from the file object corresponding to the inode
+        fobjno = fileobjecttable[thisinode].fobj.fileno()
 
-          self.filedescriptortable[fildes]['lock'].release()
-        else:
-          #Some internal NaCl mmaps don't have corresponding repy fds but aren't anonymous
-          #Unfortunately that means we need to rely on this being a valid path
-          #TODO: ensure user mmaps can't reach here
-          pass
-          #raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
-      return repy_mmap(addr, leng, prot, flags, fildes, off)
+        # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
+        # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
+        if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
+          raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
+        if not (IS_REG(mode) or IS_CHR(mode)):
+          raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
 
+        if IS_CHR(mode):
+          raise SyscallError("mmap_syscall", "ENOTSUP", "Lind currently does not support mapping character files")
+
+        filesize = filesystemmetadata['inodetable'][thisinode]['size']
+
+        if off < 0 or off >= filesize:
+          raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
+
+        # Because of NaCl's internal workings, we must allow mappings to extend past the end of a file
+
+        return repy_mmap(addr, leng, prot, flags, fobjno, off)
+      finally:
+        self.filedescriptortable[fildes]['lock'].release()
 
     finally:
       filesystemmetadatalock.release()

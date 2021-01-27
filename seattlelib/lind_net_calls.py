@@ -41,6 +41,10 @@
 # of including them in the filedescriptortable...
 #
 
+# the size of the transmission buffer.  We should never send something
+# bigger than this!
+TX_BUF_MAX = (4096 * 4) - 16   # 16 bytes of header
+RX_BUF_MAX = (4096 * 4)
 
 # States for my own internal use:
 

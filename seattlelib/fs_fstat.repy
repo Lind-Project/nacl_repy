@@ -54,7 +54,7 @@ def lind_safe_fs_fxstat(args):
 
     """
 
-    assert(len(args) == 2), "fsstat should always have two argument"
+    assert(len(args) == 3), "fsstat should always have two arguments and a cageid"
     handle = args[0]
     ver = args[1]
 
@@ -65,6 +65,6 @@ def lind_safe_fs_fxstat(args):
     result = lind_fs_fxstat(args)
 
     if result.is_error == False:
-        assert len(result.data) == 112, \
+        assert len(result.data) == 120, \
                "result must be exactly the size of struct stat"
     return result
