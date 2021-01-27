@@ -50,7 +50,6 @@ def lind_safe_fs_ioctl(args):
     request = args[1]
 
     check_valid_fd_handle(handle)
-    log("IOCTL Request Num: ", request)
     assert (request == FIONBIO), "Invalid or unsupported ioctl command"
 
     return lind_fs_ioctl(args)
