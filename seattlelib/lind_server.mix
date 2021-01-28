@@ -213,7 +213,7 @@ include fs_munmap.repy
 
 include fs_exec.repy
 
-include fs_getcwd.repy
+include sys_getcwd.repy
 
 include debug.repy
 
