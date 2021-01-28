@@ -215,7 +215,7 @@ def load_fs(cageid, name=METADATAFILENAME):
 
 def load_fs_special_files(cageid):
   """ If called adds special files in standard locations.
-  Specifically /dev/null, /dev/urandom and /dev/random
+  Specifically /dev/null, /dev/zero, /dev/urandom and /dev/random
   """
   try:
      get_fscall_obj(cageid).mkdir_syscall("/dev", S_IRWXA)
@@ -227,6 +227,12 @@ def load_fs_special_files(cageid):
     get_fscall_obj(cageid).mknod_syscall("/dev/null", S_IFCHR, (1,3))
   except SyscallError as e:
     warning("making /dev/null failed. Skipping", str(e))
+
+  # load /dev/zero
+  try:
+    get_fscall_obj(cageid).mknod_syscall("/dev/zero", S_IFCHR, (1,5))
+  except SyscallError as e:
+    warning("making /dev/zero failed. Skipping", str(e))
 
   # load /dev/urandom
   try:
@@ -261,6 +267,7 @@ def _blank_fs_init():
             'mode':S_IFDIR | S_IRWXA, # directory + all permissions
             'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
             'linkcount':2,    # the number of dir entries...
+            'refcount': 0, # no open handles to the file
             'filename_to_inode_dict': {'.':ROOTDIRECTORYINODE,
             '..':ROOTDIRECTORYINODE}}
 
@@ -362,50 +369,29 @@ def normpath2(path):
 
   # let's remove the leading ''
   assert(pathlist[0] == '')
-  pathlist = pathlist[1:]
-
-  # Now, let's remove any '.' entries...
-  while True:
-    try:
-      pathlist.remove('.')
-    except ValueError:
-      break
-
-  # Also remove any '' entries...
-  while True:
-    try:
-      pathlist.remove('')
-    except ValueError:
-      break
 
   # NOTE: This makes '/foo/bar/' -> '/foo/bar'.   I think this is okay.
 
   # for a '..' entry, remove the previous entry (if one exists).   This will
   # only work if we go left to right.
+  newpathlist = []
   position = 0
-  while position < len(pathlist):
-    if pathlist[position] == '..':
+  for node in pathlist:
+    if node == '.':
+      continue
+    elif node == '':
+      continue
+    elif node == '..':
       # if there is a parent, remove it and this entry.
-      if position > 0:
-        del pathlist[position]
-        del pathlist[position-1]
-
-        # go back one position and continue...
-        position = position -1
-        continue
-
-      else:
-        # I'm at the beginning.   Remove this, but no need to adjust position
-        del pathlist[position]
-        continue
-
+      if len(newpathlist) > 0:
+        newpathlist.pop()
+      # If not, this is a no-op
     else:
-      # it's a normal entry...   move along...
-      position = position + 1
+      newpathlist.append(node)
 
 
   # now let's join the pathlist!
-  return '/'+'/'.join(pathlist)
+  return '/'+'/'.join(newpathlist)
 
 # private helper function that converts a relative path or a path with things
 # like foo/../bar to a normal path.
@@ -479,7 +465,15 @@ class cageobj:
       self.filedescriptortable = {}
       _load_lower_handle_stubs(self.filedescriptortable)
     else:
-      self.filedescriptortable = {key: value for key, value in fdtable.iteritems()}
+      self.filedescriptortable = {}
+      filesystemmetadatalock.acquire(True)
+      for key, value in fdtable.iteritems():
+        self.filedescriptortable[key] = value
+        try:
+         filesystemmetadata['inodetable'][value['inode']]['refcount'] += 1
+        except KeyError:
+          pass
+      filesystemmetadatalock.release()
     self.fdtablelock = createlock()
 
   _socket_initializer = _socket_initializer
@@ -559,7 +553,7 @@ class cageobj:
     myfsdata['f_files'] = 1024*1024*1024
 
     # free file nodes...   I think this is also infinite...
-    myfsdata['f_files'] = 1024*1024*512
+    myfsdata['f_ffree'] = 1024*1024*512
 
     myfsdata['f_fsid'] = filesystemmetadata['dev_id']
 
@@ -648,16 +642,24 @@ class cageobj:
       if truepath not in fastinodelookuptable:
         raise SyscallError("access_syscall","ENOENT","A directory in the path does not exist or file not found.")
 
+      newmode = 0
+      # assume current user owns the file
+      if amode & X_OK:
+        newmode |= S_IXUSR
+      if amode & W_OK:
+        newmode |= S_IWUSR
+      if amode & R_OK:
+        newmode |= S_IRUSR
+
       # BUG: This code should really walk the directories instead of using this
       # table...   This will have to be fixed for symlinks to work.
       thisinode = fastinodelookuptable[truepath]
-
 
       # BUG: This should take the UID / GID of the requestor in mind
 
       # if all of the bits for this file are set as requested, then indicate
       # success (return 0)
-      if filesystemmetadata['inodetable'][thisinode]['mode'] & amode == amode:
+      if filesystemmetadata['inodetable'][thisinode]['mode'] & newmode == newmode:
         return 0
 
       raise SyscallError("access_syscall","EACCES","The requested access is denied.")
@@ -732,7 +734,7 @@ class cageobj:
       assert(mode & S_IRWXA == mode)
 
       # okay, great!!!   We're ready to go!   Let's make the new directory...
-      dirname = truepath.split('/')[-1]
+      dirname = truepath.rsplit('/', 1)[-1]
 
       # first, make the new directory...
       newinode = filesystemmetadata['nextinode']
@@ -744,6 +746,7 @@ class cageobj:
               # counter too.
               'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
               'linkcount':2,    # the number of dir entries...
+              'refcount': 0, # no open handles to the file
               'filename_to_inode_dict': {'.':newinode, '..':parentinode}}
 
       # ... and put it in the table..
@@ -808,7 +811,7 @@ class cageobj:
 
 
       # We're ready to go!   Let's clean up the file entry
-      dirname = truepath.split('/')[-1]
+      dirname = truepath.rsplit('/', 1)[-1]
       # remove the entry from the parent...
 
       del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
@@ -878,7 +881,7 @@ class cageobj:
 
 
       # okay, great!!!   We're ready to go!   Let's make the file...
-      newfilename = truenewpath.split('/')[-1]
+      newfilename = truenewpath.rsplit('/', 1)[-1]
       # first, make the directory entry...
       filesystemmetadata['inodetable'][newparentinode]['filename_to_inode_dict'][newfilename] = oldinode
       # increment the link count on the dir...
@@ -931,7 +934,7 @@ class cageobj:
 
 
       # We're ready to go!   Let's clean up the file entry
-      dirname = truepath.split('/')[-1]
+      dirname = truepath.rsplit('/', 1)[-1]
       # remove the entry from the parent...
 
       del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][dirname]
@@ -948,11 +951,11 @@ class cageobj:
       # If 0, remove the entry from the inode table if there are no open handles
       # If open handles exist, flag it to unlink when the last handle is closed
       if filesystemmetadata['inodetable'][thisinode]['linkcount'] == 0:
-        fdsforinode = self._lookup_fds_by_inode(thisinode)
-        if len(fdsforinode) == 0:
-            del filesystemmetadata['inodetable'][thisinode]
+        if filesystemmetadata['inodetable'][thisinode]['refcount'] == 0:
+          del filesystemmetadata['inodetable'][thisinode]
+          removefile(FILEDATAPREFIX+str(thisinode))
         else:
-            filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
+          filesystemmetadata['inodetable'][thisinode]['unlinked'] = True
 
       return 0
 
@@ -1131,7 +1134,7 @@ class cageobj:
 
 
         # okay, great!!!   We're ready to go!   Let's make the new file...
-        filename = truepath.split('/')[-1]
+        filename = truepath.rsplit('/', 1)[-1]
 
         # first, make the new file's entry...
         newinode = filesystemmetadata['nextinode']
@@ -1148,6 +1151,7 @@ class cageobj:
               # BUG: I'm listing some arbitrary time values.  I could keep a time
               # counter too.
               'atime':1323630836, 'ctime':1323630836, 'mtime':1323630836,
+              'refcount': 0, # no open handles to the file
               'linkcount':1}
 
         # ... and put it in the table..
@@ -1201,6 +1205,8 @@ class cageobj:
       # Let's find the inode
       inode = fastinodelookuptable[truepath]
 
+      filesystemmetadata['inodetable'][inode]['refcount'] += 1 #add a reference to the file
+
 
       # get the next fd so we can use it...
       thisfd = self.get_next_fd()
@@ -1210,9 +1216,7 @@ class cageobj:
       # actually open something in this case...
       # Is it a regular file?
       if IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
-        # this is a regular file.  If it's not open, let's open it! to handle a
-        # posix compliant fork, which involves a duplication of the file table.
-        # Eventually, 
+        # this is a regular file.  If it's not open, let's open it!
         if inode not in fileobjecttable:
           thisfo = openfile(FILEDATAPREFIX+str(inode),False)
           fileobjecttable[inode] = thisfo
@@ -1596,7 +1600,6 @@ class cageobj:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
 
-
   
   ##### PWRITE  #####
 
@@ -1734,6 +1737,7 @@ class cageobj:
 
       # get the inode for the filedescriptor
       inode = self.filedescriptortable[fd]['inode']
+      filesystemmetadata['inodetable'][inode]['refcount'] -= 1 # close a reference to the file
 
       # If it's not a regular file, we have nothing to close...
       if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
@@ -1744,17 +1748,9 @@ class cageobj:
         # and return success
         return 0
 
-      # so it's a regular file.
-      
-      # get the list of file descriptors for the inode
-      fdsforinode = self._lookup_fds_by_inode(inode)
-
-      # I should be in there!
-      assert(self.cageid in fdsforinode and fd in fdsforinode[self.cageid])
-
       # I should only close here if it's the last use of the file.   This can
       # happen due to dup, multiple opens, etc.
-      if len(fdsforinode) > 1 or len(fdsforinode[self.cageid]) > 1:
+      if filesystemmetadata['inodetable'][inode]['refcount'] != 0:
         # Is there more than one descriptor open?   If so, return success
         return 0
       # now let's close it and remove it from the table
@@ -1763,9 +1759,9 @@ class cageobj:
 
       # If this was the last open handle to the file, and the file has been marked
       # for unlinking, then delete the inode here.
-      # TODO: also delete file here, not just inode
       if 'unlinked' in filesystemmetadata['inodetable'][inode]:
           del filesystemmetadata['inodetable'][inode]
+          removefile(FILEDATAPREFIX+str(inode))
 
       # success!
       return 0
@@ -2188,6 +2184,7 @@ class cageobj:
   # 1. It is only used for creating character special files.
   # 2. I am not bothering about S_IRWXA in mode. (I need to fix this).
   # 3. /dev/null    : (1, 3)
+  #    /dev/zero    : (1, 5)
   #    /dev/random  : (1, 8)
   #    /dev/urandom : (1, 9)
   #    The major and minor device number's should be passed in as a 2-tuple.
@@ -2242,8 +2239,9 @@ class cageobj:
   #### Helper Functions for Character Files.####
   # currently supported devices are:
   # 1. /dev/null
-  # 2. /dev/random
-  # 3. /dev/urandom
+  # 2. /dev/zero
+  # 3. /dev/random
+  # 4. /dev/urandom
 
   def _read_chr_file(self, inode, count):
     """
@@ -2253,6 +2251,9 @@ class cageobj:
     # check if it's a /dev/null.
     if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
       return ''
+    # /dev/zero
+    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 5):
+      return '\0' * count
     # /dev/random
     elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 8):
       return randombytes()[0:count]
@@ -2271,6 +2272,10 @@ class cageobj:
 
     # check if it's a /dev/null.
     if filesystemmetadata['inodetable'][inode]['rdev'] == (1, 3):
+      return len(data)
+    # /dev/zero
+    # There's no real /dev/zero file, just vanish it into thin air.
+    elif filesystemmetadata['inodetable'][inode]['rdev'] == (1, 5):
       return len(data)
     # /dev/random
     # There's no real /dev/random file, just vanish it into thin air.
@@ -2439,12 +2444,12 @@ class cageobj:
 
       inode = fastinodelookuptable[true_old_path]
 
-      newname = true_new_path.split('/')[-1]
+      newname = true_new_path.rsplit('/', 1)[-1]
       filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][newname] = inode
 
       fastinodelookuptable[true_new_path] = inode
 
-      oldname = true_old_path.split('/')[-1]
+      oldname = true_old_path.rsplit('/', 1)[-1]
       del filesystemmetadata['inodetable'][parentinode]['filename_to_inode_dict'][oldname]
       del fastinodelookuptable[true_old_path]
 
@@ -2565,44 +2570,45 @@ class cageobj:
         raise SyscallError("mmap_syscall", "EINVAL", "The value of flags is invalid (neither MAP_PRIVATE nor MAP_SHARED is set)")
 
       #some ENOMEM guards might be nice, maybe even EAGAIN or EPERM
-      if 0 == flags & MAP_ANONYMOUS:
-        if fildes in self.filedescriptortable:
-          self.filedescriptortable[fildes]['lock'].acquire(True)
 
-          thisinode = self.filedescriptortable[fildes]['inode']
-          mode = filesystemmetadata['inodetable'][thisinode]['mode']
-          fflags = self.filedescriptortable[fildes]['flags']
+      if 0 != flags & MAP_ANONYMOUS:
+        return repy_mmap(addr, leng, prot, flags, -1, 0)
 
-          # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
-          # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
-          if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
-          if not (IS_REG(mode) or IS_CHR(mode)):
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
+      if fildes not in self.filedescriptortable:
+        raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
 
-          filesize = filesystemmetadata['inodetable'][thisinode]['size']
+      self.filedescriptortable[fildes]['lock'].acquire(True)
 
-          if off < 0 or off >= filesize:
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
+      try:
+        thisinode = self.filedescriptortable[fildes]['inode']
+        mode = filesystemmetadata['inodetable'][thisinode]['mode']
+        fflags = self.filedescriptortable[fildes]['flags']
 
-          if off + leng > filesize:
-            self.filedescriptortable[fildes]['lock'].release()
-            raise SyscallError("mmap_syscall", "EINVAL", "The file is a regular file and the value of off plus len exceeds" +
-                " the offset maximum established in the open file description associated with fildes")
+        # We cannot mmap a repy file object in the way we want, so we get the
+        # system file descriptor from the file object corresponding to the inode
+        fobjno = fileobjecttable[thisinode].fobj.fileno()
 
-          self.filedescriptortable[fildes]['lock'].release()
-        else:
-          #Some internal NaCl mmaps don't have corresponding repy fds but aren't anonymous
-          #Unfortunately that means we need to rely on this being a valid path
-          #TODO: ensure user mmaps can't reach here
-          pass
-          #raise SyscallError("mmap_syscall", "EBADF", "The fildes argument is not a valid open file descriptor")
+        # If we want to write back our changes to the file (i.e. mmap with MAP_SHARED
+        # as well as PROT_WRITE), we need the file to be open with the flag O_RDWR
+        if (flags & MAP_SHARED) and (flags & PROT_WRITE) and not (fflags & O_RDWR):
+          raise SyscallError("mmap_syscall", "EACCES", "File descriptor is not open RDWR, but MAP_SHARED and PROT_WRITE are set")
+        if not (IS_REG(mode) or IS_CHR(mode)):
+          raise SyscallError("mmap_syscall", "EACCES", "The fildes argument refers to a file whose type is not supported by mmap()")
 
+        if IS_CHR(mode):
+          raise SyscallError("mmap_syscall", "ENOTSUP", "Lind currently does not support mapping character files")
 
-      return repy_mmap(addr, leng, prot, flags, fildes, off)
+        filesize = filesystemmetadata['inodetable'][thisinode]['size']
+
+        if off < 0 or off >= filesize:
+          raise SyscallError("mmap_syscall", "ENXIO", "Addresses in the range [off,off+len) are invalid for the object specified by fildes.")
+
+        # Because of NaCl's internal workings, we must allow mappings to extend past the end of a file
+
+        return repy_mmap(addr, leng, prot, flags, fobjno, off)
+      finally:
+        self.filedescriptortable[fildes]['lock'].release()
+
     finally:
       filesystemmetadatalock.release()
 

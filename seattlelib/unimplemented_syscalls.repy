@@ -1,6 +1,2 @@
-  
-def lind_err_enosys(args):
+  def lind_err_enosys(args):
   return  ErrorResponseBuilder("err_enosys", "ENOSYS", "This system call is not implemented yet or disabled in Lind.")
-
-
-

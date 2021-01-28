@@ -64,6 +64,6 @@ def lind_safe_fs_lseek(args):
     result = lind_fs_lseek(args)
 
     if result.is_error == False:
-        assert(len(result.data) == 8), "should return exactly and off_t"
+        assert(len(result.data) == 8 or len(result.data) == 0), "should return exactly an off_t"
 
     return result
