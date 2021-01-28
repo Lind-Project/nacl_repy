@@ -1437,6 +1437,14 @@ class cageobj:
       if IS_PIPE_DESC(fd, self.filedescriptortable):
         return self._read_from_pipe(fd, count)
 
+      if IS_SOCK_DESC(fd, self.filedescriptortable):
+        try:
+          if count == 0:
+            return self.recv_syscall(fd, TX_BUF_MAX, 0)
+          return self.recv_syscall(fd, count, 0) #recv doesn't lock for some reason
+        except SocketWouldBlockError as e:
+          return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
+
       return self.read_from_file("read_syscall", fd, count, 0)
     finally:
       # ... release the lock
@@ -1593,6 +1601,9 @@ class cageobj:
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
         return self._write_to_pipe(fd, data)
+
+      if IS_SOCK_DESC(fd, self.filedescriptortable):
+        return self.send_syscall(fd, data, 0)
 
       return self.write_to_file("write_syscall", fd, data, 0)
 
