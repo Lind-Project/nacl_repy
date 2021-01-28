@@ -48,6 +48,7 @@ import idhelper
 import safe
 import sys
 import getopt
+import struct
 
 #this needs to be early on since it changes the python path
 import repy_constants   
