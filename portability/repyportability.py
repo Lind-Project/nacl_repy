@@ -96,6 +96,7 @@ def initialize_restrictions(restrictionsfn):
    <Returns>
       None
   """
+  return
   nanny.start_resource_nanny(restrictionsfn)
 
 def enable_restrictions():
@@ -117,6 +118,7 @@ def enable_restrictions():
    <Returns>
       None
   """
+  return
   # JAC: THIS WILL NOT ENABLE CPU / MEMORY / DISK SPACE
   nanny.tattle_quantity = oldrestrictioncalls['nanny.tattle_quantity']
   nanny.tattle_add_item = oldrestrictioncalls['nanny.tattle_add_item'] 

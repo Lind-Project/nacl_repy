@@ -475,8 +475,8 @@ def calculate_cpu_sleep_interval(cpulimit, percentused, elapsedtime):
   # Calculate Stoptime
   #  Mathematically Derived from:
   #  (PercentUsed * TotalTime) / ( TotalTime + StopTime) = CPULimit
-  stoptime = max(((percentused * elapsedtime) / cpulimit) - elapsedtime , 0)
-
+  # stoptime = max(((percentused * elapsedtime) / cpulimit) - elapsedtime , 0)
+  stoptime = 0
   # Print debug info
   #rawcpu += percentused*elapsedtime
   #totaltime = time.time() - appstart
