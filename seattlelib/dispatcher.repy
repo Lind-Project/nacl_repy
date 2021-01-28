@@ -19,7 +19,7 @@ if MODE == "safe":
   syscall_table[12] = lind_safe_fs_read
   syscall_table[13] = lind_safe_fs_write
   syscall_table[14] = lind_safe_fs_lseek
-  syscall_table[15] = lind_fs_ioctl
+  syscall_table[15] = lind_safe_fs_ioctl
   syscall_table[17] = lind_safe_fs_fxstat
   syscall_table[19] = lind_safe_fs_fstatfs
   syscall_table[21] = lind_safe_fs_mmap
