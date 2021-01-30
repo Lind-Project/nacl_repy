@@ -92,6 +92,9 @@ F_NOTIFY = 1026
 # for fcntl to manipulate file descriptor flags..
 FD_CLOEXEC = 02000000
 
+# for IOCTL
+FIONBIO = 21537
+
 # for the lock calls
 F_RDLCK = 0
 F_WRLCK = 1
