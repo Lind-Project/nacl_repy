@@ -1,12 +1,11 @@
 def lind_fs_write(args):
-    size = args[1]
-    fd = args[0]
-
-    # slice buffer string to only send size n bytes
-    buffer = args[2][:size]
     
+    fd = args[0]
+    count = args[1]
+    buffer = args[2]
+
     try:
-        result = get_fscall_obj(args[-1]).write_syscall(fd, buffer)
+        result = get_fscall_obj(args[-1]).write_syscall(fd, count, buffer)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_write", e[1], e[2])
     return SuccessResponseBuilder("fs_write", result)

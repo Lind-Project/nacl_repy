@@ -129,7 +129,7 @@ def update_into_lind(fullfilename, rootpath='.'):
     fd.close()
 
     lindfd = lind_test_server.get_fscall_obj(cageid).open_syscall(fullfilename, O_RDONLY, 0)
-    lind_content = lind_test_server.get_fscall_obj(cageid).read_syscall(lindfd, lind_size)
+    lind_content = lind_test_server.get_fscall_obj(cageid).read_syscall("read_syscall", lindfd, lind_size, 0)
     lind_test_server.get_fscall_obj(cageid).close_syscall(lindfd)
 
     samefile = (host_content == lind_content)
@@ -256,7 +256,7 @@ def cp_into_lind(fullfilename, rootpath='.', createmissingdirs=True):
   lindfd = lind_test_server.get_fscall_obj(cageid).open_syscall(normalizedlindfn, O_CREAT|O_EXCL|O_TRUNC|O_WRONLY, S_IRWXA)
 
   # should write all at once...
-  datalen = lind_test_server.get_fscall_obj(cageid).write_syscall(lindfd, filecontents)
+  datalen = lind_test_server.get_fscall_obj(cageid).write_syscall("write_syscall", lindfd, filecontents, 0)
   assert(datalen == len(filecontents))
 
   inode = lind_test_server.get_fscall_obj(cageid).fstat_syscall(lindfd)[1]

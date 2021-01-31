@@ -20,6 +20,8 @@
 
 """
 
+import lindpipe
+
 # At a conceptual level, the system works like this:
 #   1) Files are written and managed by my program.   The actual name on disk
 #      will not correspond in any way with the filename.   The name on disk
@@ -1344,31 +1346,13 @@ class cageobj:
 
 
   # helper function for pipe reads
-  def _read_from_pipe(self, fd, count):
+  def _read_from_pipe(self, fd, count, buf_addr):
 
     # lets find the pipe number and acquire the readlock
     pipenumber = self.filedescriptortable[fd]['pipe']
-    pipetable[pipenumber]['readlock'].acquire(True)
 
-    data = ''
-    num_bytes_read = 0
-    
-    # we're going to try to get bytes up until the amount we requested, but break if we there's nothing there and we get an EOF
-    while num_bytes_read < count:
-      try:
-        if len(pipetable[pipenumber]['data']) == 0 and pipetable[pipenumber]['eof'] == True:
-          break
-        # pop the byte from the data list, append it to return data string
-        byte_read = pipetable[pipenumber]['data'].pop(0)
-        data += byte_read
-        num_bytes_read += 1
-
-      except IndexError, e:
-        continue
-
-    #release our readlock  
-    pipetable[pipenumber]['readlock'].release()
-    return data
+    return pipetable[pipenumber].piperead(buf_addr, count)
+ 
 
 
   #helper funtion for read/pread
@@ -1408,7 +1392,7 @@ class cageobj:
         
   ##### READ  #####
 
-  def read_syscall(self, fd, count):
+  def read_syscall(self, fd, count, buf_addr):
     """
       http://linux.die.net/man/2/read
     """
@@ -1435,17 +1419,23 @@ class cageobj:
 
       # lets check if it's a pipe first, and if so read from that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
-        return self._read_from_pipe(fd, count)
+        return self._read_from_pipe(fd, count, buf_addr)
 
       if IS_SOCK_DESC(fd, self.filedescriptortable):
         try:
           if count == 0:
-            return self.recv_syscall(fd, TX_BUF_MAX, 0)
-          return self.recv_syscall(fd, count, 0) #recv doesn't lock for some reason
+            data = self.recv_syscall(fd, TX_BUF_MAX, 0)
+          data = self.recv_syscall(fd, count, 0) #recv doesn't lock for some reason
         except SocketWouldBlockError as e:
           return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
 
-      return self.read_from_file("read_syscall", fd, count, 0)
+      data = self.read_from_file("read_syscall", fd, count, 0)
+      
+      # transfer read data back to read buffer and return size
+      size_read = len(data)
+      repy_move_to_readbuf(buf_addr, data, size_read)
+      return size_read
+
     finally:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
@@ -1489,20 +1479,11 @@ class cageobj:
 
 
   # helper function for pipe writes
-  def _write_to_pipe(self, fd, data):
+  def _write_to_pipe(self, fd, count, buf_addr):
 
-    # find pipe number, and grab lock
     pipenumber = self.filedescriptortable[fd]['pipe']
-    pipetable[pipenumber]['writelock'].acquire(True)
 
-    # append data to pipe list byte by byte
-    for byte in data:
-      pipetable[pipenumber]['data'].append(byte)
-
-    # release our write lock     
-    pipetable[pipenumber]['writelock'].release()
-
-    return len(data)
+    return pipetable[pipenumber].pipewrite(buf_addr, count)
 
   
   #helper funtion for read/pread
@@ -1572,7 +1553,7 @@ class cageobj:
 
   ##### WRITE  #####
 
-  def write_syscall(self, fd, data):
+  def write_syscall(self, fd, count, buf_addr):
     """
       http://linux.die.net/man/2/write
     """
@@ -1583,8 +1564,8 @@ class cageobj:
     # if we're going to stdout/err, lets get it over with and print    
     try:
       if self.filedescriptortable[fd]['stream'] in [1,2]:
-        log_stdout(data)
-        return len(data)
+        log_stdout(repy_addr2string(buffer, count))
+        return count
     except KeyError:
       pass
 
@@ -1600,7 +1581,10 @@ class cageobj:
 
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
-        return self._write_to_pipe(fd, data)
+        return self._write_to_pipe(fd, count, buf_addr)
+
+      # turn buffer into PyString
+      data = repy_addr2string(buf_addr, count)
 
       if IS_SOCK_DESC(fd, self.filedescriptortable):
         return self.send_syscall(fd, data, 0)
