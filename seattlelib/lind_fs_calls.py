@@ -1564,7 +1564,7 @@ class cageobj:
     # if we're going to stdout/err, lets get it over with and print    
     try:
       if self.filedescriptortable[fd]['stream'] in [1,2]:
-        log_stdout(repy_addr2string(buffer, count))
+        log_stdout(repy_addr2string(buf_addr, count))
         return count
     except KeyError:
       pass
