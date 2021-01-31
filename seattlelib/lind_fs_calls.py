@@ -1688,7 +1688,7 @@ class cageobj:
 
     # if there's only one write end left open, and we're closing that end, no write ends will be open so we can send an EOF
     if write_references == 1 and self.filedescriptortable[fd]['flags'] == O_WRONLY:
-      pipetable[pipenumber]['eof'] = True
+      pipetable[pipenumber].seteof()
 
     # if we're closing the last end, we can delete the pipe
     if (read_references + write_references) == 1:
@@ -2442,7 +2442,7 @@ class cageobj:
     try:
       # get next available pipe number, and set up pipe
       pipenumber = self.get_next_pipe()
-      pipetable[pipenumber] = {'data':list(), 'eof':False, 'writelock':createlock(), 'readlock':createlock()}
+      pipetable[pipenumber] = lindpipe.LindPipe()
       pipefds = []
      
       # get an fd for each end of the pipe and set flags to RD_ONLY and WR_ONLY
