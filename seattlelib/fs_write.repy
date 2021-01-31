@@ -16,7 +16,6 @@ def lind_safe_fs_write(args):
     fd = args[0]
     buffer = args[2]
 
-    assert size == len(buffer), "write size does not match buffer size"
     check_valid_fd_handle(fd)
 
     lind_fs_write(args)
