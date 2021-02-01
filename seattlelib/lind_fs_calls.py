@@ -211,7 +211,7 @@ def print_log():
   for i in range(0, global_call_counter.value):
     if i not in call_log: 
       not_present.append(i)
-      pass
+      continue
     curr = call_log[i]
     logstring = "Syscall " + curr["call"]
     if "cageid" in curr: logstring += " Cage " + str(curr["cageid"]) 
