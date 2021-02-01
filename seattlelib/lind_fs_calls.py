@@ -213,7 +213,7 @@ def print_log():
       not_present.append(i)
       continue
     curr = call_log[i]
-    logstring = "Syscall " + curr["call"]
+    logstring = str(i) + ": Syscall " + curr["call"]
     if "cageid" in curr: logstring += " Cage " + str(curr["cageid"]) 
     logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
     if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
@@ -1510,6 +1510,7 @@ class cageobj:
     """
       http://linux.die.net/man/2/read
     """
+    fs_starttime = time.clock()
 
     try:
       if self.filedescriptortable[fd]["stream"] == 0:
@@ -1553,6 +1554,12 @@ class cageobj:
     finally:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
   
  
   
@@ -1671,6 +1678,9 @@ class cageobj:
     """
       http://linux.die.net/man/2/write
     """
+
+    fs_starttime = time.clock()
+
     # check the fd
     if fd not in self.filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
@@ -1708,6 +1718,13 @@ class cageobj:
     finally:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
+      fs_endtime = time.clock()
+
+      fs_tot = (fs_endtime - fs_starttime)
+
+      if call_log:
+        add_to_log("fs_call", fs_tot)
+  
 
   
   ##### PWRITE  #####
