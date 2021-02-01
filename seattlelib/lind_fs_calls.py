@@ -206,7 +206,7 @@ def print_log():
   total_syscall_time = 0
   total_fs_time = 0
 
-print call_log
+  print call_log
 #   for i in range(0, global_call_counter.value):
 #     curr = call_log[i]
 #     logstring = "Syscall " + curr["call"]
