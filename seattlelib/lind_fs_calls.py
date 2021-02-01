@@ -112,6 +112,115 @@ import lindpipe
 # Store all of the information about the file system in a dict...
 # This should not be 0 because this is considered to be deleted
 
+
+
+import time
+import thread
+
+class AtomicCounter:
+    def __init__(self, initial=0):
+        """Initialize a new atomic counter to given initial value (default 0)."""
+        self.value = initial
+        self.lock = createlock()
+
+    def increment(self, num=1):
+        """Atomically increment the counter by num (default 1) and return the
+        new value.
+        """
+        self.lock.acquire(True)
+        self.value += num
+        self.lock.release()
+        return self.value
+
+
+global_call_counter = AtomicCounter()
+
+call_log = {}
+
+thread_callcounter = {}
+
+
+
+
+def init_log_entry(call_num):
+  global call_log
+  global global_call_counter
+
+  threadid = thread.get_ident()
+  curr_count = (global_call_counter.increment(1)) - 1
+
+  thread_callcounter[threadid] = curr_count
+  call_log[curr_count] = {}
+
+
+
+
+  callstring = str(call_num)
+  if (call_num == 10): callstring = "open"
+  if (call_num == 14): callstring = "seek"
+  if (call_num == 12): callstring = "read"
+  if (call_num == 13): callstring = "write"
+  if (call_num == 11): callstring = "close"
+  if (call_num == 17): callstring = "fstat"
+  if (call_num == 9): callstring = "stat"
+  if (call_num == 21): callstring = "mmap"
+  if (call_num == 30): callstring = "exit"
+  if (call_num == 2): callstring = "access"
+  if (call_num == 3): callstring = "trace"
+  if (call_num == 23): callstring = "getdents"
+  if (call_num == 69): callstring = "exec"
+  if (call_num == 68): callstring = "fork"
+  if (call_num == 66): callstring = "pipe"
+  if (call_num == 25): callstring = "dup2"
+  if (call_num == 50): callstring = "getuid"
+  if (call_num == 51): callstring = "geteuid"
+  if (call_num == 52): callstring = "getgid"
+  if (call_num == 53): callstring = "getegid"
+  if (call_num == 24): callstring = "dup"
+  if (call_num == 32): callstring = "socket"
+  if (call_num == 31): callstring = "getpid"
+
+
+
+  call_log[curr_count]["call"] = callstring
+
+
+
+def add_cageid_log(cagenum):
+  global call_log
+  call_counter = thread_callcounter[thread.get_ident()]
+  call_log[call_counter]["cageid"] = cagenum
+
+
+def add_to_log(handle, time):
+  global call_log
+  call_counter = thread_callcounter[thread.get_ident()]
+  call_log[call_counter][handle] = time
+
+
+def print_log():
+  global call_log
+  global global_call_counter
+
+
+  total_syscall_time = 0
+  total_fs_time = 0
+
+
+  for i in range(0, global_call_counter.value):
+    curr = call_log[i]
+    logstring = "Syscall " + curr["call"]
+    if "cageid" in curr: logstring += " Cage " + str(curr["cageid"]) 
+    logstring += " syscall time " + str(curr["syscall"] * 1000000) + " us"
+    if "stub" in curr: logstring += " stub time " + str(curr["stub"] * 1000000) + " us"
+    if "fs_call" in curr: logstring += " fs call time " + str(curr["fs_call"] * 1000000) + " us"
+    total_syscall_time += curr["syscall"]
+    if "fs_call" in curr: total_fs_time += curr["fs_call"]
+    print logstring
+
+  print "Total system call time " + str(total_syscall_time * 1000000) + " us"
+  print "Total pure implementation time " + str(total_fs_time * 1000000) + " us"
+
 ROOTDIRECTORYINODE = 1
 STREAMINODE = 2
 

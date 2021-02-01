@@ -153,9 +153,16 @@ if MODE=="safe":
   dispatch_syscall = ds
 elif MODE=="fast":
   def ds(call, args):
+
+    init_log_entry(call)
+    syscall_starttime = time.clock()
     try:
       return syscall_table[call](args)
     except KeyError,e:
       log("[ERROR][dispatch] Failed to look up or call " + str(call) +" with error "+ str(e) + "\n")
       return ErrorResponseBuilder("dispatcher", "ENOSYS", "The system call is not in the system call table. Call="+str(call))
+    finally:
+      syscall_endtime = time.clock()
+      syscall_tot = (syscall_endtime - syscall_starttime)
+      add_to_log("syscall", syscall_tot)
   dispatch_syscall = ds
