@@ -31,9 +31,9 @@ class Response:
     data = ""
 
     def __init__(self, response_type, is_error, return_code):
-        assert isinstance(response_type, str), "response type is not a string"
+        # assert isinstance(response_type, str), "response type is not a string"
         self.response_type = response_type
-        assert isinstance(is_error, bool), "is error is not a boolean"
+        # assert isinstance(is_error, bool), "is error is not a boolean"
         self.is_error = is_error
 
         if isinstance(return_code, str):
