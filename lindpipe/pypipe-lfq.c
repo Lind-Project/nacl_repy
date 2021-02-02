@@ -87,12 +87,11 @@ static PyObject *LindPipe_seteof(LindPipe *self) {
     Py_RETURN_NONE;
 }
 
-void updateCurrentEntry(LindPipe *self) {
+// void updateCurrentEntry(LindPipe *self) {
 
-    while ((self->CurrEntry = (LFQueueEntry*)lfq_dequeue(&(self->ctx))) == 0){
-    }
 
-}
+
+// }
 
 
 
@@ -144,7 +143,12 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
 
     while (bytes_read < count) {
         /*update entry and check for EOF */
-	if (self->CurrEntry == NULL) updateCurrentEntry(self);
+	    if (self->CurrEntry == NULL) {
+            while ((self->CurrEntry = (LFQueueEntry*)lfq_dequeue(&(self->ctx))) == 0) {
+                Py_END_ALLOW_THREADS
+                Py_BEGIN_ALLOW_THREADS
+            }
+        }
         if (self->CurrEntry->length == pipeEOF) break;
 
         int entry_remainder = getEntryRemainder(self->CurrEntry);
