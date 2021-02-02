@@ -77,12 +77,12 @@ static PyObject *LindPipe_seteof(LindPipe *self) {
 
     int ret = 0;
    
-    // Py_BEGIN_ALLOW_THREADS
+    Py_BEGIN_ALLOW_THREADS
     if (( ret = lfq_enqueue(&(self->ctx), LFQEntry_new(NULL, pipeEOF))) != 0) {
         printf("lfq_enqueue failed, reason:%s\n", strerror(-ret));
         return NULL;
     }
-    // Py_END_ALLOW_THREADS
+    Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
 }
@@ -90,10 +90,6 @@ static PyObject *LindPipe_seteof(LindPipe *self) {
 void updateCurrentEntry(LindPipe *self) {
 
     while ((self->CurrEntry = (LFQueueEntry*)lfq_dequeue(&(self->ctx))) == 0){
-            Py_BEGIN_ALLOW_THREADS
-            Py_END_ALLOW_THREADS
-
-
     }
 
 }
@@ -107,7 +103,7 @@ static PyObject *LindPipe_pipewrite(LindPipe *self, PyObject *args) {
     int datalen;
     int ret;
 
-    // Py_BEGIN_ALLOW_THREADS
+    Py_BEGIN_ALLOW_THREADS
 
     if (!PyArg_ParseTuple(args, "li", &buf_addr, &datalen)) {
         return NULL;
@@ -123,7 +119,7 @@ static PyObject *LindPipe_pipewrite(LindPipe *self, PyObject *args) {
     }
 
    
-    // Py_END_ALLOW_THREADS
+    Py_END_ALLOW_THREADS
 
     return Py_BuildValue("i", datalen);
 
@@ -137,7 +133,7 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
     int bytes_read = 0;
     int bytes_remaining = 0;
 
-    // Py_BEGIN_ALLOW_THREADS
+    Py_BEGIN_ALLOW_THREADS
     
 
     if (!PyArg_ParseTuple(args, "li", &buf_addr, &count)) {
@@ -174,7 +170,7 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
 
     }
 
-    // Py_END_ALLOW_THREADS
+    Py_END_ALLOW_THREADS
     
     return Py_BuildValue("i", bytes_read);
 }
