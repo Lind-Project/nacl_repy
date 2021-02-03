@@ -103,8 +103,8 @@ def ErrorResponseBuilder(who, code, message):
         """
     if not SILENT:
         print "Note:", str(who), "got return code", code, ":", message
-    r = Response(who, True, code)
-    r.return_code = errnos[return_code]
+    r = Response(who, True)
+    r.return_code = errnos[code]
     r.message = message
     return r
 
@@ -117,8 +117,8 @@ def SuccessResponseBuilder(who, code, data=None):
         code: the integer return code to return.
         data: the data this call returns (as a string), if any.
     """
-    r = Response(who, False, code)
-    r.return_code = return_code
+    r = Response(who, False)
+    r.return_code = code
     if data != None:
         r.data = data
     return r
