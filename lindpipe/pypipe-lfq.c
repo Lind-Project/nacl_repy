@@ -135,7 +135,7 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
     int bytes_read = 0;
     int bytes_remaining = 0;
 
-    Py_BEGIN_ALLOW_THREADS
+    
     
     // printf("reading\n");
 
@@ -146,6 +146,8 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
     buf = (char*)buf_addr;
 
     while (bytes_read < count) {
+
+        Py_BEGIN_ALLOW_THREADS
         
         /*update entry and check for EOF */
         if (self->CurrEntry == NULL) updateCurrentEntry(self);
@@ -171,10 +173,12 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
             tc_free(self->CurrEntry);
             self->CurrEntry = NULL;
         }
+        
+        Py_END_ALLOW_THREADS
 
     }
 
-    Py_END_ALLOW_THREADS
+    
     return Py_BuildValue("i", bytes_read);
 }
 
