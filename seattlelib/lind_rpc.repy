@@ -63,7 +63,7 @@ def ErrorResponseBuilder(who, code, message):
     if not SILENT:
         print "Note:", str(who), "got return code", code, ":", message
     r = Response(who, True)
-    r.return_code = code
+    r.return_code = errnos[code]
     r.message = message
     return r
 
