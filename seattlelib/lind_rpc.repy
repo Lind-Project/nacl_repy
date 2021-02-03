@@ -68,7 +68,7 @@ def ErrorResponseBuilder(who, code, message):
     return r
 
 
-def SuccessResponseBuilder(who, False, data=None):
+def SuccessResponseBuilder(who, code, data=None):
     """Build an success response object.
 
     <Arugments>
