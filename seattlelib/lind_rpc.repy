@@ -30,19 +30,13 @@ class Response:
     message = "No error message set"
     data = ""
 
-    def __init__(self, response_type, is_error, return_code):
+    def __init__(self, response_type, is_error):
         if (MODE == "safe"): 
             assert isinstance(response_type, str), "response type is not a string"
             assert isinstance(is_error, bool), "is error is not a boolean"
 
         self.response_type = response_type
         self.is_error = is_error
-
-        if (is_error):
-            self.return_code = errnos[return_code]
-        else:
-            self.return_code = return_code
-
 
         # if isinstance(return_code, str):
         #     try:
@@ -110,6 +104,7 @@ def ErrorResponseBuilder(who, code, message):
     if not SILENT:
         print "Note:", str(who), "got return code", code, ":", message
     r = Response(who, True, code)
+    r.return_code = errnos[return_code]
     r.message = message
     return r
 
@@ -123,6 +118,7 @@ def SuccessResponseBuilder(who, code, data=None):
         data: the data this call returns (as a string), if any.
     """
     r = Response(who, False, code)
+    r.return_code = return_code
     if data != None:
         r.data = data
     return r
