@@ -87,15 +87,11 @@ static PyObject *LindPipe_seteof(LindPipe *self) {
     Py_RETURN_NONE;
 }
 
-void updateCurrentEntry(LindPipe *self) {
+// void updateCurrentEntry(LindPipe *self) {
 
-    while ((self->CurrEntry = (LFQueueEntry*)lfq_dequeue(&(self->ctx))) == 0) {
-        Py_BEGIN_ALLOW_THREADS
-        Py_END_ALLOW_THREADS
+//     while ((self->CurrEntry = (LFQueueEntry*)lfq_dequeue(&(self->ctx))) == 0);
 
-    }
-
-}
+// }
 
 
 
@@ -139,7 +135,7 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
     int bytes_read = 0;
     int bytes_remaining = 0;
 
-    
+    Py_BEGIN_ALLOW_THREADS
     
     // printf("reading\n");
 
@@ -150,10 +146,18 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
     buf = (char*)buf_addr;
 
     while (bytes_read < count) {
-
         
         /*update entry and check for EOF */
-        if (self->CurrEntry == NULL) updateCurrentEntry(self);
+        if (self->CurrEntry == NULL) {
+
+            while ((self->CurrEntry = (LFQueueEntry*)lfq_dequeue(&(self->ctx))) == 0) {
+                Py_END_ALLOW_THREADS
+                Py_BEGIN_ALLOW_THREADS
+            }
+
+        }
+        
+        // updateCurrentEntry(self);
         if (self->CurrEntry->length == pipeEOF) break;
 
         int entry_remainder = getEntryRemainder(self->CurrEntry);
@@ -176,12 +180,10 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
             tc_free(self->CurrEntry);
             self->CurrEntry = NULL;
         }
-        
-        
 
     }
 
-    
+    Py_END_ALLOW_THREADS
     return Py_BuildValue("i", bytes_read);
 }
 
