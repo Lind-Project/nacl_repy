@@ -48,45 +48,45 @@ class Response:
         assert isinstance(self.return_code, int), \
                "return code is not a int, or a stirng which mapped to an int"
 
-    def make_struct(self):
-        """
-        <Purpose>
+    # def make_struct(self):
+    #     """
+    #     <Purpose>
 
-        Get the representation of this Response in struct format.  A
-        struct is a string, which when sent to C can be cast as a
-        struct and used nativly.  The struct format is iiii123s, wich
-        is:
-        struct {
-        int message_len;
-        int magic_number;
-        int is_in_error; int return_or_error_code; char data_or_message[];
-        };
+    #     Get the representation of this Response in struct format.  A
+    #     struct is a string, which when sent to C can be cast as a
+    #     struct and used nativly.  The struct format is iiii123s, wich
+    #     is:
+    #     struct {
+    #     int message_len;
+    #     int magic_number;
+    #     int is_in_error; int return_or_error_code; char data_or_message[];
+    #     };
 
-        """
-        reply = None
-        if self.is_error:
-            # message format <size, magic, is_error, code, message>
-            reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", \
-                                len(self.message) + 16, \
-                                101010, 1, self.return_code,\
-                                self.message)
-        else:
-            # message format <size, magic, is_error, code, data>
-            reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", \
-                                len(self.data) + 16, 101010, 0, \
-                                self.return_code, self.data)
-        return reply
+    #     """
+    #     reply = None
+    #     if self.is_error:
+    #         # message format <size, magic, is_error, code, message>
+    #         reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", \
+    #                             len(self.message) + 16, \
+    #                             101010, 1, self.return_code,\
+    #                             self.message)
+    #     else:
+    #         # message format <size, magic, is_error, code, data>
+    #         reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", \
+    #                             len(self.data) + 16, 101010, 0, \
+    #                             self.return_code, self.data)
+    #     return reply
 
-    def __str__(self):
-        """Human readable format for debugging"""
-        if self.is_error:
-            type_str = "Error"
-        else:
-            type_str = "Success"
-        return type_str + " in " + self.response_type + " with code " + \
-               str(self.return_code) + " with data of size " + \
-               str(len(self.data)) + " with data " + repr(self.data) + \
-               str(len(self.message)) + " with data " + repr(self.message)
+    # def __str__(self):
+    #     """Human readable format for debugging"""
+    #     if self.is_error:
+    #         type_str = "Error"
+    #     else:
+    #         type_str = "Success"
+    #     return type_str + " in " + self.response_type + " with code " + \
+    #            str(self.return_code) + " with data of size " + \
+    #            str(len(self.data)) + " with data " + repr(self.data) + \
+    #            str(len(self.message)) + " with data " + repr(self.message)
 
 
 def ErrorResponseBuilder(who, code, message):
