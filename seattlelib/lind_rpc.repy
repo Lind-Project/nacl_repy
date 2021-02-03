@@ -31,7 +31,7 @@ class Response:
     data = ""
 
     def __init__(self, response_type, is_error):
-        if (mode == "safe"):
+        if (MODE == "safe"):
             assert isinstance(response_type, str), "response type is not a string"
             assert isinstance(is_error, bool), "is error is not a boolean"
 
