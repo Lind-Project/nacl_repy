@@ -1541,16 +1541,16 @@ class cageobj:
     """
       http://linux.die.net/man/2/write
     """
-    # check the fd
-    if fd not in self.filedescriptortable:
-      raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
+    # # check the fd
+    # if fd not in self.filedescriptortable:
+    #   raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
   
-    # Is it open for writing?
-    if IS_RDONLY(self.filedescriptortable[fd]['flags']):
-      raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
+    # # Is it open for writing?
+    # if IS_RDONLY(self.filedescriptortable[fd]['flags']):
+    #   raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
     
-    # Acquire the fd lock...
-    self.filedescriptortable[fd]['lock'].acquire(True)
+    # # Acquire the fd lock...
+    # self.filedescriptortable[fd]['lock'].acquire(True)
 
     # ... but always release it...
     try:
@@ -1578,7 +1578,7 @@ class cageobj:
 
     finally:
       # ... release the lock
-      self.filedescriptortable[fd]['lock'].release()
+      # self.filedescriptortable[fd]['lock'].release()
 
   
   ##### PWRITE  #####
