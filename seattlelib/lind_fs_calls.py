@@ -1346,12 +1346,10 @@ class cageobj:
 
 
   # helper function for pipe reads
-  def _read_from_pipe(self, fd, count, buf_addr):
+  # def _read_from_pipe(self, fd, count, buf_addr):
 
     # lets find the pipe number and acquire the readlock
-    pipenumber = self.filedescriptortable[fd]['pipe']
 
-    return pipetable[pipenumber].piperead(buf_addr, count)
  
 
 
@@ -1419,8 +1417,9 @@ class cageobj:
 
       # lets check if it's a pipe first, and if so read from that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
-        return self._read_from_pipe(fd, count, buf_addr)
-
+        pipenumber = self.filedescriptortable[fd]['pipe']
+        return pipetable[pipenumber].piperead(buf_addr, count)
+        
       if IS_SOCK_DESC(fd, self.filedescriptortable):
         try:
           if count == 0:
@@ -1479,11 +1478,9 @@ class cageobj:
 
 
   # helper function for pipe writes
-  def _write_to_pipe(self, fd, count, buf_addr):
+  # def _write_to_pipe(self, fd, count, buf_addr):
 
-    pipenumber = self.filedescriptortable[fd]['pipe']
 
-    return pipetable[pipenumber].pipewrite(buf_addr, count)
 
   
   #helper funtion for read/pread
@@ -1581,7 +1578,8 @@ class cageobj:
 
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
-        return self._write_to_pipe(fd, count, buf_addr)
+        pipenumber = self.filedescriptortable[fd]['pipe']
+        return pipetable[pipenumber].pipewrite(buf_addr, count)
 
       # turn buffer into PyString
       data = repy_addr2string(buf_addr, count)
