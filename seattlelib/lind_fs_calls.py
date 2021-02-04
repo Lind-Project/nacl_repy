@@ -1577,7 +1577,7 @@ class cageobj:
       return self.write_to_file("write_syscall", fd, data, 0)
 
     finally:
-      ... release the lock
+      # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
 
 
