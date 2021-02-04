@@ -1345,14 +1345,6 @@ class cageobj:
       filesystemmetadatalock.release()
 
 
-  # helper function for pipe reads
-  # def _read_from_pipe(self, fd, count, buf_addr):
-
-    # lets find the pipe number and acquire the readlock
-
- 
-
-
   #helper funtion for read/pread
   def read_from_file(self, syscall_name, fd, count, offset):
     try:
@@ -1419,7 +1411,7 @@ class cageobj:
       if IS_PIPE_DESC(fd, self.filedescriptortable):
         pipenumber = self.filedescriptortable[fd]['pipe']
         return pipetable[pipenumber].piperead(buf_addr, count)
-        
+
       if IS_SOCK_DESC(fd, self.filedescriptortable):
         try:
           if count == 0:
@@ -1476,14 +1468,9 @@ class cageobj:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
 
-
-  # helper function for pipe writes
-  # def _write_to_pipe(self, fd, count, buf_addr):
-
-
-
   
   #helper funtion for read/pread
+  
   def write_to_file(self, syscall_name, fd, data, offset):
     
     try:
