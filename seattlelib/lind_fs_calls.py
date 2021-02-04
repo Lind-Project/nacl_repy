@@ -1545,14 +1545,6 @@ class cageobj:
     if fd not in self.filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
   
-    # if we're going to stdout/err, lets get it over with and print    
-    try:
-      if self.filedescriptortable[fd]['stream'] in [1,2]:
-        log_stdout(repy_addr2string(buf_addr, count))
-        return count
-    except KeyError:
-      pass
-
     # Is it open for writing?
     if IS_RDONLY(self.filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
@@ -1570,6 +1562,14 @@ class cageobj:
 
       # turn buffer into PyString
       data = repy_addr2string(buf_addr, count)
+
+      # if we're going to stdout/err, lets get it over with and print    
+      try:
+        if self.filedescriptortable[fd]['stream'] in [1,2]:
+          log_stdout(data)
+          return count
+      except KeyError:
+        pass
 
       if IS_SOCK_DESC(fd, self.filedescriptortable):
         return self.send_syscall(fd, data, 0)
