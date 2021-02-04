@@ -1550,7 +1550,7 @@ class cageobj:
     #   raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
     
     # # Acquire the fd lock...
-    # self.filedescriptortable[fd]['lock'].acquire(True)
+    self.filedescriptortable[fd]['lock'].acquire(True)
 
     # ... but always release it...
     try:
@@ -1576,11 +1576,11 @@ class cageobj:
 
       return self.write_to_file("write_syscall", fd, data, 0)
 
-  # finally:
-    # ... release the lock
-    # self.filedescriptortable[fd]['lock'].release()
+    finally:
+      ... release the lock
+      self.filedescriptortable[fd]['lock'].release()
 
-  
+
   ##### PWRITE  #####
 
   def pwrite_syscall(self, fd, data, offset):
