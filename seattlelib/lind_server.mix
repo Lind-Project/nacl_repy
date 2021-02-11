@@ -176,11 +176,11 @@ include fs_munmap.repy
 
 include fs_exec.repy
 
+include sys_getcwd.repy
+
 include unimplemented_syscalls.repy
 
 include dispatcher.repy
-
-include sys_getcwd.repy
 
 
 LindSyscall = dispatch_syscall
