@@ -2615,7 +2615,7 @@ class cageobj:
     """
     http://linux.die.net/man/2/getcwd
     """
-    if(size == 0):
+    if(size == 0): #we do not check for size <0 since size_t is always unsigned
       raise SyscallError("getcwd_syscall","EINVAL","The size argument is zero and buf is not a NULL pointer.")
     
     result = self.currentworkingdirectory
