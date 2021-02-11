@@ -2611,7 +2611,7 @@ class cageobj:
       filesystemmetadatalock.release()
       
   ##### GETCWD #####
-  def getcwd_syscall(size):
+  def getcwd_syscall(self, size):
     """
     http://linux.die.net/man/2/getcwd
     """
