@@ -180,6 +180,8 @@ include unimplemented_syscalls.repy
 
 include dispatcher.repy
 
+include sys_getcwd.repy
+
 
 LindSyscall = dispatch_syscall
 
