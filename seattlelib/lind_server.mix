@@ -150,6 +150,8 @@ include net_epoll.repy
 
 include net_socketpair.repy
 
+include sys_getcwd.repy
+
 include net_gethostname.repy
 
 include sys_getuid.repy
@@ -175,8 +177,6 @@ include fs_mmap.repy
 include fs_munmap.repy
 
 include fs_exec.repy
-
-include sys_getcwd.repy
 
 include unimplemented_syscalls.repy
 
