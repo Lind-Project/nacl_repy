@@ -2620,7 +2620,7 @@ class cageobj:
     
     result = self.currentworkingdirectory
     
-    if(len(result) > size):
+    if(len(result) +1> size): #+1 for the terminating null byte
       raise SyscallError("getcwd_syscall","ERANGE","The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte. You need to allocate a bigger array and try again.")
     
     return result
