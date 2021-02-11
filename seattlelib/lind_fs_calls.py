@@ -2609,3 +2609,20 @@ class cageobj:
         0)
     finally:
       filesystemmetadatalock.release()
+      
+  ##### GETCWD #####
+  def getcwd_syscall(size):
+    """
+    http://linux.die.net/man/2/getcwd
+    """
+    if(size == 0):
+      raise SyscallError("getcwd_syscall","EINVAL","The size argument is zero and buf is not a NULL pointer.")
+    
+    result = self.currentworkingdirectory
+    
+    if(len(result) > size):
+      raise SyscallError("getcwd_syscall","ERANGE","The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte. You need to allocate a bigger array and try again.")
+    
+    return result
+
+
