@@ -48,6 +48,7 @@ import idhelper
 import safe
 import sys
 import getopt
+import struct
 
 #this needs to be early on since it changes the python path
 import repy_constants   
@@ -193,6 +194,9 @@ def init_namespace(resourcefn, program, args):
   #usercontext["getthreadname"] = emulmisc.getthreadname
   usercontext["createvirtualnamespace"] = virtual_namespace.createvirtualnamespace
   usercontext["getlasterror"] = emulmisc.getlasterror
+  usercontext["struct_pack_new"] = struct.pack
+  usercontext["struct_unpack_new"] = struct.unpack
+  usercontext["struct_calcsize_new"] = struct.calcsize
       
   # grab the user code from the file
   try:

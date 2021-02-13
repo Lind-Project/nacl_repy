@@ -28,6 +28,7 @@ if MODE == "safe":
   syscall_table[24] = lind_safe_fs_dup
   syscall_table[25] = lind_safe_fs_dup2
   syscall_table[26] = lind_safe_fs_statfs
+  syscall_table[27] = lind_safe_sys_getcwd
   syscall_table[28] = lind_safe_fs_fcntl
   syscall_table[29] = lind_safe_sys_getppid
   syscall_table[30] = lind_safe_sys_exit
@@ -91,6 +92,7 @@ elif MODE == "fast":
   syscall_table[24] = lind_fs_dup
   syscall_table[25] = lind_fs_dup2
   syscall_table[26] = lind_fs_statfs
+  syscall_table[27] = lind_sys_getcwd
   syscall_table[28] = lind_fs_fcntl
   syscall_table[29] = lind_sys_getppid
   syscall_table[30] = lind_sys_exit

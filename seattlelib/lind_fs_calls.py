@@ -1437,6 +1437,14 @@ class cageobj:
       if IS_PIPE_DESC(fd, self.filedescriptortable):
         return self._read_from_pipe(fd, count)
 
+      if IS_SOCK_DESC(fd, self.filedescriptortable):
+        try:
+          if count == 0:
+            return self.recv_syscall(fd, TX_BUF_MAX, 0)
+          return self.recv_syscall(fd, count, 0) #recv doesn't lock for some reason
+        except SocketWouldBlockError as e:
+          return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
+
       return self.read_from_file("read_syscall", fd, count, 0)
     finally:
       # ... release the lock
@@ -1593,6 +1601,9 @@ class cageobj:
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
         return self._write_to_pipe(fd, data)
+
+      if IS_SOCK_DESC(fd, self.filedescriptortable):
+        return self.send_syscall(fd, data, 0)
 
       return self.write_to_file("write_syscall", fd, data, 0)
 
@@ -2632,3 +2643,20 @@ class cageobj:
         0)
     finally:
       filesystemmetadatalock.release()
+      
+  ##### GETCWD #####
+  def getcwd_syscall(self, size):
+    """
+    http://linux.die.net/man/2/getcwd
+    """
+    if(size == 0): #we do not check for size <0 since size_t is always unsigned
+      raise SyscallError("getcwd_syscall","EINVAL","The size argument is zero and buf is not a NULL pointer.")
+    
+    result = self.currentworkingdirectory
+    
+    if(len(result) +1> size): #+1 for the terminating null byte
+      raise SyscallError("getcwd_syscall","ERANGE","The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte. You need to allocate a bigger array and try again.")
+    
+    return result
+
+
