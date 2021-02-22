@@ -1373,7 +1373,7 @@ class cageobj:
         
 
    #helper funtion for read
-  def read_from_file(self, buffaddr, fd, count):
+  def read_from_file(self, buf_addr, fd, count):
     try:
       # Acquire the metadata lock... but always release it
       filesystemmetadatalock.acquire(True)
@@ -1392,7 +1392,7 @@ class cageobj:
       # let's do a readat!
       
       position = self.filedescriptortable[fd]['position']
-      datalen = fileobjecttable[inode].readintoat(bufaddr, count,position)
+      datalen = fileobjecttable[inode].readintoat(buf_addr, count,position)
       # and update the position
       self.filedescriptortable[fd]['position'] += datalen
 
