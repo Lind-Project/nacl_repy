@@ -410,13 +410,10 @@ class emulated_file (object):
       # Seek to the correct location
       fobj.seek(offset)
 
-      if sizelimit != None:
-        # Read the data
-        datalen = fobj.readinto(sizelimit)
-      else:
-        # read all the data...
-        datalen = fobj.readinto()
+      # read all the data...
+      datalen = repy_cread(fobj, buffaddr, sizelimit)
 
+      
     finally:
       # Release the seek lock
       self.seek_lock.release()

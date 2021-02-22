@@ -36,6 +36,8 @@ libc.mmap.restype = ctypes.c_long
 libc.mmap.argtypes = ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_long
 libc.munmap.restype = ctypes.c_int
 libc.munmap.argtypes = ctypes.c_void_p, ctypes.c_size_t
+libc.read.restype = ctypes.c_int
+libc.read.argtypes = ctypes.c_int, ctypes.c_void_p, ctypes.c_size_t
 
 # threading in python2.7 needs hasattr. It needs to be allowed explicitly.
 threading.hasattr = hasattr
@@ -231,12 +233,13 @@ def log_stdout(*args):
   sys.stdout.flush()
 
 def repy_addr2string(addr, size):
-  type_char_p = ctypes.POINTER(ctypes.c_char_p)
-  return type_char_p.from_address(addr)
-  # return ctypes.string_at(addr, size)
+  return ctypes.string_at(addr, size)
 
 def repy_move_to_readbuf(nacl_buf_addr, repy_read_string, size):
   ctypes.memmove(nacl_buf_addr, ctypes.c_char_p(repy_read_string), size)
+
+def repy_cread(fileobj, addr, size):
+  return libc.read(fileobj.fileno(), addr, size)
 
 def repy_mmap(addr, leng, prot, flags, filedes, off):
   return libc.mmap(addr, leng, prot, flags, filedes, off)

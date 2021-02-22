@@ -1346,7 +1346,34 @@ class cageobj:
 
 
   #helper funtion for read/pread
-  def read_from_file(self, syscall_name, fd, count, offset):
+  def pread_from_file(self, fd, count, offset):
+    try:
+      # Acquire the metadata lock... but always release it
+      filesystemmetadatalock.acquire(True)
+
+      # get the inode so I can and check the mode (type)
+      inode = self.filedescriptortable[fd]['inode']
+
+      # If its a character file, call the helper function.
+      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+        return self._read_chr_file(inode, count)
+
+      # Is it anything other than a regular file?
+      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+        raise SyscallError("pread_syscall","EINVAL","File descriptor does not refer to a regular file.")
+
+      # let's do a readat!
+      
+      data = fileobjecttable[inode].readat(count,offset)
+        
+      return data
+    
+    finally:
+      filesystemmetadatalock.release()
+        
+
+   #helper funtion for read
+  def read_from_file(self, buffaddr, fd, count):
     try:
       # Acquire the metadata lock... but always release it
       filesystemmetadatalock.acquire(True)
@@ -1364,21 +1391,16 @@ class cageobj:
 
       # let's do a readat!
       
-      if syscall_name == "read_syscall": #read
-        position = self.filedescriptortable[fd]['position']
-        data = fileobjecttable[inode].readat(count,position)
-        # and update the position
-        self.filedescriptortable[fd]['position'] += len(data)
+      position = self.filedescriptortable[fd]['position']
+      datalen = fileobjecttable[inode].readintoat(bufaddr, count,position)
+      # and update the position
+      self.filedescriptortable[fd]['position'] += datalen
+
         
-      else: #pread
-        data = fileobjecttable[inode].readat(count,offset)
-        
-      return data
+      return datalen
     
     finally:
-      filesystemmetadatalock.release()
-        
-        
+      filesystemmetadatalock.release()        
         
   ##### READ  #####
 
@@ -1417,14 +1439,16 @@ class cageobj:
           if count == 0:
             data = self.recv_syscall(fd, TX_BUF_MAX, 0)
           data = self.recv_syscall(fd, count, 0) #recv doesn't lock for some reason
+
+          # transfer read data back to read buffer and return size
+          size_read = len(data)
+          repy_move_to_readbuf(buf_addr, data, size_read)
+          return size_read
         except SocketWouldBlockError as e:
           return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
 
-      data = self.read_from_file("read_syscall", fd, count, 0)
+      size_read = self.read_from_file(buffaddr, fd, count)
       
-      # transfer read data back to read buffer and return size
-      size_read = len(data)
-      repy_move_to_readbuf(buf_addr, data, size_read)
       return size_read
 
     finally:
@@ -1462,7 +1486,7 @@ class cageobj:
       if IS_PIPE_DESC(fd, self.filedescriptortable) or IS_SOCK_DESC(fd, self.filedescriptortable):
         raise SyscallError("pread_syscall","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
       
-      return self.read_from_file("pread_syscall", fd, count, offset)
+      return self.read_from_file(fd, count, offset)
 
     finally:
       # ... release the lock
