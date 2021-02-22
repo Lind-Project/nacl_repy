@@ -1447,7 +1447,7 @@ class cageobj:
         except SocketWouldBlockError as e:
           return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
 
-      size_read = self.read_from_file(buffaddr, fd, count)
+      size_read = self.read_from_file(buf_addr, fd, count)
       
       return size_read
 
