@@ -362,7 +362,7 @@ class emulated_file (object):
       OPEN_FILES_LOCK.release()
 
 
-  def readintoat(self,buffer,sizelimit,offset):
+  def readintoat(self,buf_addr,sizelimit,offset):
     """
     <Purpose>
       Reads from a file handle. Reading 0 bytes informs you if you have read
@@ -411,9 +411,9 @@ class emulated_file (object):
       fobj.seek(offset)
 
       # read all the data...
-      datalen = repy_cread(fobj, buffaddr, sizelimit)
+      datalen = repy_cread(fobj, buf_addr, sizelimit)
 
-      
+
     finally:
       # Release the seek lock
       self.seek_lock.release()
