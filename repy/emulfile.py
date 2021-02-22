@@ -13,6 +13,8 @@
 
 import nanny
 
+from emulmisc import repy_cread
+
 # Used for path and file manipulation
 import os 
 import os.path
