@@ -231,7 +231,9 @@ def log_stdout(*args):
   sys.stdout.flush()
 
 def repy_addr2string(addr, size):
-  return ctypes.string_at(addr, size)
+  type_char_p = ctypes.POINTER(ctypes.c_char_p)
+  return type_char_p.from_address(addr)
+  # return ctypes.string_at(addr, size)
 
 def repy_move_to_readbuf(nacl_buf_addr, repy_read_string, size):
   ctypes.memmove(nacl_buf_addr, ctypes.c_char_p(repy_read_string), size)

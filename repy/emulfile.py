@@ -362,6 +362,68 @@ class emulated_file (object):
       OPEN_FILES_LOCK.release()
 
 
+  def readintoat(self,buffer,sizelimit,offset):
+    """
+    <Purpose>
+      Reads from a file handle. Reading 0 bytes informs you if you have read
+      past the end-of-file, but returns no data.
+
+    <Arguments>
+      sizelimit: 
+        The maximum number of bytes to read from the file. Reading EOF will 
+        read less.   By setting this value to None, the entire file is read.
+      offset:
+        Seek to a specific absolute offset before reading.
+
+    <Exceptions>
+      RepyArgumentError is raised if the offset or size is negative.
+      FileClosedError is raised if the file is already closed.
+      SeekPastEndOfFileError is raised if trying to read past the end of the file.
+
+    <Resource Consumption>
+      Consumes 4K of fileread for each 4K aligned-block of the file read.
+      All reads will consume at least 4K.
+
+    <Returns>
+      The data that was read. This may be the empty string if we have reached the
+      end of the file, or if the sizelimit was 0.
+    """
+    # Check the arguments
+    if sizelimit < 0 and sizelimit != None:
+      raise RepyArgumentError("Negative sizelimit specified!")
+    if offset < 0:
+      raise RepyArgumentError("Negative read offset speficied!")
+
+    # Get the seek lock
+    self.seek_lock.acquire()
+
+    try:
+      # Get the underlying file object
+      fobj = self.fobj
+      if fobj is None:
+        raise FileClosedError("File '"+self.filename+"' is already closed!")
+
+      # Check the provided offset
+      if offset > self.filesize:
+        raise SeekPastEndOfFileError("Seek offset extends past the EOF!")
+      
+      # Seek to the correct location
+      fobj.seek(offset)
+
+      if sizelimit != None:
+        # Read the data
+        datalen = fobj.readinto(sizelimit)
+      else:
+        # read all the data...
+        datalen = fobj.readinto()
+
+    finally:
+      # Release the seek lock
+      self.seek_lock.release()
+
+    # Return the data
+    return datalen
+
   def readat(self,sizelimit,offset):
     """
     <Purpose>
