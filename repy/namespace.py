@@ -693,7 +693,7 @@ USERCONTEXT_WRAPPER_INFO = {
       {'func' : emulmisc.repy_move_to_readbuf,
         'args' : [Int(), Str(), Int()],
         'return' : None},
-    'repy_cread' :
+  'repy_cread' :
       {'func' : emulmisc.repy_cread,
         'args' : [File(), Int(), Int()],
         'return' : Int()},
