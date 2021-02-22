@@ -1486,7 +1486,7 @@ class cageobj:
       if IS_PIPE_DESC(fd, self.filedescriptortable) or IS_SOCK_DESC(fd, self.filedescriptortable):
         raise SyscallError("pread_syscall","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
       
-      return self.read_from_file(fd, count, offset)
+      return self.pread_from_file(fd, count, offset)
 
     finally:
       # ... release the lock
