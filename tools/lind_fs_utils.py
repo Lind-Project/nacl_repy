@@ -129,7 +129,7 @@ def update_into_lind(fullfilename, rootpath='.'):
     fd.close()
 
     lindfd = lind_test_server.get_fscall_obj(cageid).open_syscall(fullfilename, O_RDONLY, 0)
-    lind_content = lind_test_server.get_fscall_obj(cageid).read_from_file("read_syscall", lindfd, lind_size, 0)
+    lind_content = lind_test_server.get_fscall_obj(cageid).pread_from_file(lindfd, lind_size, 0)
     lind_test_server.get_fscall_obj(cageid).close_syscall(lindfd)
 
     samefile = (host_content == lind_content)
