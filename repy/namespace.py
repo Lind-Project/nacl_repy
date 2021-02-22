@@ -120,6 +120,7 @@ import safe # Used to get SafeDict
 import tracebackrepy
 import virtual_namespace
 import mmap
+import ctypes
 
 #from naclimc import * 
 from exception_hierarchy import *
@@ -688,7 +689,7 @@ USERCONTEXT_WRAPPER_INFO = {
   'repy_addr2string' :
       {'func' : emulmisc.repy_addr2string,
         'args' : [Int(), Int()],
-        'return' : Str()},
+        'return' : ctypes.POINTER()},
   'repy_move_to_readbuf' :
       {'func' : emulmisc.repy_move_to_readbuf,
         'args' : [Int(), Str(), Int()],
