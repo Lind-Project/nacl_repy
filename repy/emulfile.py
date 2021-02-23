@@ -413,6 +413,8 @@ class emulated_file (object):
       fobj.seek(offset)
 
       # read all the data...
+      print self.filesize
+      print offset
       print buf_addr
       print sizelimit
       print fobj.fileno()
