@@ -422,7 +422,7 @@ class emulated_file (object):
       print sizelimit
       print fobj.fileno()
 
-      if sizelimit = None: sizelimit = self.filesize - offset
+      if sizelimit == None: sizelimit = self.filesize - offset
       datalen = repy_cread(fobj, buf_addr + datalen, sizelimit)
 
         
