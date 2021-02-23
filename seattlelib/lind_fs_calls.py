@@ -1221,7 +1221,7 @@ class cageobj:
         # this is a regular file.  If it's not open, let's open it!
         if inode not in fileobjecttable:
           thisfo = openfile(FILEDATAPREFIX+str(inode),False)
-          print thisfo.fileobj.fileno()
+          print thisfo.fobj.fileno()
           fileobjecttable[inode] = thisfo
 
       # I'm going to assume that if you use O_APPEND I only need to
