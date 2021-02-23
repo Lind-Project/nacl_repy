@@ -412,8 +412,6 @@ class emulated_file (object):
       # Seek to the correct location
       fobj.seek(offset)
 
-      datalen = 0
-
       # read all the data...
       print self.filesize
       print fobj.tell()
@@ -423,7 +421,7 @@ class emulated_file (object):
       print fobj.fileno()
 
       if sizelimit == None: sizelimit = self.filesize - offset
-      datalen = repy_cread(fobj, buf_addr + datalen, sizelimit)
+      datalen = repy_cread(fobj, buf_addr, sizelimit)
 
         
       print datalen
