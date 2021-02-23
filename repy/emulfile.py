@@ -416,6 +416,7 @@ class emulated_file (object):
 
       # read all the data...
       print self.filesize
+      print fileobj.tell()
       print offset
       print hex(buf_addr)
       print sizelimit
