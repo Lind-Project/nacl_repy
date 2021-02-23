@@ -695,7 +695,7 @@ USERCONTEXT_WRAPPER_INFO = {
         'return' : None},
   'repy_cread' :
       {'func' : emulmisc.repy_cread,
-        'args' : [File(), Int(), Int()],
+        'args' : [Int(), Int(), Int()],
         'return' : Int()},
   'repy_mmap' :
       {'func' : emulmisc.repy_mmap,

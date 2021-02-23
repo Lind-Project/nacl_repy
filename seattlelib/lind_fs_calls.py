@@ -1392,7 +1392,7 @@ class cageobj:
       # let's do a readat!
       
       position = self.filedescriptortable[fd]['position']
-      datalen = repy_cread(fileobjecttable[inode].fobj, buf_addr, count)
+      datalen = repy_cread(fileobjecttable[inode].fobj.fileno(), buf_addr, count)
 
       # datalen = fileobjecttable[inode].readintoat(buf_addr, count,position)
       # and update the position
