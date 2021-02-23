@@ -1197,6 +1197,8 @@ class cageobj:
           # always open the file.
           fileobjecttable[inode] = openfile(FILEDATAPREFIX+str(inode),True)
 
+          print fileobjecttable[inode].fobj.fileno()
+
           persist_metadata(METADATAFILENAME)
 
 
@@ -1392,7 +1394,11 @@ class cageobj:
       # let's do a readat!
       
       position = self.filedescriptortable[fd]['position']
-      datalen = repy_cread(fileobjecttable[inode].fobj.fileno(), buf_addr, count)
+      rawfd = fileobjecttable[inode].fobj.fileno()
+      print rawfd
+      print hex(buf_addr)
+      print count
+      datalen = repy_cread(rawfd, buf_addr, count)
 
       # datalen = fileobjecttable[inode].readintoat(buf_addr, count,position)
       # and update the position
