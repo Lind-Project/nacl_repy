@@ -1393,6 +1393,8 @@ class cageobj:
       # let's do a readat!
       
       position = self.filedescriptortable[fd]['position']
+      print fileobjecttable[inode].filesize
+      print fileobjecttable[inode].fobj.tell()
       rawfd = fileobjecttable[inode].fobj.fileno()
       print rawfd
       print hex(buf_addr)
