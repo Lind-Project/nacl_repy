@@ -414,6 +414,7 @@ class emulated_file (object):
 
       # read all the data...
       datalen = repy_cread(fobj, buf_addr, sizelimit)
+      print datalen
 
 
     finally:
