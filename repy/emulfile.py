@@ -412,14 +412,21 @@ class emulated_file (object):
       # Seek to the correct location
       fobj.seek(offset)
 
+      datalen = 0
+
       # read all the data...
       print self.filesize
       print offset
       print hex(buf_addr)
       print sizelimit
       print fobj.fileno()
-      if (sizelimit > (self.filesize - offset)): sizelimit = self.filesize - offset
-      datalen = repy_cread(fobj, buf_addr, sizelimit)
+
+      while 1:
+        n = repy_cread(fobj, buf_addr + datalen, sizelimit - datalen)
+        print n
+        if (n == 0): break
+        datalen += n
+        
       print datalen
 
 
