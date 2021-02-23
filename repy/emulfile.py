@@ -413,6 +413,8 @@ class emulated_file (object):
       fobj.seek(offset)
 
       # read all the data...
+      print buf_addr
+      print sizelimit
       datalen = repy_cread(fobj, buf_addr, sizelimit)
       print datalen
 
