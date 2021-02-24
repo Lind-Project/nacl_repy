@@ -421,9 +421,9 @@ class emulated_file (object):
       print fobj.fileno()
 
       if sizelimit == None: sizelimit = self.filesize - offset
-      datalen = repy_mmap(buf_addr, sizelimit, 1, 2, fobj.fileno(), 0)
+      repy_mmap(buf_addr, sizelimit, 1, 2, fobj.fileno(), 0)
         
-      print datalen
+      print sizelimit
 
 
     finally:
@@ -431,7 +431,7 @@ class emulated_file (object):
       self.seek_lock.release()
 
     # Return the data
-    return datalen
+    return sizelimit
 
   def readat(self,sizelimit,offset):
     """
