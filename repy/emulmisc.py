@@ -36,8 +36,8 @@ libc.mmap.restype = ctypes.c_long
 libc.mmap.argtypes = ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_long
 libc.munmap.restype = ctypes.c_int
 libc.munmap.argtypes = ctypes.c_void_p, ctypes.c_size_t
-libc.read.restype = ctypes.c_int
-libc.read.argtypes = ctypes.c_int, ctypes.c_void_p, ctypes.c_size_t
+libc._read.restype = ctypes.c_int
+libc._read.argtypes = ctypes.c_int, ctypes.c_void_p, ctypes.c_size_t
 
 # threading in python2.7 needs hasattr. It needs to be allowed explicitly.
 threading.hasattr = hasattr
