@@ -1392,6 +1392,8 @@ class cageobj:
 
       # let's do a readat!
       
+      position = self.filedescriptortable[fd]['position']
+
       datalen = fileobjecttable[inode].readintoat(buf_addr, count,position)
       # and update the position
       self.filedescriptortable[fd]['position'] += datalen
