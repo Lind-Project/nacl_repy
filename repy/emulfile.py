@@ -13,7 +13,7 @@
 
 import nanny
 
-from emulmisc import repy_cread
+from emulmisc import repy_mmap
 
 # Used for path and file manipulation
 import os 
