@@ -413,17 +413,16 @@ class emulated_file (object):
       fobj.seek(offset)
 
       # read all the data...
-      print self.filesize
-      print fobj.tell()
-      print offset
-      print hex(buf_addr)
-      print sizelimit
-      print fobj.fileno()
+      # print self.filesize
+      # print fobj.tell()
+      # print offset
+      # print hex(buf_addr)
+      # print sizelimit
+      # print fobj.fileno()
 
-      if sizelimit == None: sizelimit = self.filesize - offset
       
       buf = ctypes.cast(buf_addr, ctypes.POINTER(ctypes.c_ubyte * sizelimit)).contents
-      fobj.readinto(memoryview(buf)[0:sizelimit])
+      datalen = fobj.readinto(memoryview(buf)[0:sizelimit])
 
 
     finally:
@@ -431,7 +430,7 @@ class emulated_file (object):
       self.seek_lock.release()
 
     # Return the data
-    return sizelimit
+    return datalen
 
   def readat(self,sizelimit,offset):
     """
