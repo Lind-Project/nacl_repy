@@ -422,7 +422,7 @@ class emulated_file (object):
 
       if sizelimit == None: sizelimit = self.filesize - offset
       
-      buf = ctypes.cast(addr, ctypes.POINTER(ctypes.c_ubyte * sizelimit)).contents
+      buf = ctypes.cast(buf_addr, ctypes.POINTER(ctypes.c_ubyte * sizelimit)).contents
       f.readinto(memoryview(buf)[0:sizelimit])
 
 
