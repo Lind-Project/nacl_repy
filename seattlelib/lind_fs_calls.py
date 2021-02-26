@@ -1419,6 +1419,7 @@ class cageobj:
           data = self.recv_syscall(fd, count, 0) #recv doesn't lock for some reason
         except SocketWouldBlockError as e:
           return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
+
       starttime = time.clock()
 
       data = self.read_from_file("read_syscall", fd, count, 0)
@@ -1428,7 +1429,6 @@ class cageobj:
       repy_move_to_readbuf(buf_addr, data, size_read)
 
       
-      size_read = self.read_from_file(buf_addr, fd, count)
       endtime = time.clock()
       readtime = (endtime - starttime ) * 1000000
       print "filereadtime is " + str(readtime) + " us"
