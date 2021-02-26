@@ -13,7 +13,7 @@
 
 import nanny
 
-from emulmisc import repy_mmap
+import ctypes
 
 # Used for path and file manipulation
 import os 
@@ -421,9 +421,9 @@ class emulated_file (object):
       print fobj.fileno()
 
       if sizelimit == None: sizelimit = self.filesize - offset
-      repy_mmap(buf_addr, sizelimit, 1, 2, fobj.fileno(), offset)
-        
-      print sizelimit
+      
+      buf = ctypes.cast(addr, ctypes.POINTER(ctypes.c_ubyte * sizelimit)).contents
+      f.readinto(memoryview(buf)[0:sizelimit])
 
 
     finally:
