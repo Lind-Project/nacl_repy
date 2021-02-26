@@ -19,7 +19,7 @@
   without unpacking / repacking.
 
 """
-
+import time
 import lindpipe
 
 # At a conceptual level, the system works like this:
