@@ -19,7 +19,7 @@
   without unpacking / repacking.
 
 """
-
+import time
 import lindpipe
 
 # At a conceptual level, the system works like this:
@@ -1448,8 +1448,12 @@ class cageobj:
         except SocketWouldBlockError as e:
           return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
 
+      starttime = time.clock()
       size_read = self.read_from_file(buf_addr, fd, count)
-      
+      endtime = time.clock()
+      readtime = (endtime - starttime ) * 1000000
+
+      print "fileread took " + str(readtime) + " us"
       return size_read
 
     finally:
@@ -1495,7 +1499,6 @@ class cageobj:
 
   
   #helper funtion for read/pread
-  
   def write_to_file(self, syscall_name, fd, data, offset):
     
     try:
