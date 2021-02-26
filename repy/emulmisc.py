@@ -232,13 +232,11 @@ def log_stdout(*args):
   sys.stdout.flush()
 
 def repy_addr2string(addr, size):
-  return ctypes.string_at(addr, size)
+  buf = ctypes.cast(addr, ctypes.POINTER(ctypes.c_char * size)).contents
+  return buf[:size]
 
 def repy_move_to_readbuf(nacl_buf_addr, repy_read_string, size):
   ctypes.memmove(nacl_buf_addr, ctypes.c_char_p(repy_read_string), size)
-
-def repy_cread(fd, addr, size):
-  return libc._read(fd, addr, size)
 
 def repy_mmap(addr, leng, prot, flags, filedes, off):
   return libc.mmap(addr, leng, prot, flags, filedes, off)
