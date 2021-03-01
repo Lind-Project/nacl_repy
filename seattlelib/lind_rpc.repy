@@ -30,52 +30,13 @@ class Response:
     message = "No error message set"
     data = ""
 
-    def __init__(self, response_type, is_error, return_code):
-        assert isinstance(response_type, str), "response type is not a string"
+    def __init__(self, response_type, is_error):
+        if (MODE == "safe"):
+            assert isinstance(response_type, str), "response type is not a string"
+            assert isinstance(is_error, bool), "is error is not a boolean"
+
         self.response_type = response_type
-        assert isinstance(is_error, bool), "is error is not a boolean"
         self.is_error = is_error
-
-        if isinstance(return_code, str):
-            try:
-                self.return_code = errnos[return_code]
-            except KeyError:
-                raise Exception("Return code is not a valid error number.")
-        elif isinstance(return_code, int):
-            self.return_code = return_code
-        else:
-            raise Exception("Invalid return code.")
-        assert isinstance(self.return_code, int), \
-               "return code is not a int, or a stirng which mapped to an int"
-
-    def make_struct(self):
-        """
-        <Purpose>
-
-        Get the representation of this Response in struct format.  A
-        struct is a string, which when sent to C can be cast as a
-        struct and used nativly.  The struct format is iiii123s, wich
-        is:
-        struct {
-        int message_len;
-        int magic_number;
-        int is_in_error; int return_or_error_code; char data_or_message[];
-        };
-
-        """
-        reply = None
-        if self.is_error:
-            # message format <size, magic, is_error, code, message>
-            reply = struct_pack("<i<i<i<i" + str(len(self.message)) + "s", \
-                                len(self.message) + 16, \
-                                101010, 1, self.return_code,\
-                                self.message)
-        else:
-            # message format <size, magic, is_error, code, data>
-            reply = struct_pack("<i<i<i<i" + str(len(self.data)) + "s", \
-                                len(self.data) + 16, 101010, 0, \
-                                self.return_code, self.data)
-        return reply
 
     def __str__(self):
         """Human readable format for debugging"""
@@ -101,7 +62,8 @@ def ErrorResponseBuilder(who, code, message):
         """
     if not SILENT:
         print "Note:", str(who), "got return code", code, ":", message
-    r = Response(who, True, code)
+    r = Response(who, True)
+    r.return_code = errnos[code]
     r.message = message
     return r
 
@@ -114,7 +76,8 @@ def SuccessResponseBuilder(who, code, data=None):
         code: the integer return code to return.
         data: the data this call returns (as a string), if any.
     """
-    r = Response(who, False, code)
+    r = Response(who, False)
+    r.return_code = code
     if data != None:
         r.data = data
     return r

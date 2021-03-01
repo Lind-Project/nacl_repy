@@ -19,7 +19,7 @@
   without unpacking / repacking.
 
 """
-
+import time
 import lindpipe
 
 # At a conceptual level, the system works like this:
@@ -1459,18 +1459,35 @@ class cageobj:
       filesystemmetadatalock.release()
 
 
-  # helper function for pipe reads
-  def _read_from_pipe(self, fd, count, buf_addr):
-
-    # lets find the pipe number and acquire the readlock
-    pipenumber = self.filedescriptortable[fd]['pipe']
-
-    return pipetable[pipenumber].piperead(buf_addr, count)
- 
-
-
   #helper funtion for read/pread
-  def read_from_file(self, syscall_name, fd, count, offset):
+  def pread_from_file(self, fd, count, offset):
+    try:
+      # Acquire the metadata lock... but always release it
+      filesystemmetadatalock.acquire(True)
+
+      # get the inode so I can and check the mode (type)
+      inode = self.filedescriptortable[fd]['inode']
+
+      # If its a character file, call the helper function.
+      if IS_CHR(filesystemmetadata['inodetable'][inode]['mode']):
+        return self._read_chr_file(inode, count)
+
+      # Is it anything other than a regular file?
+      if not IS_REG(filesystemmetadata['inodetable'][inode]['mode']):
+        raise SyscallError("pread_syscall","EINVAL","File descriptor does not refer to a regular file.")
+
+      # let's do a readat!
+      
+      data = fileobjecttable[inode].readat(count,offset)
+        
+      return data
+    
+    finally:
+      filesystemmetadatalock.release()
+        
+
+   #helper funtion for read
+  def read_from_file(self, buf_addr, fd, count):
     try:
       # Acquire the metadata lock... but always release it
       filesystemmetadatalock.acquire(True)
@@ -1488,21 +1505,17 @@ class cageobj:
 
       # let's do a readat!
       
-      if syscall_name == "read_syscall": #read
-        position = self.filedescriptortable[fd]['position']
-        data = fileobjecttable[inode].readat(count,position)
-        # and update the position
-        self.filedescriptortable[fd]['position'] += len(data)
+      position = self.filedescriptortable[fd]['position']
+
+      datalen = fileobjecttable[inode].readintoat(buf_addr, count,position)
+      # and update the position
+      self.filedescriptortable[fd]['position'] += datalen
+
         
-      else: #pread
-        data = fileobjecttable[inode].readat(count,offset)
-        
-      return data
+      return datalen
     
     finally:
-      filesystemmetadatalock.release()
-        
-        
+      filesystemmetadatalock.release()        
         
   ##### READ  #####
 
@@ -1534,21 +1547,28 @@ class cageobj:
 
       # lets check if it's a pipe first, and if so read from that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
-        return self._read_from_pipe(fd, count, buf_addr)
+        pipenumber = self.filedescriptortable[fd]['pipe']
+        return pipetable[pipenumber].piperead(buf_addr, count)
 
       if IS_SOCK_DESC(fd, self.filedescriptortable):
         try:
           if count == 0:
             data = self.recv_syscall(fd, TX_BUF_MAX, 0)
           data = self.recv_syscall(fd, count, 0) #recv doesn't lock for some reason
+
+          # transfer read data back to read buffer and return size
+          size_read = len(data)
+          repy_move_to_readbuf(buf_addr, data, size_read)
+          return size_read
         except SocketWouldBlockError as e:
           return ErrorResponseBuilder("fs_read", "EAGAIN", "Socket would block")
 
-      data = self.read_from_file("read_syscall", fd, count, 0)
-      
-      # transfer read data back to read buffer and return size
-      size_read = len(data)
-      repy_move_to_readbuf(buf_addr, data, size_read)
+      starttime = time.clock()
+      size_read = self.read_from_file(buf_addr, fd, count)
+      endtime = time.clock()
+      readtime = (endtime - starttime ) * 1000000
+
+      print "fileread took " + str(readtime) + " us"
       return size_read
 
     finally:
@@ -1592,19 +1612,11 @@ class cageobj:
       if IS_PIPE_DESC(fd, self.filedescriptortable) or IS_SOCK_DESC(fd, self.filedescriptortable):
         raise SyscallError("pread_syscall","ESPIPE","File descriptor is associated with a pipe or FIFO or socket.")
       
-      return self.read_from_file("pread_syscall", fd, count, offset)
+      return self.pread_from_file(fd, count, offset)
 
     finally:
       # ... release the lock
       self.filedescriptortable[fd]['lock'].release()
-
-
-  # helper function for pipe writes
-  def _write_to_pipe(self, fd, count, buf_addr):
-
-    pipenumber = self.filedescriptortable[fd]['pipe']
-
-    return pipetable[pipenumber].pipewrite(buf_addr, count)
 
   
   #helper funtion for read/pread
@@ -1685,19 +1697,11 @@ class cageobj:
     if fd not in self.filedescriptortable:
       raise SyscallError("write_syscall","EBADF","Invalid file descriptor.")
   
-    # if we're going to stdout/err, lets get it over with and print    
-    try:
-      if self.filedescriptortable[fd]['stream'] in [1,2]:
-        log_stdout(repy_addr2string(buf_addr, count))
-        return count
-    except KeyError:
-      pass
-
-    # Is it open for writing?
+    # # Is it open for writing?
     if IS_RDONLY(self.filedescriptortable[fd]['flags']):
       raise SyscallError("write_syscall","EBADF","File descriptor is not open for writing.")
     
-    # Acquire the fd lock...
+    # # Acquire the fd lock...
     self.filedescriptortable[fd]['lock'].acquire(True)
 
     # ... but always release it...
@@ -1705,10 +1709,19 @@ class cageobj:
 
       # lets check if it's a pipe first, and if so write to that
       if IS_PIPE_DESC(fd, self.filedescriptortable):
-        return self._write_to_pipe(fd, count, buf_addr)
+        pipenumber = self.filedescriptortable[fd]['pipe']
+        return pipetable[pipenumber].pipewrite(buf_addr, count)
 
       # turn buffer into PyString
       data = repy_addr2string(buf_addr, count)
+
+      # if we're going to stdout/err, lets get it over with and print    
+      try:
+        if self.filedescriptortable[fd]['stream'] in [1,2]:
+          log_stdout(data)
+          return count
+      except KeyError:
+        pass
 
       if IS_SOCK_DESC(fd, self.filedescriptortable):
         return self.send_syscall(fd, data, 0)
@@ -1726,7 +1739,7 @@ class cageobj:
         add_to_log("fs_call", fs_tot)
   
 
-  
+
   ##### PWRITE  #####
 
   def pwrite_syscall(self, fd, data, offset):

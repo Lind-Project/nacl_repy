@@ -11,7 +11,6 @@
 
 #define pipeEOF -1
  
-
 typedef struct {
     char* data;
     int length;
@@ -110,9 +109,7 @@ static PyObject *LindPipe_pipewrite(LindPipe *self, PyObject *args) {
     }
 
     data = (char*)buf_addr;
-
-    
-
+ 
     if (( ret = lfq_enqueue(&(self->ctx), LFQEntry_new(data, datalen))) != 0) {
         printf("lfq_enqueue failed, reason:%s\n", strerror(-ret));
         return NULL;
@@ -135,7 +132,10 @@ static PyObject *LindPipe_piperead(LindPipe *self, PyObject *args) {
 
     Py_BEGIN_ALLOW_THREADS
     
+<<<<<<< HEAD
 
+=======
+>>>>>>> pipe-buffers-lfq
     if (!PyArg_ParseTuple(args, "li", &buf_addr, &count)) {
         return NULL;
     }

@@ -720,6 +720,10 @@ FILE_OBJECT_WRAPPER_INFO = {
       {'func' : emulfile.emulated_file.close,
        'args' : [],
        'return' : None},
+  'readintoat' :
+      {'func' : emulfile.emulated_file.readintoat,
+       'args' : [Int(), NoneOrInt(), Int(min=0)],
+       'return' : Int()},
   'readat' :
       {'func' : emulfile.emulated_file.readat,
        'args' : [NoneOrInt(), Int(min=0)],
