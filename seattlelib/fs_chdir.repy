@@ -28,7 +28,7 @@ def lind_fs_chdir(args):
 
     file_name = args[0]
     
-    if file_name == "" || file_name == " ":
+    if file_name == "" or file_name == " ":
         file_name = "/"
     
     try:
