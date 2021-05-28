@@ -32,7 +32,7 @@ if MODE == "safe":
   syscall_table[29] = lind_safe_sys_getppid
   syscall_table[30] = lind_safe_sys_exit
   syscall_table[31] = lind_sys_getpid
-  syscall_table[32] = lind_safe_net_socket
+
   syscall_table[33] = lind_safe_net_bind
   syscall_table[34] = lind_safe_net_send
   syscall_table[35] = lind_safe_net_sendto
@@ -69,6 +69,8 @@ if MODE == "safe":
   syscall_table[126] = lind_safe_fs_pread
   syscall_table[127] = lind_safe_fs_pwrite
   
+  syscall_table[136] = lind_safe_net_socket
+  
 elif MODE == "fast":
   syscall_table[2] = lind_fs_access
   syscall_table[4] = lind_fs_unlink
@@ -95,7 +97,7 @@ elif MODE == "fast":
   syscall_table[29] = lind_sys_getppid
   syscall_table[30] = lind_sys_exit
   syscall_table[31] = lind_sys_getpid
-  syscall_table[32] = lind_net_socket
+  
   syscall_table[33] = lind_net_bind
   syscall_table[34] = lind_net_send
   syscall_table[35] = lind_net_sendto
@@ -130,6 +132,9 @@ elif MODE == "fast":
   syscall_table[125] = lind_net_gethostname
   syscall_table[126] = lind_fs_pread
   syscall_table[127] = lind_fs_pwrite
+  
+  syscall_table[136] = lind_net_socket
+  
 else:
   assert False, "Invalid mode setting"
 
