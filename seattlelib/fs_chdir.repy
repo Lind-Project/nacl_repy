@@ -27,6 +27,7 @@ def lind_fs_chdir(args):
 
 
     file_name = args[0]
+    
     try:
         result_fd = get_fscall_obj(args[-1]).chdir_syscall(file_name)
     except SyscallError, e:
