@@ -10,26 +10,22 @@ if MODE == "safe":
   syscall_table[2] = lind_safe_fs_access
   syscall_table[4] = lind_safe_fs_unlink
   syscall_table[5] = lind_safe_fs_link
-  syscall_table[9] = lind_safe_fs_xstat
+  
   syscall_table[10] = lind_safe_fs_open
   syscall_table[11] = lind_safe_fs_close
   syscall_table[12] = lind_safe_fs_read
   syscall_table[13] = lind_safe_fs_write
   syscall_table[14] = lind_safe_fs_lseek
   syscall_table[15] = lind_fs_ioctl
-  syscall_table[17] = lind_safe_fs_fxstat
-  syscall_table[19] = lind_safe_fs_fstatfs
   syscall_table[21] = lind_safe_fs_mmap
   syscall_table[22] = lind_safe_fs_munmap
   syscall_table[23] = lind_safe_fs_getdents
   syscall_table[24] = lind_safe_fs_dup
   syscall_table[25] = lind_safe_fs_dup2
-  syscall_table[26] = lind_safe_fs_statfs
   syscall_table[28] = lind_safe_fs_fcntl
   syscall_table[29] = lind_safe_sys_getppid
   syscall_table[30] = lind_safe_sys_exit
   syscall_table[31] = lind_sys_getpid
-
   syscall_table[33] = lind_safe_net_bind
   syscall_table[34] = lind_safe_net_send
   syscall_table[35] = lind_safe_net_sendto
@@ -71,25 +67,26 @@ if MODE == "safe":
   syscall_table[132] = lind_safe_fs_rmdir
   syscall_table[136] = lind_safe_net_socket
   
+  syscall_table[140] = lind_safe_fs_fstatfs
+  syscall_table[141] = lind_safe_fs_fxstat
+  syscall_table[142] = lind_safe_fs_statfs
+  syscall_table[143] = lind_safe_fs_xstat
+
 elif MODE == "fast":
   syscall_table[2] = lind_fs_access
   syscall_table[4] = lind_fs_unlink
   syscall_table[5] = lind_fs_link
-  syscall_table[9] = lind_fs_xstat
   syscall_table[10] = lind_fs_open
   syscall_table[11] = lind_fs_close
   syscall_table[12] = lind_fs_read
   syscall_table[13] = lind_fs_write
   syscall_table[14] = lind_fs_lseek
   syscall_table[15] = lind_fs_ioctl
-  syscall_table[17] = lind_fs_fxstat
-  syscall_table[19] = lind_fs_fstatfs
   syscall_table[21] = lind_fs_mmap
   syscall_table[22] = lind_fs_munmap
   syscall_table[23] = lind_fs_getdents
   syscall_table[24] = lind_fs_dup
   syscall_table[25] = lind_fs_dup2
-  syscall_table[26] = lind_fs_statfs
   syscall_table[28] = lind_fs_fcntl
   syscall_table[29] = lind_sys_getppid
   syscall_table[30] = lind_sys_exit
@@ -135,6 +132,11 @@ elif MODE == "fast":
   syscall_table[132] = lind_fs_rmdir
   syscall_table[136] = lind_net_socket
   
+  syscall_table[140] = lind_safe_fs_fstatfs
+  syscall_table[141] = lind_safe_fs_fxstat
+  syscall_table[142] = lind_safe_fs_statfs
+  syscall_table[143] = lind_safe_fs_xstat
+
 else:
   assert False, "Invalid mode setting"
 
