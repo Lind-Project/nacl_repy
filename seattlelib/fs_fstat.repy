@@ -65,6 +65,5 @@ def lind_safe_fs_fxstat(args):
     result = lind_fs_fxstat(args)
 
     if result.is_error == False:
-        assert len(result.data) == 120, \
-               "result must be exactly the size of struct stat"
+        assert result >= 0
     return result

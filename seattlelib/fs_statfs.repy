@@ -18,5 +18,5 @@ def lind_safe_fs_statfs(args):
 
   assert isinstance(result, Response), "wrong return type %s"%(str(type(result)))
   if not result.is_error:
-    assert len(result.data)==88, "result must be exactly the size of struct statfs"
+    assert result >= 0
   return result

@@ -23,6 +23,6 @@ def lind_safe_fs_xstat(args):
   result = lind_fs_xstat(args)
 
   if result.is_error == False:
-    assert len(result.data)==112, "result must be exactly the size of struct stat"
+    assert result >= 0
 
   return result
