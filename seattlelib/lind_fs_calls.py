@@ -590,7 +590,7 @@ class cageobj:
 
     try:
       # if so, return the information...
-      return self_istatfs_helper(self.filedescriptortable[fd]['inode'])
+      return self._istatfs_helper(self.filedescriptortable[fd]['inode'])
 
     finally:
       filesystemmetadatalock.release()
