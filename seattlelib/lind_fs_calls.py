@@ -494,7 +494,6 @@ class cageobj:
   netshutdown_syscall = netshutdown_syscall
   _nonblock_peek_read = _nonblock_peek_read
   select_syscall = select_syscall
-  getifaddrs_syscall = getifaddrs_syscall
   poll_syscall = poll_syscall
   _helper_sockpair = _helper_sockpair
   socketpair_syscall = socketpair_syscall
