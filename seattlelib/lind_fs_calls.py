@@ -635,6 +635,9 @@ class cageobj:
 
     # ... but always release the lock
     try:
+      print "access"
+      print path
+      print amode
 
       # get the actual name.   Remove things like '../foo'
       truepath = normpath(path, self.cageid)
