@@ -1470,6 +1470,7 @@ def epoll_ctl_syscall(self, epfd, op, fd, event):
 
 def epoll_wait_syscall(self, epfd, maxevents, timeout):
 
+  print "in epoll"
   if not epfd in self.filedescriptortable:
     raise SyscallError("epoll_wait_syscall","EBADF","epfd is not a valid FD")
 
@@ -1482,7 +1483,7 @@ def epoll_wait_syscall(self, epfd, maxevents, timeout):
   readfds=[]
   writefds=[]
   errfds=[]
-
+  print "setup"
   poll_fds=[]
   for fd in self.filedescriptortable[epfd]['registered_fds']:
     events = self.filedescriptortable[epfd]['registered_fds'][fd]['events']
@@ -1494,7 +1495,7 @@ def epoll_wait_syscall(self, epfd, maxevents, timeout):
     if events & EPOLLERR > 0:
       structpoll['events'] |= POLLERR
     poll_fds.append(structpoll)
-
+  print "polling"
   ret, pollresult = self.poll_syscall(poll_fds, timeout)
   nepoll_return = min(len(pollresult), maxevents)
   epoll_return = []
@@ -1509,6 +1510,7 @@ def epoll_wait_syscall(self, epfd, maxevents, timeout):
     epoll_return.append(event)
     if len(epoll_return) >= nepoll_return:
       break;
+  print "returning"
   return nepoll_return, epoll_return
 
 
