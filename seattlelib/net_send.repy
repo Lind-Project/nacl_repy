@@ -26,9 +26,9 @@ def lind_net_send(args):
     """
 
     fd = args[0]
-    length = args[1]
-    flags = args[2]
-    buf = args[3]
+    buf = args[1]
+    length = args[2]
+    flags = args[3]
     try:
         result = get_fscall_obj(args[-1]).send_syscall(fd, buf, flags)
     except SyscallError, e:
@@ -48,9 +48,9 @@ def lind_safe_net_send(args):
     """
 
     fd = args[0]
-    length = args[1]
-    flags = args[2]
-    buf = args[3]
+    buf = args[1]
+    length = args[2]
+    flags = args[3]
 
     check_valid_fd_handle(fd)
 
