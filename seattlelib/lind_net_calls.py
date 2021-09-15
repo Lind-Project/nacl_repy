@@ -1252,37 +1252,6 @@ def select_syscall(self, nfds, readfds, writefds, exceptfds, time):
      leftover_time = 0;
   return (retval, new_readfds, new_writefds, new_exceptfds, leftover_time)
 
-def getifaddrs_syscall(self):
-  """
-    http://linux.die.net/man/2/getifaddrs
-
-    Returns a list of the IP addresses of this machine.
-
-    Fake most of the values.  I dont think an overly restrictive
-    netmask is going to cause problems?
-  """
-  try:
-    ip = getmyip()
-  except:
-    raise SyscallError("getifaddrs syscall","EADDRNOTAVAIL","Problem getting the" \
-                       " local ip address.")
-  broadcast = (ip.split('.')[0:3]) # the broadcast address is just x.y.z.255?
-  broadcast = '.'.join(broadcast + ['255'])
-  return 0, [{'ifa_name':'eth0',
-           'ifa_flags':0,
-           'ifa_addr':ip,
-           'ifa_netmask':'255.255.255.0',
-           'ifa_broadaddr':broadcast,
-          },
-
-          {'ifa_name':'lo0',
-           'ifa_flags':0,
-           'ifa_addr':'127.0.0.1',
-           'ifa_netmask':'255.0.0.0',
-           'ifa_broadaddr':'127.0.0.1',
-          }
-          ]
-
 def poll_syscall(self, fds, timeout):
   """
     http://linux.die.net/man/2/poll

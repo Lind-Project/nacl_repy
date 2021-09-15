@@ -142,8 +142,6 @@ include net_shutdown.repy
 
 include net_select.repy
 
-include net_getifaddrs.repy
-
 include net_poll.repy
 
 include net_epoll.repy

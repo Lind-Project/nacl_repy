@@ -44,7 +44,6 @@ if MODE == "safe":
   syscall_table[44] = lind_safe_net_setsockopt
   syscall_table[45] = lind_safe_net_shutdown
   syscall_table[46] = lind_safe_net_select
-  syscall_table[47] = lind_safe_net_getifaddrs
   syscall_table[48] = lind_safe_net_poll
   syscall_table[49] = lind_safe_net_socketpair
   syscall_table[50] = lind_safe_sys_getuid
@@ -109,7 +108,6 @@ elif MODE == "fast":
   syscall_table[44] = lind_net_setsockopt
   syscall_table[45] = lind_net_shutdown
   syscall_table[46] = lind_net_select
-  syscall_table[47] = lind_net_getifaddrs
   syscall_table[48] = lind_net_poll
   syscall_table[49] = lind_net_socketpair
   syscall_table[50] = lind_sys_getuid
