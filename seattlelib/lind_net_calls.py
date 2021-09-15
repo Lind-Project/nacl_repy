@@ -1444,10 +1444,10 @@ def epoll_create_syscall(self, size):
 
 def epoll_ctl_syscall(self, epfd, op, fd, event):
 
-  if not IS_EPOLL_FD(epfd):
+  if not IS_EPOLL_FD(epfd, self.filedescriptortable):
     raise SyscallError("epoll_ctl_syscall","EBADF","epfd is not a valid FD")
 
-  if (not fd in self.filedescriptortable) or (IS_EPOLL_FD(fd)):
+  if (not fd in self.filedescriptortable) or (IS_EPOLL_FD(fd, self.filedescriptortable)):
     raise SyscallError("epoll_ctl_syscall","EBADF","fd is not a valid FD")
 
   epfd_obj = self.filedescriptortable[epfd];
@@ -1473,7 +1473,7 @@ def epoll_wait_syscall(self, epfd, maxevents, timeout):
   if not epfd in self.filedescriptortable:
     raise SyscallError("epoll_wait_syscall","EBADF","epfd is not a valid FD")
 
-  if not IS_EPOLL_FD(epfd):
+  if not IS_EPOLL_FD(epfd, self.filedescriptortable):
     raise SyscallError("epoll_wait_syscall","EINVAL","epfd is not a epoll FD")
 
   if not maxevents>0:
