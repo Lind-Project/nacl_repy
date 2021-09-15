@@ -135,6 +135,7 @@ else:
 
 if MODE=="safe":
   def ds(call, args):
+    print "in dispatcher"
     print call
     print args
     assert isinstance(args[-1], int), "the cageid should be an int"
@@ -155,6 +156,9 @@ if MODE=="safe":
   dispatch_syscall = ds
 elif MODE=="fast":
   def ds(call, args):
+    print "in dispatcher"
+    print call
+    print args
     try:
       return syscall_table[call](args)
     except KeyError,e:
