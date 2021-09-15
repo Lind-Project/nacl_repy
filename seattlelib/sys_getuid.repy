@@ -17,12 +17,6 @@ def lind_sys_getuid(args):
     """ geteuid calls are dispatched to this function.
 
     See dispatcher.repy for details.
-
-    Given the paths in a list,
-    pull them out and make the actual syscall in the
-    file system library.
-
-    Pack the int returned, or error.
     """
 
     try:
@@ -32,21 +26,16 @@ def lind_sys_getuid(args):
     except UnimplementedError, e:
         return ErrorResponseBuilder("sys_getuid", 'EINVAL', str(e))
 
-    data = struct_pack("<i", result)
-    return SuccessResponseBuilder("sys_getuid", len(data), data)
+    return SuccessResponseBuilder("sys_getuid", result)
 
 
 def lind_safe_sys_getuid(args):
     """ Safely wrap the geteuid call.
 
     See dispatcher.repy for details.
-
-    Check the paths for consistency,
-    then call the real geteuid dispatcher.
-
     """
 
     result = lind_sys_getuid(args)
-    assert len(result.data) == 4, "we return a sinlge int. got %d"%(len(result.data))
+    assert result >= 0
 
     return result

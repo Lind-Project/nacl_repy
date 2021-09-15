@@ -494,7 +494,6 @@ class cageobj:
   netshutdown_syscall = netshutdown_syscall
   _nonblock_peek_read = _nonblock_peek_read
   select_syscall = select_syscall
-  getifaddrs_syscall = getifaddrs_syscall
   poll_syscall = poll_syscall
   _helper_sockpair = _helper_sockpair
   socketpair_syscall = socketpair_syscall
@@ -590,7 +589,7 @@ class cageobj:
 
     try:
       # if so, return the information...
-      return self_istatfs_helper(self.filedescriptortable[fd]['inode'])
+      return self._istatfs_helper(self.filedescriptortable[fd]['inode'])
 
     finally:
       filesystemmetadatalock.release()
@@ -1919,6 +1918,12 @@ class cageobj:
     if fd not in self.filedescriptortable:
       raise SyscallError("fcntl_syscall","EBADF","Invalid file descriptor.")
 
+    # lets go to DUP
+    if cmd == F_DUPFD:
+      assert(len(args) == 1)
+      assert(type(args[0]) == int or type(args[0]) == long)
+      return self.dup_syscall(fd, args[0])
+
     # Acquire the fd lock...
     self.filedescriptortable[fd]['lock'].acquire(True)
 
@@ -1935,7 +1940,7 @@ class cageobj:
       # set the flags...
       elif cmd == F_SETFD:
         assert(len(args) == 1)
-        self.filedescriptortable[fd]['flags'] |= FD_CLOEXEC #Linux only supports FD_CLOEXEC
+        self.filedescriptortable[fd]['flags'] |= args[0] & FD_CLOEXEC #Linux only supports FD_CLOEXEC
         return 0
 
       # if we're getting the flags, return them...
@@ -1947,14 +1952,9 @@ class cageobj:
       elif cmd == F_SETFL:
         assert(len(args) == 1)
         assert(type(args[0]) == int or type(args[0]) == long)
-        self.filedescriptortable[fd]['flags'] = args[0]
-        return 0
+        self.filedescriptortable[fd]['flags'] &= ~(O_APPEND | O_ASYNC | O_DIRECT | O_NOATIME | O_NONBLOCK)
+        self.filedescriptortable[fd]['flags'] |= args[0] & (O_APPEND | O_ASYNC | O_DIRECT | O_NOATIME | O_NONBLOCK)
 
-      # lets go to DUP
-      elif cmd == F_DUPFD:
-        assert(len(args) == 1)
-        assert(type(args[0]) == int or type(args[0]) == long)
-        self.dup_syscall(fd, args[0])
         return 0
 
       # This is saying we'll get signals for this.   Let's punt this...

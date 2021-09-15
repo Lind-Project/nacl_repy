@@ -10,9 +10,6 @@ if MODE == "safe":
   syscall_table[2] = lind_safe_fs_access
   syscall_table[4] = lind_safe_fs_unlink
   syscall_table[5] = lind_safe_fs_link
-  syscall_table[6] = lind_safe_fs_chdir
-  syscall_table[7] = lind_safe_fs_mkdir
-  syscall_table[8] = lind_safe_fs_rmdir
   syscall_table[9] = lind_safe_fs_xstat
   syscall_table[10] = lind_safe_fs_open
   syscall_table[11] = lind_safe_fs_close
@@ -32,7 +29,7 @@ if MODE == "safe":
   syscall_table[29] = lind_safe_sys_getppid
   syscall_table[30] = lind_safe_sys_exit
   syscall_table[31] = lind_sys_getpid
-  syscall_table[32] = lind_safe_net_socket
+
   syscall_table[33] = lind_safe_net_bind
   syscall_table[34] = lind_safe_net_send
   syscall_table[35] = lind_safe_net_sendto
@@ -47,7 +44,6 @@ if MODE == "safe":
   syscall_table[44] = lind_safe_net_setsockopt
   syscall_table[45] = lind_safe_net_shutdown
   syscall_table[46] = lind_safe_net_select
-  syscall_table[47] = lind_safe_net_getifaddrs
   syscall_table[48] = lind_safe_net_poll
   syscall_table[49] = lind_safe_net_socketpair
   syscall_table[50] = lind_safe_sys_getuid
@@ -69,13 +65,15 @@ if MODE == "safe":
   syscall_table[126] = lind_safe_fs_pread
   syscall_table[127] = lind_safe_fs_pwrite
   
+  syscall_table[130] = lind_safe_fs_chdir
+  syscall_table[131] = lind_safe_fs_mkdir
+  syscall_table[132] = lind_safe_fs_rmdir
+  syscall_table[136] = lind_safe_net_socket
+  
 elif MODE == "fast":
   syscall_table[2] = lind_fs_access
   syscall_table[4] = lind_fs_unlink
   syscall_table[5] = lind_fs_link
-  syscall_table[6] = lind_fs_chdir
-  syscall_table[7] = lind_fs_mkdir
-  syscall_table[8] = lind_fs_rmdir
   syscall_table[9] = lind_fs_xstat
   syscall_table[10] = lind_fs_open
   syscall_table[11] = lind_fs_close
@@ -95,7 +93,7 @@ elif MODE == "fast":
   syscall_table[29] = lind_sys_getppid
   syscall_table[30] = lind_sys_exit
   syscall_table[31] = lind_sys_getpid
-  syscall_table[32] = lind_net_socket
+  
   syscall_table[33] = lind_net_bind
   syscall_table[34] = lind_net_send
   syscall_table[35] = lind_net_sendto
@@ -110,7 +108,6 @@ elif MODE == "fast":
   syscall_table[44] = lind_net_setsockopt
   syscall_table[45] = lind_net_shutdown
   syscall_table[46] = lind_net_select
-  syscall_table[47] = lind_net_getifaddrs
   syscall_table[48] = lind_net_poll
   syscall_table[49] = lind_net_socketpair
   syscall_table[50] = lind_sys_getuid
@@ -130,6 +127,12 @@ elif MODE == "fast":
   syscall_table[125] = lind_net_gethostname
   syscall_table[126] = lind_fs_pread
   syscall_table[127] = lind_fs_pwrite
+
+  syscall_table[130] = lind_fs_chdir
+  syscall_table[131] = lind_fs_mkdir
+  syscall_table[132] = lind_fs_rmdir
+  syscall_table[136] = lind_net_socket
+  
 else:
   assert False, "Invalid mode setting"
 

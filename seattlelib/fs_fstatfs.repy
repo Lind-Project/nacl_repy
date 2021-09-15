@@ -12,7 +12,7 @@ def lind_fs_fstatfs(args):
 def lind_safe_fs_fstatfs(args):
   """Check the validity of the arugments to the fstatfs syscall and what it returns"""
   handle = args[0]
-  assert(len(args)==1), "fsstat should always have one argument"
+  assert(len(args)==2), "fsstat should always have one argument and the cageid"
 
   check_valid_fd_handle(handle)
   result = lind_fs_fstatfs(args)

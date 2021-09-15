@@ -26,8 +26,13 @@ def lind_fs_open(args):
     """
 
     file_name = args[0]
+<<<<<<< HEAD
     mode = args[1]
     flags = args[2]
+=======
+    flags = args[1]
+    mode = args[2]
+>>>>>>> unified_syscalls
     try:
         result_fd = get_fscall_obj(args[-1]).open_syscall(file_name, flags, mode)
     except SyscallError, e:
@@ -52,8 +57,13 @@ def lind_safe_fs_open(args):
     O_RDWR = 02
 
     file_name = args[0]
+<<<<<<< HEAD
     mode = args[1]
     flags = args[2]
+=======
+    flags = args[1]
+    mode = args[2]
+>>>>>>> unified_syscalls
 
     assert isinstance(flags, int), "the flags should be an int"
     assert isinstance(mode, int), "the mode should be an int"

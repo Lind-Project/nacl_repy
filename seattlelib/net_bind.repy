@@ -25,7 +25,7 @@ def lind_net_bind(args):
     Pack the single int returned, or error.
     """
     fd = args[0]
-    addr = args[2]
+    addr = args[1]
     family, port, ip, pad = parse_sockaddr_struct(addr)
     ipaddr = inet_ntoa(struct_pack("<I", ip))
 
@@ -50,8 +50,8 @@ def lind_safe_net_bind(args):
 
     check_valid_fd_handle(fd)
 
-    length = args[1]
-    addr = args[2]
+    addr = args[1]
+    length = args[2]
     assert(len(addr) == length)
     result = lind_net_bind(args)
 

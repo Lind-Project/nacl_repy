@@ -28,7 +28,7 @@ def lind_fs_fcntl(args):
     handle = args[0]
     cmd = args[1]
 
-    if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN:
+    if cmd == F_SETFD or cmd == F_SETFL or cmd == F_SETOWN or cmd == F_DUPFD:
         arg = args[2]
         try:
             result = get_fscall_obj(args[-1]).fcntl_syscall(handle, cmd, arg)
@@ -63,6 +63,7 @@ def lind_safe_fs_fcntl(args):
             cmd == F_GETFL or \
             cmd == F_SETFL or \
             cmd == F_GETOWN or \
-            cmd == F_SETOWN), "Invalid or unsupported fcntl command"
+            cmd == F_SETOWN or \
+            cmd == F_DUPFD), "Invalid or unsupported fcntl command"
 
     return lind_fs_fcntl(args)
