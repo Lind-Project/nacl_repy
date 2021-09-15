@@ -138,9 +138,6 @@ else:
 
 if MODE=="safe":
   def ds(call, args):
-    print "in dispatcher"
-    print call
-    print args
     assert isinstance(args[-1], int), "the cageid should be an int"
     # Cageid can be -1 but only in direct syscalls that don't go through the
     # dispatcher, these are present in files such as lind_fs_utils as a dummy
@@ -159,9 +156,6 @@ if MODE=="safe":
   dispatch_syscall = ds
 elif MODE=="fast":
   def ds(call, args):
-    print "in dispatcher"
-    print call
-    print args
     try:
       return syscall_table[call](args)
     except KeyError,e:
