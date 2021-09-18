@@ -104,7 +104,6 @@ elif MODE == "fast":
   syscall_table[39] = lind_net_listen
   syscall_table[40] = lind_net_accept
   syscall_table[41] = lind_net_getpeername
-  syscall_table[42] = lind_net_getsockname
   syscall_table[43] = lind_net_getsockopt
   syscall_table[44] = lind_net_setsockopt
   syscall_table[45] = lind_net_shutdown
@@ -134,6 +133,8 @@ elif MODE == "fast":
   syscall_table[131] = lind_fs_mkdir
   syscall_table[132] = lind_fs_rmdir
   syscall_table[136] = lind_net_socket
+
+  syscall_table[144] = lind_net_getsockname
   
 else:
   assert False, "Invalid mode setting"
