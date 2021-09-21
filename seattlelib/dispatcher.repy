@@ -39,7 +39,6 @@ if MODE == "safe":
   syscall_table[39] = lind_safe_net_listen
   syscall_table[40] = lind_safe_net_accept
   syscall_table[41] = lind_safe_net_getpeername
-  syscall_table[42] = lind_safe_net_getsockname
   syscall_table[43] = lind_safe_net_getsockopt
   syscall_table[44] = lind_safe_net_setsockopt
   syscall_table[45] = lind_safe_net_shutdown
@@ -70,6 +69,8 @@ if MODE == "safe":
   syscall_table[131] = lind_safe_fs_mkdir
   syscall_table[132] = lind_safe_fs_rmdir
   syscall_table[136] = lind_safe_net_socket
+  
+  syscall_table[144] = lind_safe_net_getsockname
   
 elif MODE == "fast":
   syscall_table[2] = lind_fs_access
