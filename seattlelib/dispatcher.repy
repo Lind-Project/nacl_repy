@@ -1,5 +1,5 @@
-MODE="safe"
-# MODE="fast"
+# MODE="safe"
+MODE="fast"
 
 #dummy so that lind_strace and no-op doesn't break anything
 syscall_table[1] = lambda x: SuccessResponseBuilder("no-op dummy", 0)
