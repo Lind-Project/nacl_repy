@@ -26,7 +26,7 @@ def lind_net_accept(args):
     """
     fd = args[0]
     try:
-        result = get_net_call(args[-1],"accept_syscall")(fd, args[1])
+        result = get_fscall_obj(args[-1]).accept_syscall(fd, args[1])
     except SyscallError, e:
         return ErrorResponseBuilder("net_accept", e[1], e[2])
     return SuccessResponseBuilder("net_accept", result[2])

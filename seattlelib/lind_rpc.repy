@@ -38,7 +38,7 @@ class Response:
 
         if isinstance(return_code, str):
             try:
-                self.return_code = curr_comp()[ERRNO][return_code]
+                self.return_code = errnos[return_code]
             except KeyError:
                 raise Exception("Return code is not a valid error number.")
         elif isinstance(return_code, int):

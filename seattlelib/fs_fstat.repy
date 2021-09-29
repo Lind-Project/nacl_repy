@@ -30,13 +30,13 @@ def lind_fs_fxstat(args):
 
     if ver == 1:
       try:
-          result = get_fs_call(args[-1],"fstat_syscall")(filedes)
+          result = get_fscall_obj(args[-1]).fstat_syscall(filedes)
       except SyscallError, e:
         return ErrorResponseBuilder("fs_fxstat", e[1], e[2])
 
       # This format is: dev,ino,mode,nlink,uid,gid,rdev,size,blksize,blocks
       # followed by 2Q for each timestamp.   The ns field is set to 0.
-      packed = pack_stat_struct(result)
+      packed = pack_stat_struct_new(result)
         
       return SuccessResponseBuilder("fs_fxstat", 0, packed)
 
@@ -54,7 +54,7 @@ def lind_safe_fs_fxstat(args):
 
     """
 
-    assert(len(args) == 2), "fsstat should always have two argument"
+    assert(len(args) == 3), "fsstat should always have two arguments and a cageid"
     handle = args[0]
     ver = args[1]
 
@@ -65,6 +65,6 @@ def lind_safe_fs_fxstat(args):
     result = lind_fs_fxstat(args)
 
     if result.is_error == False:
-        assert len(result.data) == 112, \
+        assert len(result.data) == 120, \
                "result must be exactly the size of struct stat"
     return result

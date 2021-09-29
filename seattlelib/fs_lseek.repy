@@ -30,12 +30,11 @@ def lind_fs_lseek(args):
     offset = args[0]
 
     try:
-        result = get_fs_call(args[-1],"lseek_syscall")(handle, offset, whence)
+        result = get_fscall_obj(args[-1]).lseek_syscall(handle, offset, whence)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_lseek", e[1], e[2])
 
-    reply = struct_pack("<q", result)
-    return SuccessResponseBuilder("fs_lseek", 0, reply)
+    return SuccessResponseBuilder("fs_lseek", result)
 
 
 def lind_safe_fs_lseek(args):
@@ -65,6 +64,6 @@ def lind_safe_fs_lseek(args):
     result = lind_fs_lseek(args)
 
     if result.is_error == False:
-        assert(len(result.data) == 8), "should return exactly and off_t"
+        assert(len(result.data) == 8 or len(result.data) == 0), "should return exactly an off_t"
 
     return result

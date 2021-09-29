@@ -29,7 +29,7 @@ def lind_fs_mmap(args):
     fildes = args[4]
     off = args[5]
     try:
-        result = get_fs_call(args[-1],"mmap_syscall")(addr, leng, prot, flags, fildes, off)
+        result = get_fscall_obj(args[-1]).mmap_syscall(addr, leng, prot, flags, fildes, off)
     except SyscallError, e:
         return ErrorResponseBuilder("fs_mmap", e[1], e[2])
     return SuccessResponseBuilder("fs_mmap", result)
@@ -49,13 +49,12 @@ def lind_safe_fs_mmap(args):
     fildes = args[4]
     off = args[5]
     assert prot == prot & (PROT_READ | PROT_WRITE | PROT_EXEC), "prot value must have only valid flags"
-    assert flags == flags & (MAP_SHARED | MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | \
-    (63 << MAP_HUGE_SHIFT)), "flags value must have only valid flags"
+    assert flags == flags & (MAP_SHARED | MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS), "flags value must have only valid flags"
     assert bool(flags & MAP_PRIVATE) != bool(flags & MAP_SHARED), "mapping can not be both private and shared"
     assert isinstance(addr, int), "the addr should be an int"
     assert isinstance(leng, int), "the len should be an int"
     assert isinstance(prot, int), "the prot should be an int"
     assert isinstance(flags, int), "the flags should be an int"
-    assert isinstance(filedes, int), "the filedes should be an int"
+    assert isinstance(fildes, int), "the fildes should be an int"
     assert isinstance(off, int), "the off should be an int"
     return lind_fs_mmap(args)

@@ -29,7 +29,7 @@ def lind_net_socket(args):
     _type = args[1]
     protocol = args[2]
     try:
-        result = get_net_call(args[-1],"socket_syscall")(domain, _type, protocol)
+        result = get_fscall_obj(args[-1]).socket_syscall(domain, _type, protocol)
     except SyscallError, e:
         return ErrorResponseBuilder("net_socket", e[1], e[2])
     except UnimplementedError, e:

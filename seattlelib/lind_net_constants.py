@@ -8,8 +8,8 @@
 """
 
 
-
-
+#used for gethostname()
+DEFAULT_HOSTNAME = "Lind"
 
 
 

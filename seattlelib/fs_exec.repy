@@ -22,7 +22,7 @@ def lind_fs_exec(args):
   """
   child_cageid = args[0]
   try:
-    result = get_fs_call(args[-1],"exec_syscall")(child_cageid)
+    result = get_fscall_obj(args[-1]).exec_syscall(child_cageid)
   except SyscallError, e:
     message = "Encountered error in exec.\n Parent Cageid: " + args[-1] +  \
       "\nChild Cageid: " + child_cageid
